@@ -51,6 +51,8 @@ export async function getWorkspace(context: Context): Promise<Workspace> {
   ) as unknown as Record<RecordKind, DomainRecord[]>;
   const projectHours: Record<string, number> = {};
   for (const row of rows) {
+    // A rolling release may add record kinds before every running build knows them.
+    if (!Object.hasOwn(grouped, row.kind)) continue;
     const pid = String(row.data.productionId || "");
     if (row.kind === "productions" && !visibleProjects.has(row.id)) continue;
     if (pid && !visibleProjects.has(pid)) continue;
