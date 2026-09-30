@@ -61,6 +61,124 @@ test("real database workflows, permissions and booking integrity", async () => {
         })
       ).status(),
     ).toBe(200);
+    const originalProfile = (await (await member.get("/api/workspace")).json()).user.preferences;
+    expect(originalProfile).toEqual({ accentPalette: "green", onboardingVersion: 0 });
+    expect(
+      (
+        await member.post("/api/actions", {
+          data: { action: "profile-update", data: { accentPalette: "lavender" } },
+        })
+      ).status(),
+    ).toBe(200);
+    expect(
+      (
+        await member.post("/api/actions", {
+          data: { action: "profile-update", data: { onboardingCompleted: true } },
+        })
+      ).status(),
+    ).toBe(200);
+    expect((await (await member.get("/api/workspace")).json()).user.preferences).toEqual({
+      accentPalette: "lavender",
+      onboardingVersion: 1,
+    });
+    expect(
+      (
+        await member.post("/api/actions", {
+          data: { action: "profile-update", data: { accentPalette: "invalid" } },
+        })
+      ).status(),
+    ).toBe(400);
+    expect(
+      (
+        await member.post("/api/actions", {
+          data: {
+            action: "profile-update",
+            data: { userId: workspace.user.id, accentPalette: "rose" },
+          },
+        })
+      ).status(),
+    ).toBe(400);
+    const ownFeedbackResponse = await member.post("/api/records/feedback", {
+      data: {
+        data: {
+          type: "feature",
+          title: `QA Feedback ${suffix}`,
+          description: "QA Beschreibung",
+          status: "done",
+          userId: workspace.user.id,
+        },
+      },
+    });
+    expect(ownFeedbackResponse.status()).toBe(201);
+    const ownFeedback = await ownFeedbackResponse.json();
+    created.push({ kind: "feedback", id: ownFeedback.id });
+    expect(ownFeedback.data.userId).toBe(memberId);
+    expect(ownFeedback.data.status).toBe("new");
+    const privateFeedback = await create("feedback", { type: "bug", title: `QA Privat ${suffix}` });
+    expect(
+      (await (await member.get("/api/workspace")).json()).records.feedback.map(
+        (row: { id: string }) => row.id,
+      ),
+    ).toEqual([ownFeedback.id]);
+    expect(
+      (
+        await member.patch(`/api/records/feedback/${privateFeedback.id}`, {
+          data: { version: privateFeedback.version, data: { title: "Unzulässig" } },
+        })
+      ).status(),
+    ).toBe(403);
+    expect(
+      (
+        await admin.patch(`/api/records/feedback/${ownFeedback.id}`, {
+          data: { version: ownFeedback.version, data: { status: "planned" } },
+        })
+      ).status(),
+    ).toBe(200);
+    const reviewed = (await (await member.get("/api/workspace")).json()).records.feedback[0];
+    expect(
+      (
+        await member.patch(`/api/records/feedback/${ownFeedback.id}`, {
+          data: { version: reviewed.version, data: { status: "done", description: "QA ergänzt" } },
+        })
+      ).status(),
+    ).toBe(200);
+    expect(
+      (await (await member.get("/api/workspace")).json()).records.feedback[0].data.status,
+    ).toBe("planned");
+    expect(
+      (
+        await admin.post("/api/actions", {
+          data: { action: "member-update", id: memberId, data: { role: "admin" } },
+        })
+      ).status(),
+    ).toBe(200);
+    expect(
+      (await (await member.get("/api/workspace")).json()).records.feedback.some(
+        (row: { id: string }) => row.id === privateFeedback.id,
+      ),
+    ).toBe(false);
+    expect(
+      (
+        await member.post("/api/login", {
+          data: { username: name, password: "QA-long-password-2026" },
+        })
+      ).status(),
+    ).toBe(200);
+    expect((await member.delete(`/api/records/feedback/${privateFeedback.id}`)).status()).toBe(403);
+    expect(
+      (
+        await admin.post("/api/actions", {
+          data: { action: "member-update", id: memberId, data: { role: "user" } },
+        })
+      ).status(),
+    ).toBe(200);
+    expect(
+      (
+        await member.post("/api/login", {
+          data: { username: name, password: "QA-long-password-2026" },
+        })
+      ).status(),
+    ).toBe(200);
     const production = await create("productions", {
       title: `QA Produktion ${suffix}`,
       contacts: [
@@ -96,8 +214,12 @@ test("real database workflows, permissions and booking integrity", async () => {
     const expandedTeam = await admin.patch(`/api/records/productions/${production.id}`, {
       data: { version: production.version, data: { memberIds: [memberId, workspace.user.id] } },
     });
-    expect(expandedTeam.status()).toBe(200);
-    expect((await expandedTeam.json()).data.contacts).toEqual(production.data.contacts);
+    expect(expandedTeam.status()).toBe(400);
+    const preservedContacts = await admin.patch(`/api/records/productions/${production.id}`, {
+      data: { version: production.version, data: { description: "QA überarbeitet" } },
+    });
+    expect(preservedContacts.status()).toBe(200);
+    expect((await preservedContacts.json()).data.contacts).toEqual(production.data.contacts);
     const contactsExport = await admin.get(
       `/api/export?kind=productions&format=csv&id=${production.id}`,
     );
@@ -202,6 +324,83 @@ test("real database workflows, permissions and booking integrity", async () => {
     );
     expect(exportResponse.status()).toBe(200);
     expect(await exportResponse.text()).toContain("QA Haare");
+    const attendanceData = {
+      title: "QA Anwesenheit",
+      date: "2026-09-29",
+      start: "2026-09-29T09:00:00+02:00",
+      end: "2026-09-29T18:00:00+02:00",
+      durationSeconds: 1,
+      pauseSeconds: 1800,
+      idempotencyKey: `qa:attendance:${suffix}`,
+    };
+    const attendanceResponse = await member.post("/api/records/attendance", {
+      data: { data: { ...attendanceData, productionId: production.id, userId: workspace.user.id } },
+    });
+    expect(attendanceResponse.status(), await attendanceResponse.text()).toBe(201);
+    const attendance = await attendanceResponse.json();
+    created.push({ kind: "attendance", id: attendance.id });
+    expect(attendance.data.durationSeconds).toBe(30600);
+    expect(attendance.data.userId).toBe(memberId);
+    expect(attendance.data.productionId).toBeUndefined();
+    expect(
+      (
+        await (
+          await member.post("/api/records/attendance", { data: { data: attendanceData } })
+        ).json()
+      ).id,
+    ).toBe(attendance.id);
+    expect(
+      (
+        await member.post("/api/records/attendance", {
+          data: { data: { ...attendanceData, idempotencyKey: "", title: "QA Überschneidung" } },
+        })
+      ).status(),
+    ).toBe(409);
+    const correctedAttendance = await member.patch(`/api/records/attendance/${attendance.id}`, {
+      data: { version: attendance.version, data: { end: "2026-09-29T17:00:00+02:00" } },
+    });
+    expect(correctedAttendance.status()).toBe(200);
+    expect((await correctedAttendance.json()).data.durationSeconds).toBe(27000);
+    expect((await (await member.get("/api/workspace")).json()).projectHours[production.id]).toBe(
+      3600,
+    );
+    expect(
+      (
+        await member.post("/api/actions", {
+          data: {
+            action: "timer-start",
+            data: { title: "QA Parallelproduktion", productionId: production.id },
+          },
+        })
+      ).status(),
+    ).toBe(200);
+    expect(
+      (await member.post("/api/actions", { data: { action: "attendance-timer-start" } })).status(),
+    ).toBe(200);
+    const bothTimers = await (await member.get("/api/workspace")).json();
+    expect(bothTimers.timer).not.toBeNull();
+    expect(bothTimers.attendanceTimer).not.toBeNull();
+    expect(
+      (await member.post("/api/actions", { data: { action: "attendance-timer-start" } })).status(),
+    ).toBe(409);
+    await new Promise((resolve) => setTimeout(resolve, 1100));
+    for (const action of ["timer-stop", "attendance-timer-stop"]) {
+      const stoppedResponse = await member.post("/api/actions", { data: { action } });
+      expect(stoppedResponse.status(), await stoppedResponse.text()).toBe(200);
+      const stopped = await stoppedResponse.json();
+      created.push({ kind: stopped.kind, id: stopped.id });
+      expect(stopped.data.durationSeconds).toBeGreaterThan(0);
+      expect(
+        (
+          await member.patch(`/api/records/${stopped.kind}/${stopped.id}`, {
+            data: { version: stopped.version, data: { title: "QA Timer korrigiert" } },
+          })
+        ).status(),
+      ).toBe(200);
+    }
+    const noTimers = await (await member.get("/api/workspace")).json();
+    expect(noTimers.timer).toBeNull();
+    expect(noTimers.attendanceTimer).toBeNull();
     const submitted = await member.post("/api/actions", {
       data: { action: "timesheet-submit", data: { week: "2026-09-28" } },
     });
@@ -269,6 +468,8 @@ test("real database workflows, permissions and booking integrity", async () => {
     });
     expect((await admin.get(token.url)).status()).toBe(404);
   } finally {
+    await member.post("/api/actions", { data: { action: "timer-discard" } });
+    await member.post("/api/actions", { data: { action: "attendance-timer-discard" } });
     for (const item of created.reverse())
       await admin.delete(`/api/records/${item.kind}/${item.id}`);
     if (memberId)

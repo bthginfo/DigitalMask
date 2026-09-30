@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Check, Copy, KeyRound, Link as LinkIcon, ShieldCheck } from "lucide-react";
 import { useWorkspace } from "../workspace-context";
 import { Badge, Button, ErrorMessage, Modal, PageHeader, Section } from "../ui";
-import { ThemeSwitch } from "../theme-switch";
+import { AppearanceCard } from "@/modules/profile/components/appearance-card";
 import { PasswordInput } from "../password-input";
 export function SettingsModule() {
   const { workspace, action, busy } = useWorkspace();
@@ -57,14 +57,7 @@ export function SettingsModule() {
         </p>
       )}
       <div className="settings-grid">
-        <Section title="Darstellung">
-          <div className="panel-content">
-            <p className="muted">
-              Wähle einen hellen oder dunklen Arbeitsraum. „System“ folgt automatisch deinem Gerät.
-            </p>
-            <ThemeSwitch full />
-          </div>
-        </Section>
+        <AppearanceCard key={workspace.user.id} />
         <Section title="Dein Profil">
           <div className="panel-content profile">
             <span className="avatar large-avatar">

@@ -5,6 +5,8 @@ import { expandTime } from "./time";
 import type { ExportInput, ExportResult } from "./types";
 import { selectExportRecords } from "./selection";
 import { resolveProductionContacts } from "./contacts";
+import { durationSummary } from "./duration-summary";
+import { exportRows } from "./data";
 export type { ExportInput, ExportResult, ExportFormat } from "./types";
 export { selectExportRecords } from "./selection";
 
@@ -29,7 +31,21 @@ export async function buildExport(input: ExportInput): Promise<ExportResult> {
             to: input.to,
             ...(input.teamOnly ? { teamOnly: true } : {}),
             ...(input.productionId ? { productionId: input.productionId } : {}),
+            ...(input.userIds?.length ? { userIds: input.userIds } : {}),
             records: input.records,
+            ...(input.kind === "attendance"
+              ? {
+                  attendanceSummary: (() => {
+                    const summary = durationSummary(exportRows(expandTime(input)));
+                    return {
+                      totalSeconds: summary.total,
+                      people: Object.fromEntries(summary.people),
+                      days: Object.fromEntries(summary.days),
+                      weeks: Object.fromEntries(summary.weeks),
+                    };
+                  })(),
+                }
+              : {}),
             ...(input.kind === "productions"
               ? {
                   contactDirectory: input.records.map((record) => ({
@@ -54,7 +70,7 @@ export async function buildExport(input: ExportInput): Promise<ExportResult> {
   const normalized =
     input.kind === "events" || input.kind === "calendar"
       ? expandCalendar(input)
-      : input.kind === "time"
+      : ["time", "attendance"].includes(input.kind)
         ? expandTime(input)
         : input;
   if (input.format === "csv")

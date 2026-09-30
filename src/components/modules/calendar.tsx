@@ -11,6 +11,7 @@ import { occurrences } from "@/modules/calendar/occurrences";
 import { AlertTriangle, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import type { DomainRecord } from "@/shared/contracts";
 import { dateLabel, ids, localDate, shiftDate, value, weekStart } from "@/shared/client-api";
+import { isActiveStaff } from "@/shared/client-members";
 import { useWorkspace } from "../workspace-context";
 import { Badge, Button, ErrorMessage, ExportButton, PageHeader } from "../ui";
 import { ResourceEditor } from "../resource-editor";
@@ -48,7 +49,9 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
   const admin = workspace.user.role !== "user";
   const calendar = useRef<FullCalendar>(null);
   const [view, setView] = useState("month");
-  const [people, setPeople] = useState<string[]>([workspace.user.id]);
+  const [people, setPeople] = useState<string[]>(
+    workspace.user.role === "superadmin" ? [] : [workspace.user.id],
+  );
   const [category, setCategory] = useState("");
   const [project, setProject] = useState(productionId);
   const [range, setRange] = useState(() => ({
@@ -142,30 +145,30 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
       <div className="calendar-layout">
         <aside className="calendar-filters">
           <h3>Kalender einblenden</h3>
-          <button className="text-button" onClick={() => setPeople([workspace.user.id])}>
-            Nur meinen Kalender
-          </button>
-          {workspace.members
-            .filter((x) => x.status === "active")
-            .map((member) => (
-              <label className="check-label" key={member.id}>
-                <input
-                  type="checkbox"
-                  checked={people.includes(member.id)}
-                  onChange={(event) =>
-                    setPeople(
-                      event.target.checked
-                        ? [...people, member.id]
-                        : people.filter((x) => x !== member.id),
-                    )
-                  }
-                />
-                <span className="calendar-person">
-                  {member.name}
-                  {member.id === workspace.user.id && <span className="small muted"> (ich)</span>}
-                </span>
-              </label>
-            ))}
+          {workspace.user.role !== "superadmin" && (
+            <button className="text-button" onClick={() => setPeople([workspace.user.id])}>
+              Nur meinen Kalender
+            </button>
+          )}
+          {workspace.members.filter(isActiveStaff).map((member) => (
+            <label className="check-label" key={member.id}>
+              <input
+                type="checkbox"
+                checked={people.includes(member.id)}
+                onChange={(event) =>
+                  setPeople(
+                    event.target.checked
+                      ? [...people, member.id]
+                      : people.filter((x) => x !== member.id),
+                  )
+                }
+              />
+              <span className="calendar-person">
+                {member.name}
+                {member.id === workspace.user.id && <span className="small muted"> (ich)</span>}
+              </span>
+            </label>
+          ))}
           <p className="small muted">Ohne Auswahl werden alle Kalender angezeigt.</p>
           <label>
             Produktion
@@ -281,9 +284,7 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
                 </thead>
                 <tbody>
                   {workspace.members
-                    .filter(
-                      (x) => x.status === "active" && (!people.length || people.includes(x.id)),
-                    )
+                    .filter((x) => isActiveStaff(x) && (!people.length || people.includes(x.id)))
                     .map((person) => (
                       <tr key={person.id}>
                         <th>{person.name}</th>

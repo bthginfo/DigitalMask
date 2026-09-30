@@ -4,7 +4,7 @@ import { createHash } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { auth } from "@/platform/auth";
 import { db } from "@/platform/db";
-import { memberships, organizations, departments } from "@/platform/db/schema";
+import { memberships, organizations, departments, profilePreferences } from "@/platform/db/schema";
 import { HttpError } from "@/platform/http";
 import type { Member } from "@/shared/contracts";
 export interface Context {
@@ -18,15 +18,24 @@ export const scopeTag = (departmentId: string) => `workspace:${departmentId}`;
 async function membershipFor(userId: string, fresh = false) {
   const get = () =>
     db
-      .select({ membership: memberships, organization: organizations, department: departments })
+      .select({
+        membership: memberships,
+        organization: organizations,
+        department: departments,
+        preferences: profilePreferences,
+      })
       .from(memberships)
       .innerJoin(organizations, eq(memberships.organizationId, organizations.id))
       .innerJoin(departments, eq(memberships.departmentId, departments.id))
+      .leftJoin(profilePreferences, eq(memberships.userId, profilePreferences.userId))
       .where(eq(memberships.userId, userId))
       .limit(1);
   return fresh
     ? get()
-    : unstable_cache(get, ["membership", userId], { revalidate: 60, tags: [`member:${userId}`] })();
+    : unstable_cache(get, ["membership-profile-v1", userId], {
+        revalidate: 60,
+        tags: [`member:${userId}`],
+      })();
 }
 export async function requireContext(fresh = false): Promise<Context> {
   const requestHeaders = await headers();
@@ -59,6 +68,10 @@ export async function requireContext(fresh = false): Promise<Context> {
       username: result.user.username || "",
       role: row.membership.role,
       status: row.membership.status,
+      preferences: {
+        accentPalette: row.preferences?.accentPalette || "green",
+        onboardingVersion: row.preferences?.onboardingVersion || 0,
+      },
     },
     organizationId: row.membership.organizationId,
     departmentId: row.membership.departmentId,

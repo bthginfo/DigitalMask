@@ -15,6 +15,7 @@ import { HttpError } from "@/platform/http";
 import { auditChange } from "@/platform/events";
 import { findRecord, serialize } from "@/modules/records/repository";
 import { invalidateWorkspace } from "@/modules/records/workspace";
+import { assertRead } from "@/modules/records/service";
 import type { RecordData } from "@/shared/contracts";
 export async function organizationAction(
   context: Context,
@@ -51,6 +52,7 @@ export async function organizationAction(
     if (!id) throw new HttpError(400, "Eintrag fehlt.");
     const row = await findRecord(context, id, "notifications");
     if (row.data.userId !== context.user.id) throw new HttpError(403, "Keine Berechtigung.");
+    await assertRead(context, row);
     const [updated] = await db
       .update(records)
       .set({ data: { ...row.data, read: true }, version: row.version + 1 })

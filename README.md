@@ -5,6 +5,7 @@ Arbeitsraum für die Maske am Stadttheater Ingolstadt: Produktionen, Dienstplanu
 ## Funktionen
 
 - Benutzername/Passwort, Selbstregistrierung mit Adminfreigabe, Teammitglied/Admin/Superadmin, persönliche Passwortänderung und einmalige Wiederherstellungscodes.
+- Persönlich gespeicherte Pastell-Akzentfarben, geführte Einführung mit Wiederholung, Hilfe mit FAQ/Anleitungen und private Feature-/Fehlerberichte mit Superadmin-Bearbeitung.
 - Produktionsarbeitsräume mit Maskenteam, frei definierbaren Kontaktrollen (z. B. Regie, Kostüm, Assistenz), Archiv und Kopie für Wiederaufnahmen. Externe Kontakte benötigen kein Konto; Maskenkontakte können aus dem Team gewählt oder frei eingetragen werden.
 - Figuren, Besetzungen mit mehreren privaten Bildern, Aufschriebe, Aufgaben, Sprints, Kalender, Zeiten, Übergaben und Chat direkt in der jeweiligen Produktion. Der Schauspielerkatalog bleibt gemeinsam verfügbar.
 - Eigenes Kanban je Produktion und separates Teamboard für allgemeine Aufgaben ohne Produktionsbezug. Sprints mit individuellen Zeiträumen, Zuweisungen, Unteraufgaben und Checklisten; Verschieben auch ohne Drag-and-drop.
@@ -56,6 +57,8 @@ Die UI-Prüfungen für Passwortfelder und Produktionsnavigation verwenden Dummyw
 ## Datenbankverbrauch
 
 - Kein regelmäßiger Workspace-, Timer-, Kalender- oder Benachrichtigungs-Poll. Timeranzeige, Suche, Filter, Serientermine und Summen werden lokal aus dem geladenen Datenbestand berechnet.
+- Profileinstellungen werden in der vorhandenen Mitgliedschaftsabfrage mitgeladen. Eine persönliche Farbänderung invalidiert nur den eigenen Profilcache; Tour-Schritte erzeugen keine Schreibzugriffe.
+- Anwesenheits- und Arbeitszeittimer werden gemeinsam in einer indizierten UNION-Abfrage geladen. Bildreferenzen werden beim Speichern gebündelt statt einzeln je Bild geprüft. Private Nachrichten verwenden Teilnehmerrechte auch für Anhänge, Benachrichtigungen und Exporte.
 - Produktionsbereiche, Kontaktrollen und Teamboard filtern denselben geladenen Workspace. Kontaktpersonen werden beim Speichern in der vorhandenen gebündelten Teamprüfung validiert; externe Kontakte erzeugen keine Authentifizierungskonten.
 - Datenbestand und Team werden gemeinsam pro Gewerk für 300 Sekunden serverseitig gecacht; danach erfolgt bedarfsabhängige Erneuerung. Änderungen invalidieren den betroffenen Scope. Timerzustand ist ebenfalls gecacht.
 - Lesende Sitzungs- und Mitgliedschaftsprüfungen sind für 60 Sekunden gecacht. Schreibzugriffe prüfen die Sitzung und aktuellen Rechte unmittelbar in der Datenbank. Entzugene Zugänge können dadurch höchstens innerhalb des kurzen Lese-Cachefensters noch bereits erlaubte Inhalte sehen, aber nichts mehr verändern.

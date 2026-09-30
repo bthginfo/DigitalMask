@@ -16,9 +16,20 @@ export const recordKinds = [
   "notifications",
   "timesheets",
   "files",
+  "feedback",
+  "attendance",
+  "calendarCategories",
+  "conversations",
 ] as const;
 export type RecordKind = (typeof recordKinds)[number];
 export type Role = "superadmin" | "admin" | "user";
+export const accentPalettes = ["green", "lavender", "peach", "sky", "rose", "sand"] as const;
+export type AccentPalette = (typeof accentPalettes)[number];
+export interface ProfilePreferences {
+  accentPalette: AccentPalette;
+  onboardingVersion: number;
+}
+export const onboardingVersion = 1;
 export type RecordData = Record<string, unknown>;
 export interface ProductionContact {
   id: string;
@@ -57,6 +68,7 @@ export interface Member {
   username: string;
   role: Role;
   status: "pending" | "active" | "disabled";
+  preferences?: ProfilePreferences;
 }
 export interface Workspace {
   user: Member;
@@ -65,6 +77,7 @@ export interface Workspace {
   members: Member[];
   records: Record<RecordKind, DomainRecord[]>;
   timer: { id: string; data: RecordData } | null;
+  attendanceTimer?: { id: string; data: RecordData } | null;
   projectHours: Record<string, number>;
 }
 export interface ApiError {

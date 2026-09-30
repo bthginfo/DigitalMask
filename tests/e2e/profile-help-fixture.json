@@ -1,0 +1,189 @@
+{
+  "user": {
+    "id": "qa-admin",
+    "name": "Mara Beispiel",
+    "username": "qa-mara",
+    "role": "admin",
+    "status": "active",
+    "preferences": {
+      "accentPalette": "green",
+      "onboardingVersion": 1
+    }
+  },
+  "organization": {
+    "id": "qa",
+    "name": "Testtheater"
+  },
+  "department": {
+    "id": "qa",
+    "name": "Maske"
+  },
+  "members": [
+    {
+      "id": "qa-admin",
+      "name": "Mara Beispiel",
+      "username": "qa-mara",
+      "role": "admin",
+      "status": "active",
+      "preferences": {
+        "accentPalette": "green",
+        "onboardingVersion": 1
+      }
+    },
+    {
+      "id": "qa-user",
+      "name": "Jules Beispiel",
+      "username": "qa-jules",
+      "role": "user",
+      "status": "active",
+      "preferences": {
+        "accentPalette": "green",
+        "onboardingVersion": 1
+      }
+    },
+    {
+      "id": "qa-super",
+      "name": "Systemverwaltung QA",
+      "username": "qa-system",
+      "role": "superadmin",
+      "status": "active",
+      "preferences": {
+        "accentPalette": "green",
+        "onboardingVersion": 1
+      }
+    },
+    {
+      "id": "qa-inactive",
+      "name": "Archivperson QA",
+      "username": "qa-old",
+      "role": "user",
+      "status": "disabled",
+      "preferences": {
+        "accentPalette": "green",
+        "onboardingVersion": 1
+      }
+    }
+  ],
+  "records": {
+    "productions": [
+      {
+        "id": "qa-production",
+        "kind": "productions",
+        "data": {
+          "title": "Ein Sommernachtstraum",
+          "status": "active",
+          "color": "#c6cfe1",
+          "memberIds": ["qa-admin", "qa-user"],
+          "contacts": [
+            {
+              "id": "contact1",
+              "role": "Regie",
+              "type": "external",
+              "name": "Robin Beispiel",
+              "memberId": ""
+            }
+          ]
+        },
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "createdBy": "qa-admin",
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z",
+        "version": 1
+      }
+    ],
+    "actors": [],
+    "characters": [],
+    "casting": [],
+    "sprints": [],
+    "tasks": [
+      {
+        "id": "qa-task",
+        "kind": "tasks",
+        "data": {
+          "title": "Perücken für die erste Probe vorbereiten",
+          "status": "todo",
+          "priority": "normal",
+          "productionId": "qa-production",
+          "assigneeIds": ["qa-user"]
+        },
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "createdBy": "qa-admin",
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z",
+        "version": 1
+      },
+      {
+        "id": "qa-team-task",
+        "kind": "tasks",
+        "data": {
+          "title": "Fundus sortieren",
+          "status": "doing",
+          "priority": "normal",
+          "productionId": "",
+          "assigneeIds": ["qa-admin"]
+        },
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "createdBy": "qa-admin",
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z",
+        "version": 1
+      }
+    ],
+    "events": [],
+    "leave": [],
+    "time": [],
+    "looks": [],
+    "templates": [],
+    "messages": [],
+    "materials": [],
+    "handovers": [],
+    "notifications": [],
+    "timesheets": [],
+    "files": [],
+    "feedback": [
+      {
+        "id": "qa-own-feedback",
+        "kind": "feedback",
+        "data": {
+          "type": "feature",
+          "title": "Favoriten für häufige Aufschriebe",
+          "description": "Unsere Standardabläufe schneller wiederfinden und in einer persönlichen Liste sammeln.",
+          "status": "review",
+          "userId": "qa-admin"
+        },
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "createdBy": "qa-admin",
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z",
+        "version": 1
+      },
+      {
+        "id": "qa-other-feedback",
+        "kind": "feedback",
+        "data": {
+          "type": "bug",
+          "title": "Darstellung einer langen Materialbezeichnung",
+          "description": "Bei sehr langen Bezeichnungen wird der letzte Teil auf schmalen Geräten abgeschnitten.",
+          "status": "new",
+          "userId": "qa-user"
+        },
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "createdBy": "qa-admin",
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z",
+        "version": 1
+      }
+    ],
+    "attendance": [],
+    "calendarCategories": [],
+    "conversations": []
+  },
+  "timer": null,
+  "attendanceTimer": null,
+  "projectHours": {}
+}

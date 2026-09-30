@@ -1,11 +1,13 @@
 import type { DomainRecord } from "../../shared/contracts";
 import type { Column, ExportInput, ExportRow } from "./types";
 import { productionContactsText } from "./contacts";
+import { eventDisplay } from "./calendar-presentation";
 
 export const titles: Record<string, string> = {
   events: "Dienst- und Kalenderplanung",
   calendar: "Dienst- und Kalenderplanung",
   time: "Arbeitszeitnachweis",
+  attendance: "Anwesenheitsnachweis",
   timesheets: "Wochenfreigaben",
   looks: "Aufschriebe",
   materials: "Material- und Perückenbestand",
@@ -90,6 +92,7 @@ export function columnsFor(kind: string): Column[] {
         column("title", "Termin / Dienst", 27),
         column("start", "Beginn", 19, "date"),
         column("end", "Ende", 19, "date"),
+        column("dayLabel", "Terminart", 15),
         column("person", "Personen", 21),
         column("location", "Ort / Kategorie", 24),
       ];
@@ -100,6 +103,14 @@ export function columnsFor(kind: string): Column[] {
         column("production", "Produktion", 23),
         column("title", "Tätigkeit", 39),
         column("duration", "Stunden", 12, "duration"),
+      ];
+    case "attendance":
+      return [
+        column("start", "Datum", 18, "date"),
+        column("person", "Person", 25),
+        column("title", "Eintrag", 26),
+        column("description", "Hinweise", 40),
+        column("duration", "Anwesenheit", 15, "duration"),
       ];
     case "actors":
       return [
@@ -197,13 +208,6 @@ const statuses: Record<string, string> = {
   withdrawn: "Zurückgezogen",
   changes_requested: "Korrektur angefragt",
 };
-const categories: Record<string, string> = {
-  service: "Dienst",
-  rehearsal: "Probe",
-  performance: "Vorstellung",
-  preparation: "Vorbereitung",
-  absence: "Abwesenheit",
-};
 export function exportRows(input: ExportInput): ExportRow[] {
   const members = new Map(input.members.map((m) => [m.id, m.name]));
   const records = new Map(
@@ -222,6 +226,8 @@ export function exportRows(input: ExportInput): ExportRow[] {
         : input.kind === "backup" || r.kind === input.kind,
     )
     .map((record) => {
+      const display = record.kind === "events" ? eventDisplay(record, input) : undefined;
+      const endDate = dateValue(value(record, "end", "endAt"));
       const people = value(
         record,
         "participantIds",
@@ -242,7 +248,10 @@ export function exportRows(input: ExportInput): ExportRow[] {
         id: record.id,
         record,
         values: {
-          title: readable(value(record, "title", "name", "activity", "subject", "label")),
+          title:
+            display?.title ??
+            (readable(value(record, "title", "name", "activity", "subject", "label")) ||
+              (record.kind === "attendance" ? "Anwesenheit" : "")),
           person,
           production: name(value(record, "productionName", "productionId", "projectId")),
           actor: name(value(record, "actorName", "actorId")),
@@ -251,7 +260,9 @@ export function exportRows(input: ExportInput): ExportRow[] {
             dateValue(
               value(record, "start", "startAt", "date", "day", "due", "dueAt", "dueDate"),
             ) ?? "",
-          end: dateValue(value(record, "end", "endAt")) ?? "",
+          end: endDate ? (display?.allDay ? new Date(+endDate - 1) : endDate) : "",
+          isAllDay: display?.allDay ? 1 : 0,
+          dayLabel: display?.allDay ? "Ganztägig" : "Mit Uhrzeit",
           duration: durationSeconds(record) / 86400,
           status: statuses[readable(value(record, "status"))] ?? readable(value(record, "status")),
           description: [
@@ -277,7 +288,7 @@ export function exportRows(input: ExportInput): ExportRow[] {
             record.kind === "events"
               ? [
                   readable(record.data.location),
-                  categories[readable(record.data.category)] ?? readable(record.data.category),
+                  display?.categoryName ?? readable(record.data.category),
                 ]
                   .filter(Boolean)
                   .join(" · ")
@@ -312,6 +323,6 @@ export function cellText(row: ExportRow, col: Column): string {
   return col.type === "duration"
     ? durationText(Number(v) * 86400)
     : v instanceof Date
-      ? dateText(v, col.key !== "start" || row.record.kind === "events")
+      ? dateText(v, !row.values.isAllDay && (col.key !== "start" || row.record.kind === "events"))
       : readable(v);
 }

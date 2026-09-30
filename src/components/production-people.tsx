@@ -3,6 +3,7 @@ import { useId, useState } from "react";
 import { Plus, Trash2, Users } from "lucide-react";
 import { contactsValue, type DomainRecord, type ProductionContact } from "@/shared/contracts";
 import { ids, initials, value } from "@/shared/client-api";
+import { isActiveStaff } from "@/shared/client-members";
 import { useWorkspace } from "./workspace-context";
 import { Badge, Button, Empty, ErrorMessage, Modal, PageHeader } from "./ui";
 
@@ -28,7 +29,7 @@ export function ProductionPeopleFields({
       ),
     ]),
   ].filter(Boolean);
-  const members = workspace.members.filter((member) => member.status === "active");
+  const members = workspace.members.filter(isActiveStaff);
   const update = (id: string, data: Partial<ProductionContact>) =>
     onChange(
       contacts.map((contact) => (contact.id === id ? { ...contact, ...data } : contact)),
@@ -37,9 +38,7 @@ export function ProductionPeopleFields({
   const contactMembers = contacts.map((contact) => contact.memberId).filter(Boolean);
   const teamChoices = workspace.members.filter(
     (member) =>
-      member.status === "active" ||
-      memberIds.includes(member.id) ||
-      contactMembers.includes(member.id),
+      isActiveStaff(member) || memberIds.includes(member.id) || contactMembers.includes(member.id),
   );
   return (
     <section className="production-people-fields field-wide">
@@ -121,7 +120,7 @@ export function ProductionPeopleFields({
                       <option disabled value={contact.memberId}>
                         {workspace.members.find((member) => member.id === contact.memberId)?.name ||
                           "Bisheriges Teammitglied"}{" "}
-                        · nicht aktiv, bitte neu zuordnen
+                        · historische Zuordnung, bitte neu zuordnen
                       </option>
                     )}
                   {members.map((member) => (
@@ -181,8 +180,8 @@ export function ProductionPeopleFields({
               }
             />
             {member.name}
-            {member.status !== "active" && (
-              <span className="small muted"> · Nicht aktiv, Zuordnung entfernen</span>
+            {!isActiveStaff(member) && (
+              <span className="small muted"> · Historische Zuordnung, entfernen</span>
             )}
             {contactMembers.includes(member.id) && (
               <span className="small muted"> · Maskenbetreuung</span>

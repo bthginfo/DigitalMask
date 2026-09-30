@@ -38,6 +38,10 @@ export const labels: Record<RecordKind, [string, string]> = {
   notifications: ["Mitteilungen", "Mitteilung"],
   timesheets: ["Wochenabschlüsse", "Wochenabschluss"],
   files: ["Dateien", "Datei"],
+  feedback: ["Feedback", "Rückmeldung"],
+  attendance: ["Anwesenheit", "Anwesenheitsbuchung"],
+  calendarCategories: ["Kalenderarten", "Kalenderart"],
+  conversations: ["Gespräche", "Gespräch"],
 };
 const production: Field = {
   key: "productionId",

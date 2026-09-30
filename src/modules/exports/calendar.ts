@@ -1,23 +1,35 @@
-import { addDays, endOfMonth, format, parseISO, startOfMonth } from "date-fns";
+import {
+  addDays,
+  differenceInCalendarDays,
+  endOfMonth,
+  format,
+  parseISO,
+  startOfMonth,
+} from "date-fns";
 import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
 import type { DomainRecord } from "../../shared/contracts";
 import type { ExportInput } from "./types";
+import { allDayInterval, eventDisplay } from "./calendar-presentation";
 
 export const localDay = (date: Date) => formatInTimeZone(date, "Europe/Berlin", "yyyy-MM-dd");
 export function calendarRange(input: ExportInput): { from: string; to: string } {
   const eventDays = input.records
     .filter((r) => r.kind === "events")
-    .map((r) => String(r.data.start ?? "").slice(0, 10))
+    .map((r) => {
+      const date = new Date(String(r.data.start));
+      return Number.isFinite(+date) ? localDay(date) : "";
+    })
     .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d))
     .sort();
   const firstDay = eventDays[0] ?? localDay(new Date());
   const from =
     input.from ??
-    (input.view === "month" ? format(startOfMonth(parseISO(firstDay)), "yyyy-MM-dd") : firstDay);
-  const defaultEnd =
-    input.view === "month"
-      ? endOfMonth(parseISO(from))
-      : addDays(parseISO(from), input.view === "day" ? 0 : 6);
+    (["month", "team-month"].includes(input.view ?? "")
+      ? format(startOfMonth(parseISO(firstDay)), "yyyy-MM-dd")
+      : firstDay);
+  const defaultEnd = ["month", "team-month"].includes(input.view ?? "")
+    ? endOfMonth(parseISO(from))
+    : addDays(parseISO(from), input.view === "day" ? 0 : 6);
   const to =
     input.to ??
     (!input.view && !input.from && eventDays.length
@@ -40,11 +52,17 @@ export function expandCalendar(input: ExportInput): ExportInput {
   const rangeStart = fromZonedTime(`${range.from}T00:00:00`, "Europe/Berlin");
   const rangeEnd = fromZonedTime(`${range.to}T23:59:59.999`, "Europe/Berlin");
   const records: DomainRecord[] = [];
-  for (const record of input.records.filter((r) => r.kind === "events")) {
-    const start = new Date(String(record.data.start)),
-      end = new Date(String(record.data.end));
+  for (const source of input.records.filter((r) => r.kind === "events")) {
+    const allDay = eventDisplay(source, input).allDay;
+    const dayInterval = allDay ? allDayInterval(source) : undefined;
+    const start = dayInterval?.start ?? new Date(String(source.data.start)),
+      end = dayInterval?.end ?? new Date(String(source.data.end));
     if (!Number.isFinite(+start) || !Number.isFinite(+end) || end <= start)
       throw new Error("Ein Kalendertermin hat ungültige Zeitangaben.");
+    const record: DomainRecord = {
+      ...source,
+      data: { ...source.data, start: start.toISOString(), end: end.toISOString(), allDay },
+    };
     const recurrence = record.data.recurrence;
     if (recurrence !== "daily" && recurrence !== "weekly") {
       if (start <= rangeEnd && end > rangeStart) records.push(record);
@@ -53,6 +71,8 @@ export function expandCalendar(input: ExportInput): ExportInput {
     const interval = recurrence === "weekly" ? 7 : 1;
     const startDay = localDay(start),
       clock = formatInTimeZone(start, "Europe/Berlin", "HH:mm:ss");
+    const endClock = formatInTimeZone(end, "Europe/Berlin", "HH:mm:ss");
+    const endDayOffset = differenceInCalendarDays(parseISO(localDay(end)), parseISO(startDay));
     const elapsedDays = Math.floor((+parseISO(range.from) - +parseISO(startDay)) / 86400000);
     let iteration = Math.max(
       0,
@@ -66,7 +86,10 @@ export function expandCalendar(input: ExportInput): ExportInput {
       if (day > range.to || day > until) break;
       if (exceptions.includes(day)) continue;
       const occurrenceStart = fromZonedTime(`${day}T${clock}`, "Europe/Berlin");
-      const occurrenceEnd = new Date(+occurrenceStart + +end - +start);
+      const occurrenceEnd = fromZonedTime(
+        `${format(addDays(parseISO(day), endDayOffset), "yyyy-MM-dd")}T${endClock}`,
+        "Europe/Berlin",
+      );
       if (occurrenceStart <= rangeEnd && occurrenceEnd > rangeStart)
         records.push({
           ...record,

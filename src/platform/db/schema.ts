@@ -11,7 +11,7 @@ import {
   foreignKey,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
-import type { RecordData, RecordKind, Role } from "@/shared/contracts";
+import type { AccentPalette, RecordData, RecordKind, Role } from "@/shared/contracts";
 export const user = pgTable("app_user", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
@@ -21,6 +21,15 @@ export const user = pgTable("app_user", {
   username: text("username").unique(),
   displayUsername: text("display_username"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export const profilePreferences = pgTable("profile_preferences", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => user.id, { onDelete: "cascade" }),
+  accentPalette: text("accent_palette").$type<AccentPalette>().notNull().default("green"),
+  onboardingVersion: integer("onboarding_version").notNull().default(0),
+  onboardingCompletedAt: timestamp("onboarding_completed_at", { withTimezone: true }),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 export const session = pgTable(
@@ -158,6 +167,18 @@ export const records = pgTable(
     uniqueIndex("timesheet_week_idx")
       .on(t.departmentId, t.ownerId, sql`(${t.data}->>'week')`)
       .where(sql`${t.kind}='timesheets'`),
+    uniqueIndex("attendance_idempotency_idx")
+      .on(t.departmentId, t.ownerId, sql`(${t.data}->>'idempotencyKey')`)
+      .where(sql`${t.kind}='attendance' and coalesce(${t.data}->>'idempotencyKey','')<>''`),
+    uniqueIndex("calendar_category_key_idx")
+      .on(t.departmentId, sql`(${t.data}->>'key')`)
+      .where(sql`${t.kind}='calendarCategories'`),
+    uniqueIndex("direct_chat_key_idx")
+      .on(t.departmentId, sql`(${t.data}->>'directKey')`)
+      .where(sql`${t.kind}='conversations' and coalesce(${t.data}->>'directKey','')<>''`),
+    index("private_chat_messages_idx")
+      .on(t.departmentId, sql`(${t.data}->>'conversationId')`, t.updatedAt)
+      .where(sql`${t.kind}='messages' and coalesce(${t.data}->>'conversationId','')<>''`),
   ],
 );
 export const timers = pgTable("timers", {
@@ -165,6 +186,17 @@ export const timers = pgTable("timers", {
   userId: text("user_id")
     .notNull()
     .references(() => user.id)
+    .unique(),
+  departmentId: text("department_id")
+    .notNull()
+    .references(() => departments.id),
+  data: jsonb("data").$type<RecordData>().notNull(),
+});
+export const attendanceTimers = pgTable("attendance_timers", {
+  id: text("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" })
     .unique(),
   departmentId: text("department_id")
     .notNull()

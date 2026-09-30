@@ -3,17 +3,20 @@ import { randomBytes } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 nextEnv.loadEnvConfig(process.cwd());
 const { db, sqlClient } = await import("../src/platform/db/index");
-const { organizations, departments, memberships } = await import("../src/platform/db/schema");
+const { organizations, departments, memberships, records } =
+  await import("../src/platform/db/schema");
+const { defaultCalendarCategories } = await import("../src/shared/calendar-categories");
 const { eq } = await import("drizzle-orm");
 const { auth } = await import("../src/platform/auth/index");
 await db
   .insert(organizations)
   .values({ id: "stadttheater-ingolstadt", name: "Stadttheater Ingolstadt" })
   .onConflictDoNothing();
-await db
+const createdDepartment = await db
   .insert(departments)
   .values({ id: "maske", organizationId: "stadttheater-ingolstadt", name: "Maske" })
-  .onConflictDoNothing();
+  .onConflictDoNothing()
+  .returning();
 const [existing] = await db
   .select({ id: memberships.id })
   .from(memberships)
@@ -47,5 +50,26 @@ if (existing) {
     { encoding: "utf8", mode: 0o600 },
   );
   console.log("Superadmin created. Credentials saved in ignored .local/ADMIN-ZUGANG.txt.");
+}
+if (createdDepartment.length) {
+  const [admin] = await db
+    .select({ userId: memberships.userId })
+    .from(memberships)
+    .where(eq(memberships.role, "superadmin"))
+    .limit(1);
+  if (admin)
+    await db
+      .insert(records)
+      .values(
+        defaultCalendarCategories.map((category) => ({
+          id: `category:maske:${category.key}`,
+          kind: "calendarCategories" as const,
+          organizationId: "stadttheater-ingolstadt",
+          departmentId: "maske",
+          createdBy: admin.userId,
+          data: { ...category },
+        })),
+      )
+      .onConflictDoNothing();
 }
 await sqlClient.end();

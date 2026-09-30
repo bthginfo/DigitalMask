@@ -47,3 +47,13 @@ Die unleserlichen Excel-Farblegenden und Kürzel wurden nicht erfunden. Die impl
 In-App-Benachrichtigungen sind umgesetzt. Push/E-Mail-Kanäle, eine technische Outbox-Konsole, Gewerkwechsel in der Oberfläche und eine externe Zwei-Wege-Kalendersynchronisation bleiben Erweiterungspunkte. PDF-/Datenausgabe und widerrufbare ICS-Abonnements funktionieren bereits.
 
 Produktive Backup-/Restore- und Budgeteinstellungen beim Datenbankanbieter benötigen eine zum Theaterbetrieb passende Betriebsentscheidung. Die vorhandenen Exporte ersetzen keine vollständige Datenbank-/Blob-Sicherung; Details stehen in BETRIEB.md. Die lokale Entwicklung teilt bei dieser Erstinstallation noch die dedizierte Datenbank; vor weiterer Entwicklung mit echten Theaterdaten sollte sie getrennt werden.
+
+## Erweiterung Profil und Fachmodule
+
+Das persönliche Design nutzt sechs gespeicherte Akzentpaletten und bestehende Light-/Dark-Modi. Die Einführung startet beim ersten aktiven Login, lässt sich in der Hilfe wiederholen und schreibt den Abschluss einmalig. Hilfe/FAQ und private Feature-/Fehlerberichte mit Superadmin-Statuspflege sind integriert. Systemkonten sind aus Mitarbeiter-Auswahllisten ausgeschlossen, bestehende Zuordnungen bleiben entfernbar.
+
+38 Unit-/Exporttests sowie drei reale Backend-/Dateiabläufe sind bestanden. 20 synthetische Chromium-/WebKit-Szenarien prüfen Profil, Tour, Hilfe, Feedback, Mitarbeiter-Auswahl und Sessionablauf. Die unabhängige Designprüfung ist PASS.
+
+Die nächsten Bedienmodule haben bereits geprüfte serverseitige Grundlagen: getrennte Anwesenheits- und Arbeitstimer, manuelle Korrekturen/Überschneidungsprüfung je Bereich, einmalig initialisierte Kalenderkategorien und private Direkt-/Gruppenchats. Teilnehmerrechte gelten auch für Dateien, Nachrichtenausgabe, Exporte und Benachrichtigungen; außerhalb eines Chats gibt es auch für Admin/Superadmin keine Einsicht. Die Tests prüfen entfernte Teilnehmer und verhindern das Verschieben privater Nachrichten/Anhänge in andere Chats. Neue Kalender-/Zeiterfassungs-/Chat-Oberflächen und die weiteren Produktions-/Dokumentationswünsche stehen in TODОS.md.
+
+Anwesenheits-PDFs und XLSX erhalten eigene Tages-/Wochen-/Personensummen. Team-Monatskalender werden in lesbare Wochen- und Personengruppen aufgeteilt, mit vollständiger Agenda und dynamischer Kategorienlegende. Ganztägige Termine verwenden exklusive Datumsenden; Serien behalten lokale Uhrzeiten über Sommerzeitwechsel. Neue Rasterfixtures mit 29 Kalender- und 13 Anwesenheitsseiten wurden visuell auf vollständige Inhalte, Namen, Ränder und Seitenfuß geprüft.

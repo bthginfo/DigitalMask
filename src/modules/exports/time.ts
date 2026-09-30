@@ -7,7 +7,9 @@ export function expandTime(input: ExportInput): ExportInput {
   const records: DomainRecord[] = [];
   const inside = (day: string) =>
     (!input.from || day >= input.from) && (!input.to || day <= input.to);
-  for (const record of input.records.filter((r) => r.kind === "time")) {
+  for (const record of input.records.filter(
+    (r) => r.kind === input.kind && ["time", "attendance"].includes(r.kind),
+  )) {
     const allocations = record.data.dayAllocations;
     if (!Array.isArray(allocations) || allocations.length === 0) {
       if (inside(String(record.data.date ?? ""))) records.push(record);

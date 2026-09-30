@@ -1,16 +1,19 @@
-import { and, eq, ne, sql, inArray, lt, gt } from "drizzle-orm";
+import { and, eq, ne, or, sql, inArray } from "drizzle-orm";
 import { db, type Transaction } from "@/platform/db";
 import { records, memberships, recordHistory } from "@/platform/db/schema";
 import { requireAdmin, type Context } from "@/platform/context";
 import { HttpError } from "@/platform/http";
 import { emit, auditChange, scheduleEvents } from "@/platform/events";
-import {
-  durationSeconds,
-  localDay,
-  splitAcrossDays,
-  startOfLocalDay,
-} from "@/modules/time-tracking/rules";
+import { localDay } from "@/modules/time-tracking/rules";
+import { validateBooking } from "@/modules/time-tracking/validation";
 import { occurrences } from "@/modules/calendar/occurrences";
+import { assertConversation } from "@/modules/chat/permissions";
+import { prepareConversation } from "@/modules/chat/conversations";
+import {
+  validateCalendarCategory,
+  assertUnusedCategory,
+  normalizeEventCategory,
+} from "@/modules/calendar/categories";
 import { validateRecord } from "./schemas";
 import { findRecord, assertProject, serialize } from "./repository";
 import { invalidateWorkspace } from "./workspace";
@@ -29,6 +32,7 @@ const adminKinds = new Set<RecordKind>([
   "sprints",
   "events",
   "templates",
+  "calendarCategories",
 ]);
 export async function assertRead(
   context: Context,
@@ -36,9 +40,17 @@ export async function assertRead(
   tx: Transaction | typeof db = db,
 ) {
   await assertProject(context, row.data.productionId, tx);
+  if (row.kind === "conversations") await assertConversation(context, row.id, tx);
+  else await assertConversation(context, row.data.conversationId, tx);
+  if (
+    row.kind === "feedback" &&
+    context.user.role !== "superadmin" &&
+    row.data.userId !== context.user.id
+  )
+    throw new HttpError(403, "Diese Rückmeldung ist privat.");
   if (row.kind === "productions") await assertProject(context, row.id, tx);
   if (
-    ["time", "timesheets", "leave", "notifications"].includes(row.kind) &&
+    ["time", "attendance", "timesheets", "leave", "notifications"].includes(row.kind) &&
     row.data.userId !== context.user.id &&
     context.user.role === "user"
   )
@@ -56,11 +68,29 @@ export function assertWrite(
   kind: RecordKind,
   existing?: typeof records.$inferSelect,
 ) {
+  if (
+    kind === "messages" &&
+    existing?.data.conversationId &&
+    existing.data.userId !== context.user.id
+  )
+    throw new HttpError(403, "Du kannst nur eigene private Nachrichten bearbeiten.");
+  if (kind === "conversations" && existing && existing.createdBy !== context.user.id)
+    throw new HttpError(403, "Nur die Person, die diesen Chat angelegt hat, kann ihn verwalten.");
+  if (
+    kind === "feedback" &&
+    existing &&
+    context.user.role !== "superadmin" &&
+    existing.data.userId !== context.user.id
+  )
+    throw new HttpError(403, "Du kannst nur eigene Rückmeldungen bearbeiten.");
   if (["notifications", "timesheets", "files"].includes(kind))
     throw new HttpError(403, "Bitte verwende den dafür vorgesehenen Arbeitsablauf.");
   if (adminKinds.has(kind)) requireAdmin(context);
   if (existing && context.user.role === "user") {
-    if (["time", "leave", "messages"].includes(kind) && existing.data.userId !== context.user.id)
+    if (
+      ["time", "attendance", "leave", "messages"].includes(kind) &&
+      existing.data.userId !== context.user.id
+    )
       throw new HttpError(403, "Du kannst nur eigene Einträge bearbeiten.");
     if (
       kind === "tasks" &&
@@ -80,6 +110,13 @@ async function validateRelations(
   recordId?: string,
 ) {
   await assertProject(context, data.productionId, tx);
+  let conversation: typeof records.$inferSelect | undefined;
+  if (kind === "messages") {
+    if (data.productionId && data.conversationId)
+      throw new HttpError(400, "Bitte wähle genau einen Chat.");
+    conversation = await assertConversation(context, data.conversationId, tx);
+    if (conversation?.data.archived) throw new HttpError(409, "Dieser Chat ist archiviert.");
+  }
   const ids = listValue(data.assigneeIds).concat(
     listValue(data.participantIds),
     listValue(data.memberIds),
@@ -92,6 +129,10 @@ async function validateRelations(
         and(
           eq(memberships.departmentId, context.departmentId),
           eq(memberships.status, "active"),
+          or(
+            ne(memberships.role, "superadmin"),
+            kind === "conversations" ? eq(memberships.userId, context.user.id) : undefined,
+          ),
           inArray(memberships.userId, ids),
         ),
       );
@@ -125,10 +166,34 @@ async function validateRelations(
         throw new HttpError(400, "Die Zuordnung gehört zu einer anderen Produktion.");
     }
   }
-  for (const fileId of [...listValue(data.imageIds), ...listValue(data.attachmentIds)]) {
-    const file = await findRecord(context, fileId, "files", tx);
-    const linked = await findRecord(context, String(file.data.recordId), undefined, tx);
-    await assertRead(context, linked, tx);
+  const fileIds = Array.from(
+    new Set([...listValue(data.imageIds), ...listValue(data.attachmentIds)]),
+  );
+  if (fileIds.length) {
+    const assets = await tx
+      .select({ data: records.data })
+      .from(records)
+      .where(
+        and(
+          eq(records.departmentId, context.departmentId),
+          eq(records.kind, "files"),
+          inArray(records.id, fileIds),
+        ),
+      );
+    if (assets.length !== fileIds.length)
+      throw new HttpError(404, "Eine verknüpfte Datei wurde nicht gefunden.");
+    const linkedIds = Array.from(new Set(assets.map((file) => String(file.data.recordId))));
+    const linkedRecords = await tx
+      .select()
+      .from(records)
+      .where(and(eq(records.departmentId, context.departmentId), inArray(records.id, linkedIds)));
+    if (linkedRecords.length !== linkedIds.length)
+      throw new HttpError(404, "Ein verknüpfter Eintrag wurde nicht gefunden.");
+    for (const linked of linkedRecords) {
+      await assertRead(context, linked, tx);
+      if (linked.data.conversationId && linked.data.conversationId !== data.conversationId)
+        throw new HttpError(400, "Private Chatdateien bleiben im zugehörigen Chat.");
+    }
   }
   if (["characters", "casting", "sprints"].includes(kind) && !data.productionId)
     throw new HttpError(400, "Bitte wähle eine Produktion.");
@@ -150,6 +215,7 @@ async function validateRelations(
   if (kind === "leave" && String(data.end) < String(data.start))
     throw new HttpError(400, "Bitte prüfe den Zeitraum.");
   if (kind === "events") {
+    await normalizeEventCategory(context, data, tx);
     if (new Date(String(data.end)) <= new Date(String(data.start)))
       throw new HttpError(400, "Das Ende muss nach dem Beginn liegen.");
     if (data.until && String(data.until) < localDay(String(data.start)))
@@ -196,71 +262,9 @@ async function validateRelations(
       }
     }
   }
-  if (kind === "time") {
-    const owner = String(data.userId);
-    await tx.execute(
-      sql`select pg_advisory_xact_lock(hashtext(${context.departmentId + ":time:" + owner}))`,
-    );
-    if (Boolean(data.start) !== Boolean(data.end))
-      throw new HttpError(400, "Beginn und Ende müssen gemeinsam angegeben werden.");
-    if (data.start && data.end) {
-      try {
-        data.durationSeconds = durationSeconds(
-          String(data.start),
-          String(data.end),
-          Number(data.pauseSeconds),
-        );
-        data.date = localDay(String(data.start));
-        data.dayAllocations = splitAcrossDays(
-          String(data.start),
-          String(data.end),
-          Number(data.pauseSeconds),
-        );
-      } catch (e) {
-        throw new HttpError(400, e instanceof Error ? e.message : "Bitte prüfe die Dauer.");
-      }
-      const overlap = await tx
-        .select({ id: records.id })
-        .from(records)
-        .where(
-          and(
-            eq(records.departmentId, context.departmentId),
-            eq(records.kind, "time"),
-            eq(records.ownerId, owner),
-            recordId ? ne(records.id, recordId) : undefined,
-            lt(records.startAt, new Date(String(data.end))),
-            gt(records.endAt, new Date(String(data.start))),
-          ),
-        )
-        .limit(1);
-      if (overlap.length)
-        throw new HttpError(409, "Diese Zeit überschneidet sich mit einer vorhandenen Buchung.");
-    }
-    const days = Array.isArray(data.dayAllocations)
-      ? data.dayAllocations.map((x: unknown) => String((x as { date: string }).date))
-      : [String(data.date)];
-    const approved = await tx
-      .select({ data: records.data })
-      .from(records)
-      .where(
-        and(
-          eq(records.departmentId, context.departmentId),
-          eq(records.kind, "timesheets"),
-          eq(records.ownerId, owner),
-          sql`${records.data}->>'status'='approved'`,
-        ),
-      );
-    for (const sheet of approved) {
-      const begin = startOfLocalDay(String(sheet.data.week));
-      const end = new Date(begin);
-      end.setUTCDate(end.getUTCDate() + 7);
-      if (days.some((d) => startOfLocalDay(d) >= begin && startOfLocalDay(d) < end))
-        throw new HttpError(
-          409,
-          "Diese Woche ist freigegeben. Bitte fordere eine Korrektur bei einem Admin an.",
-        );
-    }
-  }
+  if (kind === "time" || kind === "attendance")
+    await validateBooking(context, kind, data, tx, recordId);
+  return conversation;
 }
 export async function saveRecord(
   context: Context,
@@ -276,6 +280,23 @@ export async function saveRecord(
     assertWrite(context, kind, existing);
     if (existing) await assertRead(context, existing, tx);
     const data = validateRecord(kind, { ...existing?.data, ...input });
+    if (
+      kind === "messages" &&
+      existing &&
+      (textValue(data.conversationId) !== textValue(existing.data.conversationId) ||
+        textValue(data.productionId) !== textValue(existing.data.productionId))
+    )
+      throw new HttpError(
+        400,
+        "Eine Nachricht kann nicht in einen anderen Chat verschoben werden.",
+      );
+    if (kind === "conversations") {
+      const duplicate = await prepareConversation(context, data, tx, existing);
+      if (duplicate) {
+        await assertRead(context, duplicate, tx);
+        return serialize(duplicate);
+      }
+    }
     if (kind === "productions") {
       // Resolve every team reference in the existing batched membership query.
       data.memberIds = Array.from(
@@ -289,8 +310,13 @@ export async function saveRecord(
       if (listValue(data.memberIds).length > 100)
         throw new HttpError(400, "Bitte wähle höchstens 100 Personen für das Produktionsteam.");
     }
-    if (["time", "leave", "messages"].includes(kind))
+    if (["time", "attendance", "leave", "messages"].includes(kind))
       data.userId = existing?.data.userId || context.user.id;
+    if (kind === "feedback") {
+      data.userId = existing?.data.userId || context.user.id;
+      if (!existing || context.user.role !== "superadmin")
+        data.status = existing?.data.status || "new";
+    }
     if (kind === "leave") {
       if (existing?.data.status === "approved")
         throw new HttpError(
@@ -304,15 +330,16 @@ export async function saveRecord(
         : "pending";
     }
     if (kind === "templates" && existing) data.version = Number(existing.data.version || 1) + 1;
-    if (kind === "time")
+    if (kind === "calendarCategories") await validateCalendarCategory(context, data, tx, existing);
+    if (kind === "time" || kind === "attendance")
       await tx.execute(
-        sql`select pg_advisory_xact_lock(hashtext(${context.departmentId + ":time:" + String(data.userId)}))`,
+        sql`select pg_advisory_xact_lock(hashtext(${context.departmentId + ":" + kind + ":" + String(data.userId)}))`,
       );
     if (kind === "events")
       await tx.execute(
         sql`select pg_advisory_xact_lock(hashtext(${context.departmentId + ":calendar"}))`,
       );
-    if (kind === "time" && data.idempotencyKey) {
+    if ((kind === "time" || kind === "attendance") && data.idempotencyKey) {
       const [duplicate] = await tx
         .select()
         .from(records)
@@ -320,7 +347,7 @@ export async function saveRecord(
           and(
             eq(records.departmentId, context.departmentId),
             eq(records.ownerId, context.user.id),
-            eq(records.kind, "time"),
+            eq(records.kind, kind),
             sql`${records.data}->>'idempotencyKey'=${String(data.idempotencyKey)}`,
           ),
         )
@@ -329,15 +356,20 @@ export async function saveRecord(
     }
     if (existing && kind === "time")
       await validateRelations(context, kind, { ...existing.data }, tx, existingId);
-    await validateRelations(context, kind, data, tx, existingId);
+    const relatedConversation = await validateRelations(context, kind, data, tx, existingId);
     const values = {
       data,
       productionId: textValue(data.productionId) || null,
       ownerId: textValue(data.userId) || null,
       parentId: textValue(data.parentId) || null,
       startAt:
-        data.start && ["time", "events"].includes(kind) ? new Date(String(data.start)) : null,
-      endAt: data.end && ["time", "events"].includes(kind) ? new Date(String(data.end)) : null,
+        data.start && ["time", "attendance", "events"].includes(kind)
+          ? new Date(String(data.start))
+          : null,
+      endAt:
+        data.end && ["time", "attendance", "events"].includes(kind)
+          ? new Date(String(data.end))
+          : null,
       updatedAt: new Date(),
     };
     let row: typeof records.$inferSelect;
@@ -394,6 +426,16 @@ export async function saveRecord(
         eventQueued = true;
       }
     }
+    if (kind === "messages" && data.conversationId && !existing) {
+      await emit(tx, context, "ChatMessageCreatedV1", {
+        userIds: listValue(relatedConversation?.data.participantIds),
+        title: "Neue private Nachricht",
+        body: String(data.text).slice(0, 160),
+        conversationId: data.conversationId,
+        link: `/?module=chat&conversationId=${encodeURIComponent(String(data.conversationId))}`,
+      });
+      eventQueued = true;
+    }
     if (kind === "events" && listValue(data.participantIds).length) {
       await emit(tx, context, "ServiceChangedV1", {
         userIds: listValue(data.participantIds),
@@ -447,6 +489,8 @@ export async function deleteRecord(context: Context, kind: RecordKind, id: strin
     const row = await findRecord(context, id, kind, tx, true);
     assertWrite(context, kind, row);
     await assertRead(context, row, tx);
+    if (kind === "calendarCategories")
+      await assertUnusedCategory(context, String(row.data.key), tx);
     if (kind === "events" && row.data.leaveId)
       throw new HttpError(409, "Diese Abwesenheit wird über die Freiwunschentscheidung verwaltet.");
     if (kind === "time" || kind === "leave") {
@@ -462,7 +506,7 @@ export async function deleteRecord(context: Context, kind: RecordKind, id: strin
           eq(records.departmentId, context.departmentId),
           ne(records.id, id),
           ne(records.kind, "notifications"),
-          sql`(${records.productionId}=${id} or ${records.parentId}=${id} or ${records.data}->>'actorId'=${id} or ${records.data}->>'characterId'=${id} or ${records.data}->>'sprintId'=${id} or ${records.data}->>'taskId'=${id} or ${records.data}->>'templateId'=${id})`,
+          sql`(${records.productionId}=${id} or ${records.parentId}=${id} or ${records.data}->>'actorId'=${id} or ${records.data}->>'characterId'=${id} or ${records.data}->>'sprintId'=${id} or ${records.data}->>'taskId'=${id} or ${records.data}->>'templateId'=${id} or ${records.data}->>'conversationId'=${id})`,
         ),
       )
       .limit(1);

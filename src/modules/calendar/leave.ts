@@ -58,6 +58,7 @@ export async function decideLeave(context: Context, id: string, status: unknown)
             start: start.toISOString(),
             end: end.toISOString(),
             category: "absence",
+            allDay: true,
             productionId: "",
             participantIds: [row.data.userId],
             location: "",

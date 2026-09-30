@@ -1,6 +1,14 @@
 import { formatInTimeZone } from "date-fns-tz";
 import { cellText, columnsFor, durationSeconds, exportRows, exportTitle } from "./data";
 import type { ExportInput } from "./types";
+import { durationSummary } from "./duration-summary";
+import {
+  calendarLegend,
+  eventCalendarLabel,
+  memberDayEvents,
+  teamCalendarMembers,
+  teamCalendarWeeks,
+} from "./team-calendar";
 
 /** Spreadsheet programs also interpret whitespace-prefixed formulas. */
 export function safeSpreadsheetText(value: string): string {
@@ -52,19 +60,21 @@ export async function buildXlsx(input: ExportInput): Promise<Uint8Array> {
   });
   const columns = columnsFor(input.kind),
     rows = exportRows(input);
+  const excelAllDay: boolean[] = [];
   const excelRows = rows.flatMap((row) => {
     const cells = columns.map((col) => {
       const value = row.values[col.key];
       return typeof value === "string" ? printChunks(value, col.width) : [value];
     });
-    return Array.from({ length: Math.max(...cells.map((c) => c.length)) }, (_, segment) =>
-      columns.map((col, index) => {
+    return Array.from({ length: Math.max(...cells.map((c) => c.length)) }, (_, segment) => {
+      excelAllDay.push(Boolean(row.values.isAllDay));
+      return columns.map((col, index) => {
         const value = cells[index][segment] ?? (index === 0 ? "Fortsetzung" : "");
         if (value instanceof Date)
           return new Date(`${formatInTimeZone(value, "Europe/Berlin", "yyyy-MM-dd'T'HH:mm:ss")}Z`);
         return typeof value === "string" ? safeSpreadsheetText(value) : value;
-      }),
-    );
+      });
+    });
   });
   sheet.columns = columns.map((c) => ({ key: c.key, width: c.width }));
   // Very wide structured look sheets span horizontal pages at a readable scale.
@@ -109,7 +119,9 @@ export async function buildXlsx(input: ExportInput): Promise<Uint8Array> {
       if (col.type === "duration") row.getCell(i + 1).numFmt = "[h]:mm";
       if (col.type === "date")
         row.getCell(i + 1).numFmt =
-          input.kind === "events" || input.kind === "calendar" ? "dd.mm.yyyy hh:mm" : "dd.mm.yyyy";
+          !excelAllDay[r - 5] && (input.kind === "events" || input.kind === "calendar")
+            ? "dd.mm.yyyy hh:mm"
+            : "dd.mm.yyyy";
     });
   }
   if (input.kind === "time") {
@@ -148,6 +160,114 @@ export async function buildXlsx(input: ExportInput): Promise<Uint8Array> {
       projects.addRow({ production: safeSpreadsheetText(production), duration: seconds / 86400 });
     projects.getColumn(2).numFmt = "[h]:mm";
     projects.getRow(1).font = { bold: true };
+  }
+  if (input.kind === "attendance") {
+    const summary = durationSummary(rows);
+    const definitions = [
+      { name: "Personensummen", label: "Person", buckets: summary.people },
+      { name: "Tagessummen", label: "Datum", buckets: summary.days },
+      { name: "Wochensummen", label: "Kalenderwoche", buckets: summary.weeks },
+    ];
+    for (const definition of definitions) {
+      const summarySheet = workbook.addWorksheet(definition.name, {
+        views: [{ state: "frozen", ySplit: 1 }],
+        pageSetup: {
+          paperSize: 9,
+          orientation: "portrait",
+          fitToPage: true,
+          fitToWidth: 1,
+          fitToHeight: 0,
+          printTitlesRow: "1:1",
+        },
+      });
+      summarySheet.columns = [
+        { header: definition.label, key: "label", width: 40 },
+        { header: "Anwesenheit", key: "duration", width: 20 },
+      ];
+      for (const [label, seconds] of definition.buckets)
+        summarySheet.addRow({ label: safeSpreadsheetText(label), duration: seconds / 86400 });
+      summarySheet.addRow({ label: "Gesamtanwesenheit", duration: summary.total / 86400 });
+      summarySheet.getColumn(2).numFmt = "[h]:mm";
+      summarySheet.getRow(1).font = { bold: true };
+      summarySheet.headerFooter.oddFooter = "&LDigitalMask · Anwesenheit&C&P / &N";
+    }
+  }
+  if (
+    ["events", "calendar"].includes(input.kind) &&
+    ["team", "team-month"].includes(input.view ?? "")
+  ) {
+    const members = teamCalendarMembers(input);
+    for (const week of teamCalendarWeeks(input)) {
+      const grid = workbook.addWorksheet(`Team ${week.key}`, {
+        views: [{ state: "frozen", ySplit: 4, xSplit: 1 }],
+        pageSetup: {
+          paperSize: 9,
+          orientation: "landscape",
+          fitToPage: true,
+          fitToWidth: 1,
+          fitToHeight: 0,
+          printTitlesRow: "1:4",
+          printTitlesColumn: "A:A",
+        },
+      });
+      grid.columns = [{ width: 27 }, ...week.days.map(() => ({ width: 18 }))];
+      grid.mergeCells("A1:H1");
+      grid.getCell("A1").value = "Teamplanung · " + week.label;
+      grid.getCell("A1").font = { size: 16, bold: true, color: { argb: "FF1E5F50" } };
+      grid.getRow(1).height = 28;
+      grid.mergeCells("A2:H2");
+      grid.getCell("A2").value = safeSpreadsheetText(
+        `${input.organization} · ${input.from} – ${input.to}`,
+      );
+      grid.mergeCells("A3:H3");
+      grid.getCell("A3").value =
+        "Vollständige Titel; Fortsetzungszeilen enthalten weitere Dienste. Details im Blatt Daten.";
+      grid.getRow(4).values = ["Person", ...week.days];
+      grid.getRow(4).font = { bold: true, color: { argb: "FFFFFFFF" } };
+      grid.getRow(4).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1E5F50" } };
+      grid.getRow(4).height = 24;
+      for (const member of members) {
+        const texts = week.days.map((day) =>
+          memberDayEvents(input, day, member.id)
+            .map((event) => eventCalendarLabel(event, input))
+            .join("\n\n"),
+        );
+        const chunks = texts.map((text) => printChunks(text, 18));
+        for (
+          let segment = 0;
+          segment < Math.max(1, ...chunks.map((chunk) => chunk.length));
+          segment++
+        ) {
+          const values = [
+            safeSpreadsheetText(member.name + (segment ? " · Fortsetzung" : "")),
+            ...chunks.map((chunk) => safeSpreadsheetText(chunk[segment] ?? "")),
+          ];
+          const row = grid.addRow(values);
+          row.font = { size: 11 };
+          row.alignment = { wrapText: true, vertical: "top" };
+          const lines = Math.max(
+            Math.ceil(values[0].length / 23),
+            ...values.slice(1).map((text) => text.split("\n").length),
+          );
+          row.height = Math.max(40, lines * 15 + 8);
+          row.getCell(1).font = { size: 11, bold: true };
+        }
+      }
+      grid.headerFooter.oddFooter = "&LDigitalMask · Teamplanung&C&P / &N";
+    }
+    const legend = workbook.addWorksheet("Kalenderlegende");
+    legend.columns = [
+      { header: "Kategorie", key: "name", width: 45 },
+      { header: "Terminart", key: "type", width: 25 },
+      { header: "Farbe", key: "color", width: 16 },
+    ];
+    for (const category of calendarLegend(input))
+      legend.addRow({
+        name: safeSpreadsheetText(category.categoryName),
+        type: category.allDay ? "Ganztägig" : "Mit Uhrzeit",
+        color: category.color,
+      });
+    legend.getRow(1).font = { bold: true };
   }
   sheet.headerFooter.oddFooter = "&LDigitalMask&C&P / &N";
   return new Uint8Array(await workbook.xlsx.writeBuffer());

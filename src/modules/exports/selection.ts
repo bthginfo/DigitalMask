@@ -3,7 +3,7 @@ import type { ExportInput } from "./types";
 
 /** Scope an already-authorized collection. This helper never grants access or fetches records. */
 export function selectExportRecords(
-  input: Pick<ExportInput, "kind" | "records" | "teamOnly" | "productionId">,
+  input: Pick<ExportInput, "kind" | "records" | "teamOnly" | "productionId" | "userIds">,
 ): DomainRecord[] {
   if (input.teamOnly && input.kind !== "tasks")
     throw new Error("Der Teamboard-Filter ist ausschließlich für Aufgaben verfügbar.");
@@ -16,6 +16,21 @@ export function selectExportRecords(
     )
       return false;
     if (input.teamOnly && record.data.productionId) return false;
+    if (input.userIds?.length) {
+      if (
+        record.kind === "events" &&
+        !(
+          Array.isArray(record.data.participantIds) &&
+          record.data.participantIds.some((id) => input.userIds!.includes(String(id)))
+        )
+      )
+        return false;
+      if (
+        ["time", "attendance"].includes(record.kind) &&
+        !input.userIds.includes(String(record.data.userId))
+      )
+        return false;
+    }
     if (input.productionId)
       return record.kind === "productions"
         ? record.id === input.productionId

@@ -1,4 +1,5 @@
 "use client";
+import { BrandMark } from "./brand-mark";
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -36,7 +37,7 @@ export function AuthForm({ register = false }: { register?: boolean }) {
     <main className="auth-page">
       <aside className="auth-story">
         <Link href="/" prefetch={false} className="brand">
-          <span className="brand-symbol">M</span>
+          <BrandMark />
           <span>
             digitalmask<span className="brand-sub">STADTTHEATER INGOLSTADT</span>
           </span>

@@ -139,7 +139,10 @@ export function Modal({
       ref={ref}
       aria-labelledby={titleId}
       className={`dialog ${wide ? "wide" : ""}`}
-      onCancel={onClose}
+      onCancel={(event) => {
+        event.preventDefault();
+        onClose();
+      }}
       onClick={(event) => {
         if (event.target === event.currentTarget) {
           const bounds = ref.current?.getBoundingClientRect();

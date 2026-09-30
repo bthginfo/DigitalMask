@@ -3,6 +3,9 @@ node_modules
 .vercel
 .local
 artifacts
+test-results
+playwright-report
+coverage
 drizzle
 package-lock.json
 AGENTS.md

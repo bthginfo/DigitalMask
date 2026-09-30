@@ -44,6 +44,45 @@ const productionContacts = z
   )
   .default([]);
 export const schemas: Record<RecordKind, z.ZodType> = {
+  conversations: z.object({
+    title: short.default(""),
+    mode: z.enum(["direct", "group"]).default("group"),
+    participantIds: z.array(z.string().min(1).max(100)).min(2).max(100),
+    directKey: z.string().max(300).default(""),
+    archived: z.boolean().default(false),
+  }),
+  calendarCategories: z.object({
+    key: z
+      .string()
+      .min(1)
+      .max(80)
+      .regex(/^[a-z0-9_-]+$/),
+    name: title,
+    color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+    allDay: z.boolean().default(false),
+  }),
+  attendance: z.object({
+    title: short.default("Anwesenheit"),
+    notes: note,
+    start: dateTime,
+    end: dateTime,
+    durationSeconds: z
+      .number()
+      .int()
+      .positive()
+      .max(86400 * 7),
+    pauseSeconds: z.number().int().min(0).max(86400).default(0),
+    userId: id,
+    date: day,
+    idempotencyKey: z.string().max(100).default(""),
+  }),
+  feedback: z.object({
+    type: z.enum(["feature", "bug"]),
+    title,
+    description: note,
+    status: z.enum(["new", "review", "planned", "doing", "done", "closed"]).default("new"),
+    userId: id,
+  }),
   productions: z.object({
     title,
     description: note,
@@ -95,12 +134,11 @@ export const schemas: Record<RecordKind, z.ZodType> = {
     checklist,
   }),
   events: z.object({
-    title,
+    title: short.default(""),
     start: dateTime,
     end: dateTime,
-    category: z
-      .enum(["service", "rehearsal", "performance", "preparation", "absence"])
-      .default("service"),
+    category: title.default("service"),
+    allDay: z.boolean().default(false),
     productionId: id,
     participantIds: ids,
     location: short.default(""),
@@ -159,6 +197,7 @@ export const schemas: Record<RecordKind, z.ZodType> = {
   messages: z.object({
     text: z.string().trim().min(1).max(10000),
     productionId: id,
+    conversationId: id,
     attachmentIds: ids,
     userId: id,
   }),

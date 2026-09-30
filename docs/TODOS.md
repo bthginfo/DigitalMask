@@ -9,7 +9,7 @@ Die Nutzerergänzungen vom 30. September 2026 werden vollständig umgesetzt. Zwi
 - [x] Zusätzliches Produktionsteam und separates Teamboard für Aufgaben ohne Produktionsbezug.
 - [x] Passende Exporte, getrennte Produktions-/Teamboard-Daten und geprüfte PDF-Kontakt-/Galerielayouts.
 - [x] Passwortanzeige mit Touch-/Tastaturprüfung in Chromium und WebKit.
-- [ ] Zwischenveröffentlichung auf GitHub/Vercel bestätigen.
+- [x] Zwischenveröffentlichung auf GitHub/Vercel bestätigen (b7cdca9, anschließend 35 Liveprüfungen bestanden).
 
 ## Anwesenheit und Produktionszeit
 
@@ -34,12 +34,12 @@ Die Nutzerergänzungen vom 30. September 2026 werden vollständig umgesetzt. Zwi
 
 ## Profil, Hilfe und Gestaltung
 
-- [ ] Minimalistisches Logo statt des einzelnen großen M; App- und Browsericons konsistent aktualisieren.
-- [ ] Geführtes Onboarding beim ersten aktiven Login, jederzeit erneut im Hilfebereich startbar.
-- [ ] Sinnvolle FAQ und detaillierte Anleitungen zu den tatsächlichen Funktionen.
-- [ ] Featurewünsche und Fehlermeldungen erfassen; Superadmin erhält eine Übersicht mit Bearbeitungsstatus.
-- [ ] Superadmin aus Mitarbeiter-Auswahllisten (Kalender, Aufgaben, Produktionsteam usw.) entfernen; Rollenverwaltung bleibt möglich.
-- [ ] Persönliche Pastell-Akzentfarbe im Profil speichern, Grün als Standard. Auswahl auch am Ende der Tour, Light-/Dark-Kontrast prüfen.
+- [x] Minimalistisches Logo statt des einzelnen großen M; App- und Browsericons konsistent aktualisieren.
+- [x] Geführtes Onboarding beim ersten aktiven Login, jederzeit erneut im Hilfebereich startbar.
+- [x] Sinnvolle FAQ und detaillierte Anleitungen zu den tatsächlichen Funktionen (wird mit den weiteren Modulen aktualisiert).
+- [x] Featurewünsche und Fehlermeldungen erfassen; Superadmin erhält eine Übersicht mit Bearbeitungsstatus.
+- [x] Superadmin aus Mitarbeiter-Auswahllisten (Kalender, Aufgaben, Produktionsteam usw.) entfernen; Rollenverwaltung bleibt möglich.
+- [x] Persönliche Pastell-Akzentfarbe im Profil speichern, Grün als Standard. Auswahl auch am Ende der Tour, Light-/Dark-Kontrast prüfen.
 
 ## Übergreifende Anforderungen
 
@@ -47,3 +47,25 @@ Die Nutzerergänzungen vom 30. September 2026 werden vollständig umgesetzt. Zwi
 - [ ] Datenbankabfragen bündeln und cachen; keine zusätzlichen dauerhaften Polls für neue Ansichten.
 - [ ] Dokumentation, Migrationen und Rollenprüfungen vervollständigen.
 - [ ] Alle Module nach Prüfung auf GitHub pushen und auf Vercel bereitstellen.
+
+## Weitere Produktions- und Dokumentationsänderungen
+
+- [ ] Maskenbetreuung als wichtigste Ansprechperson prominent im Produktionsüberblick, neben dem übrigen Team.
+- [ ] Figuren und Schauspieler direkt beim Besetzen anlegen; alternativ freie Figuren-/Besetzungsnamen zulassen.
+- [ ] Zentrale Aufschriebe zeigen allgemeine Dokumente und Dokumente aller zugänglichen Produktionen, gruppiert, suchbar und filterbar inklusive Archiv.
+- [ ] Sinnvolle gemeinsame Spielzeit- und Jahresfilter für Produktionen, Aufschriebe, Kalender, Aufgaben und Zeitübersichten.
+- [ ] Aufschriebanzeige nach Schauspieler; kein manuell erforderlicher Titel, keine Szene/Akt-Auswahl, kein sichtbarer Status.
+- [ ] Allgemeine Stückdauer; wiederholbare Textfelder in Vorbereitung (zuerst), Makeup, Haare, Perücken und Bärte, Umbau & Wechsel sowie Einrichten. Alte Dokumente ohne Datenverlust weiterhin lesbar machen.
+- [ ] Produktionsübergaben aus Produktionsarbeitsräumen entfernen; allgemeine Dienstübergabe erhalten.
+- [ ] Allgemeine Dienstübergaben ohne Produktionszuordnung, Status und Vorstellungsdatum; wiederholbare Textfelder besonders in „Worauf muss ich achten“.
+- [ ] Checklisten und vergleichbare Listen global als einzelne hinzufügbare/bearbeitbare/entfernbare Elemente statt Trennzeichen-Textfeldern.
+- [ ] Fachliche Kategorien (Fundus/Material, Zeitbuchung, Kalender und Dokumentationsbereiche) verwaltbar machen; genutzte Kategorien und historische Zuordnungen schützen.
+
+## Wiederverwendbare externe Kontakte
+
+- [ ] Eigenes Verzeichnis „Weitere Personen“ für Kontakte ohne Benutzerkonto und ohne Schauspielerkatalog-Zuordnung.
+- [ ] Name, Organisation/Funktion, E-Mail, Telefonnummer und Notizen speichern, bearbeiten und löschen (mit Schutz genutzter Zuordnungen).
+- [ ] Produktionskontakte mit dem Verzeichnis verknüpfen, direkt dort neue Kontakte anlegen und in weiteren Produktionen wiederverwenden.
+- [ ] Rollen bleiben je Produktion frei benennbar; Maskenbetreuung weiter aus dem aktiven Maskenteam oder als freier Name.
+- [ ] Kontaktverzeichnis und Produktionskontakte sinnvoll exportieren.
+- [ ] Namen der Maskenbetreuung bereits auf den bestehenden Produktionskacheln zeigen; Gestaltung der Kacheln beibehalten.

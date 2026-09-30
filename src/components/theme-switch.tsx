@@ -22,13 +22,19 @@ export function ThemeSwitch({ full = false }: { full?: boolean }) {
         ["dark", "Dunkel"],
         ["system", "System"],
       ].map(([key, label]) => (
-        <button key={key} className={theme === key ? "active" : ""} onClick={() => update(key)}>
+        <button
+          type="button"
+          key={key}
+          className={theme === key ? "active" : ""}
+          onClick={() => update(key)}
+        >
           {label}
         </button>
       ))}
     </div>
   ) : (
     <button
+      type="button"
       className="icon-button"
       title={`Darstellung: ${theme === "system" ? "System" : theme === "dark" ? "Dunkel" : "Hell"}`}
       aria-label="Darstellung wechseln"

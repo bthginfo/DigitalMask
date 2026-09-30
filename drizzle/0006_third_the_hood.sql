@@ -1,0 +1,2 @@
+CREATE UNIQUE INDEX "direct_chat_key_idx" ON "records" USING btree ("department_id",("data"->>'directKey')) WHERE "records"."kind"='conversations' and coalesce("records"."data"->>'directKey','')<>'';--> statement-breakpoint
+CREATE INDEX "private_chat_messages_idx" ON "records" USING btree ("department_id",("data"->>'conversationId'),"updated_at") WHERE "records"."kind"='messages' and coalesce("records"."data"->>'conversationId','')<>'';

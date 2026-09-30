@@ -18,6 +18,14 @@ export async function GET(request: Request) {
     const context = await requireContext();
     const workspace = await getWorkspace(context);
     let selected = workspace.records[kind];
+    const conversationId = query.get("conversationId");
+    if (conversationId) {
+      if (kind !== "messages")
+        throw new HttpError(400, "Ein Chatfilter ist nur für Nachrichten verfügbar.");
+      if (!workspace.records.conversations.some((chat) => chat.id === conversationId))
+        throw new HttpError(403, "Du bist kein Teilnehmer dieses privaten Chats.");
+      selected = selected.filter((row) => row.data.conversationId === conversationId);
+    }
     const id = query.get("id"),
       productionId = query.get("productionId"),
       userId = query.get("userId"),
@@ -51,7 +59,7 @@ export async function GET(request: Request) {
     if (kind !== "events")
       selected = selected.filter((r) => {
         const dates =
-          kind === "time" && Array.isArray(r.data.dayAllocations)
+          (kind === "time" || kind === "attendance") && Array.isArray(r.data.dayAllocations)
             ? r.data.dayAllocations.map((x) => String((x as { date: string }).date))
             : [String(r.data.date || r.createdAt.slice(0, 10))];
         return dates.some((date) => (!from || date >= from) && (!to || date <= to));
@@ -104,6 +112,7 @@ export async function GET(request: Request) {
       images,
       teamOnly,
       productionId: productionId || undefined,
+      userIds,
     });
     return new Response(Buffer.from(result.bytes), {
       headers: {

@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     }
     if (imported) {
       invalidateWorkspace(context.departmentId);
-      if (["tasks", "events", "looks"].includes(body.kind)) scheduleEvents();
+      if (["tasks", "events", "looks", "messages"].includes(body.kind)) scheduleEvents();
     }
     return NextResponse.json({ imported, errors });
   });

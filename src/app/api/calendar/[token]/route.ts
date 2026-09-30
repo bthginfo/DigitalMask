@@ -61,6 +61,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
         listValue(e.data.participantIds).includes(row.user.id),
       ),
       members: workspace.members,
+      references: workspace.records,
       organization: row.organization.name,
       department: row.department.name,
     });

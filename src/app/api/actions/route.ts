@@ -8,6 +8,7 @@ import { timesheetAction } from "@/modules/time-tracking/timesheets";
 import { decideLeave } from "@/modules/calendar/leave";
 import { organizationAction } from "@/modules/organization/actions";
 import { copyProduction } from "@/modules/productions/copy";
+import { updateProfile } from "@/modules/profile/service";
 export async function POST(request: Request) {
   return route(async () => {
     const {
@@ -23,7 +24,10 @@ export async function POST(request: Request) {
       .parse(await readJson(request));
     const context = await requireContext(true);
     let result: unknown;
-    if (action.startsWith("timer-")) result = await timerAction(context, action, data);
+    if (action === "profile-update") result = await updateProfile(context, data);
+    else if (action.startsWith("attendance-timer-"))
+      result = await timerAction(context, action.replace("attendance-", ""), data, "attendance");
+    else if (action.startsWith("timer-")) result = await timerAction(context, action, data);
     else if (action.startsWith("timesheet-"))
       result = await timesheetAction(context, action, id, data);
     else if (action === "leave-decide" && id) result = await decideLeave(context, id, data.status);

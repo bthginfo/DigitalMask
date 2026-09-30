@@ -1,4 +1,5 @@
 "use client";
+import { BrandMark } from "./brand-mark";
 import {
   createContext,
   useCallback,
@@ -112,7 +113,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   if (pending)
     return (
       <main className="gate">
-        <div className="brand-symbol">M</div>
+        <BrandMark />
         <h1>Dein Zugang wartet auf Freigabe.</h1>
         <p>
           Ein Admin der Maske prüft deine Registrierung. Sobald dein Zugang aktiv ist, kannst du
@@ -135,7 +136,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   if (!workspace)
     return (
       <main className="gate">
-        <div className="brand-symbol">M</div>
+        <BrandMark />
         <h1>{error ? "Verbindung unterbrochen" : "Deine Maske wird vorbereitet …"}</h1>
         <p>{error || "Produktionen, Aufgaben und Termine werden geladen."}</p>
         {error ? (

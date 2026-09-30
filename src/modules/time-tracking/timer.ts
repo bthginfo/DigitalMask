@@ -1,7 +1,7 @@
 import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/platform/db";
-import { timers } from "@/platform/db/schema";
+import { timers, attendanceTimers } from "@/platform/db/schema";
 import type { Context } from "@/platform/context";
 import { HttpError } from "@/platform/http";
 import { assertProject } from "@/modules/records/repository";
@@ -9,28 +9,42 @@ import { saveRecord } from "@/modules/records/service";
 import { invalidateWorkspace } from "@/modules/records/workspace";
 import { localDay, durationSeconds } from "./rules";
 import type { RecordData } from "@/shared/contracts";
-export async function timerAction(context: Context, action: string, data: RecordData) {
+export async function timerAction(
+  context: Context,
+  action: string,
+  data: RecordData,
+  kind: "time" | "attendance" = "time",
+) {
+  const timerTable = kind === "attendance" ? attendanceTimers : timers;
   const result = await db.transaction(async (tx) => {
-    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${"timer:" + context.user.id}))`);
+    await tx.execute(
+      sql`select pg_advisory_xact_lock(hashtext(${kind + ":timer:" + context.user.id}))`,
+    );
     const [timer] = await tx
       .select()
-      .from(timers)
-      .where(eq(timers.userId, context.user.id))
+      .from(timerTable)
+      .where(eq(timerTable.userId, context.user.id))
       .for("update");
     const now = new Date().toISOString();
     if (action === "timer-start") {
       if (timer) throw new HttpError(409, "Es läuft bereits ein Timer.");
       data = z
         .object({
-          title: z.string().trim().min(1).max(200),
+          title: z
+            .string()
+            .trim()
+            .min(1)
+            .max(200)
+            .default(kind === "attendance" ? "Anwesenheit" : "Arbeitszeit"),
           productionId: z.string().max(100).default(""),
           taskId: z.string().max(100).default(""),
           category: z.enum(["production", "office", "cleaning", "other"]).default("production"),
         })
         .parse(data);
-      await assertProject(context, data.productionId, tx);
+      if (kind === "attendance") data = { title: data.title };
+      else await assertProject(context, data.productionId, tx);
       const [created] = await tx
-        .insert(timers)
+        .insert(timerTable)
         .values({
           id: crypto.randomUUID(),
           userId: context.user.id,
@@ -53,7 +67,7 @@ export async function timerAction(context: Context, action: string, data: Record
     if (action === "timer-discard") {
       if (timer.data.stopping)
         throw new HttpError(409, "Bitte schließe zuerst die laufende Speicherung ab.");
-      await tx.delete(timers).where(eq(timers.id, timer.id));
+      await tx.delete(timerTable).where(eq(timerTable.id, timer.id));
       return { discarded: true };
     }
     if (action === "timer-pause" || action === "timer-resume") {
@@ -74,9 +88,9 @@ export async function timerAction(context: Context, action: string, data: Record
             : 0),
       };
       const [row] = await tx
-        .update(timers)
+        .update(timerTable)
         .set({ data: updated })
-        .where(eq(timers.id, timer.id))
+        .where(eq(timerTable.id, timer.id))
         .returning();
       return row;
     }
@@ -104,21 +118,22 @@ export async function timerAction(context: Context, action: string, data: Record
         pauseSeconds: Number(timer.data.pauseSeconds || 0),
         userId: context.user.id,
         date: localDay(String(timer.data.startedAt)),
-        idempotencyKey: `timer:${timer.id}`,
+        idempotencyKey:
+          kind === "attendance" ? `attendance:timer:${timer.id}` : `timer:${timer.id}`,
       };
       await tx
-        .update(timers)
+        .update(timerTable)
         .set({ data: { ...timer.data, stopping: true, stoppedAt: end } })
-        .where(eq(timers.id, timer.id));
+        .where(eq(timerTable.id, timer.id));
       return { timerId: timer.id, payload };
     }
     throw new HttpError(400, "Unbekannte Timeraktion.");
   });
   if ("payload" in result && result.payload && result.timerId) {
-    const booking = await saveRecord(context, "time", result.payload);
+    const booking = await saveRecord(context, kind, result.payload);
     await db
-      .delete(timers)
-      .where(and(eq(timers.id, result.timerId), eq(timers.userId, context.user.id)));
+      .delete(timerTable)
+      .where(and(eq(timerTable.id, result.timerId), eq(timerTable.userId, context.user.id)));
     invalidateWorkspace(context.departmentId);
     return booking;
   }

@@ -15,6 +15,7 @@ import {
   weekStart,
 } from "@/shared/client-api";
 import { useStoredValue } from "@/shared/client-storage";
+import { isStaff } from "@/shared/client-members";
 import { useWorkspace } from "../workspace-context";
 import { Badge, Button, Empty, ErrorMessage, ExportButton, Modal, PageHeader } from "../ui";
 import { ResourceEditor } from "../resource-editor";
@@ -171,7 +172,11 @@ type Draft = { id: string; data: RecordData; createdAt: string };
 export function TimeModule({ productionId = "" }: { productionId?: string }) {
   const { workspace, action, refresh, online, busy } = useWorkspace();
   const [week, setWeek] = useState(weekStart());
-  const [person, setPerson] = useState(workspace.user.id);
+  const [person, setPerson] = useState(
+    workspace.user.role === "superadmin"
+      ? workspace.members.find(isStaff)?.id || ""
+      : workspace.user.id,
+  );
   const [project, setProject] = useState(productionId);
   const [editor, setEditor] = useState(false);
   const [detail, setDetail] = useState<DomainRecord | null>(null);
@@ -352,7 +357,7 @@ export function TimeModule({ productionId = "" }: { productionId?: string }) {
         </label>
         {admin && (
           <select aria-label="Person" value={person} onChange={(e) => setPerson(e.target.value)}>
-            {workspace.members.map((x) => (
+            {workspace.members.filter(isStaff).map((x) => (
               <option key={x.id} value={x.id}>
                 {x.name}
               </option>

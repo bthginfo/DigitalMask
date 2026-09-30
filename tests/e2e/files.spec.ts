@@ -27,10 +27,8 @@ test("private images, printable look sheets and copied production assets", async
       },
     });
     expect(login.status()).toBe(200);
-    const identity = await login.json();
     const project = await create("productions", {
       title: `QA Dateien ${Date.now()}`,
-      memberIds: [identity.user.id],
     });
     const actor = await create("actors", { name: "QA Galerie Schauspieler" });
     const character = await create("characters", {
@@ -46,7 +44,7 @@ test("private images, printable look sheets and copied production assets", async
       title: "QA Aufschrieb",
       productionId: project.id,
       steps: "Perücke vorbereiten",
-      status: "published",
+      status: "draft",
     });
     const png = await sharp({
       create: { width: 100, height: 80, channels: 3, background: "#16735c" },

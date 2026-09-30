@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { and, eq, gt, desc, isNull } from "drizzle-orm";
+import { and, eq, gt, desc, isNull, sql } from "drizzle-orm";
 import { unstable_cache } from "next/cache";
 import { db } from "@/platform/db";
 import { records } from "@/platform/db/schema";
@@ -12,6 +12,20 @@ export async function GET(request: Request) {
     const context = await requireContext();
     const params = new URL(request.url).searchParams;
     const productionId = params.get("productionId") || "";
+    const conversationId = params.get("conversationId") || "";
+    if (
+      conversationId.length > 100 ||
+      productionId.length > 100 ||
+      (conversationId && productionId)
+    )
+      throw new HttpError(400, "Bitte wähle genau einen Chat.");
+    if (
+      conversationId &&
+      !(await getWorkspace(context)).records.conversations.some(
+        (chat) => chat.id === conversationId,
+      )
+    )
+      throw new HttpError(403, "Du bist kein Teilnehmer dieses privaten Chats.");
     if (
       productionId &&
       !(await getWorkspace(context)).records.productions.some(
@@ -32,12 +46,13 @@ export async function GET(request: Request) {
               eq(records.departmentId, context.departmentId),
               eq(records.kind, "messages"),
               productionId ? eq(records.productionId, productionId) : isNull(records.productionId),
+              sql`coalesce(${records.data}->>'conversationId','')=${conversationId}`,
               after ? gt(records.updatedAt, new Date(after)) : undefined,
             ),
           )
           .orderBy(desc(after ? records.updatedAt : records.createdAt))
           .limit(100),
-      ["messages", context.departmentId, productionId, after || ""],
+      ["messages-private-v1", context.departmentId, productionId, conversationId, after || ""],
       { revalidate: 30, tags: [scopeTag(context.departmentId)] },
     )();
     return NextResponse.json(

@@ -5,6 +5,7 @@ export const metadata: Metadata = {
   description:
     "Der gemeinsame Arbeitsraum für die Maske. Produktionen, Dienste und Zeitbuchungen an einem Ort.",
   applicationName: "DigitalMask",
+  icons: { icon: "/icon.svg", apple: "/icon-192.png" },
   appleWebApp: { capable: true, title: "DigitalMask", statusBarStyle: "default" },
 };
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

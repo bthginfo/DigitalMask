@@ -1,13 +1,14 @@
 import { unstable_cache, revalidateTag } from "next/cache";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/platform/db";
-import { records, memberships, user, timers } from "@/platform/db/schema";
+import { records, memberships, user, timers, attendanceTimers } from "@/platform/db/schema";
 import { scopeTag, type Context } from "@/platform/context";
 import {
   recordKinds,
   type DomainRecord,
   type Workspace,
   type RecordKind,
+  listValue,
 } from "@/shared/contracts";
 import { serialize, projectVisible } from "./repository";
 export function invalidateWorkspace(departmentId: string) {
@@ -46,6 +47,15 @@ export async function getWorkspace(context: Context): Promise<Workspace> {
   const visibleProjects = new Set(
     rows.filter((r) => r.kind === "productions" && projectVisible(context, r)).map((r) => r.id),
   );
+  const visibleConversations = new Set(
+    rows
+      .filter(
+        (row) =>
+          row.kind === "conversations" &&
+          listValue(row.data.participantIds).includes(context.user.id),
+      )
+      .map((row) => row.id),
+  );
   const grouped = Object.fromEntries(
     recordKinds.map((k) => [k, [] as DomainRecord[]]),
   ) as unknown as Record<RecordKind, DomainRecord[]>;
@@ -53,6 +63,9 @@ export async function getWorkspace(context: Context): Promise<Workspace> {
   for (const row of rows) {
     // A rolling release may add record kinds before every running build knows them.
     if (!Object.hasOwn(grouped, row.kind)) continue;
+    if (row.kind === "conversations" && !visibleConversations.has(row.id)) continue;
+    if (row.data.conversationId && !visibleConversations.has(String(row.data.conversationId)))
+      continue;
     const pid = String(row.data.productionId || "");
     if (row.kind === "productions" && !visibleProjects.has(row.id)) continue;
     if (pid && !visibleProjects.has(pid)) continue;
@@ -60,11 +73,17 @@ export async function getWorkspace(context: Context): Promise<Workspace> {
       projectHours[pid] = (projectHours[pid] || 0) + Number(row.data.durationSeconds || 0);
     if (
       context.user.role === "user" &&
-      ["time", "timesheets", "leave"].includes(row.kind) &&
+      ["time", "attendance", "timesheets", "leave"].includes(row.kind) &&
       row.data.userId !== context.user.id
     )
       continue;
     if (row.kind === "notifications" && row.data.userId !== context.user.id) continue;
+    if (
+      row.kind === "feedback" &&
+      context.user.role !== "superadmin" &&
+      row.data.userId !== context.user.id
+    )
+      continue;
     if (
       row.kind === "looks" &&
       row.data.status !== "published" &&
@@ -88,16 +107,30 @@ export async function getWorkspace(context: Context): Promise<Workspace> {
   grouped.files = rows
     .filter((r) => r.kind === "files" && readableIds.has(String(r.data.recordId)))
     .map((r) => ({ ...r, data: { ...r.data, path: undefined } }));
-  const [timer] = await unstable_cache(
+  const personalTimers = await unstable_cache(
     () =>
       db
-        .select({ id: timers.id, data: timers.data })
+        .select({ id: timers.id, data: timers.data, kind: sql<string>`'time'` })
         .from(timers)
         .where(
           and(eq(timers.userId, context.user.id), eq(timers.departmentId, context.departmentId)),
         )
-        .limit(1),
-    ["timer", context.user.id],
+        .unionAll(
+          db
+            .select({
+              id: attendanceTimers.id,
+              data: attendanceTimers.data,
+              kind: sql<string>`'attendance'`,
+            })
+            .from(attendanceTimers)
+            .where(
+              and(
+                eq(attendanceTimers.userId, context.user.id),
+                eq(attendanceTimers.departmentId, context.departmentId),
+              ),
+            ),
+        ),
+    ["personal-timers-v2", context.user.id],
     { revalidate: 300, tags: [scopeTag(context.departmentId)] },
   )();
   return {
@@ -110,7 +143,8 @@ export async function getWorkspace(context: Context): Promise<Workspace> {
         : m,
     ),
     records: grouped,
-    timer: timer || null,
+    timer: personalTimers.find((timer) => timer.kind === "time") || null,
+    attendanceTimer: personalTimers.find((timer) => timer.kind === "attendance") || null,
     projectHours,
   };
 }

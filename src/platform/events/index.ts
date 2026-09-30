@@ -80,11 +80,29 @@ export async function processEvents() {
           event.type === "TaskAssignedV1" ||
           event.type === "LeaveRequestDecidedV1" ||
           event.type === "ServiceChangedV1" ||
-          event.type === "LookPublishedV1"
+          event.type === "LookPublishedV1" ||
+          event.type === "ChatMessageCreatedV1"
         ) {
-          const targets = Array.isArray(event.payload.userIds)
+          let targets = Array.isArray(event.payload.userIds)
             ? event.payload.userIds.filter((x): x is string => typeof x === "string")
             : [];
+          if (event.type === "ChatMessageCreatedV1") {
+            const [conversation] = await tx
+              .select({ data: records.data })
+              .from(records)
+              .where(
+                and(
+                  eq(records.departmentId, event.departmentId),
+                  eq(records.id, String(event.payload.conversationId)),
+                  eq(records.kind, "conversations"),
+                ),
+              )
+              .limit(1);
+            const participants = Array.isArray(conversation?.data.participantIds)
+              ? conversation.data.participantIds
+              : [];
+            targets = targets.filter((id) => participants.includes(id));
+          }
           for (const uid of targets) {
             if (uid === event.payload.actorId) continue;
             await tx
@@ -101,6 +119,9 @@ export async function processEvents() {
                     ? event.payload.productionId
                     : null,
                 data: {
+                  ...(event.payload.conversationId
+                    ? { conversationId: event.payload.conversationId }
+                    : {}),
                   productionId:
                     typeof event.payload.productionId === "string"
                       ? event.payload.productionId

@@ -13,6 +13,9 @@ const productionTabs: Record<string, string> = {
   messages: "chat",
 };
 const modules: Record<string, string> = {
+  feedback: "help",
+  attendance: "time",
+  conversations: "chat",
   productions: "productions",
   actors: "actors",
   tasks: "tasks",
@@ -25,6 +28,11 @@ const modules: Record<string, string> = {
   messages: "chat",
 };
 export function recordHref(record: DomainRecord) {
+  const conversationId =
+    record.kind === "conversations" ? record.id : value(record.data, "conversationId");
+  if (conversationId) {
+    return `/?${new URLSearchParams({ module: "chat", conversationId })}`;
+  }
   const productionId =
     record.kind === "productions" ? record.id : value(record.data, "productionId");
   const query = new URLSearchParams(

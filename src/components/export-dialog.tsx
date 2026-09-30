@@ -5,6 +5,7 @@ import { Download, Upload } from "lucide-react";
 import type { RecordData, RecordKind } from "@/shared/contracts";
 import { localDate, post } from "@/shared/client-api";
 import { Button, ErrorMessage, Modal } from "./ui";
+import { isActiveStaff } from "@/shared/client-members";
 import { useWorkspace } from "./workspace-context";
 import { fields, labels } from "./resource-fields";
 export function ExportDialog({
@@ -265,7 +266,7 @@ export function ImportDialog({ kind, onClose }: { kind: RecordKind; onClose: () 
             <details className="history-version" key={field.key}>
               <summary>IDs für {field.label}</summary>
               {field.source === "members"
-                ? workspace.members.map((member) => (
+                ? workspace.members.filter(isActiveStaff).map((member) => (
                     <p className="small" key={member.id}>
                       {member.name} · <code>{member.id}</code>
                     </p>

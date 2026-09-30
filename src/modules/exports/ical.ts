@@ -1,6 +1,7 @@
 import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
 import { dateValue, readable, value } from "./data";
 import type { ExportInput } from "./types";
+import { allDayInterval, eventDisplay } from "./calendar-presentation";
 
 export function escapeIcs(value: string): string {
   return value
@@ -59,12 +60,14 @@ export function buildIcs(input: ExportInput): Uint8Array {
     "END:VTIMEZONE",
   ];
   for (const record of input.records.filter((r) => r.kind === "events")) {
-    const start = dateValue(value(record, "start", "startAt")),
-      end = dateValue(value(record, "end", "endAt"));
+    const display = eventDisplay(record, input);
+    const interval = display.allDay ? allDayInterval(record) : undefined;
+    const start = interval?.start ?? dateValue(value(record, "start", "startAt")),
+      end = interval?.end ?? dateValue(value(record, "end", "endAt"));
     if (!start || !end)
       throw new Error("Kalenderexport enthält einen Termin ohne gültigen Beginn oder Ende.");
     const recurring = ["daily", "weekly"].includes(readable(value(record, "recurrence")));
-    const allDay = record.data.allDay === true;
+    const allDay = display.allDay;
     const dateLine = (key: string, date: Date) =>
       allDay
         ? `${key};VALUE=DATE:${formatInTimeZone(date, "Europe/Berlin", "yyyyMMdd")}`
@@ -77,7 +80,7 @@ export function buildIcs(input: ExportInput): Uint8Array {
       `DTSTAMP:${utc(dateValue(record.updatedAt) ?? start)}`,
       dateLine("DTSTART", start),
       dateLine("DTEND", end),
-      `SUMMARY:${escapeIcs(readable(value(record, "title", "name")))}`,
+      `SUMMARY:${escapeIcs(display.title)}`,
     );
     const people = Array.isArray(record.data.participantIds)
       ? record.data.participantIds
@@ -93,14 +96,19 @@ export function buildIcs(input: ExportInput): Uint8Array {
       .join("\n");
     if (description) lines.push(`DESCRIPTION:${escapeIcs(description)}`);
     if (record.data.location) lines.push(`LOCATION:${escapeIcs(readable(record.data.location))}`);
-    if (record.data.category) lines.push(`CATEGORIES:${escapeIcs(readable(record.data.category))}`);
+    lines.push(`CATEGORIES:${escapeIcs(display.categoryName)}`);
     if (recurring) {
       const until =
         typeof record.data.until === "string" && /^\d{4}-\d{2}-\d{2}$/.test(record.data.until)
           ? fromZonedTime(`${record.data.until}T23:59:59`, "Europe/Berlin")
           : undefined;
+      const untilValue = until
+        ? allDay
+          ? String(record.data.until).replace(/-/g, "")
+          : utc(until)
+        : "";
       lines.push(
-        `RRULE:FREQ=${String(record.data.recurrence).toUpperCase()}${until ? `;UNTIL=${utc(until)}` : ""}`,
+        `RRULE:FREQ=${String(record.data.recurrence).toUpperCase()}${untilValue ? `;UNTIL=${untilValue}` : ""}`,
       );
       const exceptions = Array.isArray(record.data.exceptions)
         ? record.data.exceptions.filter(

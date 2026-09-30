@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { BrandMark } from "./brand-mark";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
   Bell,
   BookOpen,
@@ -8,6 +9,7 @@ import {
   Clock3,
   Download,
   Home,
+  CircleHelp,
   Layers3,
   LogOut,
   Menu,
@@ -24,7 +26,7 @@ import {
 import Link from "next/link";
 import { recordHref } from "@/shared/client-navigation";
 import { subscribeLocation, subscribeMobile } from "@/shared/client-storage";
-import type { DomainRecord, RecordKind } from "@/shared/contracts";
+import { onboardingVersion, type DomainRecord, type RecordKind } from "@/shared/contracts";
 import { initials, post, value } from "@/shared/client-api";
 import { useWorkspace } from "./workspace-context";
 import { Badge, Empty, Modal } from "./ui";
@@ -38,6 +40,9 @@ import { TimeModule } from "./modules/time";
 import { ChatModule } from "./modules/chat";
 import { SettingsModule } from "./modules/settings";
 import { labels } from "./resource-fields";
+import { ProfileAccent } from "@/modules/profile/components/accent-picker";
+import { OnboardingTour } from "@/modules/profile/components/onboarding-tour";
+import { HelpModule } from "@/modules/help/components/help-module";
 import { ExportDialog } from "./export-dialog";
 const nav: { id: string; label: string; icon: LucideIcon; group: string }[] = [
   { id: "today", label: "Heute", icon: Home, group: "ARBEITSRAUM" },
@@ -51,6 +56,7 @@ const nav: { id: string; label: string; icon: LucideIcon; group: string }[] = [
   { id: "inventory", label: "Fundus & Material", icon: Package, group: "WISSEN & FUNDUS" },
   { id: "handovers", label: "Dienstübergaben", icon: ClipboardCheck, group: "WISSEN & FUNDUS" },
   { id: "exports", label: "Exporte", icon: Download, group: "VERWALTUNG" },
+  { id: "help", label: "Hilfe & Feedback", icon: CircleHelp, group: "VERWALTUNG" },
   { id: "settings", label: "Einstellungen", icon: Settings2, group: "VERWALTUNG" },
 ];
 interface InstallEvent extends Event {
@@ -73,6 +79,10 @@ export function WorkspaceShell() {
   const [search, setSearch] = useState("");
   const [detail, setDetail] = useState<DomainRecord | null>(null);
   const [notificationOpen, setNotificationOpen] = useState(false);
+  const [tourRequested, setTourRequested] = useState(false);
+  const needsTour =
+    workspace.user.preferences !== undefined &&
+    workspace.user.preferences.onboardingVersion < onboardingVersion;
   const [install, setInstall] = useState<InstallEvent | null>(null);
   const main = useRef<HTMLElement>(null);
   const sidebar = useRef<HTMLElement>(null);
@@ -145,7 +155,7 @@ export function WorkspaceShell() {
     const timeout = setTimeout(() => notify(""), 7000);
     return () => clearTimeout(timeout);
   }, [notice, notify]);
-  const navigate = (next: string) => {
+  const navigate = useCallback((next: string) => {
     setMobileMenu(false);
     history.pushState(
       {},
@@ -154,7 +164,7 @@ export function WorkspaceShell() {
     );
     window.dispatchEvent(new PopStateEvent("popstate"));
     window.scrollTo({ top: 0, behavior: "instant" });
-  };
+  }, []);
   const logout = async () => {
     let drafts: unknown[] = [];
     try {
@@ -172,6 +182,7 @@ export function WorkspaceShell() {
     try {
       await post("/api/logout", {});
       localStorage.removeItem(`digitalmask-time-drafts:${workspace.user.id}`);
+      delete document.documentElement.dataset.accent;
       location.replace("/login");
     } catch (e) {
       notify(e instanceof Error ? e.message : "Abmelden fehlgeschlagen");
@@ -186,7 +197,17 @@ export function WorkspaceShell() {
           .flat()
           .filter(
             (record) =>
-              !["files", "notifications", "timesheets", "messages", "time"].includes(record.kind) &&
+              ![
+                "files",
+                "notifications",
+                "timesheets",
+                "messages",
+                "time",
+                "feedback",
+                "attendance",
+                "calendarCategories",
+                "conversations",
+              ].includes(record.kind) &&
               JSON.stringify(record.data).toLowerCase().includes(search.toLowerCase()),
           )
           .slice(0, 30)
@@ -245,6 +266,8 @@ export function WorkspaceShell() {
         kind="handovers"
         description="Was bei der nächsten Vorstellung wichtig ist: Checklisten, offene Punkte und klare Übergaben."
       />
+    ) : activeModule === "help" ? (
+      <HelpModule navigate={navigate} onStartTour={() => setTourRequested(true)} />
     ) : activeModule === "exports" ? (
       <ExportsModule />
     ) : (
@@ -252,6 +275,7 @@ export function WorkspaceShell() {
     );
   return (
     <div className="workspace">
+      <ProfileAccent />
       <a className="skip-link" href="#main">
         Zum Inhalt
       </a>
@@ -274,7 +298,7 @@ export function WorkspaceShell() {
             navigate("today");
           }}
         >
-          <span className="brand-symbol">M</span>
+          <BrandMark />
           <span>
             digitalmask<span className="brand-sub">STADTTHEATER INGOLSTADT</span>
           </span>
@@ -539,6 +563,18 @@ export function WorkspaceShell() {
             />
           )}
         </Modal>
+      )}
+      {(tourRequested || needsTour) && (
+        <OnboardingTour
+          navigate={navigate}
+          onDone={() => {
+            setTourRequested(false);
+            // Wait for the dialog to leave the native top layer before restoring focus.
+            requestAnimationFrame(() =>
+              requestAnimationFrame(() => main.current?.focus({ preventScroll: true })),
+            );
+          }}
+        />
       )}
       {(detail || queryRecord) && (
         <RecordDetail record={(detail || queryRecord)!} onClose={closeDetail} />

@@ -11,6 +11,7 @@ import { fields, labels, type Field } from "./resource-fields";
 import { useWorkspace } from "./workspace-context";
 import { Button, ErrorMessage, Modal } from "./ui";
 import { ProductionPeopleFields } from "./production-people";
+import { isActiveStaff } from "@/shared/client-members";
 import { CastingImpact } from "./casting-impact";
 
 function initialData(kind: RecordKind): RecordData {
@@ -60,7 +61,9 @@ export function ResourceEditor({
   const { workspace, save, busy } = useWorkspace();
   const [data, setData] = useState<RecordData>({
     ...initialData(kind),
-    ...(kind === "tasks" ? { assigneeIds: [workspace.user.id] } : {}),
+    ...(kind === "tasks"
+      ? { assigneeIds: workspace.user.role === "superadmin" ? [] : [workspace.user.id] }
+      : {}),
     ...defaults,
     ...record?.data,
   });
@@ -156,8 +159,14 @@ export function ResourceEditor({
       field.options ||
       (field.source === "members"
         ? workspace.members
-            .filter((x) => x.status === "active")
-            .map((x) => [x.id, x.name] as [string, string])
+            .filter((x) => isActiveStaff(x) || ids(data, field.key).includes(x.id))
+            .map(
+              (x) =>
+                [
+                  x.id,
+                  `${x.name}${isActiveStaff(x) ? "" : " · historische Zuordnung (entfernen)"}`,
+                ] as [string, string],
+            )
         : field.source
           ? workspace.records[field.source]
               .filter(

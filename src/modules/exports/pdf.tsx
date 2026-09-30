@@ -21,7 +21,6 @@ import {
   startOfWeek,
 } from "date-fns";
 import { de } from "date-fns/locale";
-import { formatInTimeZone } from "date-fns-tz";
 import {
   cellText,
   columnsFor,
@@ -37,6 +36,9 @@ import {
 import { calendarRange, localDay } from "./calendar";
 import type { Column, ExportInput, ExportRow } from "./types";
 import { addPageNumbers } from "./page-numbers";
+import { TeamCalendarPdf, CalendarLegendPdf } from "./team-calendar-pdf";
+import { eventTimeLabel } from "./team-calendar";
+import { durationSummary } from "./duration-summary";
 
 Font.register({
   family: "Noto",
@@ -282,6 +284,8 @@ const previewTitle = (row: ExportRow, limit = 46) => {
 };
 const weekdays = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
 function CalendarPreview({ input }: { input: ExportInput }) {
+  if (["team", "team-month"].includes(input.view ?? ""))
+    return <TeamCalendarPdf input={input} Page={BasePage} />;
   const range = calendarRange(input),
     rows = exportRows(input),
     lookup = new Map(rows.map((row) => [row.id, row]));
@@ -327,11 +331,7 @@ function CalendarPreview({ input }: { input: ExportInput }) {
                     <Text style={styles.dayLabel}>{format(date, "dd.MM.")}</Text>
                     {records.slice(0, 1).map((record) => (
                       <Text key={record.id} style={styles.event}>
-                        {formatInTimeZone(
-                          new Date(String(record.data.start)),
-                          "Europe/Berlin",
-                          "HH:mm",
-                        )}{" "}
+                        {eventTimeLabel(record, input).split(" – ")[0]}{" "}
                         {previewTitle(lookup.get(record.id)!, 16)}
                       </Text>
                     ))}
@@ -350,135 +350,53 @@ function CalendarPreview({ input }: { input: ExportInput }) {
         </BasePage>,
       );
     }
-  } else if (input.view === "week" || input.view === "team") {
+  } else if (input.view === "week") {
     for (
       let week = startOfWeek(parseISO(range.from), { weekStartsOn: 1 });
       week <= parseISO(range.to);
       week = addDays(week, 7)
     ) {
       const days = Array.from({ length: 7 }, (_, i) => format(addDays(week, i), "yyyy-MM-dd"));
-      const groups =
-        input.view === "team"
-          ? input.members.filter((m) =>
-              input.records.some(
-                (r) => Array.isArray(r.data.participantIds) && r.data.participantIds.includes(m.id),
-              ),
-            )
-          : [];
-      if (input.view === "team") {
-        const groupsToPrint = groups.length ? groups : [{ id: "", name: "Ohne Zuordnung" }];
-        for (let offset = 0; offset < groupsToPrint.length; offset += 6) {
-          pages.push(
-            <BasePage
-              landscape
-              key={`${days[0]}-${offset}`}
-              input={input}
-              label={`Teamplanung · KW ${format(week, "II")}`}
-            >
-              <View style={styles.gridHead}>
-                <Text style={{ ...styles.th, width: "16%" }}>Person</Text>
-                {days.map((day, i) => (
-                  <Text key={day} style={{ ...styles.th, width: "12%" }}>
-                    {weekdays[i].slice(0, 2)} {format(parseISO(day), "dd.MM.")}
-                  </Text>
-                ))}
-              </View>
-              {groupsToPrint.slice(offset, offset + 6).map((member) => (
-                <View style={styles.gridRow} key={member.id} wrap={false}>
-                  <Text
-                    style={{
-                      ...styles.gridCell,
-                      width: "16%",
-                      height: 58,
-                      fontSize: 10,
-                      fontWeight: 700,
-                    }}
-                  >
-                    {member.name}
-                  </Text>
-                  {days.map((day) => {
-                    const events = dayRecords(input, day).filter((r) =>
-                      member.id
-                        ? ((r.data.participantIds as string[]) ?? []).includes(member.id)
-                        : !((r.data.participantIds as string[]) ?? []).length,
-                    );
-                    return (
-                      <View key={day} style={{ ...styles.gridCell, width: "12%", height: 58 }}>
-                        {events.slice(0, 1).map((r) => (
-                          <Text style={styles.event} key={r.id}>
-                            {formatInTimeZone(
-                              new Date(String(r.data.start)),
-                              "Europe/Berlin",
-                              "HH:mm",
-                            )}{" "}
-                            {previewTitle(lookup.get(r.id)!, 16)}
-                          </Text>
-                        ))}
-                        {events.length > 1 && (
-                          <Text style={styles.extra}>+ {events.length - 1} · Agenda</Text>
-                        )}
-                      </View>
-                    );
-                  })}
-                </View>
-              ))}
-              <Text style={styles.note}>
-                Gekürzte Übersicht; die vollständige Agenda folgt. Unzugeordnete Termine erscheinen
-                dort ebenfalls.
+      pages.push(
+        <BasePage
+          landscape
+          input={input}
+          key={days[0]}
+          label={`Wochenplanung · KW ${format(week, "II")}`}
+        >
+          <View style={styles.gridHead}>
+            {days.map((day, i) => (
+              <Text style={{ ...styles.th, width: "14.2857%" }} key={day}>
+                {weekdays[i]} {format(parseISO(day), "dd.MM.")}
               </Text>
-            </BasePage>,
-          );
-        }
-      } else {
-        pages.push(
-          <BasePage
-            landscape
-            input={input}
-            key={days[0]}
-            label={`Wochenplanung · KW ${format(week, "II")}`}
-          >
-            <View style={styles.gridHead}>
-              {days.map((day, i) => (
-                <Text style={{ ...styles.th, width: "14.2857%" }} key={day}>
-                  {weekdays[i]} {format(parseISO(day), "dd.MM.")}
-                </Text>
-              ))}
-            </View>
-            <View style={styles.gridRow} wrap={false}>
-              {days.map((day) => {
-                const events = day >= range.from && day <= range.to ? dayRecords(input, day) : [];
-                return (
-                  <View key={day} style={{ ...styles.gridCell, height: 340 }}>
-                    {events.slice(0, 4).map((r) => (
-                      <View key={r.id} style={{ marginBottom: 10 }}>
-                        <Text style={styles.dayLabel}>
-                          {formatInTimeZone(
-                            new Date(String(r.data.start)),
-                            "Europe/Berlin",
-                            "HH:mm",
-                          )}{" "}
-                          –{" "}
-                          {formatInTimeZone(new Date(String(r.data.end)), "Europe/Berlin", "HH:mm")}
-                        </Text>
-                        <Text style={{ ...styles.event, fontSize: 9 }}>
-                          {previewTitle(lookup.get(r.id)!)}
-                        </Text>
-                      </View>
-                    ))}
-                    {events.length > 4 && (
-                      <Text style={styles.extra}>+ {events.length - 4} weitere · siehe Agenda</Text>
-                    )}
-                  </View>
-                );
-              })}
-            </View>
-            <Text style={styles.note}>
-              Gekürzte Wochenübersicht. Die folgende Agenda enthält sämtliche Einträge und ihre
-              vollständigen Details.
-            </Text>
-          </BasePage>,
-        );
-      }
+            ))}
+          </View>
+          <View style={styles.gridRow} wrap={false}>
+            {days.map((day) => {
+              const events = day >= range.from && day <= range.to ? dayRecords(input, day) : [];
+              return (
+                <View key={day} style={{ ...styles.gridCell, height: 340 }}>
+                  {events.slice(0, 4).map((r) => (
+                    <View key={r.id} style={{ marginBottom: 10 }}>
+                      <Text style={styles.dayLabel}>{eventTimeLabel(r, input)}</Text>
+                      <Text style={{ ...styles.event, fontSize: 9 }}>
+                        {previewTitle(lookup.get(r.id)!)}
+                      </Text>
+                    </View>
+                  ))}
+                  {events.length > 4 && (
+                    <Text style={styles.extra}>+ {events.length - 4} weitere · siehe Agenda</Text>
+                  )}
+                </View>
+              );
+            })}
+          </View>
+          <Text style={styles.note}>
+            Gekürzte Wochenübersicht. Die folgende Agenda enthält sämtliche Einträge und ihre
+            vollständigen Details.
+          </Text>
+        </BasePage>,
+      );
     }
   }
   return <>{pages}</>;
@@ -611,6 +529,42 @@ function LookPages({ input }: { input: ExportInput }) {
     </>
   );
 }
+function AttendanceSummary({ input, rows }: { input: ExportInput; rows: ExportRow[] }) {
+  const summary = durationSummary(rows);
+  const groups = [
+    { title: "Personensummen", entries: summary.people },
+    { title: "Tagessummen", entries: summary.days },
+    { title: "Wochensummen", entries: summary.weeks },
+  ];
+  return (
+    <>
+      {groups.flatMap((group) =>
+        Array.from({ length: Math.max(1, Math.ceil(group.entries.length / 16)) }, (_, page) => (
+          <BasePage
+            input={input}
+            key={`${group.title}-${page}`}
+            label={`Anwesenheit · ${group.title}`}
+          >
+            <View style={{ ...styles.summary, marginTop: 0, marginBottom: 15 }}>
+              <Text>Gesamtanwesenheit: {durationText(summary.total)}</Text>
+            </View>
+            {[...group.entries].slice(page * 16, page * 16 + 16).map(([label, seconds]) => (
+              <View key={label} wrap={false} style={{ ...styles.tr, paddingVertical: 9 }}>
+                <Text style={{ width: "78%", paddingRight: 10 }}>{label}</Text>
+                <Text style={{ width: "22%", textAlign: "right", fontWeight: 700 }}>
+                  {durationText(seconds)}
+                </Text>
+              </View>
+            ))}
+            {!group.entries.length && (
+              <Text style={styles.note}>Keine Anwesenheit im gewählten Zeitraum.</Text>
+            )}
+          </BasePage>
+        )),
+      )}
+    </>
+  );
+}
 export async function buildPdf(input: ExportInput): Promise<Uint8Array> {
   if (["looks", "characters", "casting"].includes(input.kind) && input.images) {
     const normalizedImages: Record<string, Uint8Array> = {};
@@ -669,6 +623,8 @@ export async function buildPdf(input: ExportInput): Promise<Uint8Array> {
             </BasePage>
           ))}
           {["characters", "casting"].includes(input.kind) && <GalleryPages input={input} />}
+          {calendar && <CalendarLegendPdf input={input} Page={BasePage} />}
+          {input.kind === "attendance" && <AttendanceSummary input={input} rows={rows} />}
           {input.kind === "time" && (
             <BasePage input={input} label="Arbeitszeit · Zusammenfassung">
               <View style={styles.summary}>
