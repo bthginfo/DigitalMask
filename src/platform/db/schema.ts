@@ -1,0 +1,228 @@
+import {
+  pgTable,
+  text,
+  timestamp,
+  boolean,
+  integer,
+  bigint,
+  jsonb,
+  index,
+  uniqueIndex,
+  foreignKey,
+} from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import type { RecordData, RecordKind, Role } from "@/shared/contracts";
+export const user = pgTable("app_user", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull().unique(),
+  emailVerified: boolean("email_verified").notNull().default(false),
+  image: text("image"),
+  username: text("username").unique(),
+  displayUsername: text("display_username"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export const session = pgTable(
+  "app_session",
+  {
+    id: text("id").primaryKey(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    token: text("token").notNull().unique(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    ipAddress: text("ip_address"),
+    userAgent: text("user_agent"),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+  },
+  (t) => [index("session_user_idx").on(t.userId)],
+);
+export const account = pgTable(
+  "app_account",
+  {
+    id: text("id").primaryKey(),
+    accountId: text("account_id").notNull(),
+    providerId: text("provider_id").notNull(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    accessToken: text("access_token"),
+    refreshToken: text("refresh_token"),
+    idToken: text("id_token"),
+    accessTokenExpiresAt: timestamp("access_token_expires_at", { withTimezone: true }),
+    refreshTokenExpiresAt: timestamp("refresh_token_expires_at", { withTimezone: true }),
+    scope: text("scope"),
+    password: text("password"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("account_user_idx").on(t.userId)],
+);
+export const verification = pgTable(
+  "app_verification",
+  {
+    id: text("id").primaryKey(),
+    identifier: text("identifier").notNull(),
+    value: text("value").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("verification_identifier_idx").on(t.identifier)],
+);
+export const rateLimit = pgTable("auth_rate_limit", {
+  id: text("id").primaryKey(),
+  key: text("key").notNull().unique(),
+  count: integer("count").notNull(),
+  lastRequest: bigint("last_request", { mode: "number" }).notNull(),
+});
+export const organizations = pgTable("organizations", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+});
+export const departments = pgTable(
+  "departments",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organizations.id),
+    name: text("name").notNull(),
+  },
+  (t) => [uniqueIndex("department_organization_idx").on(t.id, t.organizationId)],
+);
+export const memberships = pgTable(
+  "memberships",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organizations.id),
+    departmentId: text("department_id")
+      .notNull()
+      .references(() => departments.id),
+    role: text("role").$type<Role>().notNull().default("user"),
+    status: text("status").$type<"pending" | "active" | "disabled">().notNull().default("pending"),
+  },
+  (t) => [
+    uniqueIndex("membership_user_department_idx").on(t.userId, t.departmentId),
+    foreignKey({
+      columns: [t.departmentId, t.organizationId],
+      foreignColumns: [departments.id, departments.organizationId],
+      name: "membership_department_scope_fk",
+    }),
+  ],
+);
+export const records = pgTable(
+  "records",
+  {
+    id: text("id").primaryKey(),
+    kind: text("kind").$type<RecordKind>().notNull(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organizations.id),
+    departmentId: text("department_id")
+      .notNull()
+      .references(() => departments.id),
+    createdBy: text("created_by")
+      .notNull()
+      .references(() => user.id),
+    productionId: text("production_id"),
+    ownerId: text("owner_id").references(() => user.id),
+    parentId: text("parent_id"),
+    startAt: timestamp("start_at", { withTimezone: true }),
+    endAt: timestamp("end_at", { withTimezone: true }),
+    data: jsonb("data").$type<RecordData>().notNull(),
+    version: integer("version").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("record_scope_kind_idx").on(t.departmentId, t.kind),
+    index("record_production_idx").on(t.departmentId, t.productionId, t.kind),
+    index("record_owner_time_idx").on(t.departmentId, t.ownerId, t.kind, t.startAt),
+    index("record_chat_idx").on(t.departmentId, t.kind, t.productionId, t.createdAt),
+    foreignKey({
+      columns: [t.departmentId, t.organizationId],
+      foreignColumns: [departments.id, departments.organizationId],
+      name: "record_department_scope_fk",
+    }),
+    uniqueIndex("time_idempotency_idx")
+      .on(t.departmentId, t.ownerId, sql`(${t.data}->>'idempotencyKey')`)
+      .where(sql`${t.kind}='time' and coalesce(${t.data}->>'idempotencyKey','')<>''`),
+    uniqueIndex("timesheet_week_idx")
+      .on(t.departmentId, t.ownerId, sql`(${t.data}->>'week')`)
+      .where(sql`${t.kind}='timesheets'`),
+  ],
+);
+export const timers = pgTable("timers", {
+  id: text("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id)
+    .unique(),
+  departmentId: text("department_id")
+    .notNull()
+    .references(() => departments.id),
+  data: jsonb("data").$type<RecordData>().notNull(),
+});
+export const outbox = pgTable(
+  "outbox",
+  {
+    id: text("id").primaryKey(),
+    departmentId: text("department_id")
+      .notNull()
+      .references(() => departments.id),
+    type: text("type").notNull(),
+    payload: jsonb("payload").$type<RecordData>().notNull(),
+    attempts: integer("attempts").notNull().default(0),
+    status: text("status").notNull().default("pending"),
+    availableAt: timestamp("available_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("outbox_pending_idx").on(t.status, t.availableAt)],
+);
+export const audit = pgTable("audit", {
+  id: text("id").primaryKey(),
+  departmentId: text("department_id")
+    .notNull()
+    .references(() => departments.id),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id),
+  action: text("action").notNull(),
+  recordId: text("record_id"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export const calendarTokens = pgTable("calendar_tokens", {
+  id: text("id").primaryKey(),
+  tokenHash: text("token_hash").notNull().unique(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  departmentId: text("department_id")
+    .notNull()
+    .references(() => departments.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export const recordHistory = pgTable(
+  "record_history",
+  {
+    id: text("id").primaryKey(),
+    recordId: text("record_id")
+      .notNull()
+      .references(() => records.id, { onDelete: "cascade" }),
+    version: integer("version").notNull(),
+    data: jsonb("data").$type<RecordData>().notNull(),
+    createdBy: text("created_by")
+      .notNull()
+      .references(() => user.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("record_history_version_idx").on(t.recordId, t.version)],
+);

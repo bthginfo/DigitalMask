@@ -1,0 +1,13 @@
+# DigitalMask exports
+
+`buildExport(input): Promise<{ bytes: Uint8Array; mime: string; filename: string }>` creates a complete download in memory. The caller authorizes and filters records and members; `references` contains authorized lookup records, and `images` contains already downloaded private image bytes keyed by file ID. This module never queries a database or downloads remote assets.
+
+- **PDF:** A4 landscape month/week/team grids and a full agenda supplement; portrait day/agenda reports; dedicated structured look sheets with photographs; readable repeating table headers and exact page counts. Long cells continue on further rows/pages. Bundled Noto Sans regular/bold fonts use the included SIL Open Font License. Stored WEBP images are normalized locally. Table reports and look sheets print all supplied content; a missing image is explicitly identified.
+- **XLSX:** Actual Excel tables, frozen headings, filters, wrapped text, typed Berlin wall-clock dates, elapsed-hour number formats and person/project totals. Long cells use continuation rows so print height limits do not silently hide notes. Wide look tables span horizontal pages and repeat identity columns.
+- **CSV:** UTF-8 BOM, German semicolon delimiter, quoted multiline fields, escaped quotes and protection against formula injection.
+- **ICS:** RFC 5545 escaping, CRLF and UTF-8-aware 75-octet folding, stable UIDs, UTC timestamps and local Europe/Berlin recurrence definitions with DST transitions, until dates and exceptions. This is a calendar export/subscription format.
+- **JSON:** Versioned original record data, retaining IDs, versions and full structured fields. Lookup records and member/session data are not implicitly included; binary files remain in private storage and require a separate file backup.
+
+Recurring events expand only in the selected print/report range. Calendar exports allow at most two years and 20,000 occurrences. Time reports use trusted server-computed `dayAllocations: [{ date, seconds }]` when present: only days inside the export window count, and their sum must match the original duration. JSON retains the unsplit booking. The caller must select bookings by overlapping allocation dates, rather than start date alone.
+
+Run `npx vitest run tests/exports.test.ts` for data and PDF extraction checks. Run `npx tsx scripts/verify-exports.ts`, or set `EXPORT_RENDER_QA=1` and run `npx vitest run tests/exports-render.test.ts`, to generate fictional PDFs and every page raster in ignored `artifacts/exports/`. The raster suite validates media boxes, final text markers and page counters. Inspect these PNGs after changing layouts. Runtime requires Node.js and tracing `src/modules/exports/assets/**/*` into the deployment.

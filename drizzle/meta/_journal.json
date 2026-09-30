@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1790778435231,
+      "tag": "0000_daily_dakota_north",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790779129052,
+      "tag": "0001_perpetual_toro",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790780953332,
+      "tag": "0002_reflective_cerebro",
+      "breakpoints": true
+    }
+  ]
+}

@@ -1,0 +1,123 @@
+import sharp from "sharp";
+import { put, get, del } from "@vercel/blob";
+import { eq } from "drizzle-orm";
+import { db } from "@/platform/db";
+import { records } from "@/platform/db/schema";
+import type { Context } from "@/platform/context";
+import { HttpError } from "@/platform/http";
+import { findRecord, serialize } from "@/modules/records/repository";
+import { assertRead, assertWrite } from "@/modules/records/service";
+import { invalidateWorkspace } from "@/modules/records/workspace";
+import { emit, scheduleEvents, auditChange } from "@/platform/events";
+import { listValue, type RecordKind } from "@/shared/contracts";
+export async function uploadFile(
+  context: Context,
+  file: File,
+  recordKind: RecordKind,
+  recordId: string,
+) {
+  const linked = await findRecord(context, recordId, recordKind);
+  await assertRead(context, linked);
+  assertWrite(context, recordKind, linked);
+  if (file.size <= 0 || file.size > 4_000_000)
+    throw new HttpError(
+      413,
+      "Bitte verwende Dateien bis 4 MB. Fotos werden vor dem Upload verkleinert.",
+    );
+  let bytes: Buffer = Buffer.from(await file.arrayBuffer());
+  let mime = file.type;
+  let image = false;
+  let extension = "pdf";
+  if (["image/jpeg", "image/png", "image/webp"].includes(mime)) {
+    try {
+      bytes = await sharp(bytes, { limitInputPixels: 40_000_000 })
+        .rotate()
+        .resize({ width: 1800, height: 1800, fit: "inside", withoutEnlargement: true })
+        .webp({ quality: 85 })
+        .toBuffer();
+      mime = "image/webp";
+      image = true;
+      extension = "webp";
+    } catch {
+      throw new HttpError(400, "Dieses Bild konnte nicht gelesen werden.");
+    }
+  } else if (mime !== "application/pdf" || bytes.subarray(0, 5).toString() !== "%PDF-")
+    throw new HttpError(400, "Erlaubt sind JPG, PNG, WebP und PDF.");
+  const id = crypto.randomUUID();
+  const path = `${context.organizationId}/${context.departmentId}/${recordKind}/${recordId}/${id}.${extension}`;
+  await put(path, bytes, { access: "private", contentType: mime, addRandomSuffix: false });
+  try {
+    const result = await db.transaction(async (tx) => {
+      const current = await findRecord(context, recordId, recordKind, tx, true);
+      await assertRead(context, current, tx);
+      assertWrite(context, recordKind, current);
+      const [row] = await tx
+        .insert(records)
+        .values({
+          id,
+          kind: "files",
+          organizationId: context.organizationId,
+          departmentId: context.departmentId,
+          createdBy: context.user.id,
+          productionId: current.productionId,
+          data: {
+            name: file.name.slice(0, 200),
+            mime,
+            size: bytes.length,
+            recordKind,
+            recordId,
+            path,
+            image,
+          },
+        })
+        .returning();
+      const field = recordKind === "messages" ? "attachmentIds" : "imageIds";
+      if (image || recordKind === "messages")
+        await tx
+          .update(records)
+          .set({
+            data: { ...current.data, [field]: [...listValue(current.data[field]), id] },
+            version: current.version + 1,
+            updatedAt: new Date(),
+          })
+          .where(eq(records.id, recordId));
+      await auditChange(tx, context, "file.uploaded", id);
+      return serialize(row);
+    });
+    invalidateWorkspace(context.departmentId);
+    return result;
+  } catch (error) {
+    await del(path).catch(() => {});
+    throw error;
+  }
+}
+export async function getFile(context: Context, id: string) {
+  const row = await findRecord(context, id, "files");
+  const linked = await findRecord(context, String(row.data.recordId), undefined);
+  await assertRead(context, linked);
+  const blob = await get(String(row.data.path), { access: "private" });
+  if (!blob || blob.statusCode !== 200) throw new HttpError(404, "Die Datei wurde nicht gefunden.");
+  return { row, blob };
+}
+export async function deleteFile(context: Context, id: string) {
+  await db.transaction(async (tx) => {
+    const row = await findRecord(context, id, "files", tx);
+    const linked = await findRecord(context, String(row.data.recordId), undefined, tx, true);
+    await assertRead(context, linked, tx);
+    assertWrite(context, linked.kind, linked);
+    await tx.delete(records).where(eq(records.id, id));
+    const field = linked.kind === "messages" ? "attachmentIds" : "imageIds";
+    await tx
+      .update(records)
+      .set({
+        data: { ...linked.data, [field]: listValue(linked.data[field]).filter((x) => x !== id) },
+        version: linked.version + 1,
+        updatedAt: new Date(),
+      })
+      .where(eq(records.id, linked.id));
+    await emit(tx, context, "FileDeletionRequestedV1", { path: row.data.path });
+    await auditChange(tx, context, "file.deleted", id);
+  });
+  invalidateWorkspace(context.departmentId);
+  scheduleEvents();
+}

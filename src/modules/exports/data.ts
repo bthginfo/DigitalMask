@@ -1,0 +1,311 @@
+import type { DomainRecord } from "../../shared/contracts";
+import type { Column, ExportInput, ExportRow } from "./types";
+
+export const titles: Record<string, string> = {
+  events: "Dienst- und Kalenderplanung",
+  calendar: "Dienst- und Kalenderplanung",
+  time: "Arbeitszeitnachweis",
+  timesheets: "Wochenfreigaben",
+  looks: "Aufschriebe",
+  materials: "Material- und Perückenbestand",
+  actors: "Schauspielerkatalog",
+  characters: "Figurenkatalog",
+  casting: "Besetzungsliste",
+  tasks: "Aufgaben",
+  productions: "Produktionen",
+  handovers: "Dienstübergaben",
+  sprints: "Sprints",
+  leave: "Freiwünsche",
+  templates: "Aufschriebvorlagen",
+  messages: "Nachrichten",
+  notifications: "Benachrichtigungen",
+  files: "Dateiverzeichnis",
+};
+export function value(record: DomainRecord, ...keys: string[]): unknown {
+  for (const key of keys)
+    if (record.data[key] !== undefined && record.data[key] !== null && record.data[key] !== "")
+      return record.data[key];
+  return "";
+}
+export function readable(input: unknown): string {
+  if (input === undefined || input === null) return "";
+  if (Array.isArray(input)) return input.map(readable).filter(Boolean).join(", ");
+  if (typeof input === "object")
+    return Object.entries(input)
+      .map(([key, val]) => `${key}: ${readable(val)}`)
+      .join("; ");
+  if (typeof input === "boolean") return input ? "Ja" : "Nein";
+  return String(input);
+}
+export function dateValue(input: unknown): Date | undefined {
+  if (typeof input !== "string" && typeof input !== "number" && !(input instanceof Date)) return;
+  const date = new Date(input);
+  return Number.isNaN(date.getTime()) ? undefined : date;
+}
+export function dateText(input: unknown, withTime = false): string {
+  const date = dateValue(input);
+  if (!date) return "";
+  return new Intl.DateTimeFormat("de-DE", {
+    timeZone: "Europe/Berlin",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    ...(withTime ? { hour: "2-digit", minute: "2-digit" } : {}),
+  }).format(date);
+}
+export function durationSeconds(record: DomainRecord): number {
+  const seconds = value(record, "seconds", "durationSeconds", "totalSeconds");
+  if (typeof seconds === "number") return Math.max(0, seconds);
+  const minutes = value(record, "minutes", "durationMinutes");
+  if (typeof minutes === "number") return Math.max(0, minutes * 60);
+  const start = dateValue(value(record, "start", "startAt", "startedAt"));
+  const end = dateValue(value(record, "end", "endAt", "endedAt"));
+  return start && end
+    ? Math.max(
+        0,
+        (end.getTime() - start.getTime()) / 1000 - Number(value(record, "pauseSeconds") || 0),
+      )
+    : 0;
+}
+export function durationText(seconds: number): string {
+  const minutes = Math.round(seconds / 60);
+  return `${Math.floor(minutes / 60)}:${String(minutes % 60).padStart(2, "0")} h`;
+}
+
+const column = (key: string, label: string, width: number, type?: Column["type"]): Column => ({
+  key,
+  label,
+  width,
+  type,
+});
+export function columnsFor(kind: string): Column[] {
+  switch (kind) {
+    case "events":
+    case "calendar":
+      return [
+        column("title", "Termin / Dienst", 27),
+        column("start", "Beginn", 19, "date"),
+        column("end", "Ende", 19, "date"),
+        column("person", "Personen", 21),
+        column("location", "Ort / Kategorie", 24),
+      ];
+    case "time":
+      return [
+        column("start", "Datum", 17, "date"),
+        column("person", "Person", 22),
+        column("production", "Produktion", 23),
+        column("title", "Tätigkeit", 39),
+        column("duration", "Stunden", 12, "duration"),
+      ];
+    case "actors":
+      return [
+        column("title", "Name", 24),
+        column("contact", "Kontakt", 25),
+        column("hair", "Haare / Perücke", 27),
+        column("description", "Arbeitsnotizen", 42),
+      ];
+    case "casting":
+      return [
+        column("production", "Produktion", 26),
+        column("character", "Figur", 25),
+        column("actor", "Besetzung", 30),
+        column("description", "Hinweise", 36),
+      ];
+    case "materials":
+      return [
+        column("title", "Material / Perücke", 30),
+        column("location", "Lagerort", 22),
+        column("quantity", "Bestand", 12),
+        column("minimum", "Mindestbestand", 14),
+        column("description", "Hinweise", 35),
+      ];
+    case "productions":
+      return [
+        column("title", "Produktion", 30),
+        column("season", "Spielzeit", 17),
+        column("premiere", "Premiere", 18, "date"),
+        column("person", "Team", 27),
+        column("status", "Status", 19),
+        column("description", "Beschreibung", 42),
+      ];
+    case "handovers":
+      return [
+        column("start", "Datum", 18, "date"),
+        column("title", "Übergabe", 30),
+        column("production", "Produktion", 25),
+        column("status", "Status", 17),
+        column("description", "Hinweise / Checkliste", 50),
+      ];
+    case "tasks":
+      return [
+        column("title", "Aufgabe", 35),
+        column("person", "Verantwortlich", 23),
+        column("status", "Status", 16),
+        column("start", "Fällig", 16, "date"),
+        column("description", "Details / Checkliste", 35),
+      ];
+    case "looks":
+      return [
+        column("title", "Aufschrieb", 27),
+        column("production", "Produktion", 24),
+        column("character", "Figur", 22),
+        column("actor", "Besetzung", 24),
+        column("scene", "Szene", 20),
+        column("preparation", "Vorbereitung", 40),
+        column("materials", "Material", 35),
+        column("steps", "Arbeitsschritte", 50),
+        column("changeover", "Wechsel", 35),
+        column("durationMinutes", "Zeitbedarf (min)", 18),
+        column("status", "Status", 18),
+        column("imageIds", "Bildreferenzen", 35),
+      ];
+    default:
+      return [
+        column("title", "Bezeichnung", 30),
+        column("production", "Produktion / Bezug", 25),
+        column("person", "Person", 22),
+        column("status", "Status", 18),
+        column("description", "Details", 45),
+      ];
+  }
+}
+const statuses: Record<string, string> = {
+  draft: "Entwurf",
+  published: "Veröffentlicht",
+  open: "Offen",
+  todo: "Offen",
+  doing: "In Arbeit",
+  in_progress: "In Arbeit",
+  backlog: "Backlog",
+  review: "In Prüfung",
+  done: "Erledigt",
+  complete: "Abgeschlossen",
+  approved: "Genehmigt",
+  pending: "Beantragt",
+  rejected: "Abgelehnt",
+  submitted: "Eingereicht",
+  active: "Aktiv",
+  archived: "Archiviert",
+  preparation: "Vorbereitung",
+  planned: "Geplant",
+  completed: "Abgeschlossen",
+  withdrawn: "Zurückgezogen",
+  changes_requested: "Korrektur angefragt",
+};
+const categories: Record<string, string> = {
+  service: "Dienst",
+  rehearsal: "Probe",
+  performance: "Vorstellung",
+  preparation: "Vorbereitung",
+  absence: "Abwesenheit",
+};
+export function exportRows(input: ExportInput): ExportRow[] {
+  const members = new Map(input.members.map((m) => [m.id, m.name]));
+  const records = new Map(
+    [...input.records, ...Object.values(input.references ?? {}).flatMap((r) => r ?? [])].map(
+      (r) => [r.id, readable(value(r, "name", "title"))],
+    ),
+  );
+  const name = (v: unknown) => {
+    const text = readable(v);
+    return members.get(text) ?? records.get(text) ?? text;
+  };
+  return input.records
+    .filter((r) =>
+      input.kind === "calendar"
+        ? r.kind === "events"
+        : input.kind === "backup" || r.kind === input.kind,
+    )
+    .map((record) => {
+      const people = value(
+        record,
+        "participantIds",
+        "memberIds",
+        "assigneeIds",
+        "assignedTo",
+        "userId",
+        "memberId",
+        "personId",
+        "authorId",
+      );
+      const person = Array.isArray(people) ? people.map(name).join(", ") : name(people);
+      const checklist = value(record, "checklist", "items");
+      const description = readable(
+        value(record, "description", "notes", "body", "content", "text"),
+      );
+      return {
+        id: record.id,
+        record,
+        values: {
+          title: readable(value(record, "title", "name", "activity", "subject", "label")),
+          person,
+          production: name(value(record, "productionName", "productionId", "projectId")),
+          actor: name(value(record, "actorName", "actorId")),
+          character: name(value(record, "characterName", "characterId")),
+          start:
+            dateValue(
+              value(record, "start", "startAt", "date", "day", "due", "dueAt", "dueDate"),
+            ) ?? "",
+          end: dateValue(value(record, "end", "endAt")) ?? "",
+          duration: durationSeconds(record) / 86400,
+          status: statuses[readable(value(record, "status"))] ?? readable(value(record, "status")),
+          description: [
+            description,
+            Array.isArray(checklist)
+              ? checklist
+                  .map((item) =>
+                    typeof item === "object" && item !== null && "text" in item
+                      ? `${item.done ? "[x]" : "[ ]"} ${readable(item.text)}`
+                      : readable(item),
+                  )
+                  .join("\n")
+              : readable(checklist),
+            record.kind === "casting"
+              ? record.data.alternate
+                ? "Alternativbesetzung"
+                : "Hauptbesetzung"
+              : "",
+          ]
+            .filter(Boolean)
+            .join("\n"),
+          location:
+            record.kind === "events"
+              ? [
+                  readable(record.data.location),
+                  categories[readable(record.data.category)] ?? readable(record.data.category),
+                ]
+                  .filter(Boolean)
+                  .join(" · ")
+              : readable(value(record, "location", "category")),
+          contact: [readable(value(record, "contact", "email")), readable(value(record, "phone"))]
+            .filter(Boolean)
+            .join("\n"),
+          hair: [
+            readable(value(record, "hair", "hairDescription")),
+            readable(value(record, "wigSize", "headSize")),
+          ]
+            .filter(Boolean)
+            .join("\n"),
+          quantity: Number(value(record, "quantity", "stock") || 0),
+          minimum: Number(value(record, "minQuantity", "minimum", "minStock", "minimumStock") || 0),
+          scene: readable(record.data.scene),
+          preparation: readable(record.data.preparation),
+          materials: readable(record.data.materials),
+          steps: readable(record.data.steps),
+          changeover: readable(record.data.changeover),
+          durationMinutes: Number(record.data.durationMinutes ?? 0),
+          imageIds: readable(record.data.imageIds),
+          season: readable(record.data.season),
+          premiere: dateValue(record.data.premiere) ?? "",
+        },
+      };
+    });
+}
+export function cellText(row: ExportRow, col: Column): string {
+  const v = row.values[col.key];
+  return col.type === "duration"
+    ? durationText(Number(v) * 86400)
+    : v instanceof Date
+      ? dateText(v, col.key !== "start" || row.record.kind === "events")
+      : readable(v);
+}

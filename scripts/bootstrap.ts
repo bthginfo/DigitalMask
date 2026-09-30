@@ -1,0 +1,51 @@
+import nextEnv from "@next/env";
+import { randomBytes } from "node:crypto";
+import { mkdir, writeFile } from "node:fs/promises";
+nextEnv.loadEnvConfig(process.cwd());
+const { db, sqlClient } = await import("../src/platform/db/index");
+const { organizations, departments, memberships } = await import("../src/platform/db/schema");
+const { eq } = await import("drizzle-orm");
+const { auth } = await import("../src/platform/auth/index");
+await db
+  .insert(organizations)
+  .values({ id: "stadttheater-ingolstadt", name: "Stadttheater Ingolstadt" })
+  .onConflictDoNothing();
+await db
+  .insert(departments)
+  .values({ id: "maske", organizationId: "stadttheater-ingolstadt", name: "Maske" })
+  .onConflictDoNothing();
+const [existing] = await db
+  .select({ id: memberships.id })
+  .from(memberships)
+  .where(eq(memberships.role, "superadmin"))
+  .limit(1);
+if (existing) {
+  console.log("Superadmin exists. No account or password changed.");
+} else {
+  const username = process.env.BOOTSTRAP_USERNAME || "superadmin";
+  const password = process.env.BOOTSTRAP_PASSWORD || randomBytes(24).toString("base64url");
+  const result = await auth.api.signUpEmail({
+    body: {
+      name: process.env.BOOTSTRAP_NAME || "Administration",
+      username,
+      email: `${crypto.randomUUID()}@users.digitalmask.invalid`,
+      password,
+    },
+  });
+  await db.insert(memberships).values({
+    id: crypto.randomUUID(),
+    userId: result.user.id,
+    organizationId: "stadttheater-ingolstadt",
+    departmentId: "maske",
+    role: "superadmin",
+    status: "active",
+  });
+  await mkdir(".local", { recursive: true });
+  await writeFile(
+    ".local/ADMIN-ZUGANG.txt",
+    `DigitalMask Superadmin\n\nAdresse: ${process.env.APP_URL || "http://localhost:3000"}\nBenutzername: ${username}\nPasswort: ${password}\n\nBitte nach der ersten Anmeldung in den Einstellungen ändern.\nDiese Datei ist von Git ausgeschlossen.\n`,
+    { encoding: "utf8", mode: 0o600 },
+  );
+  console.log("Superadmin created. Credentials saved in ignored .local/ADMIN-ZUGANG.txt.");
+}
+await sqlClient.end();

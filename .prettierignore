@@ -1,0 +1,9 @@
+node_modules
+.next
+.vercel
+.local
+artifacts
+drizzle
+package-lock.json
+AGENTS.md
+CLAUDE.md

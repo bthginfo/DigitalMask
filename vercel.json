@@ -1,0 +1,5 @@
+{
+  "regions": ["fra1"],
+  "ignoreCommand": "test \"$VERCEL_ENV\" = \"preview\"",
+  "crons": [{ "path": "/api/cron", "schedule": "17 3 * * *" }]
+}

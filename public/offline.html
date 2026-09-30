@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#16735c" />
+    <title>DigitalMask · Offline buchen</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f6f6f1;
+        --surface: white;
+        --text: #26332e;
+        --muted: #66736b;
+        --border: #dbe3db;
+        --accent: #16735c;
+      }
+      html[data-theme="dark"] {
+        color-scheme: dark;
+        --bg: #171e1b;
+        --surface: #202a25;
+        --text: #e8eee8;
+        --muted: #a4b3a8;
+        --border: #35433a;
+        --accent: #80cdb0;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font:
+          15px "Segoe UI",
+          sans-serif;
+        line-height: 1.6;
+      }
+      main {
+        max-width: 500px;
+        padding: 35px 24px;
+        margin: 4vh auto;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 23px;
+        font-weight: 700;
+        margin-bottom: 35px;
+      }
+      .brand img {
+        width: 38px;
+        height: 38px;
+      }
+      h1 {
+        font-size: 31px;
+        line-height: 1.2;
+        letter-spacing: -1px;
+        margin: 0 0 15px;
+      }
+      p {
+        color: var(--muted);
+        font-size: 13px;
+      }
+      form {
+        padding: 22px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        margin: 25px 0;
+      }
+      label {
+        display: block;
+        font-size: 12px;
+        font-weight: 600;
+        margin-bottom: 18px;
+      }
+      input,
+      select {
+        font: 16px inherit;
+        width: 100%;
+        min-height: 46px;
+        padding: 11px;
+        border: 1px solid var(--border);
+        border-radius: 7px;
+        background: var(--surface);
+        color: var(--text);
+        margin-top: 7px;
+      }
+      button {
+        font: 13px inherit;
+        font-weight: 600;
+        min-height: 46px;
+        padding: 12px 18px;
+        border: 1px solid var(--border);
+        border-radius: 7px;
+        background: var(--surface);
+        color: var(--text);
+        cursor: pointer;
+      }
+      .primary {
+        width: 100%;
+        background: var(--accent);
+        border-color: var(--accent);
+        color: var(--surface);
+      }
+      html[data-theme="dark"] .primary {
+        color: #173325;
+      }
+      .row {
+        display: flex;
+        gap: 14px;
+      }
+      .row > label {
+        flex: 1;
+      }
+      #message {
+        font-size: 13px;
+        color: var(--accent);
+        margin-top: 15px;
+      }
+      footer {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      button:focus-visible,
+      input:focus-visible,
+      select:focus-visible {
+        outline: 3px solid var(--accent);
+        outline-offset: 3px;
+      }
+      .small {
+        font-size: 11px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="brand"><img src="/icon.svg" alt="" />digitalmask</div>
+      <h1>Deine Zeit.<br />Auch ohne Verbindung.</h1>
+      <p>
+        Speichere eine Tätigkeit als Geräteentwurf. Der Entwurf gehört noch zu keinem Konto. Wenn du
+        wieder online bist, kannst du ihn im Bereich „Zeit buchen“ ausdrücklich in deinen Account
+        übernehmen.
+      </p>
+      <form id="booking">
+        <label
+          >Tätigkeit<input
+            name="title"
+            required
+            maxlength="200"
+            placeholder="Woran hast du gearbeitet?"
+        /></label>
+        <div class="row">
+          <label>Datum<input name="date" type="date" required /></label
+          ><label
+            >Minuten<input
+              name="minutes"
+              type="number"
+              min="1"
+              max="10080"
+              required
+              placeholder="z. B. 45"
+          /></label>
+        </div>
+        <label
+          >Kategorie<select name="category">
+            <option value="production">Produktionsarbeit</option>
+            <option value="office">Büro</option>
+            <option value="cleaning">Aufräumen</option>
+            <option value="other">Allgemeine Arbeit</option>
+          </select></label
+        ><button class="primary" type="submit">Geräteentwurf speichern</button>
+        <div id="message" role="status"></div>
+      </form>
+      <p id="count" class="small"></p>
+      <footer>
+        <button id="retry">Verbindung erneut prüfen</button
+        ><button id="discard">Geräteentwürfe verwerfen</button>
+      </footer>
+      <p class="small">
+        Die Entwürfe bleiben in diesem Browser. Produktionszuordnungen ergänzt du nach dem Anmelden.
+      </p>
+    </main>
+    <script>
+      (function () {
+        const key = "digitalmask-offline-inbox";
+        const form = document.getElementById("booking");
+        try {
+          const theme = localStorage.getItem("digitalmask-theme") || "system";
+          document.documentElement.setAttribute(
+            "data-theme",
+            theme === "system"
+              ? matchMedia("(prefers-color-scheme: dark)").matches
+                ? "dark"
+                : "light"
+              : theme,
+          );
+        } catch (e) {}
+        const today = new Date();
+        form.elements.date.value =
+          today.getFullYear() +
+          "-" +
+          String(today.getMonth() + 1).padStart(2, "0") +
+          "-" +
+          String(today.getDate()).padStart(2, "0");
+        function read() {
+          try {
+            const value = JSON.parse(localStorage.getItem(key) || "[]");
+            return Array.isArray(value) ? value : [];
+          } catch (e) {
+            return [];
+          }
+        }
+        function count() {
+          document.getElementById("count").textContent =
+            read().length + " Geräteentwürfe auf diesem Gerät gespeichert.";
+        }
+        form.addEventListener("submit", function (event) {
+          event.preventDefault();
+          try {
+            const data = new FormData(form);
+            const minutes = Number(data.get("minutes"));
+            if (!Number.isFinite(minutes) || minutes <= 0)
+              throw new Error("Bitte gültige Minuten eingeben.");
+            const drafts = read();
+            drafts.push({
+              id: crypto.randomUUID(),
+              createdAt: new Date().toISOString(),
+              data: {
+                title: String(data.get("title")).trim(),
+                date: String(data.get("date")),
+                durationSeconds: Math.round(minutes * 60),
+                pauseSeconds: 0,
+                category: String(data.get("category")),
+                productionId: "",
+              },
+            });
+            localStorage.setItem(key, JSON.stringify(drafts));
+            document.getElementById("message").textContent =
+              "Gespeichert. Du kannst den nächsten Entwurf erfassen.";
+            form.elements.title.value = "";
+            form.elements.minutes.value = "";
+            count();
+          } catch (error) {
+            document.getElementById("message").textContent =
+              error.message || "Der Browser konnte den Entwurf nicht speichern.";
+          }
+        });
+        document.getElementById("retry").addEventListener("click", function () {
+          location.reload();
+        });
+        document.getElementById("discard").addEventListener("click", function () {
+          if (confirm("Alle unzugeordneten Geräteentwürfe verwerfen?")) {
+            localStorage.removeItem(key);
+            count();
+            document.getElementById("message").textContent = "Geräteentwürfe verworfen.";
+          }
+        });
+        count();
+      })();
+    </script>
+  </body>
+</html>
