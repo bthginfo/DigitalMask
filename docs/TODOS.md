@@ -1,6 +1,6 @@
-# Umsetzungsstand und nächste Module
+# Umsetzungsstand
 
-Die Nutzerergänzungen vom 30. September 2026 werden vollständig umgesetzt. Zwischendeployments erfolgen nach einem abgeschlossenen, geprüften Modul.
+Das Releasepaket enthält die Nutzerergänzungen vom 30. September 2026. Die Module wurden gezielt geprüft; unabhängige Designprüfungen für die neue Oberfläche und Drucklayouts sind bestanden.
 
 ## Geprüfter Produktionsumbau
 
@@ -13,24 +13,24 @@ Die Nutzerergänzungen vom 30. September 2026 werden vollständig umgesetzt. Zwi
 
 ## Anwesenheit und Produktionszeit
 
-- [ ] Anwesenheit im Theater getrennt von Arbeitszeit auf Produktionen erfassen.
-- [ ] Beide Bereiche manuell nachtragen und bearbeiten; Beginn/Ende auch bei Timerbuchungen korrigieren.
-- [ ] Anwesenheit und Produktionsarbeit parallel stoppen/starten, ohne doppelte Buchungen im selben Bereich.
-- [ ] Eigene Tages-/Wochensummen, sinnvolle Vergleiche und getrennte Exporte.
+- [x] Anwesenheit im Theater getrennt von Arbeitszeit auf Produktionen erfassen.
+- [x] Beide Bereiche manuell nachtragen und bearbeiten; Beginn/Ende auch bei Timerbuchungen korrigieren.
+- [x] Anwesenheit und Produktionsarbeit parallel stoppen/starten, ohne doppelte Buchungen im selben Bereich.
+- [x] Eigene Tages-/Wochensummen, sinnvolle Vergleiche und getrennte Exporte.
 
 ## Kalender
 
-- [ ] Teamraster zwischen Woche und Monat umschalten, mit Person, Datum, Tätigkeit, Produktion/Ort und zugänglichen Details.
-- [ ] Kategorien von Admins anlegen, bearbeiten und löschen; verwendete Kategorien vor versehentlichem Datenverlust schützen.
-- [ ] Standardmäßig zusätzlich Krank, ABF, Ruhetag, halber freier Tag und Urlaub als ganztägige Kategorien ohne Uhrzeiten bereitstellen.
-- [ ] Termintitel optional: Produktion als Titel, andernfalls Kategorie als sichtbarer Titel.
-- [ ] Monats-Teamübersicht und neue Kategorien in den Druck-/Datenexporten berücksichtigen.
+- [x] Teamraster zwischen Woche und Monat umschalten, mit Person, Datum, Tätigkeit, Produktion/Ort und zugänglichen Details.
+- [x] Kategorien von Admins anlegen, bearbeiten und löschen; verwendete Kategorien vor versehentlichem Datenverlust schützen.
+- [x] Standardmäßig zusätzlich Krank, ABF, Ruhetag, halber freier Tag und Urlaub als ganztägige Kategorien ohne Uhrzeiten bereitstellen.
+- [x] Termintitel optional: Produktion als Titel, andernfalls Kategorie als sichtbarer Titel.
+- [x] Monats-Teamübersicht und neue Kategorien in den Druck-/Datenexporten berücksichtigen.
 
 ## Kommunikation
 
-- [ ] Direktnachrichten an eine Person und private Gruppen mit ausgewählten Personen anlegen.
-- [ ] Teilnehmerrechte für Nachrichten und Dateien serverseitig durchsetzen.
-- [ ] Allgemeiner Maskenkanal und Projektchats bleiben verfügbar.
+- [x] Direktnachrichten an eine Person und private Gruppen mit ausgewählten Personen anlegen.
+- [x] Teilnehmerrechte für Nachrichten und Dateien serverseitig durchsetzen.
+- [x] Allgemeiner Maskenkanal und Projektchats bleiben verfügbar.
 
 ## Profil, Hilfe und Gestaltung
 
@@ -43,29 +43,40 @@ Die Nutzerergänzungen vom 30. September 2026 werden vollständig umgesetzt. Zwi
 
 ## Übergreifende Anforderungen
 
-- [ ] Neue Abläufe auf Desktop und Smartphone prüfen; Safari-Engine WebKit berücksichtigen.
-- [ ] Datenbankabfragen bündeln und cachen; keine zusätzlichen dauerhaften Polls für neue Ansichten.
-- [ ] Dokumentation, Migrationen und Rollenprüfungen vervollständigen.
-- [ ] Alle Module nach Prüfung auf GitHub pushen und auf Vercel bereitstellen.
+- [x] Neue Abläufe auf Desktop und Smartphone prüfen; Safari-Engine WebKit berücksichtigen.
+- [x] Datenbankabfragen bündeln und cachen; keine zusätzlichen dauerhaften Polls für neue Ansichten.
+- [x] Dokumentation, Migrationen und Rollenprüfungen vervollständigen.
+
+Die Bereitstellung erfolgt nach den Releaseprüfungen über GitHub und die bestehende Vercel-Anbindung. Der tatsächliche READY-Zustand wird anschließend kontrolliert.
 
 ## Weitere Produktions- und Dokumentationsänderungen
 
-- [ ] Maskenbetreuung als wichtigste Ansprechperson prominent im Produktionsüberblick, neben dem übrigen Team.
-- [ ] Figuren und Schauspieler direkt beim Besetzen anlegen; alternativ freie Figuren-/Besetzungsnamen zulassen.
-- [ ] Zentrale Aufschriebe zeigen allgemeine Dokumente und Dokumente aller zugänglichen Produktionen, gruppiert, suchbar und filterbar inklusive Archiv.
-- [ ] Sinnvolle gemeinsame Spielzeit- und Jahresfilter für Produktionen, Aufschriebe, Kalender, Aufgaben und Zeitübersichten.
-- [ ] Aufschriebanzeige nach Schauspieler; kein manuell erforderlicher Titel, keine Szene/Akt-Auswahl, kein sichtbarer Status.
-- [ ] Allgemeine Stückdauer; wiederholbare Textfelder in Vorbereitung (zuerst), Makeup, Haare, Perücken und Bärte, Umbau & Wechsel sowie Einrichten. Alte Dokumente ohne Datenverlust weiterhin lesbar machen.
-- [ ] Produktionsübergaben aus Produktionsarbeitsräumen entfernen; allgemeine Dienstübergabe erhalten.
-- [ ] Allgemeine Dienstübergaben ohne Produktionszuordnung, Status und Vorstellungsdatum; wiederholbare Textfelder besonders in „Worauf muss ich achten“.
-- [ ] Checklisten und vergleichbare Listen global als einzelne hinzufügbare/bearbeitbare/entfernbare Elemente statt Trennzeichen-Textfeldern.
-- [ ] Fachliche Kategorien (Fundus/Material, Zeitbuchung, Kalender und Dokumentationsbereiche) verwaltbar machen; genutzte Kategorien und historische Zuordnungen schützen.
+- [x] Maskenbetreuung als wichtigste Ansprechperson prominent im Produktionsüberblick, neben dem übrigen Team.
+- [x] Figuren und Schauspieler direkt beim Besetzen anlegen; alternativ freie Figuren-/Besetzungsnamen zulassen.
+- [x] Zentrale Aufschriebe zeigen allgemeine Dokumente und Dokumente aller zugänglichen Produktionen, gruppiert, suchbar und filterbar inklusive Archiv.
+- [x] Sinnvolle gemeinsame Spielzeit- und Jahresfilter für Produktionen, Aufschriebe, Kalender, Aufgaben und Zeitübersichten.
+- [x] Aufschriebanzeige nach Schauspieler; kein manuell erforderlicher Titel, keine Szene/Akt-Auswahl, kein sichtbarer Status.
+- [x] Allgemeine Stückdauer; wiederholbare Textfelder in Vorbereitung (zuerst), Makeup, Haare, Perücken und Bärte, Umbau & Wechsel sowie Einrichten. Alte Dokumente ohne Datenverlust weiterhin lesbar machen.
+- [x] Produktionsübergaben aus Produktionsarbeitsräumen entfernen; allgemeine Dienstübergabe erhalten.
+- [x] Allgemeine Dienstübergaben ohne Produktionszuordnung, Status und Vorstellungsdatum; wiederholbare Textfelder besonders in „Worauf muss ich achten“.
+- [x] Checklisten und vergleichbare Listen global als einzelne hinzufügbare/bearbeitbare/entfernbare Elemente statt Trennzeichen-Textfeldern.
+- [x] Fachliche Kategorien (Fundus/Material, Zeitbuchung, Kalender und Dokumentationsbereiche) verwaltbar machen; genutzte Kategorien und historische Zuordnungen schützen.
 
 ## Wiederverwendbare externe Kontakte
 
-- [ ] Eigenes Verzeichnis „Weitere Personen“ für Kontakte ohne Benutzerkonto und ohne Schauspielerkatalog-Zuordnung.
-- [ ] Name, Organisation/Funktion, E-Mail, Telefonnummer und Notizen speichern, bearbeiten und löschen (mit Schutz genutzter Zuordnungen).
-- [ ] Produktionskontakte mit dem Verzeichnis verknüpfen, direkt dort neue Kontakte anlegen und in weiteren Produktionen wiederverwenden.
-- [ ] Rollen bleiben je Produktion frei benennbar; Maskenbetreuung weiter aus dem aktiven Maskenteam oder als freier Name.
-- [ ] Kontaktverzeichnis und Produktionskontakte sinnvoll exportieren.
-- [ ] Namen der Maskenbetreuung bereits auf den bestehenden Produktionskacheln zeigen; Gestaltung der Kacheln beibehalten.
+- [x] Eigenes Verzeichnis „Weitere Personen“ für Kontakte ohne Benutzerkonto und ohne Schauspielerkatalog-Zuordnung.
+- [x] Name, Organisation/Funktion, E-Mail, Telefonnummer und Notizen speichern, bearbeiten und löschen (mit Schutz genutzter Zuordnungen).
+- [x] Produktionskontakte mit dem Verzeichnis verknüpfen, direkt dort neue Kontakte anlegen und in weiteren Produktionen wiederverwenden.
+- [x] Rollen bleiben je Produktion frei benennbar; Maskenbetreuung weiter aus dem aktiven Maskenteam oder als freier Name.
+- [x] Kontaktverzeichnis und Produktionskontakte sinnvoll exportieren.
+- [x] Namen der Maskenbetreuung bereits auf den bestehenden Produktionskacheln zeigen; Gestaltung der Kacheln beibehalten.
+
+## Weiteres Gestaltungsfeedback
+
+- [x] Einführung zeigt die erklärte Modulansicht ohne unscharfen Hintergrund; einfache Texte und erneutes Starten prüfen.
+- [x] Neues minimalistisches Logo, da die erste Variante nicht gefällt.
+- [x] Produktionsübersicht standardmäßig nach Premiere sortieren, andere Sortierungen auswählbar.
+
+## QA-Nachbereitung
+
+Nach den abschließenden Liveprüfungen werden die angelegten QA-Konten, Testeinträge und Testdateien aus der produktiven Umgebung entfernt. Automatische Testdefinitionen bleiben für spätere Änderungen erhalten.

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { RecordKind } from "@/shared/contracts";
+import { categoryScopes } from "@/shared/domain-categories";
 const short = z.string().trim().max(200);
 const title = short.min(1, "Ein Titel ist erforderlich.");
 const note = z.string().max(20000).default("");
@@ -13,6 +14,35 @@ const checklist = z
   .array(z.object({ text: z.string().min(1).max(500), done: z.boolean().default(false) }))
   .max(100)
   .default([]);
+const sections = z
+  .array(
+    z.object({
+      key: z
+        .string()
+        .min(1)
+        .max(80)
+        .regex(/^[a-z0-9_-]+$/),
+      entries: z
+        .array(
+          z.object({
+            id: z.string().min(1).max(100),
+            label: short.optional(),
+            text: z.string().max(20000),
+          }),
+        )
+        .max(100)
+        .refine(
+          (entries) => new Set(entries.map((entry) => entry.id)).size === entries.length,
+          "Textfelder benötigen eindeutige IDs.",
+        ),
+    }),
+  )
+  .max(100)
+  .refine(
+    (items) => new Set(items.map((item) => item.key)).size === items.length,
+    "Jede Kategorie darf nur einmal vorkommen.",
+  )
+  .optional();
 const productionContact = z
   .object({
     id: z.string().min(1).max(100),
@@ -20,15 +50,19 @@ const productionContact = z
     type: z.enum(["external", "makeup"]).default("external"),
     name: short.default(""),
     memberId: id,
+    personId: z.string().max(100).optional(),
   })
   .superRefine((contact, context) => {
-    if (contact.type === "external" && (!contact.name || contact.memberId))
+    if (contact.type === "external" && (!(contact.name || contact.personId) || contact.memberId))
       context.addIssue({
         code: "custom",
         message: "Externe Kontakte benötigen einen Namen und kein Teamkonto.",
         path: ["name"],
       });
-    if (contact.type === "makeup" && Boolean(contact.name) === Boolean(contact.memberId))
+    if (
+      contact.type === "makeup" &&
+      Boolean(contact.name || contact.personId) === Boolean(contact.memberId)
+    )
       context.addIssue({
         code: "custom",
         message: "Bitte wähle eine Maskenperson oder trage einen Namen ein.",
@@ -44,6 +78,28 @@ const productionContacts = z
   )
   .default([]);
 export const schemas: Record<RecordKind, z.ZodType> = {
+  people: z.object({
+    name: title,
+    organization: short.default(""),
+    position: short.default(""),
+    email: z.union([z.email().max(320), z.literal("")]).default(""),
+    phone: z.string().trim().max(100).default(""),
+    notes: note,
+  }),
+  categories: z.object({
+    scope: z.enum(categoryScopes),
+    key: z
+      .string()
+      .min(1)
+      .max(80)
+      .regex(/^[a-z0-9_-]+$/),
+    name: title,
+    color: z
+      .string()
+      .regex(/^#[0-9a-fA-F]{6}$/)
+      .default("#377a68"),
+    order: z.number().int().min(0).max(10000).default(0),
+  }),
   conversations: z.object({
     title: short.default(""),
     mode: z.enum(["direct", "group"]).default("group"),
@@ -60,6 +116,7 @@ export const schemas: Record<RecordKind, z.ZodType> = {
     name: title,
     color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
     allDay: z.boolean().default(false),
+    blocksTime: z.boolean().optional(),
   }),
   attendance: z.object({
     title: short.default("Anwesenheit"),
@@ -96,6 +153,7 @@ export const schemas: Record<RecordKind, z.ZodType> = {
     memberIds: ids,
     contacts: productionContacts,
     sourceId: id,
+    durationMinutes: z.number().min(0).max(10000).default(0),
   }),
   actors: z.object({
     name: title,
@@ -110,6 +168,8 @@ export const schemas: Record<RecordKind, z.ZodType> = {
     productionId: id,
     characterId: id,
     actorId: id,
+    actorName: short.default(""),
+    characterName: short.default(""),
     alternate: z.boolean().default(false),
     imageIds: ids,
   }),
@@ -159,7 +219,7 @@ export const schemas: Record<RecordKind, z.ZodType> = {
     title,
     productionId: id,
     taskId: id,
-    category: z.enum(["production", "office", "cleaning", "other"]).default("production"),
+    category: title.default("production"),
     start: z.string().max(50).default(""),
     end: z.string().max(50).default(""),
     durationSeconds: z
@@ -173,10 +233,14 @@ export const schemas: Record<RecordKind, z.ZodType> = {
     idempotencyKey: z.string().max(100).default(""),
   }),
   looks: z.object({
-    title,
+    title: short.default(""),
     productionId: id,
     characterId: id,
     actorId: id,
+    actorName: short.default(""),
+    characterName: short.default(""),
+    productionDurationMinutes: z.number().min(0).max(10000).nullable().optional(),
+    sections,
     scene: short.default(""),
     preparation: note,
     materials: note,
@@ -193,6 +257,7 @@ export const schemas: Record<RecordKind, z.ZodType> = {
     title,
     fields: z.array(z.string().min(1).max(100)).max(100).default([]),
     version: z.number().int().positive().default(1),
+    sections,
   }),
   messages: z.object({
     text: z.string().trim().min(1).max(10000),
@@ -203,7 +268,7 @@ export const schemas: Record<RecordKind, z.ZodType> = {
   }),
   materials: z.object({
     name: title,
-    category: z.enum(["wig", "makeup", "tool", "other"]).default("other"),
+    category: title.default("other"),
     location: short.default(""),
     quantity: z.number().min(0).max(1000000).default(0),
     minQuantity: z.number().min(0).max(1000000).default(0),
@@ -213,8 +278,11 @@ export const schemas: Record<RecordKind, z.ZodType> = {
   handovers: z.object({
     title,
     productionId: id,
-    date: day,
+    legacyProductionId: id,
+    date: z.union([day, z.literal("")]).default(""),
     notes: note,
+    sections,
+    imageIds: ids,
     checklist,
     status: z.enum(["open", "complete"]).default("open"),
   }),

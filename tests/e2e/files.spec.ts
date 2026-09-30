@@ -1,3 +1,4 @@
+import { qaResources } from "./qa-resources";
 import { test, expect, request as playwrightRequest } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import sharp from "sharp";
@@ -11,7 +12,7 @@ test("private images, printable look sheets and copied production assets", async
   const anonymous = await playwrightRequest.newContext({
     baseURL: process.env.E2E_BASE_URL || "http://localhost:3000",
   });
-  const created: { kind: string; id: string }[] = [];
+  const created = qaResources();
   const create = async (kind: string, data: Record<string, unknown>) => {
     const response = await admin.post(`/api/records/${kind}`, { data: { data } });
     expect(response.status(), await response.text()).toBe(201);

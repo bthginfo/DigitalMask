@@ -32,19 +32,35 @@ export async function GET(request: Request) {
       from = query.get("from") || undefined,
       to = query.get("to") || undefined;
     const teamOnly = query.get("teamOnly") === "true";
+    const generalOnly =
+      query.get("generalOnly") === "true" ||
+      (kind === "messages" && !productionId && !conversationId);
+    if (generalOnly && (!["messages", "looks"].includes(kind) || productionId || conversationId))
+      throw new HttpError(
+        400,
+        "Bitte wähle allgemeine Einträge oder eine einzelne Produktion bzw. einen Chat.",
+      );
     if (teamOnly && (kind !== "tasks" || productionId))
       throw new HttpError(400, "Das Teamboard enthält ausschließlich Aufgaben ohne Produktion.");
     if ((from && !/^\d{4}-\d{2}-\d{2}$/.test(from)) || (to && !/^\d{4}-\d{2}-\d{2}$/.test(to)))
       throw new HttpError(400, "Ungültiger Zeitraum.");
     if (from && to && to < from) throw new HttpError(400, "Bitte prüfe den Zeitraum.");
     const userIds = query.get("userIds")?.split(",").filter(Boolean) || [];
+    const year = query.has("year")
+      ? z.coerce.number().int().min(1900).max(2200).parse(query.get("year"))
+      : undefined;
+    const season = query.get("season") ? z.string().max(200).parse(query.get("season")) : undefined;
     if (userIds.length > 100) throw new HttpError(400, "Zu viele Kalender ausgewählt.");
     if (id) selected = selected.filter((r) => r.id === id);
     selected = selectExportRecords({
       kind,
       records: selected,
       teamOnly,
+      generalOnly,
       productionId: productionId || undefined,
+      year,
+      season,
+      references: workspace.records,
     });
     if (userId)
       selected = selected.filter((r) =>
@@ -65,7 +81,7 @@ export async function GET(request: Request) {
         return dates.some((date) => (!from || date >= from) && (!to || date <= to));
       });
     const images: Record<string, Uint8Array> = {};
-    if (["looks", "characters", "casting"].includes(kind) && format === "pdf") {
+    if (["looks", "handovers", "characters", "casting"].includes(kind) && format === "pdf") {
       const ids = Array.from(new Set(selected.flatMap((r) => listValue(r.data.imageIds))));
       if (ids.length > 80)
         throw new HttpError(
@@ -111,8 +127,11 @@ export async function GET(request: Request) {
       references: workspace.records,
       images,
       teamOnly,
+      generalOnly,
       productionId: productionId || undefined,
       userIds,
+      year,
+      season,
     });
     return new Response(Buffer.from(result.bytes), {
       headers: {

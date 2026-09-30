@@ -9,9 +9,21 @@ export const defaultCalendarCategories = [
   { key: "sick", name: "Krank", color: "#b86d73", allDay: true },
   { key: "abf", name: "ABF", color: "#8c74ad", allDay: true },
   { key: "rest", name: "Ruhetag", color: "#758f8a", allDay: true },
-  { key: "half-day-off", name: "Halber freier Tag", color: "#ba9560", allDay: true },
+  {
+    key: "half-day-off",
+    name: "Halber freier Tag",
+    color: "#ba9560",
+    allDay: true,
+    blocksTime: false,
+  },
   { key: "vacation", name: "Urlaub", color: "#5c92a8", allDay: true },
 ] as const;
+
+/** Half-day leave is a date marker, so a timed service can still occupy the working half. */
+export function calendarCategoryBlocksTime(key: string, categories: DomainRecord[] = []) {
+  const category = categories.find((row) => row.data.key === key)?.data;
+  return typeof category?.blocksTime === "boolean" ? category.blocksTime : key !== "half-day-off";
+}
 
 /** Uses cached workspace references; no database call for a label, legend or export. */
 export function calendarPresentation(

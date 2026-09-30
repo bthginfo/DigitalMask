@@ -9,6 +9,14 @@ import { validateBooking } from "@/modules/time-tracking/validation";
 import { occurrences } from "@/modules/calendar/occurrences";
 import { assertConversation } from "@/modules/chat/permissions";
 import { prepareConversation } from "@/modules/chat/conversations";
+import { prepareProductionContacts } from "@/modules/people/production-contacts";
+import {
+  validateDomainCategory,
+  assertUnusedDomainCategory,
+  validateCategoryReferences,
+} from "@/modules/categories/service";
+import { lookTitle } from "@/shared/document-sections";
+import { calendarPresentation, calendarCategoryBlocksTime } from "@/shared/calendar-categories";
 import {
   validateCalendarCategory,
   assertUnusedCategory,
@@ -33,6 +41,8 @@ const adminKinds = new Set<RecordKind>([
   "events",
   "templates",
   "calendarCategories",
+  "people",
+  "categories",
 ]);
 export async function assertRead(
   context: Context,
@@ -109,7 +119,8 @@ async function validateRelations(
   tx: Transaction,
   recordId?: string,
 ) {
-  await assertProject(context, data.productionId, tx);
+  const production = await assertProject(context, data.productionId, tx);
+  let eventTitle = textValue(data.title);
   let conversation: typeof records.$inferSelect | undefined;
   if (kind === "messages") {
     if (data.productionId && data.conversationId)
@@ -162,6 +173,10 @@ async function validateRelations(
     if (value) {
       const targetRow = await findRecord(context, value, target, tx);
       await assertRead(context, targetRow, tx);
+      if (["looks", "casting"].includes(kind) && field === "actorId")
+        data.actorName = targetRow.data.name;
+      if (["looks", "casting"].includes(kind) && field === "characterId")
+        data.characterName = targetRow.data.name;
       if (targetRow.data.productionId && targetRow.data.productionId !== data.productionId)
         throw new HttpError(400, "Die Zuordnung gehört zu einer anderen Produktion.");
     }
@@ -197,8 +212,13 @@ async function validateRelations(
   }
   if (["characters", "casting", "sprints"].includes(kind) && !data.productionId)
     throw new HttpError(400, "Bitte wähle eine Produktion.");
-  if (kind === "casting" && (!data.actorId || !data.characterId))
-    throw new HttpError(400, "Bitte wähle Schauspieler und Figur.");
+  if (
+    kind === "casting" &&
+    (!(data.actorId || data.actorName) || !(data.characterId || data.characterName))
+  )
+    throw new HttpError(400, "Bitte wähle Schauspieler und Figur oder trage deren Namen ein.");
+  if (kind === "looks" && data.sections !== undefined && !(data.actorId || data.actorName))
+    throw new HttpError(400, "Bitte wähle eine Schauspielperson oder trage ihren Namen ein.");
   if (kind === "tasks" && data.parentId) {
     let parent = String(data.parentId);
     for (let depth = 0; parent; depth++) {
@@ -215,7 +235,8 @@ async function validateRelations(
   if (kind === "leave" && String(data.end) < String(data.start))
     throw new HttpError(400, "Bitte prüfe den Zeitraum.");
   if (kind === "events") {
-    await normalizeEventCategory(context, data, tx);
+    const categoryName = await normalizeEventCategory(context, data, tx);
+    eventTitle ||= textValue(production?.data.title) || categoryName;
     if (new Date(String(data.end)) <= new Date(String(data.start)))
       throw new HttpError(400, "Das Ende muss nach dem Beginn liegen.");
     if (data.until && String(data.until) < localDay(String(data.start)))
@@ -228,7 +249,7 @@ async function validateRelations(
         .where(
           and(
             eq(records.departmentId, context.departmentId),
-            eq(records.kind, "events"),
+            inArray(records.kind, ["events", "productions", "calendarCategories"]),
             recordId ? ne(records.id, recordId) : undefined,
           ),
         );
@@ -251,20 +272,35 @@ async function validateRelations(
       const horizon = new Date(String(data.end));
       horizon.setUTCDate(horizon.getUTCDate() + 90);
       const proposed = occurrences(event, new Date(String(data.start)), horizon);
+      const references = candidates.map(serialize);
+      const calendarCategories = references.filter((item) => item.kind === "calendarCategories");
       for (const row of candidates) {
+        if (row.kind !== "events") continue;
+        if (
+          !calendarCategoryBlocksTime(String(data.category), calendarCategories) ||
+          !calendarCategoryBlocksTime(String(row.data.category), calendarCategories)
+        )
+          continue;
         if (!listValue(row.data.participantIds).some((x) => selected.includes(x))) continue;
         const other = occurrences(serialize(row), new Date(String(data.start)), horizon);
         if (proposed.some((a) => other.some((b) => a.start < b.end && a.end > b.start)))
           throw new HttpError(
             409,
-            `Zeitkonflikt mit „${row.data.title}“. Bitte passe die Planung an.`,
+            `Zeitkonflikt mit „${
+              calendarPresentation(
+                serialize(row),
+                references.filter((item) => item.kind === "productions"),
+                references.filter((item) => item.kind === "calendarCategories"),
+              ).title
+            }“. Bitte passe die Planung an.`,
           );
       }
     }
   }
   if (kind === "time" || kind === "attendance")
     await validateBooking(context, kind, data, tx, recordId);
-  return conversation;
+  await validateCategoryReferences(context, kind, data, tx);
+  return { conversation, eventTitle };
 }
 export async function saveRecord(
   context: Context,
@@ -298,6 +334,7 @@ export async function saveRecord(
       }
     }
     if (kind === "productions") {
+      await prepareProductionContacts(context, data, tx, existing);
       // Resolve every team reference in the existing batched membership query.
       data.memberIds = Array.from(
         new Set([
@@ -331,6 +368,8 @@ export async function saveRecord(
     }
     if (kind === "templates" && existing) data.version = Number(existing.data.version || 1) + 1;
     if (kind === "calendarCategories") await validateCalendarCategory(context, data, tx, existing);
+    if (kind === "categories") await validateDomainCategory(context, data, tx, existing);
+    if (kind === "handovers") data.productionId = "";
     if (kind === "time" || kind === "attendance")
       await tx.execute(
         sql`select pg_advisory_xact_lock(hashtext(${context.departmentId + ":" + kind + ":" + String(data.userId)}))`,
@@ -356,7 +395,11 @@ export async function saveRecord(
     }
     if (existing && kind === "time")
       await validateRelations(context, kind, { ...existing.data }, tx, existingId);
-    const relatedConversation = await validateRelations(context, kind, data, tx, existingId);
+    const related = await validateRelations(context, kind, data, tx, existingId);
+    if (kind === "looks" && (data.sections !== undefined || data.actorName)) {
+      data.title = lookTitle(data);
+      if (data.sections !== undefined) data.status = "published";
+    }
     const values = {
       data,
       productionId: textValue(data.productionId) || null,
@@ -428,7 +471,7 @@ export async function saveRecord(
     }
     if (kind === "messages" && data.conversationId && !existing) {
       await emit(tx, context, "ChatMessageCreatedV1", {
-        userIds: listValue(relatedConversation?.data.participantIds),
+        userIds: listValue(related.conversation?.data.participantIds),
         title: "Neue private Nachricht",
         body: String(data.text).slice(0, 160),
         conversationId: data.conversationId,
@@ -440,7 +483,7 @@ export async function saveRecord(
       await emit(tx, context, "ServiceChangedV1", {
         userIds: listValue(data.participantIds),
         title: existing ? "Dienst geändert" : "Neuer Dienst",
-        body: String(data.title),
+        body: related.eventTitle,
         link: "/?module=calendar",
         recordId: row.id,
         productionId: data.productionId,
@@ -491,6 +534,8 @@ export async function deleteRecord(context: Context, kind: RecordKind, id: strin
     await assertRead(context, row, tx);
     if (kind === "calendarCategories")
       await assertUnusedCategory(context, String(row.data.key), tx);
+    if (kind === "categories")
+      await assertUnusedDomainCategory(context, String(row.data.scope), String(row.data.key), tx);
     if (kind === "events" && row.data.leaveId)
       throw new HttpError(409, "Diese Abwesenheit wird über die Freiwunschentscheidung verwaltet.");
     if (kind === "time" || kind === "leave") {
@@ -506,7 +551,7 @@ export async function deleteRecord(context: Context, kind: RecordKind, id: strin
           eq(records.departmentId, context.departmentId),
           ne(records.id, id),
           ne(records.kind, "notifications"),
-          sql`(${records.productionId}=${id} or ${records.parentId}=${id} or ${records.data}->>'actorId'=${id} or ${records.data}->>'characterId'=${id} or ${records.data}->>'sprintId'=${id} or ${records.data}->>'taskId'=${id} or ${records.data}->>'templateId'=${id} or ${records.data}->>'conversationId'=${id})`,
+          sql`(${records.productionId}=${id} or ${records.parentId}=${id} or ${records.data}->>'actorId'=${id} or ${records.data}->>'characterId'=${id} or ${records.data}->>'sprintId'=${id} or ${records.data}->>'taskId'=${id} or ${records.data}->>'templateId'=${id} or ${records.data}->>'conversationId'=${id} or ${records.data}->'contacts' @> ${JSON.stringify([{ personId: id }])}::jsonb)`,
         ),
       )
       .limit(1);

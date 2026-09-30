@@ -20,6 +20,8 @@ export const recordKinds = [
   "attendance",
   "calendarCategories",
   "conversations",
+  "people",
+  "categories",
 ] as const;
 export type RecordKind = (typeof recordKinds)[number];
 export type Role = "superadmin" | "admin" | "user";
@@ -37,6 +39,7 @@ export interface ProductionContact {
   type: "external" | "makeup";
   name: string;
   memberId: string;
+  personId?: string;
 }
 export const contactsValue = (value: unknown): ProductionContact[] =>
   Array.isArray(value)

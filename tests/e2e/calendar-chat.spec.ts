@@ -1,3 +1,4 @@
+import { trackQaResources } from "./qa-resources";
 import {
   test,
   expect,
@@ -21,6 +22,7 @@ test("calendar category lifecycle and private chat/file permissions", async () =
     const response = await client.post(`/api/records/${kind}`, { data: { data } });
     expect(response.status(), await response.text()).toBe(201);
     const row = await response.json();
+    trackQaResources({ kind, id: row.id });
     created.push({ client, kind, id: row.id });
     return row;
   };
@@ -46,6 +48,7 @@ test("calendar category lifecycle and private chat/file permissions", async () =
         (member: { username: string }) => member.username === username,
       ).id;
       ids.push(id);
+      trackQaResources({ kind: "member", id });
       expect(
         (
           await root.post("/api/actions", {
@@ -122,6 +125,21 @@ test("calendar category lifecycle and private chat/file permissions", async () =
         (row: { id: string }) => row.id === category.id,
       ),
     ).toBe(false);
+    await create(root, "events", {
+      category: "half-day-off",
+      title: "",
+      start: "2026-11-03T00:00:00+01:00",
+      end: "2026-11-04T00:00:00+01:00",
+      participantIds: [ids[0]],
+    });
+    const workingHalf = await create(root, "events", {
+      category: "service",
+      title: "QA Arbeit am halben freien Tag",
+      start: "2026-11-03T08:00:00+01:00",
+      end: "2026-11-03T12:00:00+01:00",
+      participantIds: [ids[0]],
+    });
+    expect(workingHalf.data.allDay).toBe(false);
 
     const direct = await create(a, "conversations", {
       mode: "direct",
@@ -135,6 +153,18 @@ test("calendar category lifecycle and private chat/file permissions", async () =
       text: "QA Private Direktnachricht",
       conversationId: direct.id,
     });
+    const generalExport = await b.get("/api/export?kind=messages&format=json&generalOnly=true");
+    expect(generalExport.status()).toBe(200);
+    expect((await generalExport.json()).records.map((row: { id: string }) => row.id)).not.toContain(
+      privateMessage.id,
+    );
+    const directExport = await b.get(
+      `/api/export?kind=messages&format=json&conversationId=${direct.id}`,
+    );
+    expect(directExport.status()).toBe(200);
+    expect((await directExport.json()).records.map((row: { id: string }) => row.id)).toEqual([
+      privateMessage.id,
+    ]);
     expect((await root.get(`/api/messages?conversationId=${direct.id}`)).status()).toBe(403);
     expect(
       (
@@ -188,6 +218,10 @@ test("calendar category lifecycle and private chat/file permissions", async () =
       text: "QA Privates Bild",
       conversationId: group.id,
     });
+    const defaultGeneralExport = await root.get("/api/export?kind=messages&format=json");
+    expect(
+      (await defaultGeneralExport.json()).records.map((row: { id: string }) => row.id),
+    ).not.toContain(groupMessage.id);
     const png = await sharp({
       create: { width: 20, height: 20, channels: 3, background: "#527894" },
     })

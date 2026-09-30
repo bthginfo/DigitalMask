@@ -16,7 +16,7 @@ export async function copyProduction(context: Context, id: string, title: string
         and(
           eq(records.departmentId, context.departmentId),
           eq(records.productionId, id),
-          inArray(records.kind, ["characters", "casting", "looks", "tasks", "handovers"]),
+          inArray(records.kind, ["characters", "casting", "looks", "tasks"]),
         ),
       );
     const childIds = children.map((child) => child.id);
@@ -68,7 +68,7 @@ export async function copyProduction(context: Context, id: string, title: string
         data.sprintId = "";
         data.due = "";
       }
-      if (child.kind === "looks") data.status = "draft";
+      if (child.kind === "looks") data.status = data.sections === undefined ? "draft" : "published";
       await tx.insert(records).values({
         id: map.get(child.id)!,
         kind: child.kind,

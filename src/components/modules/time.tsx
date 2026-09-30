@@ -1,6 +1,10 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
-import { Check, Clock3, Pause, Play, Plus, Square, UploadCloud } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Check, Plus, UploadCloud } from "lucide-react";
+import { PeriodPicker, periodExportFilters, weekForPeriod } from "@/components/period-picker";
+import { recordMatchesPeriod, type PeriodFilter } from "@/shared/period-filter";
+import { categoriesFor, categoryName } from "@/shared/domain-categories";
+import { CategoryManager } from "@/modules/categories/components/category-manager";
 import type { DomainRecord, RecordData } from "@/shared/contracts";
 import {
   dateLabel,
@@ -22,155 +26,24 @@ import { ResourceEditor } from "../resource-editor";
 import { RecordDetail } from "../resource-view";
 import { ExportDialog } from "../export-dialog";
 import { statusLabels } from "../resource-fields";
-export function TimerPanel({
-  compact = false,
-  productionId = "",
-}: {
-  compact?: boolean;
-  productionId?: string;
-}) {
-  const { workspace, action, busy } = useWorkspace();
-  const [now, setNow] = useState(Date.now);
-  const [error, setError] = useState("");
-  const [title, setTitle] = useState("");
-  const [project, setProject] = useState(productionId);
-  const [category, setCategory] = useState("production");
-  const timer = workspace.timer;
-  useEffect(() => {
-    if (!timer || timer.data.pausedAt) return;
-    const interval = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(interval);
-  }, [timer]);
-  const seconds = timer
-    ? Math.max(
-        0,
-        Math.floor(
-          ((timer.data.pausedAt ? new Date(String(timer.data.pausedAt)).getTime() : now) -
-            new Date(String(timer.data.startedAt)).getTime()) /
-            1000,
-        ) - num(timer.data, "pauseSeconds"),
-      )
-    : 0;
-  const display = `${String(Math.floor(seconds / 3600)).padStart(2, "0")}:${String(Math.floor(seconds / 60) % 60).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
-  const run = async (name: string) => {
-    setError("");
-    try {
-      await action(
-        name,
-        undefined,
-        name === "timer-start" ? { title: title.trim(), productionId: project, category } : {},
-      );
-      setNow(Date.now());
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Timer-Aktion fehlgeschlagen");
-    }
-  };
-  return (
-    <section className={`timer-panel ${compact ? "compact" : ""}`}>
-      <header>
-        <span className="eyebrow">
-          <Clock3 size={14} />
-          DEINE ZEIT ZÄHLT
-        </span>
-        {timer && (
-          <Badge tone={timer.data.pausedAt ? "neutral" : "green"}>
-            {timer.data.pausedAt ? "Pausiert" : "Timer läuft"}
-          </Badge>
-        )}
-      </header>
-      {timer ? (
-        <>
-          <p className="timer-value" aria-live="off">
-            {display}
-          </p>
-          <p className="timer-caption">{value(timer.data, "title")}</p>
-          <div className="timer-controls">
-            <Button
-              disabled={busy}
-              onClick={() => void run(timer.data.pausedAt ? "timer-resume" : "timer-pause")}
-            >
-              {timer.data.pausedAt ? <Play size={15} /> : <Pause size={15} />}
-              {timer.data.pausedAt ? "Fortsetzen" : "Pause"}
-            </Button>
-            <Button variant="primary" disabled={busy} onClick={() => void run("timer-stop")}>
-              <Square size={13} />
-              Stoppen & buchen
-            </Button>
-            <Button
-              variant="danger-ghost"
-              disabled={busy}
-              onClick={() => {
-                if (confirm("Laufenden Timer ohne Zeitbuchung verwerfen?"))
-                  void run("timer-discard");
-              }}
-            >
-              Timer verwerfen
-            </Button>
-          </div>
-        </>
-      ) : (
-        <>
-          <p className="timer-value">
-            00:00<span>:00</span>
-          </p>
-          <label>
-            <span className="visually-hidden">Tätigkeit</span>
-            <input
-              placeholder="Woran arbeitest du?"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
-          </label>
-          <div className="timer-selects">
-            <select
-              value={project}
-              disabled={!!productionId}
-              aria-label="Produktion für Timer"
-              onChange={(e) => setProject(e.target.value)}
-            >
-              <option value="">Allgemeine Arbeit</option>
-              {workspace.records.productions
-                .filter((x) => x.data.status !== "archived")
-                .map((x) => (
-                  <option key={x.id} value={x.id}>
-                    {value(x.data, "title")}
-                  </option>
-                ))}
-            </select>
-            <select
-              value={category}
-              aria-label="Tätigkeit"
-              onChange={(e) => setCategory(e.target.value)}
-            >
-              {[
-                ["production", "Produktion"],
-                ["office", "Büro"],
-                ["cleaning", "Aufräumen"],
-                ["other", "Allgemein"],
-              ].map(([key, label]) => (
-                <option key={key} value={key}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <Button
-            variant="primary"
-            disabled={busy || !title.trim()}
-            onClick={() => void run("timer-start")}
-          >
-            <Play size={15} />
-            Timer starten
-          </Button>
-        </>
-      )}
-      <ErrorMessage message={error} />
-    </section>
-  );
-}
+export { TimerPanel } from "@/modules/time-tracking/components/work-timer";
+import { TimerPanel } from "@/modules/time-tracking/components/work-timer";
+import { TimeWorkspace } from "@/modules/time-tracking/components/time-workspace";
 type Draft = { id: string; data: RecordData; createdAt: string };
 export function TimeModule({ productionId = "" }: { productionId?: string }) {
+  return productionId ? <WorkTimeModule productionId={productionId} /> : <TimeWorkspace />;
+}
+export function WorkTimeModule({
+  productionId = "",
+  embedded = false,
+}: {
+  productionId?: string;
+  embedded?: boolean;
+}) {
   const { workspace, action, refresh, online, busy } = useWorkspace();
+  const [period, setPeriod] = useState<PeriodFilter>({});
+  const [categoriesOpen, setCategoriesOpen] = useState(false);
+  const categoryOptions = categoriesFor("time", workspace.records.categories);
   const [week, setWeek] = useState(weekStart());
   const [person, setPerson] = useState(
     workspace.user.role === "superadmin"
@@ -217,7 +90,7 @@ export function TimeModule({ productionId = "" }: { productionId?: string }) {
     await run(async () => {
       let remaining = [...drafts];
       for (const draft of drafts) {
-        await post("/api/records/time", { data: draft.data, idempotencyKey: draft.id });
+        await post("/api/records/time", { data: { ...draft.data, idempotencyKey: draft.id } });
         remaining = remaining.filter((x) => x.id !== draft.id);
         persist(remaining);
       }
@@ -230,13 +103,19 @@ export function TimeModule({ productionId = "" }: { productionId?: string }) {
     .filter(
       (x) =>
         value(x.data, "userId") === person &&
+        recordMatchesPeriod(x, period, workspace.records.productions) &&
         timeAllocations(x.data).some((day) => day.date >= week && day.date <= until) &&
         (!project || x.data.productionId === project),
     )
     .sort((a, b) => value(b.data, "date").localeCompare(value(a.data, "date")));
   const total = entries
     .flatMap((x) => timeAllocations(x.data))
-    .filter((day) => day.date >= week && day.date <= until)
+    .filter(
+      (day) =>
+        day.date >= week &&
+        day.date <= until &&
+        (!period.year || Number(day.date.slice(0, 4)) === period.year),
+    )
     .reduce((sum, day) => sum + day.seconds, 0);
   const sheets = workspace.records.timesheets.filter(
     (x) => admin || x.data.userId === workspace.user.id,
@@ -244,19 +123,26 @@ export function TimeModule({ productionId = "" }: { productionId?: string }) {
   return (
     <>
       <PageHeader
-        eyebrow="WENIGER ZETTEL. MEHR ÜBERBLICK."
-        title="Zeit buchen"
+        eyebrow="PRODUKTIONS- / ARBEITSZEITEN"
+        title={embedded ? "Deine Tätigkeiten" : "Produktionszeiten"}
         description="Produktionsarbeit und allgemeine Tätigkeiten. Tages- und Wochensummen rechnen sich von selbst."
       >
         <ExportButton onClick={() => setExporting(true)} />
-        <Button onClick={() => setDraftModal(true)}>Offlineentwurf</Button>
-        <Button variant="primary" onClick={() => setEditor(true)}>
-          <Plus size={16} />
-          Zeit nachtragen
-        </Button>
+        {admin && (
+          <Button onClick={() => setCategoriesOpen(true)}>Tätigkeitsbereiche verwalten</Button>
+        )}
+        {workspace.user.role !== "superadmin" && (
+          <Button onClick={() => setDraftModal(true)}>Offlineentwurf</Button>
+        )}
+        {workspace.user.role !== "superadmin" && (
+          <Button variant="primary" onClick={() => setEditor(true)}>
+            <Plus size={16} />
+            Zeit nachtragen
+          </Button>
+        )}
       </PageHeader>
-      <div className="time-layout">
-        <TimerPanel productionId={productionId} />
+      <div className={`time-layout ${embedded ? "embedded-work-summary" : ""}`}>
+        {!embedded && <TimerPanel productionId={productionId} />}
         <section className="time-summary">
           <p className="eyebrow">{productionId ? "DEINE PRODUKTIONSWOCHE" : "DEINE WOCHE"}</p>
           <strong>
@@ -267,7 +153,11 @@ export function TimeModule({ productionId = "" }: { productionId?: string }) {
               const date = shiftDate(week, i);
               const seconds = entries
                 .flatMap((x) => timeAllocations(x.data))
-                .filter((day) => day.date === date)
+                .filter(
+                  (day) =>
+                    day.date === date &&
+                    (!period.year || Number(day.date.slice(0, 4)) === period.year),
+                )
                 .reduce((sum, day) => sum + day.seconds, 0);
               return (
                 <div key={date}>
@@ -293,7 +183,7 @@ export function TimeModule({ productionId = "" }: { productionId?: string }) {
           )}
         </section>
       </div>
-      {inbox.length > 0 && (
+      {workspace.user.role !== "superadmin" && inbox.length > 0 && (
         <div className="offline-banner">
           <div>
             <strong>{inbox.length} unzugeordnete Geräteentwürfe</strong>
@@ -324,7 +214,7 @@ export function TimeModule({ productionId = "" }: { productionId?: string }) {
           </Button>
         </div>
       )}
-      {drafts.length > 0 && (
+      {workspace.user.role !== "superadmin" && drafts.length > 0 && (
         <div className="offline-banner">
           <div>
             <strong>{drafts.length} lokale Zeitentwürfe</strong>
@@ -346,13 +236,27 @@ export function TimeModule({ productionId = "" }: { productionId?: string }) {
           </Button>
         </div>
       )}
+      <PeriodPicker
+        records={workspace.records.time}
+        productions={workspace.records.productions}
+        value={period}
+        onChange={(next) => {
+          setPeriod(next);
+          setWeek(weekForPeriod(workspace.records.time, person, next, week));
+        }}
+      />
       <div className="toolbar wrap">
         <label className="inline-label">
           Woche ab
           <input
             type="date"
             value={week}
-            onChange={(e) => setWeek(weekStart(instantDate(e.target.value)))}
+            onChange={(e) => {
+              if (e.target.value) {
+                setWeek(weekStart(instantDate(e.target.value)));
+                if (period.year) setPeriod({ ...period, year: Number(e.target.value.slice(0, 4)) });
+              }
+            }}
           />
         </label>
         {admin && (
@@ -399,7 +303,13 @@ export function TimeModule({ productionId = "" }: { productionId?: string }) {
                     <button className="text-button strong" onClick={() => setDetail(row)}>
                       {value(row.data, "title")}
                     </button>
-                    <span className="small muted">{statusLabels[value(row.data, "category")]}</span>
+                    <span className="small muted">
+                      {categoryName(
+                        "time",
+                        value(row.data, "category"),
+                        workspace.records.categories,
+                      )}
+                    </span>
                   </td>
                   <td>
                     {(workspace.records.productions.find((x) => x.id === row.data.productionId)
@@ -422,7 +332,7 @@ export function TimeModule({ productionId = "" }: { productionId?: string }) {
         <Empty
           title="Noch keine Zeit in dieser Woche."
           description="Starte den Timer oder trage eine Tätigkeit nach. Du kannst auch ohne Produktion Büro- und Aufräumzeit buchen."
-          action="Zeit buchen"
+          action={workspace.user.role !== "superadmin" ? "Zeit buchen" : undefined}
           onAction={() => setEditor(true)}
         />
       )}
@@ -498,6 +408,7 @@ export function TimeModule({ productionId = "" }: { productionId?: string }) {
         <ExportDialog
           kind="time"
           filters={{
+            ...periodExportFilters(period),
             userId: person,
             from: week,
             to: until,
@@ -506,6 +417,7 @@ export function TimeModule({ productionId = "" }: { productionId?: string }) {
           onClose={() => setExporting(false)}
         />
       )}
+      {categoriesOpen && <CategoryManager scope="time" onClose={() => setCategoriesOpen(false)} />}
       {draftModal && (
         <Modal title="Zeit offline als Entwurf speichern" onClose={() => setDraftModal(false)}>
           <p className="muted">
@@ -560,11 +472,13 @@ export function TimeModule({ productionId = "" }: { productionId?: string }) {
               </label>
               <label>
                 Kategorie
-                <select name="category">
-                  <option value="production">Produktion</option>
-                  <option value="office">Büro</option>
-                  <option value="cleaning">Aufräumen</option>
-                  <option value="other">Allgemein</option>
+                <select name="category" required>
+                  {!categoryOptions.length && <option value="">Keine Kategorien vorhanden</option>}
+                  {categoryOptions.map((option) => (
+                    <option key={option.key} value={option.key}>
+                      {option.name}
+                    </option>
+                  ))}
                 </select>
               </label>
             </div>

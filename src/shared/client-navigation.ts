@@ -9,10 +9,11 @@ const productionTabs: Record<string, string> = {
   looks: "looks",
   events: "calendar",
   time: "time",
-  handovers: "handovers",
   messages: "chat",
 };
 const modules: Record<string, string> = {
+  handovers: "handovers",
+  people: "people",
   feedback: "help",
   attendance: "time",
   conversations: "chat",
@@ -24,7 +25,6 @@ const modules: Record<string, string> = {
   templates: "documentation",
   events: "calendar",
   time: "time",
-  handovers: "handovers",
   messages: "chat",
 };
 export function recordHref(record: DomainRecord) {
@@ -34,7 +34,11 @@ export function recordHref(record: DomainRecord) {
     return `/?${new URLSearchParams({ module: "chat", conversationId })}`;
   }
   const productionId =
-    record.kind === "productions" ? record.id : value(record.data, "productionId");
+    record.kind === "handovers"
+      ? ""
+      : record.kind === "productions"
+        ? record.id
+        : value(record.data, "productionId");
   const query = new URLSearchParams(
     productionId
       ? {

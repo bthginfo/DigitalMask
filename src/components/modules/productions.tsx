@@ -1,8 +1,12 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowUpRight, CalendarDays, Plus, Users } from "lucide-react";
+import { PeriodPicker, periodExportFilters } from "@/components/period-picker";
+import { recordMatchesPeriod, type PeriodFilter } from "@/shared/period-filter";
+import { contactsValue } from "@/shared/contracts";
+import { productionContactName } from "@/shared/production-contacts";
 import type { Workspace } from "@/shared/contracts";
-import { dateLabel, hours, ids, num, value } from "@/shared/client-api";
+import { dateLabel, hours, ids, localDate, num, value } from "@/shared/client-api";
 import { useWorkspace } from "../workspace-context";
 import { Badge, Button, Empty, ExportButton, PageHeader, Section } from "../ui";
 import { ResourceEditor } from "../resource-editor";
@@ -22,7 +26,6 @@ const productionTabs = [
   "looks",
   "calendar",
   "time",
-  "handovers",
   "chat",
 ];
 export function ProductionsModule({
@@ -39,8 +42,20 @@ export function ProductionsModule({
   const tab = productionTabs.includes(activeTab) ? activeTab : "overview";
   const setSelected = (id: string) => onNavigate(id, "overview");
   const setTab = (next: string) => onNavigate(selected, next);
+  const [period, setPeriod] = useState<PeriodFilter>({});
   const [status, setStatus] = useState("current");
   const [search, setSearch] = useState("");
+  const [sort, setSort] = useState("premiere");
+  const makeupNames = (data: Record<string, unknown>) =>
+    [
+      ...new Set(
+        contactsValue(data.contacts)
+          .filter((contact) => contact.type === "makeup")
+          .map((contact) =>
+            productionContactName(contact, workspace.members, workspace.records.people),
+          ),
+      ),
+    ].join(", ");
   const [editor, setEditor] = useState(false);
   const [details, setDetails] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -69,8 +84,26 @@ export function ProductionsModule({
       (status === "all" || status === "archived"
         ? status === "all" || x.data.status === "archived"
         : x.data.status !== "archived") &&
+      recordMatchesPeriod(x, period, workspace.records.productions) &&
       value(x.data, "title").toLowerCase().includes(search.toLowerCase()),
   );
+  records.sort((a, b) => {
+    if (sort === "name" || sort === "name-desc")
+      return (
+        value(a.data, "title").localeCompare(value(b.data, "title"), "de") *
+        (sort === "name-desc" ? -1 : 1)
+      );
+    if (sort === "updated") return b.updatedAt.localeCompare(a.updatedAt);
+    const left = value(a.data, "premiere"),
+      right = value(b.data, "premiere"),
+      today = localDate();
+    const rank = (date: string) => (!date ? 2 : date >= today ? 0 : 1);
+    return (
+      rank(left) - rank(right) ||
+      (rank(left) === 1 ? right.localeCompare(left) : left.localeCompare(right)) ||
+      value(a.data, "title").localeCompare(value(b.data, "title"), "de")
+    );
+  });
   const projectHours = (workspace as Workspace & { projectHours?: Record<string, number> })
     .projectHours;
   if (production)
@@ -106,7 +139,6 @@ export function ProductionsModule({
             ["looks", "Aufschriebe"],
             ["calendar", "Kalender"],
             ["time", "Zeiten"],
-            ["handovers", "Übergaben"],
             ["chat", "Projektchat"],
           ].map(([key, label]) => (
             <button
@@ -121,6 +153,17 @@ export function ProductionsModule({
         </div>
         {tab === "overview" ? (
           <>
+            <section className="production-makeup-contact">
+              <Users size={22} />
+              <div>
+                <span className="eyebrow">MASKENBETREUUNG</span>
+                <strong>
+                  {makeupNames(production.data) || "Noch keine Maskenbetreuung eingetragen"}
+                </strong>
+                <p className="small muted">Deine Ansprechpersonen für dieses Stück.</p>
+              </div>
+              <Button onClick={() => setTab("team")}>Team & Kontakte</Button>
+            </section>
             <div className="project-overview">
               <Section title="Über die Produktion">
                 <div className="panel-content">
@@ -242,6 +285,12 @@ export function ProductionsModule({
           </Button>
         )}
       </PageHeader>
+      <PeriodPicker
+        records={workspace.records.productions}
+        productions={workspace.records.productions}
+        value={period}
+        onChange={setPeriod}
+      />
       <div className="toolbar">
         <div className="segmented">
           {[
@@ -266,6 +315,15 @@ export function ProductionsModule({
           aria-label="Produktion suchen"
         />
       </div>
+      <label className="production-sort">
+        Sortieren nach
+        <select value={sort} onChange={(event) => setSort(event.target.value)}>
+          <option value="premiere">Premiere</option>
+          <option value="name">Name A–Z</option>
+          <option value="name-desc">Name Z–A</option>
+          <option value="updated">Zuletzt geändert</option>
+        </select>
+      </label>
       {records.length ? (
         <div className="production-grid">
           {records.map((project, i) => {
@@ -305,6 +363,13 @@ export function ProductionsModule({
                     {ids(project.data, "memberIds").length} im Team
                   </span>
                 </div>
+                <div className="production-card-makeup">
+                  <Users size={15} />
+                  <span>
+                    <span className="small muted">Maskenbetreuung</span>
+                    <strong>{makeupNames(project.data) || "Noch offen"}</strong>
+                  </span>
+                </div>
                 <footer>
                   <span>{remaining} offene Aufgaben</span>
                   <ArrowUpRight size={20} />
@@ -330,7 +395,13 @@ export function ProductionsModule({
         />
       )}
       {editor && <ResourceEditor kind="productions" onClose={() => setEditor(false)} />}
-      {exporting && <ExportDialog kind="productions" onClose={() => setExporting(false)} />}
+      {exporting && (
+        <ExportDialog
+          kind="productions"
+          filters={periodExportFilters(period)}
+          onClose={() => setExporting(false)}
+        />
+      )}
       {importing && <ImportDialog kind="productions" onClose={() => setImporting(false)} />}
     </>
   );

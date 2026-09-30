@@ -30,7 +30,8 @@ export async function POST(request: Request) {
     else if (action.startsWith("timer-")) result = await timerAction(context, action, data);
     else if (action.startsWith("timesheet-"))
       result = await timesheetAction(context, action, id, data);
-    else if (action === "leave-decide" && id) result = await decideLeave(context, id, data.status);
+    else if (action === "leave-decide" && id)
+      result = await decideLeave(context, id, data.status, data.category);
     else if (action === "production-copy" && id)
       result = await copyProduction(context, id, String(data.title || ""));
     else if (action === "password-change") {

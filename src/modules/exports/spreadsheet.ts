@@ -1,5 +1,12 @@
 import { formatInTimeZone } from "date-fns-tz";
-import { cellText, columnsFor, durationSeconds, exportRows, exportTitle } from "./data";
+import {
+  cellText,
+  columnsFor,
+  durationSeconds,
+  exportRows,
+  exportTitle,
+  exportPeriod,
+} from "./data";
 import type { ExportInput } from "./types";
 import { durationSummary } from "./duration-summary";
 import {
@@ -29,12 +36,15 @@ function printChunks(text: string, width: number): string[] {
     }
     lines.push(line);
   }
+  // Keep copyable names, emails and phone numbers intact. Native wrapText handles ordinary cells;
+  // only text exceeding a printable row needs explicit continuation chunks.
+  if (lines.length <= 18) return [text];
   return Array.from({ length: Math.max(1, Math.ceil(lines.length / 18)) }, (_, i) =>
     lines.slice(i * 18, i * 18 + 18).join("\n"),
   );
 }
 export function buildCsv(input: ExportInput): Uint8Array {
-  const columns = columnsFor(input.kind);
+  const columns = columnsFor(input.kind, input);
   const lines = [
     columns.map((c) => csvCell(c.label)).join(";"),
     ...exportRows(input).map((row) => columns.map((col) => csvCell(cellText(row, col))).join(";")),
@@ -58,7 +68,7 @@ export async function buildXlsx(input: ExportInput): Promise<Uint8Array> {
       margins: { left: 0.3, right: 0.3, top: 0.4, bottom: 0.4, header: 0.2, footer: 0.2 },
     },
   });
-  const columns = columnsFor(input.kind),
+  const columns = columnsFor(input.kind, input),
     rows = exportRows(input);
   const excelAllDay: boolean[] = [];
   const excelRows = rows.flatMap((row) => {
@@ -82,15 +92,13 @@ export async function buildXlsx(input: ExportInput): Promise<Uint8Array> {
     1,
     Math.ceil(columns.reduce((sum, col) => sum + col.width, 0) / 135),
   );
-  if (input.kind === "looks") sheet.pageSetup.printTitlesColumn = "A:B";
+  if (["looks", "handovers"].includes(input.kind)) sheet.pageSetup.printTitlesColumn = "A:B";
   sheet.mergeCells(1, 1, 1, columns.length);
   sheet.getCell(1, 1).value = `${exportTitle(input)} · ${input.department}`;
   sheet.getRow(1).height = 29;
   sheet.getCell(1, 1).font = { name: "Calibri", size: 18, bold: true, color: { argb: "FF173F39" } };
   sheet.mergeCells(2, 1, 2, columns.length);
-  sheet.getCell(2, 1).value = safeSpreadsheetText(
-    `${input.organization} · ${input.from ?? "Gesamter Zeitraum"}${input.to ? ` – ${input.to}` : ""}`,
-  );
+  sheet.getCell(2, 1).value = safeSpreadsheetText(`${input.organization} · ${exportPeriod(input)}`);
   sheet.addTable({
     name: "ExportDaten",
     ref: "A4",
@@ -247,7 +255,13 @@ export async function buildXlsx(input: ExportInput): Promise<Uint8Array> {
           row.alignment = { wrapText: true, vertical: "top" };
           const lines = Math.max(
             Math.ceil(values[0].length / 23),
-            ...values.slice(1).map((text) => text.split("\n").length),
+            ...values
+              .slice(1)
+              .map((text) =>
+                text
+                  .split("\n")
+                  .reduce((count, line) => count + Math.max(1, Math.ceil(line.length / 14)), 0),
+              ),
           );
           row.height = Math.max(40, lines * 15 + 8);
           row.getCell(1).font = { size: 11, bold: true };

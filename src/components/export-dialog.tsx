@@ -73,6 +73,13 @@ export function ExportDialog({
         PDF für Ausdrucke, Excel für Auswertungen oder offene Formate zur Weiterverarbeitung. Deine
         aktuellen Filter werden übernommen.
       </p>
+      {(filters.year || filters.season) && (
+        <p className="export-context">
+          {filters.year && `Jahr ${filters.year}`}
+          {filters.year && filters.season && " · "}
+          {filters.season && `Spielzeit ${filters.season}`}
+        </p>
+      )}
       <div className="form-grid">
         <label>
           Format
@@ -104,6 +111,7 @@ export function ExportDialog({
                 ["day", "Tag"],
                 ["agenda", "Agenda"],
                 ["team", "Teamübersicht"],
+                ["team-month", "Teammonat"],
               ].map(([key, label]) => (
                 <option key={key} value={key}>
                   {label}

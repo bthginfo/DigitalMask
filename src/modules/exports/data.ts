@@ -2,6 +2,14 @@ import type { DomainRecord } from "../../shared/contracts";
 import type { Column, ExportInput, ExportRow } from "./types";
 import { productionContactsText } from "./contacts";
 import { eventDisplay } from "./calendar-presentation";
+import { categoryName } from "../../shared/domain-categories";
+import { sectionName } from "../../shared/document-sections";
+import {
+  documentPresentation,
+  documentSectionKeys,
+  referenceName,
+  sectionText,
+} from "./document-presentation";
 
 export const titles: Record<string, string> = {
   events: "Dienst- und Kalenderplanung",
@@ -12,6 +20,7 @@ export const titles: Record<string, string> = {
   looks: "Aufschriebe",
   materials: "Material- und Perückenbestand",
   actors: "Schauspielerkatalog",
+  people: "Kontaktverzeichnis",
   characters: "Figurenkatalog",
   casting: "Besetzungsliste",
   tasks: "Aufgaben",
@@ -26,6 +35,19 @@ export const titles: Record<string, string> = {
 };
 export function exportTitle(input: Pick<ExportInput, "kind" | "teamOnly">): string {
   return input.teamOnly ? "Teamboard · Aufgaben" : (titles[input.kind] ?? "Datenexport");
+}
+export function exportPeriod(input: Pick<ExportInput, "from" | "to" | "year" | "season">): string {
+  return (
+    [
+      input.year ? `Jahr ${input.year}` : "",
+      input.season ? `Spielzeit ${input.season}` : "",
+      input.from
+        ? `${dateText(input.from)}${input.to && input.to !== input.from ? ` – ${dateText(input.to)}` : ""}`
+        : "",
+    ]
+      .filter(Boolean)
+      .join(" · ") || "Gesamter Zeitraum"
+  );
 }
 export function value(record: DomainRecord, ...keys: string[]): unknown {
   for (const key of keys)
@@ -84,7 +106,7 @@ const column = (key: string, label: string, width: number, type?: Column["type"]
   width,
   type,
 });
-export function columnsFor(kind: string): Column[] {
+export function columnsFor(kind: string, input?: ExportInput): Column[] {
   switch (kind) {
     case "events":
     case "calendar":
@@ -103,6 +125,7 @@ export function columnsFor(kind: string): Column[] {
         column("production", "Produktion", 23),
         column("title", "Tätigkeit", 39),
         column("duration", "Stunden", 12, "duration"),
+        column("category", "Kategorie", 24),
       ];
     case "attendance":
       return [
@@ -119,6 +142,15 @@ export function columnsFor(kind: string): Column[] {
         column("hair", "Haare / Perücke", 27),
         column("description", "Arbeitsnotizen", 42),
       ];
+    case "people":
+      return [
+        column("title", "Name", 30),
+        column("organization", "Organisation", 28),
+        column("position", "Position", 28),
+        column("email", "E-Mail", 34),
+        column("phone", "Telefon", 25),
+        column("description", "Hinweise", 45),
+      ];
     case "casting":
       return [
         column("production", "Produktion", 26),
@@ -133,6 +165,7 @@ export function columnsFor(kind: string): Column[] {
         column("quantity", "Bestand", 12),
         column("minimum", "Mindestbestand", 14),
         column("description", "Hinweise", 35),
+        column("category", "Kategorie", 24),
       ];
     case "productions":
       return [
@@ -143,14 +176,21 @@ export function columnsFor(kind: string): Column[] {
         column("status", "Status", 19),
         column("description", "Beschreibung", 42),
         column("contacts", "Zuständigkeiten / Kontakte", 55),
+        column("productionDurationMinutes", "Stückdauer (min)", 20),
       ];
     case "handovers":
       return [
-        column("start", "Datum", 18, "date"),
+        column("documentDate", "Erstellt am", 18, "date"),
         column("title", "Übergabe", 30),
-        column("production", "Produktion", 25),
-        column("status", "Status", 17),
-        column("description", "Hinweise / Checkliste", 50),
+        ...documentSectionKeys("handovers", input).map((key) =>
+          column(
+            `section:${key}`,
+            sectionName(key, "handovers", input?.references?.categories),
+            45,
+          ),
+        ),
+        column("checklist", "Checkliste", 45),
+        column("imageIds", "Bildreferenzen", 35),
       ];
     case "tasks":
       return [
@@ -162,17 +202,15 @@ export function columnsFor(kind: string): Column[] {
       ];
     case "looks":
       return [
-        column("title", "Aufschrieb", 27),
+        column("title", "Schauspieler / Aufschrieb", 30),
         column("production", "Produktion", 24),
         column("character", "Figur", 22),
-        column("actor", "Besetzung", 24),
-        column("scene", "Szene", 20),
-        column("preparation", "Vorbereitung", 40),
-        column("materials", "Material", 35),
-        column("steps", "Arbeitsschritte", 50),
-        column("changeover", "Wechsel", 35),
-        column("durationMinutes", "Zeitbedarf (min)", 18),
-        column("status", "Status", 18),
+        column("productionDurationMinutes", "Stückdauer (min)", 20),
+        ...documentSectionKeys("looks", input).map((key) =>
+          column(`section:${key}`, sectionName(key, "looks", input?.references?.categories), 45),
+        ),
+        column("extraNotes", "Weitere Hinweise", 40),
+        column("historicalNotes", "Historische Zusatznotizen", 40),
         column("imageIds", "Bildreferenzen", 35),
       ];
     default:
@@ -226,6 +264,9 @@ export function exportRows(input: ExportInput): ExportRow[] {
         : input.kind === "backup" || r.kind === input.kind,
     )
     .map((record) => {
+      const document = ["looks", "handovers"].includes(record.kind)
+        ? documentPresentation(record, input)
+        : undefined;
       const display = record.kind === "events" ? eventDisplay(record, input) : undefined;
       const endDate = dateValue(value(record, "end", "endAt"));
       const people = value(
@@ -249,13 +290,23 @@ export function exportRows(input: ExportInput): ExportRow[] {
         record,
         values: {
           title:
+            document?.title ??
             display?.title ??
             (readable(value(record, "title", "name", "activity", "subject", "label")) ||
               (record.kind === "attendance" ? "Anwesenheit" : "")),
           person,
           production: name(value(record, "productionName", "productionId", "projectId")),
-          actor: name(value(record, "actorName", "actorId")),
-          character: name(value(record, "characterName", "characterId")),
+          actor: referenceName(
+            record.data.actorId,
+            record.data.actorName,
+            input.references?.actors,
+          ),
+          character: referenceName(
+            record.data.characterId,
+            record.data.characterName,
+            input.references?.characters,
+          ),
+          documentDate: dateValue(record.createdAt) ?? "",
           start:
             dateValue(
               value(record, "start", "startAt", "date", "day", "due", "dueAt", "dueDate"),
@@ -310,10 +361,38 @@ export function exportRows(input: ExportInput): ExportRow[] {
           steps: readable(record.data.steps),
           changeover: readable(record.data.changeover),
           durationMinutes: Number(record.data.durationMinutes ?? 0),
+          productionDurationMinutes:
+            record.kind === "productions"
+              ? Number(record.data.durationMinutes ?? 0)
+              : (document?.productionDurationMinutes ?? 0),
+          category: ["time", "materials"].includes(record.kind)
+            ? categoryName(
+                record.kind as "time" | "materials",
+                readable(record.data.category) ||
+                  (record.kind === "time" && record.data.productionId ? "production" : "other"),
+                input.references?.categories,
+              )
+            : "",
+          organization: readable(record.data.organization),
+          position: readable(record.data.position),
+          email: readable(record.data.email),
+          phone: readable(record.data.phone),
+          extraNotes: document?.extraNotes ?? "",
+          historicalNotes: document?.historicalNotes.join("\n") ?? "",
+          checklist:
+            document?.checklist
+              .map((item) => `${item.done ? "[x]" : "[ ]"} ${item.text}`)
+              .join("\n") ?? "",
+          ...Object.fromEntries(
+            (document?.sections ?? []).map((section) => [
+              `section:${section.key}`,
+              sectionText(section.entries),
+            ]),
+          ),
           imageIds: readable(record.data.imageIds),
           season: readable(record.data.season),
           premiere: dateValue(record.data.premiere) ?? "",
-          contacts: productionContactsText(record, input.members),
+          contacts: productionContactsText(record, input.members, input.references?.people),
         },
       };
     });
@@ -323,6 +402,11 @@ export function cellText(row: ExportRow, col: Column): string {
   return col.type === "duration"
     ? durationText(Number(v) * 86400)
     : v instanceof Date
-      ? dateText(v, !row.values.isAllDay && (col.key !== "start" || row.record.kind === "events"))
+      ? dateText(
+          v,
+          !row.values.isAllDay &&
+            col.key !== "documentDate" &&
+            (col.key !== "start" || row.record.kind === "events"),
+        )
       : readable(v);
 }

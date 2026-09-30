@@ -29,10 +29,12 @@ import {
   durationText,
   exportRows,
   exportTitle,
+  exportPeriod,
   readable,
   titles,
-  value,
 } from "./data";
+import { DocumentPages } from "./document-pdf";
+import { ProductionPages } from "./production-pdf";
 import { calendarRange, localDay } from "./calendar";
 import type { Column, ExportInput, ExportRow } from "./types";
 import { addPageNumbers } from "./page-numbers";
@@ -54,6 +56,23 @@ Font.register({
   ],
 });
 Font.registerHyphenationCallback((word) => [word]);
+let fontsReady: Promise<void> | undefined;
+function prepareFonts() {
+  // Fontkit caches component glyphs with empty codePoints while subsetting. If a
+  // later PDF first uses that glyph as text, its ToUnicode map would be empty.
+  // Seed the Unicode glyphs once before any layout/subset work; preserve the
+  // shared parsed fonts without per-request file reads or global font resets.
+  fontsReady ??= Promise.all(
+    [400, 700].map(async (fontWeight) => {
+      const source = Font.getFont({ fontFamily: "Noto", fontWeight });
+      await source.load();
+      const font = source.data;
+      if (!font) throw new Error("Die PDF-Schrift konnte nicht geladen werden.");
+      for (const codePoint of font.characterSet) font.glyphForCodePoint(codePoint);
+    }),
+  ).then(() => undefined);
+  return fontsReady;
+}
 const colors = {
   ink: "#233932",
   muted: "#53645e",
@@ -127,17 +146,59 @@ const styles = StyleSheet.create({
   fieldText: { fontSize: 10, lineHeight: 1.5 },
   image: { maxHeight: 280, maxWidth: "100%", objectFit: "contain" },
 });
-function Header({ input, label }: { input: ExportInput; label?: string }) {
+function headerLines(text: string, width: number, size: number, weight: number, spacing = 0) {
+  const font = Font.getFont({ fontFamily: "Noto", fontWeight: weight }).data;
+  if (!font) throw new Error("Die PDF-Schrift ist noch nicht vorbereitet.");
+  const measure = (value: string) =>
+    Array.from(value).reduce(
+      (sum, char) =>
+        sum +
+        (font.glyphForCodePoint(char.codePointAt(0)!).advanceWidth * size) / font.unitsPerEm +
+        spacing,
+      0,
+    );
+  const lines: string[] = [];
+  for (const paragraph of text.split("\n")) {
+    let line = "";
+    for (const word of paragraph.split(/\s+/).filter(Boolean)) {
+      if (line && measure(`${line}${word}`) > width) {
+        lines.push(line.trimEnd());
+        line = "";
+      }
+      // Long unbroken names/identifiers must remain inside the printable area.
+      for (const char of Array.from(word)) {
+        if (line && measure(`${line}${char}`) > width) {
+          lines.push(line.trimEnd());
+          line = "";
+        }
+        line += char;
+      }
+      line += " ";
+    }
+    lines.push(line.trimEnd());
+  }
+  return lines;
+}
+function headerLayout(input: ExportInput, label?: string, landscape = false) {
+  const width = (landscape ? 841.89 : 595.28) - 64;
+  const brand = headerLines(`DIGITALMASK / ${input.department.toUpperCase()}`, width, 9, 700, 1);
+  const title = headerLines(label ?? exportTitle(input), width, 21, 700);
+  const meta = headerLines(`${input.organization} · ${exportPeriod(input)}`, width, 9, 400);
+  const bottom =
+    24 + brand.length * 12.6 + 7 + Math.max(29, title.length * 26.25) + 7 + meta.length * 12.6 + 13;
+  return {
+    brand: brand.join("\n"),
+    title: title.join("\n"),
+    meta: meta.join("\n"),
+    bodyTop: Math.max(122, Math.ceil(bottom + 18)),
+  };
+}
+function Header({ layout }: { layout: ReturnType<typeof headerLayout> }) {
   return (
     <View style={styles.header} fixed>
-      <Text style={styles.brand}>DIGITALMASK / {input.department.toUpperCase()}</Text>
-      <Text style={styles.title}>{label ?? exportTitle(input)}</Text>
-      <Text style={styles.meta}>
-        {input.organization}
-        {input.from
-          ? ` · ${dateText(input.from)}${input.to && input.to !== input.from ? ` – ${dateText(input.to)}` : ""}`
-          : " · Gesamter Zeitraum"}
-      </Text>
+      <Text style={styles.brand}>{layout.brand}</Text>
+      <Text style={styles.title}>{layout.title}</Text>
+      <Text style={styles.meta}>{layout.meta}</Text>
     </View>
   );
 }
@@ -163,14 +224,15 @@ function BasePage({
   table?: boolean;
   label?: string;
 }) {
+  const layout = headerLayout(input, label, landscape);
   return (
     <Page
       size="A4"
       orientation={landscape ? "landscape" : "portrait"}
-      style={{ ...styles.page, paddingTop: table ? 155 : 122 }}
+      style={{ ...styles.page, paddingTop: layout.bodyTop + (table ? 33 : 0) }}
       wrap
     >
-      <Header input={input} label={label} />
+      <Header layout={layout} />
       {children}
       <Footer landscape={landscape} />
     </Page>
@@ -193,7 +255,12 @@ function splitCell(text: string, maxChars: number): string[] {
   parts.push(remaining);
   return parts;
 }
-function tablePages(rows: ExportRow[], columns: Column[], landscape: boolean): ExportRow[][] {
+function tablePages(
+  rows: ExportRow[],
+  columns: Column[],
+  landscape: boolean,
+  headerTop = 122,
+): ExportRow[][] {
   const width = columns.reduce((sum, col) => sum + col.width, 0),
     availableWidth = landscape ? 778 : 531;
   const pages: ExportRow[][] = [[]];
@@ -220,7 +287,10 @@ function tablePages(rows: ExportRow[], columns: Column[], landscape: boolean): E
         ),
       );
       const rowHeight = 20 + lines * 14;
-      if (height + rowHeight > (landscape ? 360 : 620) && pages[pages.length - 1].length) {
+      if (
+        height + rowHeight > (landscape ? 360 : 620) - (headerTop - 122) &&
+        pages[pages.length - 1].length
+      ) {
         pages.push([]);
         height = 0;
       }
@@ -233,17 +303,19 @@ function tablePages(rows: ExportRow[], columns: Column[], landscape: boolean): E
 }
 function Table({
   input,
-  columns = columnsFor(input.kind),
+  columns = columnsFor(input.kind, input),
   rows = exportRows(input),
+  headerTop = 122,
 }: {
   input: ExportInput;
   columns?: Column[];
   rows?: ExportRow[];
+  headerTop?: number;
 }) {
   const width = columns.reduce((sum, col) => sum + col.width, 0);
   return (
     <>
-      <View fixed style={styles.tableHeader}>
+      <View fixed style={{ ...styles.tableHeader, top: headerTop }}>
         {columns.map((col) => (
           <Text key={col.key} style={{ ...styles.th, width: `${(col.width / width) * 100}%` }}>
             {col.label}
@@ -401,14 +473,6 @@ function CalendarPreview({ input }: { input: ExportInput }) {
   }
   return <>{pages}</>;
 }
-const lookFields = [
-  ["scene", "Szene / Look"],
-  ["preparation", "Vorbereitung"],
-  ["materials", "Material"],
-  ["steps", "Arbeitsschritte"],
-  ["changeover", "Wechsel / Umbau"],
-  ["notes", "Weitere Hinweise"],
-] as const;
 function RecordImages({ input, record }: { input: ExportInput; record: ExportRow["record"] }) {
   const names = new Map(
     (input.references?.files ?? []).map((file) => [file.id, readable(file.data.name)]),
@@ -472,63 +536,6 @@ function GalleryPages({ input }: { input: ExportInput }) {
     </>
   );
 }
-function LookPages({ input }: { input: ExportInput }) {
-  const references = new Map(
-    Object.values(input.references ?? {})
-      .flatMap((r) => r ?? [])
-      .map((r) => [r.id, readable(value(r, "name", "title"))]),
-  );
-  const field = (key: string, label: string, text: string) => (
-    <View key={key} style={styles.field}>
-      <Text style={styles.fieldLabel} minPresenceAhead={28}>
-        {label.toUpperCase()}
-      </Text>
-      <Text style={styles.fieldText}>{text || "—"}</Text>
-    </View>
-  );
-  if (!input.records.length)
-    return (
-      <BasePage input={input}>
-        <Text style={styles.note}>Keine Aufschriebe für diese Auswahl.</Text>
-      </BasePage>
-    );
-  return (
-    <>
-      {input.records
-        .filter((r) => r.kind === "looks")
-        .map((record) => (
-          <BasePage
-            key={record.id}
-            input={input}
-            label={
-              readable(record.data.title).length > 25
-                ? `${readable(record.data.title).slice(0, 24)}…`
-                : readable(record.data.title) || "Aufschrieb"
-            }
-          >
-            {readable(record.data.title).length > 25 &&
-              field("full-title", "Aufschrieb", readable(record.data.title))}
-            <View style={{ ...styles.summary, marginTop: 0, marginBottom: 20 }}>
-              <Text>
-                {["productionId", "characterId", "actorId"]
-                  .map((key) => references.get(String(record.data[key])) ?? "")
-                  .filter(Boolean)
-                  .join(" · ") || "Aufschrieb"}
-              </Text>
-              <Text style={{ fontSize: 9, fontWeight: 400, marginTop: 4 }}>
-                Stand: {dateText(record.updatedAt, true)} · Vorlagenversion{" "}
-                {readable(record.data.templateVersion) || "1"} ·{" "}
-                {record.data.status === "published" ? "Veröffentlicht" : "Entwurf"} · Zeitbedarf:{" "}
-                {readable(record.data.durationMinutes) || "—"} min
-              </Text>
-            </View>
-            {lookFields.map(([key, label]) => field(key, label, readable(record.data[key])))}
-            <RecordImages input={input} record={record} />
-          </BasePage>
-        ))}
-    </>
-  );
-}
 function AttendanceSummary({ input, rows }: { input: ExportInput; rows: ExportRow[] }) {
   const summary = durationSummary(rows);
   const groups = [
@@ -566,7 +573,8 @@ function AttendanceSummary({ input, rows }: { input: ExportInput; rows: ExportRo
   );
 }
 export async function buildPdf(input: ExportInput): Promise<Uint8Array> {
-  if (["looks", "characters", "casting"].includes(input.kind) && input.images) {
+  await prepareFonts();
+  if (["looks", "handovers", "characters", "casting"].includes(input.kind) && input.images) {
     const normalizedImages: Record<string, Uint8Array> = {};
     const ids = [
       ...new Set(
@@ -597,8 +605,13 @@ export async function buildPdf(input: ExportInput): Promise<Uint8Array> {
     { key: "description", label: "Hinweise", width: 30 },
   ];
   const landscape = !(calendar && ["day", "agenda"].includes(input.view ?? "agenda"));
-  const columns = calendar ? agendaColumns : columnsFor(input.kind);
-  const paginatedRows = tablePages(rows, columns, landscape);
+  const columns = calendar ? agendaColumns : columnsFor(input.kind, input);
+  const headerTop = headerLayout(
+    input,
+    calendar ? "Vollständige Kalenderagenda" : undefined,
+    landscape,
+  ).bodyTop;
+  const paginatedRows = tablePages(rows, columns, landscape, headerTop);
   const document = (
     <Document
       title={exportTitle(input)}
@@ -606,8 +619,10 @@ export async function buildPdf(input: ExportInput): Promise<Uint8Array> {
       subject={`${input.organization} · ${input.department}`}
       language="de-DE"
     >
-      {input.kind === "looks" ? (
-        <LookPages input={input} />
+      {["looks", "handovers"].includes(input.kind) ? (
+        <DocumentPages input={input} Page={BasePage} Images={RecordImages} />
+      ) : input.kind === "productions" ? (
+        <ProductionPages input={input} Page={BasePage} />
       ) : (
         <>
           {calendar && <CalendarPreview input={input} />}
@@ -619,7 +634,7 @@ export async function buildPdf(input: ExportInput): Promise<Uint8Array> {
               landscape={landscape}
               label={calendar ? "Vollständige Kalenderagenda" : undefined}
             >
-              <Table input={input} columns={columns} rows={pageRows} />
+              <Table input={input} columns={columns} rows={pageRows} headerTop={headerTop} />
             </BasePage>
           ))}
           {["characters", "casting"].includes(input.kind) && <GalleryPages input={input} />}

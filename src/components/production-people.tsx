@@ -3,6 +3,8 @@ import { useId, useState } from "react";
 import { Plus, Trash2, Users } from "lucide-react";
 import { contactsValue, type DomainRecord, type ProductionContact } from "@/shared/contracts";
 import { ids, initials, value } from "@/shared/client-api";
+import { PersonPicker } from "@/modules/people/components";
+import { productionContactName } from "@/shared/production-contacts";
 import { isActiveStaff } from "@/shared/client-members";
 import { useWorkspace } from "./workspace-context";
 import { Badge, Button, Empty, ErrorMessage, Modal, PageHeader } from "./ui";
@@ -97,6 +99,7 @@ export function ProductionPeopleFields({
                     type: event.target.value as ProductionContact["type"],
                     memberId: "",
                     name: "",
+                    personId: "",
                   })
                 }
               >
@@ -111,7 +114,7 @@ export function ProductionPeopleFields({
                   aria-label={`Person für Kontakt ${index + 1}`}
                   value={contact.memberId || ""}
                   onChange={(event) =>
-                    update(contact.id, { memberId: event.target.value, name: "" })
+                    update(contact.id, { memberId: event.target.value, name: "", personId: "" })
                   }
                 >
                   <option value="">Namen frei eintragen</option>
@@ -132,12 +135,35 @@ export function ProductionPeopleFields({
               </label>
             )}
             {!contact.memberId && (
+              <div className="field-wide">
+                <PersonPicker
+                  value={contact.personId || ""}
+                  label={`Verzeichnis für Kontakt ${index + 1}`}
+                  onChange={(personId) =>
+                    update(contact.id, {
+                      personId,
+                      name: value(
+                        workspace.records.people.find((person) => person.id === personId)?.data ||
+                          {},
+                        "name",
+                      ),
+                    })
+                  }
+                  onCreated={(person) =>
+                    update(contact.id, { personId: person.id, name: value(person.data, "name") })
+                  }
+                />
+              </div>
+            )}
+            {!contact.memberId && !contact.personId && (
               <label>
                 Name
                 <input
                   required
                   value={contact.name}
-                  onChange={(event) => update(contact.id, { name: event.target.value })}
+                  onChange={(event) =>
+                    update(contact.id, { name: event.target.value, personId: "" })
+                  }
                   placeholder="Vor- und Nachname"
                 />
               </label>
@@ -227,10 +253,7 @@ export function ProductionTeamModule({ production }: { production: DomainRecord 
             <article className="production-contact" key={contact.id}>
               <span className="contact-role">{contact.role}</span>
               <strong>
-                {contact.memberId
-                  ? workspace.members.find((member) => member.id === contact.memberId)?.name ||
-                    "Teammitglied"
-                  : contact.name}
+                {productionContactName(contact, workspace.members, workspace.records.people)}
               </strong>
               <Badge tone={contact.type === "makeup" ? "green" : "neutral"}>
                 {contact.type === "makeup" ? "Maskenbetreuung" : "Extern"}

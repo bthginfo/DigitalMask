@@ -40,6 +40,8 @@ export function TodayModule({ navigate }: { navigate: (module: string) => void }
     ),
     `${today}T00:00:00`,
     new Date(now + 7 * 86400000).toISOString(),
+    workspace.records.productions,
+    workspace.records.calendarCategories,
   )
     .sort((a, b) => a.start.localeCompare(b.start))
     .filter((x) => new Date(x.end).getTime() >= now)
@@ -143,21 +145,13 @@ export function TodayModule({ navigate }: { navigate: (module: string) => void }
                             : "green"
                         }
                       >
-                        {statusLabels[value(event.extendedProps.record.data, "category")]}
+                        {event.categoryName}
                       </Badge>
                       <h3>{event.title}</h3>
                       <p className="small muted">
-                        {new Intl.DateTimeFormat("de-DE", {
-                          timeZone: "Europe/Berlin",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        }).format(new Date(event.start))}
-                        –
-                        {new Intl.DateTimeFormat("de-DE", {
-                          timeZone: "Europe/Berlin",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        }).format(new Date(event.end))}{" "}
+                        {event.allDay
+                          ? "Ganztägig"
+                          : `${new Intl.DateTimeFormat("de-DE", { timeZone: "Europe/Berlin", hour: "2-digit", minute: "2-digit" }).format(new Date(event.start))}–${new Intl.DateTimeFormat("de-DE", { timeZone: "Europe/Berlin", hour: "2-digit", minute: "2-digit" }).format(new Date(event.end))}`}{" "}
                         · {value(event.extendedProps.record.data, "location") || "Ort noch offen"}
                       </p>
                     </div>

@@ -11,6 +11,8 @@ import {
   type DragEndEvent,
 } from "@dnd-kit/core";
 import { CalendarDays, CheckSquare, ChevronDown, Flag, Plus } from "lucide-react";
+import { PeriodPicker, periodExportFilters } from "@/components/period-picker";
+import { recordMatchesPeriod, type PeriodFilter } from "@/shared/period-filter";
 import type { DomainRecord } from "@/shared/contracts";
 import { dateLabel, ids, initials, value } from "@/shared/client-api";
 import { useWorkspace } from "../workspace-context";
@@ -172,6 +174,7 @@ function Column({
 export function TasksModule({ productionId = "" }: { productionId?: string }) {
   const { workspace, save } = useWorkspace();
   const project = productionId;
+  const [period, setPeriod] = useState<PeriodFilter>({});
   const [sprint, setSprint] = useState("");
   const [mine, setMine] = useState(false);
   const [search, setSearch] = useState("");
@@ -191,6 +194,7 @@ export function TasksModule({ productionId = "" }: { productionId?: string }) {
   const tasks = workspace.records.tasks.filter(
     (x) =>
       value(x.data, "productionId") === project &&
+      recordMatchesPeriod(x, period, workspace.records.productions) &&
       (!sprint || x.data.sprintId === sprint) &&
       (!mine || ids(x.data, "assigneeIds").includes(workspace.user.id)) &&
       (!search || value(x.data, "title").toLowerCase().includes(search.toLowerCase())),
@@ -230,6 +234,14 @@ export function TasksModule({ productionId = "" }: { productionId?: string }) {
           Aufgabe
         </Button>
       </PageHeader>
+      <PeriodPicker
+        records={workspace.records.tasks.filter(
+          (row) => value(row.data, "productionId") === project,
+        )}
+        productions={workspace.records.productions}
+        value={period}
+        onChange={setPeriod}
+      />
       <div className="toolbar wrap">
         {project && (
           <select aria-label="Sprint" value={sprint} onChange={(e) => setSprint(e.target.value)}>
@@ -330,7 +342,10 @@ export function TasksModule({ productionId = "" }: { productionId?: string }) {
       {exporting && (
         <ExportDialog
           kind="tasks"
-          filters={project ? { productionId: project } : { teamOnly: "true" }}
+          filters={{
+            ...periodExportFilters(period),
+            ...(project ? { productionId: project } : { teamOnly: "true" }),
+          }}
           onClose={() => setExporting(false)}
         />
       )}

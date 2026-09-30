@@ -1,4 +1,6 @@
 "use client";
+import { PeriodPicker, periodExportFilters } from "@/components/period-picker";
+import { recordMatchesPeriod, type PeriodFilter } from "@/shared/period-filter";
 import { useMemo, useRef, useState } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
@@ -10,36 +12,55 @@ import luxonPlugin from "@fullcalendar/luxon3";
 import { occurrences } from "@/modules/calendar/occurrences";
 import { AlertTriangle, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import type { DomainRecord } from "@/shared/contracts";
-import { dateLabel, ids, localDate, shiftDate, value, weekStart } from "@/shared/client-api";
+import {
+  dateLabel,
+  ids,
+  localDate,
+  instantDate,
+  shiftDate,
+  value,
+  weekStart,
+} from "@/shared/client-api";
 import { isActiveStaff } from "@/shared/client-members";
 import { useWorkspace } from "../workspace-context";
 import { Badge, Button, ErrorMessage, ExportButton, PageHeader } from "../ui";
 import { ResourceEditor } from "../resource-editor";
 import { RecordDetail } from "../resource-view";
 import { ExportDialog } from "../export-dialog";
+import { calendarPresentation, calendarCategoryBlocksTime } from "@/shared/calendar-categories";
+import {
+  calendarCategories,
+  monthStart,
+  shiftMonth,
+} from "@/modules/calendar/components/client-calendar";
+import { CalendarCategoriesDialog } from "@/modules/calendar/components/categories-dialog";
+import { TeamCalendar } from "@/modules/calendar/components/team-calendar";
 import { statusLabels } from "../resource-fields";
-const colors: Record<string, string> = {
-  service: "#18765c",
-  rehearsal: "#427ba8",
-  performance: "#b86050",
-  preparation: "#9a742c",
-  absence: "#757b8b",
-};
-export function expandEvents(records: DomainRecord[], rangeStart: string, rangeEnd: string) {
+export function expandEvents(
+  records: DomainRecord[],
+  rangeStart: string,
+  rangeEnd: string,
+  productions: DomainRecord[] = [],
+  categories?: DomainRecord[],
+) {
   return records.flatMap((record) => {
     if (
       !Number.isFinite(new Date(value(record.data, "start")).getTime()) ||
       !Number.isFinite(new Date(value(record.data, "end")).getTime())
     )
       return [];
+    const presentation = calendarPresentation(record, productions, categories);
     return occurrences(record, new Date(rangeStart), new Date(rangeEnd)).map((instance) => ({
       id: `${record.id}:${instance.start.toISOString()}`,
-      title: value(record.data, "title"),
+      title: presentation.title,
+      allDay: presentation.allDay,
+      categoryName: presentation.categoryName,
       start: instance.start.toISOString(),
       end: instance.end.toISOString(),
-      backgroundColor: colors[value(record.data, "category")] || colors.service,
+      backgroundColor: presentation.color,
       borderColor: "transparent",
-      editable: !record.data.recurrence || record.data.recurrence === "none",
+      editable:
+        !record.data.leaveId && (!record.data.recurrence || record.data.recurrence === "none"),
       extendedProps: { record },
     }));
   });
@@ -48,11 +69,21 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
   const { workspace, save, action, busy } = useWorkspace();
   const admin = workspace.user.role !== "user";
   const calendar = useRef<FullCalendar>(null);
+  const [period, setPeriod] = useState<PeriodFilter>({});
   const [view, setView] = useState("month");
+  const [teamSpan, setTeamSpan] = useState("week");
+  const [categoriesOpen, setCategoriesOpen] = useState(false);
+  const categoryOptions = calendarCategories(workspace);
   const [people, setPeople] = useState<string[]>(
     workspace.user.role === "superadmin" ? [] : [workspace.user.id],
   );
   const [category, setCategory] = useState("");
+  const [leaveCategories, setLeaveCategories] = useState<Record<string, string>>({});
+  const absenceCategories = categoryOptions.filter((option) => option.allDay);
+  const defaultLeaveCategory =
+    absenceCategories.find((option) => option.key === "absence")?.key ||
+    absenceCategories.find((option) => option.key === "vacation")?.key ||
+    "";
   const [project, setProject] = useState(productionId);
   const [range, setRange] = useState(() => ({
     start: weekStart(),
@@ -68,9 +99,12 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
   const [detail, setDetail] = useState<DomainRecord | null>(null);
   const [error, setError] = useState("");
   const [exporting, setExporting] = useState(false);
+  const teamStart = teamSpan === "month" ? monthStart(teamDate) : teamDate;
+  const teamEnd = teamSpan === "month" ? shiftMonth(teamStart, 1) : shiftDate(teamStart, 7);
   const filtered = workspace.records.events.filter(
     (x) =>
       (!project || x.data.productionId === project) &&
+      recordMatchesPeriod(x, { season: period.season }, workspace.records.productions) &&
       (!category || x.data.category === category) &&
       (!people.length || ids(x.data, "participantIds").some((id) => people.includes(id))),
   );
@@ -78,16 +112,40 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
     () =>
       expandEvents(
         filtered,
-        view === "team" ? teamDate : range.start,
-        view === "team" ? shiftDate(teamDate, 7) : range.end,
+        view === "team" ? teamStart : range.start,
+        view === "team" ? teamEnd : range.end,
+        workspace.records.productions,
+        workspace.records.calendarCategories,
       ),
-    [filtered, range, teamDate, view],
+    [
+      filtered,
+      range,
+      teamStart,
+      teamEnd,
+      view,
+      workspace.records.productions,
+      workspace.records.calendarCategories,
+    ],
   );
   const overlaps = expanded.filter((event, i) =>
     expanded
       .slice(i + 1)
       .some(
         (other) =>
+          !(
+            event.allDay &&
+            !calendarCategoryBlocksTime(
+              value(event.extendedProps.record.data, "category"),
+              workspace.records.calendarCategories,
+            )
+          ) &&
+          !(
+            other.allDay &&
+            !calendarCategoryBlocksTime(
+              value(other.extendedProps.record.data, "category"),
+              workspace.records.calendarCategories,
+            )
+          ) &&
           event.start < other.end &&
           event.end > other.start &&
           ids(event.extendedProps.record.data, "participantIds").some((id) =>
@@ -120,9 +178,16 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
       setError(e instanceof Error ? e.message : "Aktion fehlgeschlagen");
     }
   };
-  const teamDays = Array.from({ length: 7 }, (_, i) => {
-    return shiftDate(teamDate, i);
-  });
+  const teamDays = Array.from(
+    {
+      length: Math.round(
+        (new Date(`${teamEnd}T12:00:00Z`).getTime() -
+          new Date(`${teamStart}T12:00:00Z`).getTime()) /
+          86400000,
+      ),
+    },
+    (_, i) => shiftDate(teamStart, i),
+  );
   return (
     <>
       <PageHeader
@@ -131,7 +196,10 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
         description="Eigene Dienste, Teamkalender und freie Tage im Überblick."
       >
         <ExportButton onClick={() => setExporting(true)} />
-        <Button onClick={() => setEditor({ kind: "leave" })}>Freien Tag wünschen</Button>
+        {workspace.user.role !== "superadmin" && (
+          <Button onClick={() => setEditor({ kind: "leave" })}>Freien Tag wünschen</Button>
+        )}
+        {admin && <Button onClick={() => setCategoriesOpen(true)}>Kalenderarten</Button>}
         {admin && (
           <Button
             variant="primary"
@@ -142,6 +210,19 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
           </Button>
         )}
       </PageHeader>
+      <PeriodPicker
+        records={workspace.records.events}
+        productions={workspace.records.productions}
+        value={period}
+        onChange={(next) => {
+          setPeriod(next);
+          if (next.year && next.year !== period.year) {
+            const date = next.year + "-01-01";
+            calendar.current?.getApi().gotoDate(date);
+            setTeamDate(teamSpan === "month" ? monthStart(date) : weekStart(instantDate(date)));
+          }
+        }}
+      />
       <div className="calendar-layout">
         <aside className="calendar-filters">
           <h3>Kalender einblenden</h3>
@@ -189,18 +270,18 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
             Kategorie
             <select value={category} onChange={(e) => setCategory(e.target.value)}>
               <option value="">Alle Kategorien</option>
-              {Object.entries(colors).map(([key]) => (
+              {categoryOptions.map(({ key, name }) => (
                 <option key={key} value={key}>
-                  {statusLabels[key]}
+                  {name}
                 </option>
               ))}
             </select>
           </label>
           <div className="calendar-legend">
-            {Object.entries(colors).map(([key, color]) => (
+            {categoryOptions.map(({ key, color, name }) => (
               <span key={key}>
                 <i style={{ background: color }} />
-                {statusLabels[key]}
+                {name}
               </span>
             ))}
           </div>
@@ -213,7 +294,9 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
                 aria-label="Vorheriger Zeitraum"
                 onClick={() =>
                   view === "team"
-                    ? setTeamDate(shiftDate(teamDate, -7))
+                    ? setTeamDate(
+                        teamSpan === "month" ? shiftMonth(teamDate, -1) : shiftDate(teamDate, -7),
+                      )
                     : calendar.current?.getApi().prev()
                 }
               >
@@ -224,7 +307,9 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
                 aria-label="Nächster Zeitraum"
                 onClick={() =>
                   view === "team"
-                    ? setTeamDate(shiftDate(teamDate, 7))
+                    ? setTeamDate(
+                        teamSpan === "month" ? shiftMonth(teamDate, 1) : shiftDate(teamDate, 7),
+                      )
                     : calendar.current?.getApi().next()
                 }
               >
@@ -232,12 +317,24 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
               </button>
               <Button
                 onClick={() =>
-                  view === "team" ? setTeamDate(weekStart()) : calendar.current?.getApi().today()
+                  view === "team"
+                    ? setTeamDate(teamSpan === "month" ? monthStart(localDate()) : weekStart())
+                    : calendar.current?.getApi().today()
                 }
               >
                 Heute
               </Button>
-              <h2>{view === "team" ? `Woche ab ${dateLabel(teamDate)}` : title}</h2>
+              <h2>
+                {view === "team"
+                  ? teamSpan === "month"
+                    ? new Intl.DateTimeFormat("de-DE", {
+                        timeZone: "Europe/Berlin",
+                        month: "long",
+                        year: "numeric",
+                      }).format(new Date(`${teamStart}T12:00:00Z`))
+                    : `Woche ab ${dateLabel(teamStart)}`
+                  : title}
+              </h2>
             </div>
             <div className="segmented">
               {[
@@ -257,6 +354,27 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
               ))}
             </div>
           </div>
+          {view === "team" && (
+            <div className="team-span-controls segmented" aria-label="Teamzeitraum">
+              {[
+                ["week", "Teamwoche"],
+                ["month", "Teammonat"],
+              ].map(([key, label]) => (
+                <button
+                  key={key}
+                  className={teamSpan === key ? "active" : ""}
+                  onClick={() => {
+                    setTeamSpan(key);
+                    setTeamDate(
+                      key === "month" ? monthStart(teamDate) : weekStart(instantDate(teamDate)),
+                    );
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
           {overlaps.length > 0 && (
             <div className="conflict-note">
               <AlertTriangle size={16} />
@@ -266,87 +384,17 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
           )}
           <ErrorMessage message={error} />
           {view === "team" ? (
-            <div className="table-scroll team-calendar">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Team</th>
-                    {teamDays.map((date) => (
-                      <th key={date}>
-                        {new Intl.DateTimeFormat("de-DE", {
-                          weekday: "short",
-                          day: "numeric",
-                          month: "numeric",
-                        }).format(new Date(`${date}T12:00:00`))}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {workspace.members
-                    .filter((x) => isActiveStaff(x) && (!people.length || people.includes(x.id)))
-                    .map((person) => (
-                      <tr key={person.id}>
-                        <th>{person.name}</th>
-                        {teamDays.map((date) => (
-                          <td key={date}>
-                            {expanded
-                              .filter(
-                                (event) =>
-                                  ids(event.extendedProps.record.data, "participantIds").includes(
-                                    person.id,
-                                  ) &&
-                                  localDate(new Date(new Date(event.end).getTime() - 1)) >= date &&
-                                  localDate(new Date(event.start)) <= date,
-                              )
-                              .map((event) => (
-                                <button
-                                  key={event.id}
-                                  className="team-event"
-                                  style={{ borderLeftColor: event.backgroundColor }}
-                                  onClick={() => setDetail(event.extendedProps.record)}
-                                >
-                                  <strong>{event.title}</strong>
-                                  <span>
-                                    {new Intl.DateTimeFormat("de-DE", {
-                                      timeZone: "Europe/Berlin",
-                                      hour: "2-digit",
-                                      minute: "2-digit",
-                                    }).format(new Date(event.start))}
-                                    –
-                                    {new Intl.DateTimeFormat("de-DE", {
-                                      timeZone: "Europe/Berlin",
-                                      hour: "2-digit",
-                                      minute: "2-digit",
-                                    }).format(new Date(event.end))}
-                                  </span>
-                                </button>
-                              ))}
-                            {admin && (
-                              <button
-                                className="team-add"
-                                aria-label={`Termin für ${person.name} am ${date}`}
-                                onClick={() =>
-                                  setEditor({
-                                    kind: "events",
-                                    defaults: {
-                                      start: `${date}T09:00`,
-                                      end: `${date}T17:00`,
-                                      participantIds: [person.id],
-                                    },
-                                  })
-                                }
-                              >
-                                <Plus size={13} />
-                              </button>
-                            )}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
-            </div>
+            <TeamCalendar
+              events={expanded}
+              members={workspace.members}
+              people={people}
+              days={teamDays}
+              month={teamSpan === "month"}
+              admin={admin}
+              productions={workspace.records.productions}
+              onOpen={setDetail}
+              onCreate={(defaults) => setEditor({ kind: "events", defaults })}
+            />
           ) : (
             <FullCalendar
               ref={calendar}
@@ -426,7 +474,9 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
       <section className="panel margin-top">
         <header className="panel-heading">
           <h2>{admin ? "Freiwünsche im Team" : "Meine Freiwünsche"}</h2>
-          <Button onClick={() => setEditor({ kind: "leave" })}>Antrag stellen</Button>
+          {workspace.user.role !== "superadmin" && (
+            <Button onClick={() => setEditor({ kind: "leave" })}>Antrag stellen</Button>
+          )}
         </header>
         {leaves.length ? (
           <div className="list">
@@ -456,10 +506,34 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
                 {leave.data.status === "pending" &&
                   (admin ? (
                     <>
+                      <label className="leave-category-picker">
+                        Als Kalenderart
+                        <select
+                          value={leaveCategories[leave.id] ?? defaultLeaveCategory}
+                          onChange={(event) =>
+                            setLeaveCategories({
+                              ...leaveCategories,
+                              [leave.id]: event.target.value,
+                            })
+                          }
+                        >
+                          <option value="">Ganztägige Art wählen</option>
+                          {absenceCategories.map((option) => (
+                            <option value={option.key} key={option.key}>
+                              {option.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
                       <Button
-                        disabled={busy}
+                        disabled={busy || !(leaveCategories[leave.id] ?? defaultLeaveCategory)}
                         onClick={() =>
-                          void run(() => action("leave-decide", leave.id, { status: "approved" }))
+                          void run(() =>
+                            action("leave-decide", leave.id, {
+                              status: "approved",
+                              category: leaveCategories[leave.id] ?? defaultLeaveCategory,
+                            }),
+                          )
                         }
                       >
                         Genehmigen
@@ -490,6 +564,7 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
           </p>
         )}
       </section>
+      {categoriesOpen && <CalendarCategoriesDialog onClose={() => setCategoriesOpen(false)} />}
       {editor && (
         <ResourceEditor
           kind={editor.kind}
@@ -503,9 +578,10 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
         <ExportDialog
           kind="events"
           filters={{
-            view,
-            from: view === "team" ? teamDate : exportDates.from,
-            to: view === "team" ? teamDays[6] : exportDates.to,
+            ...periodExportFilters(period),
+            view: view === "team" && teamSpan === "month" ? "team-month" : view,
+            from: view === "team" ? teamStart : exportDates.from,
+            to: view === "team" ? teamDays[teamDays.length - 1] : exportDates.to,
             ...(project ? { productionId: project } : {}),
             ...(people.length === 1
               ? { userId: people[0] }

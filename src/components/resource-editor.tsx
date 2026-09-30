@@ -12,6 +12,13 @@ import { useWorkspace } from "./workspace-context";
 import { Button, ErrorMessage, Modal } from "./ui";
 import { ProductionPeopleFields } from "./production-people";
 import { isActiveStaff } from "@/shared/client-members";
+import { TimeBookingEditor } from "@/modules/time-tracking/components/time-booking-editor";
+import { EventEditor } from "@/modules/calendar/components/event-editor";
+import { PersonEditor } from "@/modules/people/components";
+import { DocumentEditor } from "@/modules/documentation/components/document-editor";
+import { CastingEditor } from "@/modules/productions/components/casting-editor";
+import { RepeatableList } from "./repeatable-list";
+import { categoriesFor } from "@/shared/domain-categories";
 import { CastingImpact } from "./casting-impact";
 
 function initialData(kind: RecordKind): RecordData {
@@ -43,7 +50,25 @@ function initialData(kind: RecordKind): RecordData {
       : {}),
   };
 }
-export function ResourceEditor({
+type ResourceEditorProps = {
+  kind: RecordKind;
+  record?: DomainRecord;
+  defaults?: RecordData;
+  onClose: () => void;
+  lockedProductionId?: string;
+  onSaved?: (record: DomainRecord) => void;
+};
+export function ResourceEditor(props: ResourceEditorProps) {
+  if (props.kind === "people") return <PersonEditor {...props} />;
+  if (props.kind === "casting") return <CastingEditor {...props} />;
+  if (props.kind === "looks" || props.kind === "handovers" || props.kind === "templates")
+    return <DocumentEditor {...props} kind={props.kind} />;
+  if (props.kind === "events") return <EventEditor {...props} />;
+  if (props.kind === "time" || props.kind === "attendance")
+    return <TimeBookingEditor {...props} kind={props.kind} />;
+  return <GenericResourceEditor {...props} />;
+}
+function GenericResourceEditor({
   kind,
   record,
   defaults = {},
@@ -63,6 +88,9 @@ export function ResourceEditor({
     ...initialData(kind),
     ...(kind === "tasks"
       ? { assigneeIds: workspace.user.role === "superadmin" ? [] : [workspace.user.id] }
+      : {}),
+    ...(kind === "materials"
+      ? { category: categoriesFor("materials", workspace.records.categories)[0]?.key || "" }
       : {}),
     ...defaults,
     ...record?.data,
@@ -156,7 +184,11 @@ export function ResourceEditor({
     if (field.key === "sprintId" && productionContext === "") return null;
     if (kind === "productions" && field.key === "memberIds") return null;
     const options =
-      field.options ||
+      (field.key === "category" && (kind === "materials" || kind === "time")
+        ? categoriesFor(kind, workspace.records.categories).map(
+            (option) => [option.key, option.name] as [string, string],
+          )
+        : field.options) ||
       (field.source === "members"
         ? workspace.members
             .filter((x) => isActiveStaff(x) || ids(data, field.key).includes(x.id))
@@ -179,6 +211,24 @@ export function ResourceEditor({
                 (x) => [x.id, value(x.data, "title") || value(x.data, "name")] as [string, string],
               )
           : []);
+    if (field.type === "lines" || field.type === "checklist")
+      return (
+        <RepeatableList
+          key={field.key}
+          label={field.label.replace(/\s*\(.*\)/, "")}
+          checklist={field.type === "checklist"}
+          items={
+            field.type === "checklist"
+              ? Array.isArray(data[field.key])
+                ? (data[field.key] as { text: string; done: boolean }[])
+                : []
+              : ids(data, field.key).map((text) => ({ text }))
+          }
+          onChange={(items) =>
+            change(field.key, field.type === "checklist" ? items : items.map((item) => item.text))
+          }
+        />
+      );
     if (field.type === "multi")
       return (
         <fieldset className="form-multi" key={field.key}>
@@ -218,24 +268,11 @@ export function ResourceEditor({
       field.type === "number"
         ? Number(data[field.key] || 0) /
           (kind === "time" && ["durationSeconds", "pauseSeconds"].includes(field.key) ? 60 : 1)
-        : field.type === "lines"
-          ? ids(data, field.key).join("\n")
-          : field.type === "checklist"
-            ? Array.isArray(data[field.key])
-              ? (data[field.key] as { text: string; done: boolean }[]).map((x) => x.text).join("\n")
-              : ""
-            : field.type === "datetime-local" && data[field.key]
-              ? localDateTime(String(data[field.key]))
-              : value(data, field.key);
+        : field.type === "datetime-local" && data[field.key]
+          ? localDateTime(String(data[field.key]))
+          : value(data, field.key);
     return (
-      <label
-        key={field.key}
-        className={
-          field.type === "textarea" || field.type === "lines" || field.type === "checklist"
-            ? "field-wide"
-            : ""
-        }
-      >
+      <label key={field.key} className={field.type === "textarea" ? "field-wide" : ""}>
         {field.label}
         {field.required && <span className="required"> *</span>}
         {field.type === "select" ? (
@@ -251,29 +288,13 @@ export function ResourceEditor({
               </option>
             ))}
           </select>
-        ) : ["textarea", "lines", "checklist"].includes(field.type || "") ? (
+        ) : field.type === "textarea" ? (
           <textarea
-            rows={field.type === "textarea" ? 4 : 3}
+            rows={4}
             required={field.required}
             placeholder={field.placeholder}
             value={String(val)}
-            onChange={(event) =>
-              change(
-                field.key,
-                field.type === "lines"
-                  ? event.target.value.split("\n")
-                  : field.type === "checklist"
-                    ? event.target.value.split("\n").map((text) => ({
-                        text,
-                        done:
-                          (Array.isArray(data[field.key])
-                            ? (data[field.key] as { text: string; done: boolean }[])
-                            : []
-                          ).find((x) => x.text === text)?.done || false,
-                      }))
-                    : event.target.value,
-              )
-            }
+            onChange={(event) => change(field.key, event.target.value)}
           />
         ) : (
           <input

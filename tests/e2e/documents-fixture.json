@@ -1,0 +1,1052 @@
+{
+  "user": {
+    "id": "qa-admin",
+    "name": "Mara Beispiel",
+    "username": "qa-mara",
+    "role": "admin",
+    "status": "active",
+    "preferences": {
+      "accentPalette": "green",
+      "onboardingVersion": 1
+    }
+  },
+  "organization": {
+    "id": "qa",
+    "name": "Testtheater"
+  },
+  "department": {
+    "id": "qa",
+    "name": "Maske"
+  },
+  "members": [
+    {
+      "id": "qa-admin",
+      "name": "Mara Beispiel",
+      "username": "qa-mara",
+      "role": "admin",
+      "status": "active",
+      "preferences": {
+        "accentPalette": "green",
+        "onboardingVersion": 1
+      }
+    },
+    {
+      "id": "qa-user",
+      "name": "Jules Beispiel",
+      "username": "qa-jules",
+      "role": "user",
+      "status": "active",
+      "preferences": {
+        "accentPalette": "green",
+        "onboardingVersion": 1
+      }
+    },
+    {
+      "id": "qa-super",
+      "name": "Systemverwaltung QA",
+      "username": "qa-system",
+      "role": "superadmin",
+      "status": "active",
+      "preferences": {
+        "accentPalette": "green",
+        "onboardingVersion": 1
+      }
+    },
+    {
+      "id": "qa-inactive",
+      "name": "Archivperson QA",
+      "username": "qa-old",
+      "role": "user",
+      "status": "disabled",
+      "preferences": {
+        "accentPalette": "green",
+        "onboardingVersion": 1
+      }
+    }
+  ],
+  "records": {
+    "productions": [
+      {
+        "id": "qa-production",
+        "kind": "productions",
+        "data": {
+          "title": "Ein Sommernachtstraum",
+          "status": "active",
+          "color": "#c6cfe1",
+          "memberIds": ["qa-admin", "qa-user"],
+          "contacts": [
+            {
+              "id": "makeup",
+              "type": "makeup",
+              "role": "Maskenbetreuung",
+              "name": "",
+              "memberId": "qa-admin"
+            },
+            {
+              "id": "makeup2",
+              "type": "makeup",
+              "role": "Maskenbetreuung",
+              "name": "Klara Extern",
+              "memberId": "",
+              "personId": "qa-contact"
+            }
+          ],
+          "premiere": "2026-10-22",
+          "season": "2026/27",
+          "durationMinutes": 120
+        },
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "createdBy": "qa-admin",
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z",
+        "version": 1
+      },
+      {
+        "kind": "productions",
+        "id": "qa-later",
+        "data": {
+          "title": "Zweite Premiere",
+          "status": "active",
+          "premiere": "2026-11-03",
+          "memberIds": ["qa-admin"],
+          "contacts": []
+        },
+        "createdBy": "qa-admin",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z",
+        "version": 1
+      },
+      {
+        "kind": "productions",
+        "id": "qa-past",
+        "data": {
+          "title": "Frühere Premiere",
+          "status": "active",
+          "premiere": "2026-08-01",
+          "memberIds": ["qa-admin"],
+          "contacts": []
+        },
+        "createdBy": "qa-admin",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z",
+        "version": 1
+      },
+      {
+        "kind": "productions",
+        "id": "qa-archive",
+        "data": {
+          "title": "Archivproduktion 2021",
+          "status": "archived",
+          "premiere": "2021-10-22",
+          "season": "2021/22",
+          "durationMinutes": 90,
+          "memberIds": ["qa-admin"],
+          "contacts": []
+        },
+        "createdBy": "qa-admin",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "version": 1,
+        "createdAt": "2021-09-30T08:00:00Z",
+        "updatedAt": "2021-09-30T08:00:00Z"
+      }
+    ],
+    "actors": [
+      {
+        "kind": "actors",
+        "id": "qa-actor",
+        "data": {
+          "name": "Nora Beispiel",
+          "notes": "Fiktive Schauspielperson",
+          "imageIds": []
+        },
+        "createdBy": "qa-admin",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "version": 1,
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z"
+      }
+    ],
+    "characters": [
+      {
+        "kind": "characters",
+        "id": "qa-character",
+        "data": {
+          "name": "Titania",
+          "productionId": "qa-production",
+          "description": "Feenkönigin",
+          "imageIds": ["qa-photo-1", "qa-photo-2"]
+        },
+        "createdBy": "qa-admin",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "version": 1,
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z"
+      }
+    ],
+    "casting": [
+      {
+        "kind": "casting",
+        "id": "qa-casting",
+        "data": {
+          "productionId": "qa-production",
+          "actorId": "qa-actor",
+          "characterId": "qa-character",
+          "alternate": false,
+          "notes": "Bestehende Besetzungsnotiz",
+          "imageIds": ["qa-photo-3", "qa-photo-4"]
+        },
+        "createdBy": "qa-admin",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "version": 1,
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z"
+      },
+      {
+        "kind": "casting",
+        "id": "qa-free-casting",
+        "data": {
+          "productionId": "qa-production",
+          "actorName": "Gast ohne Katalog",
+          "characterName": "Puck",
+          "alternate": true,
+          "imageIds": []
+        },
+        "createdBy": "qa-admin",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "version": 1,
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z"
+      }
+    ],
+    "sprints": [],
+    "tasks": [
+      {
+        "id": "qa-task",
+        "kind": "tasks",
+        "data": {
+          "title": "Perücken für die erste Probe vorbereiten",
+          "status": "todo",
+          "priority": "normal",
+          "productionId": "qa-production",
+          "assigneeIds": ["qa-user"]
+        },
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "createdBy": "qa-admin",
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z",
+        "version": 1
+      },
+      {
+        "id": "qa-team-task",
+        "kind": "tasks",
+        "data": {
+          "title": "Fundus sortieren",
+          "status": "doing",
+          "priority": "normal",
+          "productionId": "",
+          "assigneeIds": ["qa-admin"]
+        },
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "createdBy": "qa-admin",
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z",
+        "version": 1
+      }
+    ],
+    "events": [
+      {
+        "kind": "events",
+        "id": "qa-dayoff",
+        "data": {
+          "title": "",
+          "category": "vacation",
+          "allDay": true,
+          "start": "2026-09-29T22:00:00Z",
+          "end": "2026-10-01T22:00:00Z",
+          "participantIds": ["qa-admin"],
+          "location": "",
+          "recurrence": "none"
+        },
+        "createdBy": "qa-admin",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z",
+        "version": 1
+      },
+      {
+        "kind": "events",
+        "id": "qa-service-event",
+        "data": {
+          "title": "",
+          "productionId": "qa-production",
+          "category": "service",
+          "start": "2026-09-30T09:00:00Z",
+          "end": "2026-09-30T12:00:00Z",
+          "participantIds": ["qa-user", "qa-admin"],
+          "location": "Großes Haus",
+          "recurrence": "none"
+        },
+        "createdBy": "qa-admin",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z",
+        "version": 1
+      }
+    ],
+    "leave": [
+      {
+        "kind": "leave",
+        "id": "qa-leave",
+        "data": {
+          "start": "2026-10-07",
+          "end": "2026-10-07",
+          "reason": "Freier Tag",
+          "status": "pending",
+          "userId": "qa-user"
+        },
+        "createdBy": "qa-user",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z",
+        "version": 1
+      }
+    ],
+    "time": [
+      {
+        "kind": "time",
+        "id": "qa-old-time",
+        "data": {
+          "userId": "qa-admin",
+          "title": "Historische Arbeit",
+          "date": "2021-10-04",
+          "durationSeconds": 3600,
+          "pauseSeconds": 0,
+          "productionId": "qa-archive",
+          "category": "production"
+        },
+        "createdBy": "qa-admin",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "version": 1,
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z"
+      }
+    ],
+    "looks": [
+      {
+        "kind": "looks",
+        "id": "qa-legacy-look",
+        "data": {
+          "productionId": "qa-production",
+          "actorId": "qa-actor",
+          "characterId": "qa-character",
+          "title": "Alttitel",
+          "status": "draft",
+          "scene": "Akt 2",
+          "preparation": "Vorbereitung aus dem Archiv",
+          "materials": "Pins und Nadeln",
+          "steps": "Legacy Makeup Schritte",
+          "changeover": "Alter Wechsel",
+          "durationMinutes": 30,
+          "productionDurationMinutes": 150,
+          "templateFields": {
+            "Sonderhinweis": "Altes individuelles Feld"
+          },
+          "imageIds": ["qa-photo-5"]
+        },
+        "createdBy": "qa-admin",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "version": 1,
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z"
+      },
+      {
+        "kind": "looks",
+        "id": "qa-general-look",
+        "data": {
+          "actorName": "Allgemeine Schauspielperson",
+          "productionId": "",
+          "sections": [
+            {
+              "key": "hair",
+              "entries": [
+                {
+                  "id": "general-hair",
+                  "label": "Pflege",
+                  "text": "Nur zum Test: feuchtes Haar vorsichtig entwirren."
+                }
+              ]
+            }
+          ],
+          "imageIds": []
+        },
+        "createdBy": "qa-admin",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "version": 1,
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z"
+      },
+      {
+        "kind": "looks",
+        "id": "qa-archive-look",
+        "data": {
+          "productionId": "qa-archive",
+          "actorName": "Archivperson",
+          "sections": [
+            {
+              "key": "preparation",
+              "entries": [
+                {
+                  "id": "archive-prepare",
+                  "text": "Frühere Produktionsnotiz 2021."
+                }
+              ]
+            }
+          ],
+          "imageIds": []
+        },
+        "createdBy": "qa-admin",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "version": 1,
+        "createdAt": "2021-09-30T08:00:00Z",
+        "updatedAt": "2021-09-30T08:00:00Z"
+      }
+    ],
+    "templates": [
+      {
+        "kind": "templates",
+        "id": "qa-template",
+        "data": {
+          "title": "Klassische Grundvorlage",
+          "version": 3,
+          "fields": ["Vorbereitung", "Sondernotiz"],
+          "sections": [
+            {
+              "key": "setup",
+              "entries": [
+                {
+                  "id": "template-item",
+                  "label": "Einrichtungsdetails",
+                  "text": "Vorlagenwert darf vorhandenen Text nicht ersetzen."
+                }
+              ]
+            }
+          ]
+        },
+        "createdBy": "qa-admin",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "version": 1,
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z"
+      }
+    ],
+    "messages": [
+      {
+        "kind": "messages",
+        "id": "qa-general-message",
+        "data": {
+          "text": "Allgemeine Teaminformation",
+          "userId": "qa-user",
+          "productionId": ""
+        },
+        "createdBy": "qa-user",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z",
+        "version": 1
+      },
+      {
+        "kind": "messages",
+        "id": "qa-private-message",
+        "data": {
+          "text": "Nur für die private Vorbereitung",
+          "userId": "qa-user",
+          "conversationId": "qa-private"
+        },
+        "createdBy": "qa-user",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z",
+        "version": 1
+      },
+      {
+        "kind": "messages",
+        "id": "qa-own-message",
+        "data": {
+          "text": "Eigene private Nachricht",
+          "userId": "qa-admin",
+          "conversationId": "qa-private"
+        },
+        "createdBy": "qa-admin",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z",
+        "version": 1
+      }
+    ],
+    "materials": [],
+    "handovers": [
+      {
+        "kind": "handovers",
+        "id": "qa-handover",
+        "data": {
+          "title": "Früher Dienst",
+          "productionId": "",
+          "legacyProductionId": "qa-archive",
+          "notes": "Legacy Hinweise",
+          "sections": [
+            {
+              "key": "care",
+              "entries": [
+                {
+                  "id": "care-first",
+                  "text": "Wichtiger Hinweis für den Dienst."
+                }
+              ]
+            }
+          ],
+          "checklist": [
+            {
+              "text": "Pinsel bereitstellen",
+              "done": false
+            },
+            {
+              "text": "Arbeitsplatz geprüft",
+              "done": true
+            }
+          ],
+          "imageIds": []
+        },
+        "createdBy": "qa-admin",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "version": 1,
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z"
+      }
+    ],
+    "notifications": [],
+    "timesheets": [],
+    "files": [
+      {
+        "kind": "files",
+        "id": "qa-photo-1",
+        "data": {
+          "name": "Fiktives Galeriebild 1",
+          "mime": "image/svg+xml",
+          "url": "/api/files/qa-photo-1",
+          "recordKind": "characters",
+          "recordId": "qa-character",
+          "productionId": "qa-production"
+        },
+        "createdBy": "qa-admin",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "version": 1,
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z"
+      },
+      {
+        "kind": "files",
+        "id": "qa-photo-2",
+        "data": {
+          "name": "Fiktives Galeriebild 2",
+          "mime": "image/svg+xml",
+          "url": "/api/files/qa-photo-2",
+          "recordKind": "characters",
+          "recordId": "qa-character",
+          "productionId": "qa-production"
+        },
+        "createdBy": "qa-admin",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "version": 1,
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z"
+      },
+      {
+        "kind": "files",
+        "id": "qa-photo-3",
+        "data": {
+          "name": "Fiktives Galeriebild 3",
+          "mime": "image/svg+xml",
+          "url": "/api/files/qa-photo-3",
+          "recordKind": "casting",
+          "recordId": "qa-casting",
+          "productionId": "qa-production"
+        },
+        "createdBy": "qa-admin",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "version": 1,
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z"
+      },
+      {
+        "kind": "files",
+        "id": "qa-photo-4",
+        "data": {
+          "name": "Fiktives Galeriebild 4",
+          "mime": "image/svg+xml",
+          "url": "/api/files/qa-photo-4",
+          "recordKind": "casting",
+          "recordId": "qa-casting",
+          "productionId": "qa-production"
+        },
+        "createdBy": "qa-admin",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "version": 1,
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z"
+      },
+      {
+        "kind": "files",
+        "id": "qa-photo-5",
+        "data": {
+          "name": "Fiktives Galeriebild 5",
+          "mime": "image/svg+xml",
+          "url": "/api/files/qa-photo-5",
+          "recordKind": "looks",
+          "recordId": "qa-legacy-look",
+          "productionId": "qa-production"
+        },
+        "createdBy": "qa-admin",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "version": 1,
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z"
+      }
+    ],
+    "feedback": [
+      {
+        "id": "qa-own-feedback",
+        "kind": "feedback",
+        "data": {
+          "type": "feature",
+          "title": "Favoriten für häufige Aufschriebe",
+          "description": "Unsere Standardabläufe schneller wiederfinden und in einer persönlichen Liste sammeln.",
+          "status": "review",
+          "userId": "qa-admin"
+        },
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "createdBy": "qa-admin",
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z",
+        "version": 1
+      },
+      {
+        "id": "qa-other-feedback",
+        "kind": "feedback",
+        "data": {
+          "type": "bug",
+          "title": "Darstellung einer langen Materialbezeichnung",
+          "description": "Bei sehr langen Bezeichnungen wird der letzte Teil auf schmalen Geräten abgeschnitten.",
+          "status": "new",
+          "userId": "qa-user"
+        },
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "createdBy": "qa-admin",
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z",
+        "version": 1
+      }
+    ],
+    "attendance": [
+      {
+        "kind": "attendance",
+        "id": "qa-attendance",
+        "data": {
+          "title": "Anwesenheit",
+          "date": "2026-09-30",
+          "start": "2026-09-30T07:00:00Z",
+          "end": "2026-09-30T15:00:00Z",
+          "pauseSeconds": 1800,
+          "durationSeconds": 27000,
+          "userId": "qa-admin",
+          "notes": "Werkstatt und Vorstellung"
+        },
+        "createdBy": "qa-admin",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z",
+        "version": 1
+      },
+      {
+        "kind": "attendance",
+        "id": "qa-old-attendance",
+        "data": {
+          "userId": "qa-admin",
+          "title": "Anwesenheit",
+          "date": "2021-10-04",
+          "start": "2021-10-04T07:00:00Z",
+          "end": "2021-10-04T15:00:00Z",
+          "durationSeconds": 27000,
+          "pauseSeconds": 1800
+        },
+        "createdBy": "qa-admin",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "version": 1,
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z"
+      }
+    ],
+    "calendarCategories": [
+      {
+        "kind": "calendarCategories",
+        "id": "qa-service",
+        "data": {
+          "key": "service",
+          "name": "Dienst",
+          "color": "#377a68",
+          "allDay": false
+        },
+        "createdBy": "qa-admin",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z",
+        "version": 1
+      },
+      {
+        "kind": "calendarCategories",
+        "id": "qa-vacation",
+        "data": {
+          "key": "vacation",
+          "name": "Urlaub",
+          "color": "#5c92a8",
+          "allDay": true
+        },
+        "createdBy": "qa-admin",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z",
+        "version": 1
+      },
+      {
+        "kind": "calendarCategories",
+        "id": "qa-sick",
+        "data": {
+          "key": "sick",
+          "name": "Krank",
+          "color": "#b86d73",
+          "allDay": true
+        },
+        "createdBy": "qa-admin",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z",
+        "version": 1
+      }
+    ],
+    "conversations": [
+      {
+        "kind": "conversations",
+        "id": "qa-private",
+        "data": {
+          "title": "Vorbereitung Premiere",
+          "mode": "group",
+          "participantIds": ["qa-admin", "qa-user"],
+          "archived": false
+        },
+        "createdBy": "qa-admin",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z",
+        "version": 1
+      },
+      {
+        "kind": "conversations",
+        "id": "qa-archived",
+        "data": {
+          "title": "Abgeschlossene Runde",
+          "mode": "group",
+          "participantIds": ["qa-admin", "qa-user"],
+          "archived": true
+        },
+        "createdBy": "qa-admin",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z",
+        "version": 1
+      }
+    ],
+    "people": [
+      {
+        "kind": "people",
+        "id": "qa-contact",
+        "data": {
+          "name": "Klara Verzeichnis",
+          "organization": "Gastensemble",
+          "position": "Maskenbetreuung",
+          "email": "klara@example.invalid",
+          "phone": "01234 000000",
+          "notes": "Fiktive Kontaktperson."
+        },
+        "createdBy": "qa-admin",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "version": 1,
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z"
+      }
+    ],
+    "categories": [
+      {
+        "kind": "categories",
+        "id": "qa-category-time-production",
+        "data": {
+          "scope": "time",
+          "key": "production",
+          "name": "Produktion",
+          "order": 0,
+          "color": "#377a68"
+        },
+        "createdBy": "qa-admin",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "version": 1,
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z"
+      },
+      {
+        "kind": "categories",
+        "id": "qa-category-time-custom-time",
+        "data": {
+          "scope": "time",
+          "key": "custom-time",
+          "name": "Vorbereitung Kostüm",
+          "order": 1,
+          "color": "#377a68"
+        },
+        "createdBy": "qa-admin",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "version": 1,
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z"
+      },
+      {
+        "kind": "categories",
+        "id": "qa-category-materials-wig",
+        "data": {
+          "scope": "materials",
+          "key": "wig",
+          "name": "Perücke",
+          "order": 0,
+          "color": "#377a68"
+        },
+        "createdBy": "qa-admin",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "version": 1,
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z"
+      },
+      {
+        "kind": "categories",
+        "id": "qa-category-materials-makeup",
+        "data": {
+          "scope": "materials",
+          "key": "makeup",
+          "name": "Makeup",
+          "order": 1,
+          "color": "#377a68"
+        },
+        "createdBy": "qa-admin",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "version": 1,
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z"
+      },
+      {
+        "kind": "categories",
+        "id": "qa-category-materials-tool",
+        "data": {
+          "scope": "materials",
+          "key": "tool",
+          "name": "Werkzeug",
+          "order": 2,
+          "color": "#377a68"
+        },
+        "createdBy": "qa-admin",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "version": 1,
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z"
+      },
+      {
+        "kind": "categories",
+        "id": "qa-category-looks-preparation",
+        "data": {
+          "scope": "looks",
+          "key": "preparation",
+          "name": "Vorbereitung",
+          "order": 0,
+          "color": "#377a68"
+        },
+        "createdBy": "qa-admin",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "version": 1,
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z"
+      },
+      {
+        "kind": "categories",
+        "id": "qa-category-looks-makeup",
+        "data": {
+          "scope": "looks",
+          "key": "makeup",
+          "name": "Makeup",
+          "order": 1,
+          "color": "#377a68"
+        },
+        "createdBy": "qa-admin",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "version": 1,
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z"
+      },
+      {
+        "kind": "categories",
+        "id": "qa-category-looks-hair",
+        "data": {
+          "scope": "looks",
+          "key": "hair",
+          "name": "Haare",
+          "order": 2,
+          "color": "#377a68"
+        },
+        "createdBy": "qa-admin",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "version": 1,
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z"
+      },
+      {
+        "kind": "categories",
+        "id": "qa-category-looks-wigs-beards",
+        "data": {
+          "scope": "looks",
+          "key": "wigs-beards",
+          "name": "Perücken und Bärte",
+          "order": 3,
+          "color": "#377a68"
+        },
+        "createdBy": "qa-admin",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "version": 1,
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z"
+      },
+      {
+        "kind": "categories",
+        "id": "qa-category-looks-changeover",
+        "data": {
+          "scope": "looks",
+          "key": "changeover",
+          "name": "Umbau & Wechsel",
+          "order": 4,
+          "color": "#377a68"
+        },
+        "createdBy": "qa-admin",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "version": 1,
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z"
+      },
+      {
+        "kind": "categories",
+        "id": "qa-category-looks-setup",
+        "data": {
+          "scope": "looks",
+          "key": "setup",
+          "name": "Einrichten",
+          "order": 5,
+          "color": "#377a68"
+        },
+        "createdBy": "qa-admin",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "version": 1,
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z"
+      },
+      {
+        "kind": "categories",
+        "id": "qa-category-handovers-care",
+        "data": {
+          "scope": "handovers",
+          "key": "care",
+          "name": "Worauf muss ich achten",
+          "order": 0,
+          "color": "#377a68"
+        },
+        "createdBy": "qa-admin",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "version": 1,
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z"
+      },
+      {
+        "kind": "categories",
+        "id": "qa-category-handovers-notes",
+        "data": {
+          "scope": "handovers",
+          "key": "notes",
+          "name": "Allgemeine Hinweise",
+          "order": 1,
+          "color": "#377a68"
+        },
+        "createdBy": "qa-admin",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "version": 1,
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z"
+      }
+    ]
+  },
+  "timer": null,
+  "attendanceTimer": null,
+  "projectHours": {}
+}

@@ -7,6 +7,7 @@ import { selectExportRecords } from "./selection";
 import { resolveProductionContacts } from "./contacts";
 import { durationSummary } from "./duration-summary";
 import { exportRows } from "./data";
+import { documentPresentation } from "./document-presentation";
 export type { ExportInput, ExportResult, ExportFormat } from "./types";
 export { selectExportRecords } from "./selection";
 
@@ -15,6 +16,16 @@ export async function buildExport(input: ExportInput): Promise<ExportResult> {
   const formats = ["pdf", "xlsx", "csv", "ics", "json"];
   if (!formats.includes(input.format)) throw new Error("Unbekanntes Exportformat.");
   input = { ...input, records: selectExportRecords(input) };
+  if (input.year && ["events", "calendar", "time", "attendance"].includes(input.kind)) {
+    const first = `${input.year}-01-01`,
+      last = `${input.year}-12-31`;
+    input = {
+      ...input,
+      from: input.from && input.from > first ? input.from : first,
+      to: input.to && input.to < last ? input.to : last,
+    };
+    if (input.from! > input.to!) input = { ...input, records: [], from: first, to: last };
+  }
   if (input.records.length > 20000)
     throw new Error("Bitte die Exportauswahl auf höchstens 20.000 Einträge begrenzen.");
   const filename = `digitalmask-${input.teamOnly ? "teamboard" : input.kind.replace(/[^a-zA-Z0-9_-]/g, "-")}${input.from ? `-${input.from.replace(/[^0-9-]/g, "")}` : ""}.${input.format}`;
@@ -30,9 +41,19 @@ export async function buildExport(input: ExportInput): Promise<ExportResult> {
             from: input.from,
             to: input.to,
             ...(input.teamOnly ? { teamOnly: true } : {}),
+            ...(input.generalOnly ? { generalOnly: true } : {}),
             ...(input.productionId ? { productionId: input.productionId } : {}),
             ...(input.userIds?.length ? { userIds: input.userIds } : {}),
+            ...(input.year ? { year: input.year } : {}),
+            ...(input.season ? { season: input.season } : {}),
             records: input.records,
+            ...(["looks", "handovers"].includes(input.kind)
+              ? {
+                  documentDirectory: input.records.map((record) =>
+                    documentPresentation(record, input),
+                  ),
+                }
+              : {}),
             ...(input.kind === "attendance"
               ? {
                   attendanceSummary: (() => {
@@ -50,7 +71,11 @@ export async function buildExport(input: ExportInput): Promise<ExportResult> {
               ? {
                   contactDirectory: input.records.map((record) => ({
                     productionId: record.id,
-                    contacts: resolveProductionContacts(record, input.members),
+                    contacts: resolveProductionContacts(
+                      record,
+                      input.members,
+                      input.references?.people,
+                    ),
                   })),
                 }
               : {}),

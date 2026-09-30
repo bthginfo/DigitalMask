@@ -12,8 +12,11 @@ export interface ExportInput {
   to?: string;
   view?: string;
   teamOnly?: boolean;
+  generalOnly?: boolean;
   productionId?: string;
   userIds?: string[];
+  year?: number;
+  season?: string;
   images?: Record<string, Uint8Array>;
   references?: Partial<Record<RecordKind, DomainRecord[]>>;
 }

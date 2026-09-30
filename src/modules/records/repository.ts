@@ -46,4 +46,5 @@ export async function assertProject(
   const production = await findRecord(context, productionId, "productions", tx);
   if (!projectVisible(context, production))
     throw new HttpError(403, "Du hast keinen Zugriff auf diese Produktion.");
+  return production;
 }

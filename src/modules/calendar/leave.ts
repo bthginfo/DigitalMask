@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, sql, inArray } from "drizzle-orm";
 import { addDays, parseISO, format } from "date-fns";
 import { db } from "@/platform/db";
 import { records } from "@/platform/db/schema";
@@ -9,7 +9,13 @@ import { emit, auditChange, scheduleEvents } from "@/platform/events";
 import { HttpError } from "@/platform/http";
 import { startOfLocalDay } from "@/modules/time-tracking/rules";
 import { occurrences } from "./occurrences";
-export async function decideLeave(context: Context, id: string, status: unknown) {
+import { calendarPresentation, calendarCategoryBlocksTime } from "@/shared/calendar-categories";
+export async function decideLeave(
+  context: Context,
+  id: string,
+  status: unknown,
+  categoryKey?: unknown,
+) {
   requireAdmin(context);
   if (status !== "approved" && status !== "rejected")
     throw new HttpError(400, "Ungültige Entscheidung.");
@@ -25,12 +31,42 @@ export async function decideLeave(context: Context, id: string, status: unknown)
       const start = startOfLocalDay(String(row.data.start));
       const next = addDays(parseISO(String(row.data.end)), 1);
       const end = startOfLocalDay(format(next, "yyyy-MM-dd"));
-      const events = await tx
+      const planning = await tx
         .select()
         .from(records)
-        .where(and(eq(records.departmentId, context.departmentId), eq(records.kind, "events")));
-      for (const event of events) {
+        .where(
+          and(
+            eq(records.departmentId, context.departmentId),
+            inArray(records.kind, ["events", "productions", "calendarCategories"]),
+          ),
+        );
+      const categories = planning.filter(
+        (item) => item.kind === "calendarCategories" && item.data.allDay === true,
+      );
+      const category = categoryKey
+        ? categories.find((item) => item.data.key === categoryKey)
+        : categories.find((item) => item.data.key === "absence") ||
+          categories.find((item) => item.data.key === "vacation");
+      if (!category)
+        throw new HttpError(
+          409,
+          "Bitte wähle eine vorhandene ganztägige Kalenderkategorie für den Freiwunsch.",
+        );
+      const references = planning.map(serialize);
+      for (const event of planning) {
         if (
+          !calendarCategoryBlocksTime(
+            String(category.data.key),
+            references.filter((item) => item.kind === "calendarCategories"),
+          ) ||
+          !calendarCategoryBlocksTime(
+            String(event.data.category),
+            references.filter((item) => item.kind === "calendarCategories"),
+          )
+        )
+          continue;
+        if (
+          event.kind !== "events" ||
           event.id === eventId ||
           !Array.isArray(event.data.participantIds) ||
           !event.data.participantIds.includes(row.data.userId)
@@ -39,7 +75,13 @@ export async function decideLeave(context: Context, id: string, status: unknown)
         if (occurrences(serialize(event), start, end).some((o) => o.start < end && o.end > start))
           throw new HttpError(
             409,
-            `Der Freiwunsch überschneidet sich mit „${event.data.title}“. Bitte passe zuerst den Dienst an.`,
+            `Der Freiwunsch überschneidet sich mit „${
+              calendarPresentation(
+                serialize(event),
+                references.filter((item) => item.kind === "productions"),
+                references.filter((item) => item.kind === "calendarCategories"),
+              ).title
+            }“. Bitte passe zuerst den Dienst an.`,
           );
       }
       eventId = eventId || crypto.randomUUID();
@@ -54,10 +96,10 @@ export async function decideLeave(context: Context, id: string, status: unknown)
           startAt: start,
           endAt: end,
           data: {
-            title: "Frei",
+            title: "",
             start: start.toISOString(),
             end: end.toISOString(),
-            category: "absence",
+            category: category.data.key,
             allDay: true,
             productionId: "",
             participantIds: [row.data.userId],

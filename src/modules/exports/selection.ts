@@ -1,14 +1,30 @@
 import type { DomainRecord } from "../../shared/contracts";
 import type { ExportInput } from "./types";
+import { recordMatchesPeriod } from "../../shared/period-filter";
 
 /** Scope an already-authorized collection. This helper never grants access or fetches records. */
 export function selectExportRecords(
-  input: Pick<ExportInput, "kind" | "records" | "teamOnly" | "productionId" | "userIds">,
+  input: Pick<
+    ExportInput,
+    | "kind"
+    | "records"
+    | "teamOnly"
+    | "generalOnly"
+    | "productionId"
+    | "userIds"
+    | "year"
+    | "season"
+    | "references"
+  >,
 ): DomainRecord[] {
   if (input.teamOnly && input.kind !== "tasks")
     throw new Error("Der Teamboard-Filter ist ausschließlich für Aufgaben verfügbar.");
   if (input.teamOnly && input.productionId)
     throw new Error("Teamboard und Produktionsfilter können nicht kombiniert werden.");
+  if (input.generalOnly && (!["messages", "looks"].includes(input.kind) || input.productionId))
+    throw new Error(
+      "Der Allgemeinfilter ist nur für Nachrichten und Aufschriebe ohne Produktion verfügbar.",
+    );
   return input.records.filter((record) => {
     if (
       input.kind !== "backup" &&
@@ -16,6 +32,8 @@ export function selectExportRecords(
     )
       return false;
     if (input.teamOnly && record.data.productionId) return false;
+    if (input.generalOnly && (record.data.productionId || record.data.conversationId)) return false;
+    if (!recordMatchesPeriod(record, input, input.references?.productions || [])) return false;
     if (input.userIds?.length) {
       if (
         record.kind === "events" &&

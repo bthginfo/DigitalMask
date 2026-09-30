@@ -50,6 +50,20 @@
       "when": 1790790008189,
       "tag": "0006_third_the_hood",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1790793458166,
+      "tag": "0007_amused_marvex",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790793932946,
+      "tag": "0008_shared_contacts_and_global_handovers",
+      "breakpoints": true
     }
   ]
 }

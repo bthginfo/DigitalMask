@@ -1,3 +1,4 @@
+import { qaResources, trackQaResources } from "./qa-resources";
 import { test, expect, request as playwrightRequest } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 const credentials = await readFile(".local/ADMIN-ZUGANG.txt", "utf8");
@@ -12,12 +13,15 @@ test("real database workflows, permissions and booking integrity", async () => {
   });
   const suffix = Date.now().toString();
   const name = `qa_${suffix}`;
-  const created: { kind: string; id: string }[] = [];
+  const created = qaResources();
   let memberId = "";
   const create = async (kind: string, data: Record<string, unknown>) => {
     const response = await admin.post(`/api/records/${kind}`, { data: { data } });
     expect(response.status(), await response.text()).toBe(201);
     const result = await response.json();
+    if (kind === "productions")
+      for (const contact of result.data.contacts || [])
+        if (contact.personId) created.push({ kind: "people", id: contact.personId });
     created.push({ kind, id: result.id });
     return result;
   };
@@ -38,6 +42,7 @@ test("real database workflows, permissions and booking integrity", async () => {
     expect((await member.get("/api/workspace")).status()).toBe(403);
     const workspace = await (await admin.get("/api/workspace")).json();
     memberId = workspace.members.find((m: { username: string }) => m.username === name).id;
+    trackQaResources({ kind: "member", id: memberId });
     const inactiveContact = await admin.post("/api/records/productions", {
       data: {
         data: {

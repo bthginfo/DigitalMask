@@ -11,22 +11,32 @@ import {
   Upload,
 } from "lucide-react";
 import type { DomainRecord, RecordData, RecordKind, Workspace } from "@/shared/contracts";
-import { api, dateLabel, ids, localDate, num, value } from "@/shared/client-api";
+import { api, dateLabel, hours, ids, localDate, num, value } from "@/shared/client-api";
 import { prepareUpload } from "@/shared/client-files";
 import { HistoryPanel } from "./history-panel";
 import { fields, labels, statusLabels } from "./resource-fields";
 import { useWorkspace } from "./workspace-context";
 import { Badge, Button, Empty, ErrorMessage, ExportButton, Modal, PageHeader } from "./ui";
 import { ResourceEditor } from "./resource-editor";
+import { DocumentContent } from "@/modules/documentation/components/document-content";
+import { lookTitle } from "@/shared/document-sections";
+import { CategoryManager } from "@/modules/categories/components/category-manager";
+import { categoryName } from "@/shared/domain-categories";
+import { EventDetail } from "@/modules/calendar/components/event-detail";
 import { ExportDialog, ImportDialog } from "./export-dialog";
 
 function recordTitle(record: DomainRecord, workspace: Workspace) {
+  if (record.kind === "looks") return lookTitle(record.data, workspace.records.actors);
   if (record.kind === "casting")
-    return `${value(workspace.records.characters.find((row) => row.id === record.data.characterId)?.data || {}, "name") || "Figur"} · ${value(workspace.records.actors.find((row) => row.id === record.data.actorId)?.data || {}, "name") || "Schauspieler"}`;
+    return `${value(workspace.records.characters.find((row) => row.id === record.data.characterId)?.data || {}, "name") || value(record.data, "characterName") || "Figur"} · ${value(workspace.records.actors.find((row) => row.id === record.data.actorId)?.data || {}, "name") || value(record.data, "actorName") || "Schauspieler"}`;
   return value(record.data, "title") || value(record.data, "name") || labels[record.kind][1];
 }
 
 export function RecordDetail({ record, onClose }: { record: DomainRecord; onClose: () => void }) {
+  if (record.kind === "events") return <EventDetail record={record} onClose={onClose} />;
+  return <GenericRecordDetail record={record} onClose={onClose} />;
+}
+function GenericRecordDetail({ record, onClose }: { record: DomainRecord; onClose: () => void }) {
   const { workspace, save, remove, refresh, action, busy } = useWorkspace();
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState("");
@@ -36,16 +46,26 @@ export function RecordDetail({ record, onClose }: { record: DomainRecord; onClos
   const [exporting, setExporting] = useState(false);
   const current = workspace.records[record.kind].find((x) => x.id === record.id) || record;
   const canEdit =
-    workspace.user.role !== "user" ||
-    (!["productions", "actors", "characters", "casting", "sprints", "events", "templates"].includes(
-      current.kind,
-    ) &&
-      (!["time", "leave", "messages"].includes(current.kind) ||
-        current.data.userId === workspace.user.id) &&
-      (current.kind !== "tasks" ||
-        current.createdBy === workspace.user.id ||
-        ids(current.data, "assigneeIds").includes(workspace.user.id)) &&
-      (current.kind !== "looks" || current.createdBy === workspace.user.id));
+    current.kind === "messages" && current.data.conversationId
+      ? current.data.userId === workspace.user.id
+      : current.kind === "conversations"
+        ? current.createdBy === workspace.user.id
+        : workspace.user.role !== "user" ||
+          (![
+            "productions",
+            "actors",
+            "characters",
+            "casting",
+            "sprints",
+            "events",
+            "templates",
+          ].includes(current.kind) &&
+            (!["time", "attendance", "leave", "messages"].includes(current.kind) ||
+              current.data.userId === workspace.user.id) &&
+            (current.kind !== "tasks" ||
+              current.createdBy === workspace.user.id ||
+              ids(current.data, "assigneeIds").includes(workspace.user.id)) &&
+            (current.kind !== "looks" || current.createdBy === workspace.user.id));
   const linkedFiles = workspace.records.files.filter(
     (x) => x.data.recordKind === current.kind && x.data.recordId === current.id,
   );
@@ -90,16 +110,18 @@ export function RecordDetail({ record, onClose }: { record: DomainRecord; onClos
       ) : (
         <Modal title={title} onClose={onClose} wide>
           <div className="detail-actions">
-            <Badge
-              tone={
-                value(current.data, "status") === "published" ||
-                value(current.data, "status") === "done"
-                  ? "green"
-                  : "neutral"
-              }
-            >
-              {statusLabels[value(current.data, "status")] || labels[current.kind][1]}
-            </Badge>
+            {!["looks", "handovers"].includes(current.kind) && (
+              <Badge
+                tone={
+                  value(current.data, "status") === "published" ||
+                  value(current.data, "status") === "done"
+                    ? "green"
+                    : "neutral"
+                }
+              >
+                {statusLabels[value(current.data, "status")] || labels[current.kind][1]}
+              </Badge>
+            )}
             {canEdit && (
               <Button onClick={() => setEditing(true)}>
                 <Pencil size={15} />
@@ -151,11 +173,24 @@ export function RecordDetail({ record, onClose }: { record: DomainRecord; onClos
                 } else if (field.options)
                   display =
                     field.options.find((x) => x[0] === current.data[field.key])?.[1] || display;
+                else if (field.key === "durationSeconds")
+                  display = `${hours(num(current.data, field.key))} h`;
+                else if (field.key === "pauseSeconds")
+                  display = `${Math.round(num(current.data, field.key) / 60)} min`;
                 else if (field.type === "date" || field.type === "datetime-local")
                   display = dateLabel(display, field.type === "datetime-local");
                 else if (field.type === "checkbox")
                   display = current.data[field.key] ? "Ja" : "Nein";
                 else if (field.type === "lines") display = ids(current.data, field.key).join(" · ");
+                if (
+                  field.key === "category" &&
+                  (current.kind === "time" || current.kind === "materials")
+                )
+                  display = categoryName(
+                    current.kind,
+                    value(current.data, "category"),
+                    workspace.records.categories,
+                  );
                 return (
                   <div key={field.key} className={field.type === "textarea" ? "field-wide" : ""}>
                     <dt>{field.label}</dt>
@@ -164,6 +199,9 @@ export function RecordDetail({ record, onClose }: { record: DomainRecord; onClos
                 );
               })}
           </dl>
+          {["looks", "handovers", "templates"].includes(current.kind) && (
+            <DocumentContent record={current} />
+          )}
           {checklist.length > 0 && (
             <section className="detail-section">
               <h3>Checkliste</h3>
@@ -350,7 +388,7 @@ export function RecordDetail({ record, onClose }: { record: DomainRecord; onClos
             </section>
           )}
           <>
-            {current.kind === "tasks" && (
+            {current.kind === "tasks" && workspace.user.role !== "superadmin" && (
               <div className="detail-actions margin-top">
                 <Button
                   disabled={busy}
@@ -383,20 +421,6 @@ export function RecordDetail({ record, onClose }: { record: DomainRecord; onClos
             {(current.kind === "looks" || current.kind === "templates") && (
               <HistoryPanel record={current} />
             )}
-            {current.kind === "looks" &&
-              typeof current.data.templateFields === "object" &&
-              current.data.templateFields !== null && (
-                <dl className="detail-grid margin-top">
-                  {Object.entries(current.data.templateFields as Record<string, string>).map(
-                    ([key, content]) => (
-                      <div className="field-wide" key={key}>
-                        <dt>{key}</dt>
-                        <dd>{content}</dd>
-                      </div>
-                    ),
-                  )}
-                </dl>
-              )}
           </>
           <ErrorMessage message={error} />
           <footer className="dialog-footer">
@@ -480,6 +504,7 @@ export function ResourceView({
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
   const [low, setLow] = useState(false);
+  const [categoriesOpen, setCategoriesOpen] = useState(false);
   const admin = workspace.user.role !== "user";
   const allowedCreate =
     canCreate !== false &&
@@ -518,6 +543,9 @@ export function ResourceView({
         description={description}
       >
         <>
+          {(kind === "materials" || kind === "handovers") && admin && (
+            <Button onClick={() => setCategoriesOpen(true)}>Kategorien verwalten</Button>
+          )}
           {exportable && <ExportButton onClick={() => setExporting(true)} />}
           {admin && lockedProductionId === undefined && (
             <Button onClick={() => setImporting(true)}>
@@ -612,8 +640,20 @@ export function ResourceView({
               <thead>
                 <tr>
                   <th>{kind === "casting" ? "Figur / Schauspieler" : "Bezeichnung"}</th>
-                  <th>{kind === "materials" ? "Lagerort" : "Produktion / Kategorie"}</th>
-                  <th>{kind === "materials" ? "Bestand" : "Status / Datum"}</th>
+                  <th>
+                    {kind === "materials"
+                      ? "Lagerort"
+                      : kind === "handovers"
+                        ? "Checkliste"
+                        : "Produktion / Kategorie"}
+                  </th>
+                  <th>
+                    {kind === "materials"
+                      ? "Bestand"
+                      : kind === "handovers"
+                        ? "Zuletzt geändert"
+                        : "Status / Datum"}
+                  </th>
                   <th>
                     <span className="visually-hidden">Öffnen</span>
                   </th>
@@ -641,14 +681,20 @@ export function ResourceView({
                         )}
                       </td>
                       <td>
-                        {kind === "materials"
-                          ? value(row.data, "location")
-                          : production
-                            ? value(production.data, "title")
-                            : statusLabels[value(row.data, "category")] || "–"}
+                        {kind === "handovers"
+                          ? Array.isArray(row.data.checklist) && row.data.checklist.length
+                            ? `${(row.data.checklist as { done: boolean }[]).filter((item) => item.done).length} / ${row.data.checklist.length} erledigt`
+                            : "Keine Checkliste"
+                          : kind === "materials"
+                            ? value(row.data, "location")
+                            : production
+                              ? value(production.data, "title")
+                              : statusLabels[value(row.data, "category")] || "–"}
                       </td>
                       <td>
-                        {kind === "materials" ? (
+                        {kind === "handovers" ? (
+                          dateLabel(row.updatedAt)
+                        ) : kind === "materials" ? (
                           <Badge
                             tone={
                               num(row.data, "quantity") <= num(row.data, "minQuantity")
@@ -704,6 +750,12 @@ export function ResourceView({
           }
           action={allowedCreate ? `${labels[kind][1]} anlegen` : undefined}
           onAction={() => setEditor(true)}
+        />
+      )}
+      {categoriesOpen && (
+        <CategoryManager
+          scope={kind === "handovers" ? "handovers" : "materials"}
+          onClose={() => setCategoriesOpen(false)}
         />
       )}
       {editor && (

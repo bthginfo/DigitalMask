@@ -32,7 +32,7 @@ const steps = [
     module: "productions",
     title: "Ein Stück. Ein gemeinsamer Arbeitsraum.",
     icon: Theater,
-    text: "In einer Produktion liegen Team und Kontakte, Figuren und Besetzung, Aufgaben, Aufschriebe, Kalender, Zeiten und Projektchat zusammen.",
+    text: "Öffne ein Stück, um Team, Aufgaben, Figuren, Bilder und Termine zu sehen. Die Maskenbetreuung steht schon auf der Produktionskarte.",
     tips: [
       "Admins pflegen Produktionen, externe Kontakte und Maskenbetreuungen.",
       "Figuren und Besetzungen können mehrere Bilder bekommen: zuerst speichern, dann die Galerie nutzen.",
@@ -42,7 +42,7 @@ const steps = [
     module: "tasks",
     title: "Klar verteilen, gemeinsam vorankommen.",
     icon: Layers3,
-    text: "Jede Produktion hat ihr eigenes Kanban und eigene Sprints. Im Teamboard stehen allgemeine Aufgaben der Maske ohne Produktionszuordnung.",
+    text: "Hier stehen allgemeine Aufgaben der Maske. Die Aufgaben eines Stücks findest du in der Produktion. Dort zeigt ein Board den Arbeitsstand; Sprints bündeln Aufgaben für einen Zeitraum.",
     tips: [
       "Aufgaben können Verantwortliche, Unteraufgaben und Checklisten haben.",
       "Am Smartphone kannst du den Status auch im Auswahlfeld der Aufgabe ändern.",
@@ -52,17 +52,17 @@ const steps = [
     module: "documentation",
     title: "Wissen bleibt im Team.",
     icon: BookOpen,
-    text: "Aufschriebe halten Vorbereitung, Material, Arbeitsablauf und Wechsel nach euren Vorlagen fest. Bilder und Versionsverlauf machen Änderungen nachvollziehbar.",
+    text: "Aufschriebe sammeln euer Wissen zu einer Schauspielperson. Vorbereitung, Makeup, Haare und Wechsel haben eigene Textfelder. Allgemeine und archivierte Aufschriebe findest du hier gemeinsam.",
     tips: [
       "Der Schauspielerkatalog bündelt Kontakte, Perückenmaße, Hinweise und Fotos.",
-      "Fundus und Dienstübergaben helfen bei Material und Vorstellungen.",
+      "Weitere Personen verwaltest du im Verzeichnis. Dienstübergaben sind ein gemeinsamer Bereich mit Hinweisen und Checklisten.",
     ],
   },
   {
     module: "calendar",
     title: "Gemeinsam planen, persönlich sehen.",
     icon: CalendarDays,
-    text: "Blende die Kalender anderer Teammitglieder ein und wechsle zwischen Monat, Woche, Tag, Agenda und Teamübersicht. Admins bearbeiten Dienste; Teammitglieder können Freiwünsche stellen.",
+    text: "Wähle die Personen aus, deren Termine du sehen möchtest. Unter Team kannst du eine ganze Woche oder einen Monat gemeinsam ansehen. Admins planen Dienste; du kannst freie Tage wünschen.",
     tips: [
       "Exporte übernehmen den aktuellen Zeitraum und die ausgewählten Personen.",
       "Unter Einstellungen kannst du deinen persönlichen Kalender abonnieren.",
@@ -72,17 +72,17 @@ const steps = [
     module: "time",
     title: "Arbeitszeit ohne Papierstapel.",
     icon: Clock3,
-    text: "Starte einen Timer oder trage eine Tätigkeit mit Dauer beziehungsweise Beginn, Ende und Pause nach. Produktionszeiten und allgemeine Arbeiten werden zusammengefasst.",
+    text: "Zwei Timer erfassen getrennt, wie lange du im Theater bist und woran du arbeitest. Beide dürfen gleichzeitig laufen. Du kannst Zeiten auch später eintragen und korrigieren.",
     tips: [
       "Offlineentwürfe werden erst nach ausdrücklicher Synchronisierung gespeichert.",
-      "Eine komplette Woche reichst du im allgemeinen Bereich Zeit buchen zur Freigabe ein.",
+      "Unter Produktions- / Arbeitszeiten reichst du deine Tätigkeiten zur Wochenfreigabe ein. Anwesenheit bleibt getrennt.",
     ],
   },
   {
     module: "chat",
     title: "Kurze Wege und Hilfe, wenn du sie brauchst.",
     icon: MessageSquare,
-    text: "Der allgemeine Kanal verbindet die Maske, der Projektchat bündelt Absprachen zum Stück. In Hilfe findest du Anleitungen, Antworten und einen direkten Weg für Ideen oder Fehlerberichte.",
+    text: "Im Maskenkanal erreichst du das Team. Private Chats sind nur für die ausgewählten Personen sichtbar. Absprachen zu einem Stück stehen im Projektchat. Hilfe erklärt dir alle Schritte.",
     tips: [
       "Deine Rückmeldungen findest du dort im eigenen Verlauf.",
       "Du kannst diese Einführung jederzeit aus der Hilfe neu starten.",
@@ -112,7 +112,40 @@ export function OnboardingTour({
     navigate(step === steps.length ? "today" : steps[step].module);
     heading.current?.closest("dialog")?.scrollTo({ top: 0 });
     heading.current?.focus({ preventScroll: true });
-  }, [step, navigate]);
+    const main = document.querySelector<HTMLElement>(".main-content");
+    main?.setAttribute("data-tour-area", last ? "today" : current.module);
+    window.scrollTo({ top: 0, behavior: "instant" });
+    let stopped = false;
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        if (stopped || !matchMedia("(max-width:760px)").matches || last) return;
+        const targets: Record<string, string> = {
+          productions: ".production-card",
+          tasks: ".kanban",
+          calendar: ".calendar-board",
+          time: ".dual-timers",
+          chat: ".chat-layout",
+          documentation: ".document-folder",
+        };
+        const target = targets[current.module]
+          ? document.querySelector<HTMLElement>(targets[current.module])
+          : null;
+        if (target) {
+          target.setAttribute("data-tour-example", "true");
+          const y = target.getBoundingClientRect().top;
+          if (y > 150)
+            window.scrollTo({ top: Math.max(0, window.scrollY + y - 110), behavior: "instant" });
+        }
+      }),
+    );
+    return () => {
+      stopped = true;
+      main?.removeAttribute("data-tour-area");
+      document
+        .querySelectorAll("[data-tour-example]")
+        .forEach((node) => node.removeAttribute("data-tour-example"));
+    };
+  }, [step, navigate, current.module, last]);
   const finish = async (saveColor: boolean) => {
     setError("");
     try {
@@ -135,7 +168,7 @@ export function OnboardingTour({
       onClose={() => {
         if (!busy) void finish(false);
       }}
-      wide
+      className={`onboarding-dialog ${last ? "onboarding-colors" : ""}`}
     >
       <div className="onboarding-body" data-onboarding-version={onboardingVersion}>
         <div
@@ -167,7 +200,7 @@ export function OnboardingTour({
         ) : (
           <>
             <p className="onboarding-copy">{current.text}</p>
-            <ul className="onboarding-tips">
+            <ul className="onboarding-tips onboarding-desktop-tips">
               {current.tips.map((tip) => (
                 <li key={tip}>
                   <Check size={16} />
@@ -175,6 +208,17 @@ export function OnboardingTour({
                 </li>
               ))}
             </ul>
+            <details className="onboarding-mobile-tips">
+              <summary>Mehr Hinweise</summary>
+              <ul className="onboarding-tips">
+                {current.tips.map((tip) => (
+                  <li key={tip}>
+                    <Check size={16} />
+                    {tip}
+                  </li>
+                ))}
+              </ul>
+            </details>
           </>
         )}
         <ErrorMessage message={error} />

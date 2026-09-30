@@ -43,6 +43,8 @@ import { labels } from "./resource-fields";
 import { ProfileAccent } from "@/modules/profile/components/accent-picker";
 import { OnboardingTour } from "@/modules/profile/components/onboarding-tour";
 import { HelpModule } from "@/modules/help/components/help-module";
+import { DocumentationModule } from "@/modules/documentation/components/documentation-module";
+import { PeopleModule } from "@/modules/people/components";
 import { ExportDialog } from "./export-dialog";
 const nav: { id: string; label: string; icon: LucideIcon; group: string }[] = [
   { id: "today", label: "Heute", icon: Home, group: "ARBEITSRAUM" },
@@ -51,6 +53,7 @@ const nav: { id: string; label: string; icon: LucideIcon; group: string }[] = [
   { id: "tasks", label: "Teamboard", icon: Layers3, group: "ARBEITSRAUM" },
   { id: "time", label: "Zeit buchen", icon: Clock3, group: "ARBEITSRAUM" },
   { id: "chat", label: "Kommunikation", icon: MessageSquare, group: "ARBEITSRAUM" },
+  { id: "people", label: "Weitere Personen", icon: Users, group: "WISSEN & FUNDUS" },
   { id: "actors", label: "Schauspielerkatalog", icon: Users, group: "WISSEN & FUNDUS" },
   { id: "documentation", label: "Aufschriebe", icon: BookOpen, group: "WISSEN & FUNDUS" },
   { id: "inventory", label: "Fundus & Material", icon: Package, group: "WISSEN & FUNDUS" },
@@ -71,7 +74,10 @@ export function WorkspaceShell() {
     () => "",
   );
   const params = new URLSearchParams(query);
-  const requestedModule = params.get("module") || "today";
+  const requestedModule =
+    params.get("module") === "productions" && params.get("tab") === "handovers"
+      ? "handovers"
+      : params.get("module") || "today";
   const activeModule = nav.some((item) => item.id === requestedModule) ? requestedModule : "today";
   const recordId = params.get("record") || "";
   const [mobileMenu, setMobileMenu] = useState(false);
@@ -231,7 +237,7 @@ export function WorkspaceShell() {
     ) : activeModule === "productions" ? (
       <ProductionsModule
         productionId={params.get("productionId") || ""}
-        activeTab={params.get("tab") || "overview"}
+        activeTab={params.get("tab") === "handovers" ? "overview" : params.get("tab") || "overview"}
         onNavigate={(id, tab) => {
           const next = new URLSearchParams({
             module: "productions",
@@ -248,7 +254,20 @@ export function WorkspaceShell() {
     ) : activeModule === "time" ? (
       <TimeModule />
     ) : activeModule === "chat" ? (
-      <ChatModule />
+      <ChatModule
+        conversationId={params.get("conversationId") || ""}
+        productionId={params.get("productionId") || ""}
+        onNavigate={(conversationId, productionId) => {
+          const query = new URLSearchParams({
+            module: "chat",
+            ...(conversationId ? { conversationId } : productionId ? { productionId } : {}),
+          });
+          history.pushState({}, "", `/?${query}`);
+          window.dispatchEvent(new PopStateEvent("popstate"));
+        }}
+      />
+    ) : activeModule === "people" ? (
+      <PeopleModule />
     ) : activeModule === "actors" ? (
       <ResourceView
         kind="actors"
@@ -582,50 +601,6 @@ export function WorkspaceShell() {
     </div>
   );
 }
-function DocumentationModule() {
-  const { workspace } = useWorkspace();
-  const [tab, setTab] = useState("looks");
-  const [project, setProject] = useState("");
-  return (
-    <>
-      <div className="tabs compact-tabs">
-        <button className={tab === "looks" ? "active" : ""} onClick={() => setTab("looks")}>
-          Sammelordner
-        </button>
-        <button className={tab === "templates" ? "active" : ""} onClick={() => setTab("templates")}>
-          Vorlagen
-        </button>
-      </div>
-      <ResourceView
-        key={`${tab}:${project}`}
-        kind={tab === "looks" ? "looks" : "templates"}
-        defaults={{ productionId: project }}
-        filter={tab === "looks" && project ? (x) => x.data.productionId === project : undefined}
-        description={
-          tab === "looks"
-            ? "Ein gemeinsames Schema für Vorbereitung, Material, Ablauf und Wechsel. Mit Bildern, Entwürfen und veröffentlichten Aufschrieben."
-            : "Eure Dokumentationsstandards als wiederverwendbare, versionierte Vorlagen."
-        }
-      >
-        {tab === "looks" && (
-          <div className="toolbar">
-            <label className="inline-label">
-              Sammelordner
-              <select value={project} onChange={(e) => setProject(e.target.value)}>
-                <option value="">Alle Produktionen</option>
-                {workspace.records.productions.map((x) => (
-                  <option key={x.id} value={x.id}>
-                    {value(x.data, "title")}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-        )}
-      </ResourceView>
-    </>
-  );
-}
 function ExportsModule() {
   const [kind, setKind] = useState<RecordKind | null>(null);
   return (
@@ -644,6 +619,8 @@ function ExportsModule() {
           [
             "events",
             "time",
+            "attendance",
+            "people",
             "productions",
             "actors",
             "casting",

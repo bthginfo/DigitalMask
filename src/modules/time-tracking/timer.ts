@@ -6,6 +6,7 @@ import type { Context } from "@/platform/context";
 import { HttpError } from "@/platform/http";
 import { assertProject } from "@/modules/records/repository";
 import { saveRecord } from "@/modules/records/service";
+import { validateCategoryReferences } from "@/modules/categories/service";
 import { invalidateWorkspace } from "@/modules/records/workspace";
 import { localDay, durationSeconds } from "./rules";
 import type { RecordData } from "@/shared/contracts";
@@ -38,11 +39,14 @@ export async function timerAction(
             .default(kind === "attendance" ? "Anwesenheit" : "Arbeitszeit"),
           productionId: z.string().max(100).default(""),
           taskId: z.string().max(100).default(""),
-          category: z.enum(["production", "office", "cleaning", "other"]).default("production"),
+          category: z.string().trim().min(1).max(80).default("production"),
         })
         .parse(data);
       if (kind === "attendance") data = { title: data.title };
-      else await assertProject(context, data.productionId, tx);
+      else {
+        await assertProject(context, data.productionId, tx);
+        await validateCategoryReferences(context, "time", data, tx);
+      }
       const [created] = await tx
         .insert(timerTable)
         .values({

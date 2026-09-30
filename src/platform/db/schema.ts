@@ -173,6 +173,9 @@ export const records = pgTable(
     uniqueIndex("calendar_category_key_idx")
       .on(t.departmentId, sql`(${t.data}->>'key')`)
       .where(sql`${t.kind}='calendarCategories'`),
+    uniqueIndex("domain_category_key_idx")
+      .on(t.departmentId, sql`(${t.data}->>'scope')`, sql`(${t.data}->>'key')`)
+      .where(sql`${t.kind}='categories'`),
     uniqueIndex("direct_chat_key_idx")
       .on(t.departmentId, sql`(${t.data}->>'directKey')`)
       .where(sql`${t.kind}='conversations' and coalesce(${t.data}->>'directKey','')<>''`),

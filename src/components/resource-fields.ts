@@ -42,6 +42,8 @@ export const labels: Record<RecordKind, [string, string]> = {
   attendance: ["Anwesenheit", "Anwesenheitsbuchung"],
   calendarCategories: ["Kalenderarten", "Kalenderart"],
   conversations: ["Gespräche", "Gespräch"],
+  people: ["Weitere Personen", "Person"],
+  categories: ["Kategorien", "Kategorie"],
 };
 const production: Field = {
   key: "productionId",
@@ -74,6 +76,7 @@ export const fields: Partial<Record<RecordKind, Field[]>> = {
       ],
     },
     { key: "premiere", label: "Premiere", type: "date" },
+    { key: "durationMinutes", label: "Stückdauer in Minuten", type: "number", min: 0 },
     { key: "color", label: "Produktionsfarbe", type: "color" },
     { key: "memberIds", label: "Projektteam", type: "multi", source: "members" },
   ],
@@ -208,26 +211,13 @@ export const fields: Partial<Record<RecordKind, Field[]>> = {
     { key: "pauseSeconds", label: "Pause in Minuten", type: "number", min: 0 },
   ],
   looks: [
-    title,
-    { ...production, required: true },
+    production,
+    { key: "actorId", label: "Schauspielperson", source: "actors", type: "select" },
+    { key: "actorName", label: "Schauspielname" },
     figure,
-    { key: "actorId", label: "Schauspieler", type: "select", source: "actors" },
-    { key: "scene", label: "Szene / Akt" },
-    { key: "preparation", label: "Vorbereitung", type: "textarea" },
-    { key: "materials", label: "Material / Produkte", type: "textarea" },
-    { key: "steps", label: "Arbeitsablauf", type: "textarea", required: true },
-    { key: "changeover", label: "Umbau / Wechsel", type: "textarea" },
-    { key: "durationMinutes", label: "Dauer in Minuten", type: "number", min: 0 },
-    {
-      key: "status",
-      label: "Status",
-      type: "select",
-      options: [
-        ["draft", "Entwurf"],
-        ["published", "Veröffentlicht"],
-      ],
-    },
-    { key: "templateId", label: "Vorlage", type: "select", source: "templates" },
+    { key: "characterName", label: "Figurenname" },
+    { key: "productionDurationMinutes", label: "Stückdauer in Minuten", type: "number" },
+    { key: "templateId", label: "Vorlage", source: "templates", type: "select" },
   ],
   templates: [
     title,
@@ -259,21 +249,22 @@ export const fields: Partial<Record<RecordKind, Field[]>> = {
     figure,
     { key: "notes", label: "Hinweise", type: "textarea" },
   ],
-  handovers: [
-    title,
-    production,
-    { key: "date", label: "Vorstellungsdatum", type: "date", required: true },
-    { key: "notes", label: "Offene Punkte / Probleme", type: "textarea" },
-    checklist,
-    {
-      key: "status",
-      label: "Status",
-      type: "select",
-      options: [
-        ["open", "Offen"],
-        ["complete", "Abgeschlossen"],
-      ],
-    },
+  handovers: [title, checklist],
+  people: [
+    { key: "name", label: "Name", required: true },
+    { key: "organization", label: "Organisation" },
+    { key: "position", label: "Funktion" },
+    { key: "email", label: "E-Mail" },
+    { key: "phone", label: "Telefon" },
+    { key: "notes", label: "Hinweise", type: "textarea" },
+  ],
+  attendance: [
+    { key: "title", label: "Bezeichnung" },
+    { key: "start", label: "Beginn", type: "datetime-local" },
+    { key: "end", label: "Ende", type: "datetime-local" },
+    { key: "durationSeconds", label: "Anwesenheit ohne Pause", type: "number" },
+    { key: "pauseSeconds", label: "Pause", type: "number" },
+    { key: "notes", label: "Notiz", type: "textarea" },
   ],
 };
 export const statusLabels: Record<string, string> = {

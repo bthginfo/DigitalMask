@@ -6,6 +6,7 @@ const { db, sqlClient } = await import("../src/platform/db/index");
 const { organizations, departments, memberships, records } =
   await import("../src/platform/db/schema");
 const { defaultCalendarCategories } = await import("../src/shared/calendar-categories");
+const { defaultDomainCategories } = await import("../src/shared/domain-categories");
 const { eq } = await import("drizzle-orm");
 const { auth } = await import("../src/platform/auth/index");
 await db
@@ -64,6 +65,20 @@ if (createdDepartment.length) {
         defaultCalendarCategories.map((category) => ({
           id: `category:maske:${category.key}`,
           kind: "calendarCategories" as const,
+          organizationId: "stadttheater-ingolstadt",
+          departmentId: "maske",
+          createdBy: admin.userId,
+          data: { ...category },
+        })),
+      )
+      .onConflictDoNothing();
+  if (admin)
+    await db
+      .insert(records)
+      .values(
+        defaultDomainCategories.map((category) => ({
+          id: `domain-category:maske:${category.scope}:${category.key}`,
+          kind: "categories" as const,
           organizationId: "stadttheater-ingolstadt",
           departmentId: "maske",
           createdBy: admin.userId,

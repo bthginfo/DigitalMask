@@ -1,0 +1,476 @@
+{
+  "user": {
+    "id": "qa-admin",
+    "name": "Mara Beispiel",
+    "username": "qa-mara",
+    "role": "admin",
+    "status": "active",
+    "preferences": {
+      "accentPalette": "green",
+      "onboardingVersion": 1
+    }
+  },
+  "organization": {
+    "id": "qa",
+    "name": "Testtheater"
+  },
+  "department": {
+    "id": "qa",
+    "name": "Maske"
+  },
+  "members": [
+    {
+      "id": "qa-admin",
+      "name": "Mara Beispiel",
+      "username": "qa-mara",
+      "role": "admin",
+      "status": "active",
+      "preferences": {
+        "accentPalette": "green",
+        "onboardingVersion": 1
+      }
+    },
+    {
+      "id": "qa-user",
+      "name": "Jules Beispiel",
+      "username": "qa-jules",
+      "role": "user",
+      "status": "active",
+      "preferences": {
+        "accentPalette": "green",
+        "onboardingVersion": 1
+      }
+    },
+    {
+      "id": "qa-super",
+      "name": "Systemverwaltung QA",
+      "username": "qa-system",
+      "role": "superadmin",
+      "status": "active",
+      "preferences": {
+        "accentPalette": "green",
+        "onboardingVersion": 1
+      }
+    },
+    {
+      "id": "qa-inactive",
+      "name": "Archivperson QA",
+      "username": "qa-old",
+      "role": "user",
+      "status": "disabled",
+      "preferences": {
+        "accentPalette": "green",
+        "onboardingVersion": 1
+      }
+    }
+  ],
+  "records": {
+    "productions": [
+      {
+        "id": "qa-production",
+        "kind": "productions",
+        "data": {
+          "title": "Ein Sommernachtstraum",
+          "status": "active",
+          "color": "#c6cfe1",
+          "memberIds": ["qa-admin", "qa-user"],
+          "contacts": [
+            {
+              "id": "makeup",
+              "type": "makeup",
+              "role": "Maskenbetreuung",
+              "name": "",
+              "memberId": "qa-admin"
+            },
+            {
+              "id": "makeup2",
+              "type": "makeup",
+              "role": "Maskenbetreuung",
+              "name": "Klara Extern",
+              "memberId": ""
+            }
+          ],
+          "premiere": "2026-10-22"
+        },
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "createdBy": "qa-admin",
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z",
+        "version": 1
+      },
+      {
+        "kind": "productions",
+        "id": "qa-later",
+        "data": {
+          "title": "Zweite Premiere",
+          "status": "active",
+          "premiere": "2026-11-03",
+          "memberIds": ["qa-admin"],
+          "contacts": []
+        },
+        "createdBy": "qa-admin",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z",
+        "version": 1
+      },
+      {
+        "kind": "productions",
+        "id": "qa-past",
+        "data": {
+          "title": "Frühere Premiere",
+          "status": "active",
+          "premiere": "2026-08-01",
+          "memberIds": ["qa-admin"],
+          "contacts": []
+        },
+        "createdBy": "qa-admin",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z",
+        "version": 1
+      }
+    ],
+    "actors": [],
+    "characters": [],
+    "casting": [],
+    "sprints": [],
+    "tasks": [
+      {
+        "id": "qa-task",
+        "kind": "tasks",
+        "data": {
+          "title": "Perücken für die erste Probe vorbereiten",
+          "status": "todo",
+          "priority": "normal",
+          "productionId": "qa-production",
+          "assigneeIds": ["qa-user"]
+        },
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "createdBy": "qa-admin",
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z",
+        "version": 1
+      },
+      {
+        "id": "qa-team-task",
+        "kind": "tasks",
+        "data": {
+          "title": "Fundus sortieren",
+          "status": "doing",
+          "priority": "normal",
+          "productionId": "",
+          "assigneeIds": ["qa-admin"]
+        },
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "createdBy": "qa-admin",
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z",
+        "version": 1
+      }
+    ],
+    "events": [
+      {
+        "kind": "events",
+        "id": "qa-dayoff",
+        "data": {
+          "title": "",
+          "category": "vacation",
+          "allDay": true,
+          "start": "2026-09-29T22:00:00Z",
+          "end": "2026-10-01T22:00:00Z",
+          "participantIds": ["qa-admin"],
+          "location": "",
+          "recurrence": "none"
+        },
+        "createdBy": "qa-admin",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z",
+        "version": 1
+      },
+      {
+        "kind": "events",
+        "id": "qa-service-event",
+        "data": {
+          "title": "",
+          "productionId": "qa-production",
+          "category": "service",
+          "start": "2026-09-30T09:00:00Z",
+          "end": "2026-09-30T12:00:00Z",
+          "participantIds": ["qa-user", "qa-admin"],
+          "location": "Großes Haus",
+          "recurrence": "none"
+        },
+        "createdBy": "qa-admin",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z",
+        "version": 1
+      }
+    ],
+    "leave": [
+      {
+        "kind": "leave",
+        "id": "qa-leave",
+        "data": {
+          "start": "2026-10-07",
+          "end": "2026-10-07",
+          "reason": "Freier Tag",
+          "status": "pending",
+          "userId": "qa-user"
+        },
+        "createdBy": "qa-user",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z",
+        "version": 1
+      }
+    ],
+    "time": [],
+    "looks": [],
+    "templates": [],
+    "messages": [
+      {
+        "kind": "messages",
+        "id": "qa-general-message",
+        "data": {
+          "text": "Allgemeine Teaminformation",
+          "userId": "qa-user",
+          "productionId": ""
+        },
+        "createdBy": "qa-user",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z",
+        "version": 1
+      },
+      {
+        "kind": "messages",
+        "id": "qa-private-message",
+        "data": {
+          "text": "Nur für die private Vorbereitung",
+          "userId": "qa-user",
+          "conversationId": "qa-private"
+        },
+        "createdBy": "qa-user",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z",
+        "version": 1
+      },
+      {
+        "kind": "messages",
+        "id": "qa-own-message",
+        "data": {
+          "text": "Eigene private Nachricht",
+          "userId": "qa-admin",
+          "conversationId": "qa-private"
+        },
+        "createdBy": "qa-admin",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z",
+        "version": 1
+      }
+    ],
+    "materials": [],
+    "handovers": [],
+    "notifications": [],
+    "timesheets": [],
+    "files": [],
+    "feedback": [
+      {
+        "id": "qa-own-feedback",
+        "kind": "feedback",
+        "data": {
+          "type": "feature",
+          "title": "Favoriten für häufige Aufschriebe",
+          "description": "Unsere Standardabläufe schneller wiederfinden und in einer persönlichen Liste sammeln.",
+          "status": "review",
+          "userId": "qa-admin"
+        },
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "createdBy": "qa-admin",
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z",
+        "version": 1
+      },
+      {
+        "id": "qa-other-feedback",
+        "kind": "feedback",
+        "data": {
+          "type": "bug",
+          "title": "Darstellung einer langen Materialbezeichnung",
+          "description": "Bei sehr langen Bezeichnungen wird der letzte Teil auf schmalen Geräten abgeschnitten.",
+          "status": "new",
+          "userId": "qa-user"
+        },
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "createdBy": "qa-admin",
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z",
+        "version": 1
+      }
+    ],
+    "attendance": [
+      {
+        "kind": "attendance",
+        "id": "qa-attendance",
+        "data": {
+          "title": "Anwesenheit",
+          "date": "2026-09-30",
+          "start": "2026-09-30T07:00:00Z",
+          "end": "2026-09-30T15:00:00Z",
+          "pauseSeconds": 1800,
+          "durationSeconds": 27000,
+          "userId": "qa-admin",
+          "notes": "Werkstatt und Vorstellung"
+        },
+        "createdBy": "qa-admin",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z",
+        "version": 1
+      }
+    ],
+    "calendarCategories": [
+      {
+        "kind": "calendarCategories",
+        "id": "qa-service",
+        "data": {
+          "key": "service",
+          "name": "Dienst",
+          "color": "#377a68",
+          "allDay": false
+        },
+        "createdBy": "qa-admin",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z",
+        "version": 1
+      },
+      {
+        "kind": "calendarCategories",
+        "id": "qa-vacation",
+        "data": {
+          "key": "vacation",
+          "name": "Urlaub",
+          "color": "#5c92a8",
+          "allDay": true
+        },
+        "createdBy": "qa-admin",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z",
+        "version": 1
+      },
+      {
+        "kind": "calendarCategories",
+        "id": "qa-sick",
+        "data": {
+          "key": "sick",
+          "name": "Krank",
+          "color": "#b86d73",
+          "allDay": true
+        },
+        "createdBy": "qa-admin",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z",
+        "version": 1
+      }
+    ],
+    "conversations": [
+      {
+        "kind": "conversations",
+        "id": "qa-private",
+        "data": {
+          "title": "Vorbereitung Premiere",
+          "mode": "group",
+          "participantIds": ["qa-admin", "qa-user"],
+          "archived": false
+        },
+        "createdBy": "qa-admin",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z",
+        "version": 1
+      },
+      {
+        "kind": "conversations",
+        "id": "qa-archived",
+        "data": {
+          "title": "Abgeschlossene Runde",
+          "mode": "group",
+          "participantIds": ["qa-admin", "qa-user"],
+          "archived": true
+        },
+        "createdBy": "qa-admin",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z",
+        "version": 1
+      }
+    ],
+    "people": [],
+    "categories": [
+      {
+        "kind": "categories",
+        "id": "qa-category-time-production",
+        "data": {
+          "scope": "time",
+          "key": "production",
+          "name": "Produktion",
+          "order": 0,
+          "color": "#377a68"
+        },
+        "createdBy": "qa-admin",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "version": 1,
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z"
+      },
+      {
+        "kind": "categories",
+        "id": "qa-category-time-custom-time",
+        "data": {
+          "scope": "time",
+          "key": "custom-time",
+          "name": "Vorbereitung Kostüm",
+          "order": 1,
+          "color": "#377a68"
+        },
+        "createdBy": "qa-admin",
+        "organizationId": "qa",
+        "departmentId": "qa",
+        "version": 1,
+        "createdAt": "2026-09-30T08:00:00Z",
+        "updatedAt": "2026-09-30T08:00:00Z"
+      }
+    ]
+  },
+  "timer": null,
+  "attendanceTimer": null,
+  "projectHours": {}
+}
