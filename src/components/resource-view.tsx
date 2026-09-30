@@ -10,7 +10,7 @@ import {
   Trash2,
   Upload,
 } from "lucide-react";
-import type { DomainRecord, RecordData, RecordKind } from "@/shared/contracts";
+import type { DomainRecord, RecordData, RecordKind, Workspace } from "@/shared/contracts";
 import { api, dateLabel, ids, localDate, num, value } from "@/shared/client-api";
 import { prepareUpload } from "@/shared/client-files";
 import { HistoryPanel } from "./history-panel";
@@ -19,6 +19,12 @@ import { useWorkspace } from "./workspace-context";
 import { Badge, Button, Empty, ErrorMessage, ExportButton, Modal, PageHeader } from "./ui";
 import { ResourceEditor } from "./resource-editor";
 import { ExportDialog, ImportDialog } from "./export-dialog";
+
+function recordTitle(record: DomainRecord, workspace: Workspace) {
+  if (record.kind === "casting")
+    return `${value(workspace.records.characters.find((row) => row.id === record.data.characterId)?.data || {}, "name") || "Figur"} · ${value(workspace.records.actors.find((row) => row.id === record.data.actorId)?.data || {}, "name") || "Schauspieler"}`;
+  return value(record.data, "title") || value(record.data, "name") || labels[record.kind][1];
+}
 
 export function RecordDetail({ record, onClose }: { record: DomainRecord; onClose: () => void }) {
   const { workspace, save, remove, refresh, action, busy } = useWorkspace();
@@ -43,8 +49,7 @@ export function RecordDetail({ record, onClose }: { record: DomainRecord; onClos
   const linkedFiles = workspace.records.files.filter(
     (x) => x.data.recordKind === current.kind && x.data.recordId === current.id,
   );
-  const title =
-    value(current.data, "title") || value(current.data, "name") || labels[current.kind][1];
+  const title = recordTitle(current, workspace);
   const attempt = async (fn: () => Promise<unknown>) => {
     setError("");
     try {
@@ -237,9 +242,15 @@ export function RecordDetail({ record, onClose }: { record: DomainRecord; onClos
               </Button>
             </div>
           )}
-          {["looks", "characters", "actors", "handovers", "materials", "messages"].includes(
-            current.kind,
-          ) && (
+          {[
+            "looks",
+            "characters",
+            "casting",
+            "actors",
+            "handovers",
+            "materials",
+            "messages",
+          ].includes(current.kind) && (
             <section className="detail-section">
               <header className="panel-heading">
                 <h3>Bilder & Dateien</h3>
@@ -419,6 +430,7 @@ export function RecordDetail({ record, onClose }: { record: DomainRecord; onClos
       {subtask && (
         <ResourceEditor
           kind="tasks"
+          lockedProductionId={value(current.data, "productionId")}
           defaults={{
             parentId: current.id,
             productionId: current.data.productionId,
@@ -447,6 +459,7 @@ export function ResourceView({
   children,
   canCreate,
   initialRecord,
+  lockedProductionId,
 }: {
   kind: RecordKind;
   title?: string;
@@ -456,6 +469,7 @@ export function ResourceView({
   children?: React.ReactNode;
   canCreate?: boolean;
   initialRecord?: string;
+  lockedProductionId?: string;
 }) {
   const { workspace } = useWorkspace();
   const [search, setSearch] = useState("");
@@ -505,7 +519,7 @@ export function ResourceView({
       >
         <>
           {exportable && <ExportButton onClick={() => setExporting(true)} />}
-          {admin && (
+          {admin && lockedProductionId === undefined && (
             <Button onClick={() => setImporting(true)}>
               <Upload size={16} />
               Importieren
@@ -537,15 +551,21 @@ export function ResourceView({
         )}
       </div>
       {rows.length ? (
-        kind === "looks" || kind === "actors" ? (
+        ["looks", "actors", "characters", "casting"].includes(kind) ? (
           <div className="editorial-grid">
             {rows.map((row) => {
+              const displayName = recordTitle(row, workspace);
               const photo = workspace.records.files.find(
                 (file) =>
                   file.data.recordId === row.id && value(file.data, "mime").startsWith("image/"),
               );
               return (
-                <button key={row.id} className="editorial-card" onClick={() => setDetail(row)}>
+                <button
+                  key={row.id}
+                  aria-label={`${displayName} · Details und Galerie öffnen`}
+                  className="editorial-card"
+                  onClick={() => setDetail(row)}
+                >
                   {photo ? (
                     <Image
                       unoptimized
@@ -558,11 +578,7 @@ export function ResourceView({
                     />
                   ) : (
                     <div className="editorial-placeholder">
-                      <span>
-                        {(value(row.data, "name") || value(row.data, "title"))
-                          .slice(0, 2)
-                          .toUpperCase()}
-                      </span>
+                      <span>{displayName.slice(0, 2).toUpperCase()}</span>
                       <span className="small">{labels[kind][1]}</span>
                     </div>
                   )}
@@ -570,16 +586,20 @@ export function ResourceView({
                     <p className="eyebrow">
                       {value(row.data, "scene") || value(row.data, "hair") || "MASKE"}
                     </p>
-                    <h3>{value(row.data, "name") || value(row.data, "title")}</h3>
+                    <h3>{displayName}</h3>
                     <p className="small muted">
                       {value(row.data, "preparation") ||
                         value(row.data, "notes") ||
                         "Details, Bilder und Hinweise öffnen"}
                     </p>
                     <Badge tone={row.data.status === "published" ? "green" : "neutral"}>
-                      {statusLabels[value(row.data, "status")] ||
-                        value(row.data, "wigSize") ||
-                        "Katalog"}
+                      {kind === "casting"
+                        ? row.data.alternate
+                          ? "Alternierende Besetzung"
+                          : "Besetzung"
+                        : statusLabels[value(row.data, "status")] ||
+                          value(row.data, "wigSize") ||
+                          "Katalog"}
                     </Badge>
                   </div>
                 </button>
@@ -687,7 +707,15 @@ export function ResourceView({
         />
       )}
       {editor && (
-        <ResourceEditor kind={kind} defaults={defaults} onClose={() => setEditor(false)} />
+        <ResourceEditor
+          kind={kind}
+          defaults={defaults}
+          lockedProductionId={lockedProductionId}
+          onClose={() => setEditor(false)}
+          onSaved={(saved) => {
+            if (["characters", "casting", "looks", "actors"].includes(kind)) setDetail(saved);
+          }}
+        />
       )}
       {detail && <RecordDetail record={detail} onClose={() => setDetail(null)} />}
       {exporting && (

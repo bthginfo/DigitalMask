@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowUpRight, CalendarDays, Plus, Users } from "lucide-react";
 import type { Workspace } from "@/shared/contracts";
 import { dateLabel, hours, ids, num, value } from "@/shared/client-api";
@@ -8,20 +8,61 @@ import { Badge, Button, Empty, ExportButton, PageHeader, Section } from "../ui";
 import { ResourceEditor } from "../resource-editor";
 import { RecordDetail, ResourceView } from "../resource-view";
 import { ExportDialog, ImportDialog } from "../export-dialog";
+import { ProductionTeamModule } from "../production-people";
+import { ChatModule } from "./chat";
 import { TasksModule } from "./tasks";
 import { CalendarModule } from "./calendar";
 import { TimeModule } from "./time";
 import { statusLabels } from "../resource-fields";
-export function ProductionsModule() {
+const productionTabs = [
+  "overview",
+  "team",
+  "casting",
+  "tasks",
+  "looks",
+  "calendar",
+  "time",
+  "handovers",
+  "chat",
+];
+export function ProductionsModule({
+  productionId = "",
+  activeTab = "overview",
+  onNavigate,
+}: {
+  productionId?: string;
+  activeTab?: string;
+  onNavigate: (id: string, tab: string) => void;
+}) {
   const { workspace } = useWorkspace();
-  const [selected, setSelected] = useState("");
-  const [tab, setTab] = useState("overview");
+  const selected = productionId;
+  const tab = productionTabs.includes(activeTab) ? activeTab : "overview";
+  const setSelected = (id: string) => onNavigate(id, "overview");
+  const setTab = (next: string) => onNavigate(selected, next);
   const [status, setStatus] = useState("current");
   const [search, setSearch] = useState("");
   const [editor, setEditor] = useState(false);
   const [details, setDetails] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
+  const tabs = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const container = tabs.current;
+    const button = container?.querySelector<HTMLButtonElement>("button[aria-current='page']");
+    if (!container || !button) return;
+    const viewport = container.getBoundingClientRect();
+    const target = button.getBoundingClientRect();
+    if (target.left < viewport.left || target.right > viewport.right) {
+      container.scrollTo({
+        left:
+          container.scrollLeft +
+          target.left -
+          viewport.left -
+          (container.clientWidth - target.width) / 2,
+        behavior: "instant",
+      });
+    }
+  }, [selected, tab]);
   const production = workspace.records.productions.find((x) => x.id === selected);
   const records = workspace.records.productions.filter(
     (x) =>
@@ -40,7 +81,6 @@ export function ProductionsModule() {
             variant="ghost"
             onClick={() => {
               setSelected("");
-              setTab("overview");
             }}
           >
             <ArrowLeft size={16} />
@@ -53,19 +93,28 @@ export function ProductionsModule() {
             <p className="eyebrow">{statusLabels[value(production.data, "status")]}</p>
             <h1>{value(production.data, "title")}</h1>
           </div>
-          <Button onClick={() => setDetails(true)}>Produktion verwalten</Button>
+          <Button onClick={() => setDetails(true)}>
+            {workspace.user.role === "user" ? "Produktionsdetails" : "Produktion verwalten"}
+          </Button>
         </header>
-        <div className="tabs">
+        <div ref={tabs} className="tabs production-tabs" aria-label="Produktionsbereiche">
           {[
             ["overview", "Überblick"],
-            ["tasks", "Aufgaben"],
-            ["casting", "Besetzung"],
+            ["team", "Team & Kontakte"],
+            ["casting", "Figuren & Besetzung"],
+            ["tasks", "Aufgaben & Sprints"],
             ["looks", "Aufschriebe"],
             ["calendar", "Kalender"],
             ["time", "Zeiten"],
             ["handovers", "Übergaben"],
+            ["chat", "Projektchat"],
           ].map(([key, label]) => (
-            <button key={key} className={tab === key ? "active" : ""} onClick={() => setTab(key)}>
+            <button
+              key={key}
+              aria-current={tab === key ? "page" : undefined}
+              className={tab === key ? "active" : ""}
+              onClick={() => setTab(key)}
+            >
               {label}
             </button>
           ))}
@@ -146,6 +195,10 @@ export function ProductionsModule() {
               ))}
             </div>
           </>
+        ) : tab === "team" ? (
+          <ProductionTeamModule key={production.id} production={production} />
+        ) : tab === "chat" ? (
+          <ChatModule key={production.id} productionId={production.id} />
         ) : tab === "tasks" ? (
           <TasksModule key={production.id} productionId={production.id} />
         ) : tab === "calendar" ? (
@@ -153,11 +206,12 @@ export function ProductionsModule() {
         ) : tab === "time" ? (
           <TimeModule key={production.id} productionId={production.id} />
         ) : tab === "casting" ? (
-          <CastingModule productionId={production.id} />
+          <CastingModule key={production.id} productionId={production.id} />
         ) : (
           <ResourceView
-            key={tab}
+            key={`${production.id}:${tab}`}
             kind={tab === "looks" ? "looks" : "handovers"}
+            lockedProductionId={production.id}
             defaults={{ productionId: production.id }}
             filter={(x) => x.data.productionId === production.id}
             description={
@@ -181,10 +235,12 @@ export function ProductionsModule() {
         {workspace.user.role !== "user" && (
           <Button onClick={() => setImporting(true)}>Importieren</Button>
         )}
-        <Button variant="primary" onClick={() => setEditor(true)}>
-          <Plus size={16} />
-          Produktion anlegen
-        </Button>
+        {workspace.user.role !== "user" && (
+          <Button variant="primary" onClick={() => setEditor(true)}>
+            <Plus size={16} />
+            Produktion anlegen
+          </Button>
+        )}
       </PageHeader>
       <div className="toolbar">
         <div className="segmented">
@@ -264,8 +320,12 @@ export function ProductionsModule() {
               ? "Keine Produktionen in dieser Ansicht."
               : "Platz für euer nächstes Stück."
           }
-          description="Lege eine Produktion an. Hier laufen Aufgaben, Besetzung, Dokumentation, Termine und Arbeitszeit zusammen."
-          action="Erste Produktion anlegen"
+          description={
+            workspace.user.role !== "user"
+              ? "Lege eine Produktion an. Hier laufen Aufgaben, Besetzung, Dokumentation, Termine und Arbeitszeit zusammen."
+              : "Hier erscheinen deine freigegebenen Produktionen. Dein Admin kann dich dem Produktionsteam zuordnen."
+          }
+          action={workspace.user.role !== "user" ? "Erste Produktion anlegen" : undefined}
           onAction={() => setEditor(true)}
         />
       )}
@@ -293,6 +353,7 @@ export function CastingModule({ productionId = "" }: { productionId?: string }) 
       <ResourceView
         key={tab}
         kind={tab === "casting" ? "casting" : "characters"}
+        lockedProductionId={productionId}
         defaults={{ productionId }}
         filter={productionId ? (record) => record.data.productionId === productionId : undefined}
         description={

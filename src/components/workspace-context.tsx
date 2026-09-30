@@ -20,7 +20,7 @@ interface Context {
   notice: string;
   online: boolean;
   refresh: () => Promise<void>;
-  save: (kind: RecordKind, data: RecordData, record?: DomainRecord) => Promise<void>;
+  save: (kind: RecordKind, data: RecordData, record?: DomainRecord) => Promise<DomainRecord>;
   remove: (record: DomainRecord) => Promise<void>;
   action: (action: string, id?: string, data?: RecordData) => Promise<unknown>;
   notify: (message: string) => void;
@@ -80,14 +80,14 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     }
   };
   const save = async (kind: RecordKind, data: RecordData, record?: DomainRecord) => {
-    await mutate(() =>
+    return (await mutate(() =>
       record
         ? api(`/api/records/${kind}/${record.id}`, {
             method: "PATCH",
             body: JSON.stringify({ data, version: record.version }),
           })
         : post(`/api/records/${kind}`, { data }),
-    );
+    )) as DomainRecord;
   };
   const remove = async (record: DomainRecord) => {
     await mutate(() => api(`/api/records/${record.kind}/${record.id}`, { method: "DELETE" }));

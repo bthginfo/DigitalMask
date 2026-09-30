@@ -5,8 +5,9 @@ Arbeitsraum für die Maske am Stadttheater Ingolstadt: Produktionen, Dienstplanu
 ## Funktionen
 
 - Benutzername/Passwort, Selbstregistrierung mit Adminfreigabe, Teammitglied/Admin/Superadmin, persönliche Passwortänderung und einmalige Wiederherstellungscodes.
-- Produktionen mit Projektteam, Archiv und Kopie für Wiederaufnahmen; Schauspieler, Figuren, Besetzungen und Bildgalerien.
-- Sprints mit individuellen Zeiträumen, Kanban, Zuweisungen, Unteraufgaben und Checklisten; Verschieben auch ohne Drag-and-drop.
+- Produktionsarbeitsräume mit Maskenteam, frei definierbaren Kontaktrollen (z. B. Regie, Kostüm, Assistenz), Archiv und Kopie für Wiederaufnahmen. Externe Kontakte benötigen kein Konto; Maskenkontakte können aus dem Team gewählt oder frei eingetragen werden.
+- Figuren, Besetzungen mit mehreren privaten Bildern, Aufschriebe, Aufgaben, Sprints, Kalender, Zeiten, Übergaben und Chat direkt in der jeweiligen Produktion. Der Schauspielerkatalog bleibt gemeinsam verfügbar.
+- Eigenes Kanban je Produktion und separates Teamboard für allgemeine Aufgaben ohne Produktionsbezug. Sprints mit individuellen Zeiträumen, Zuweisungen, Unteraufgaben und Checklisten; Verschieben auch ohne Drag-and-drop.
 - Persönliche und überlagerte Kalender: Monat, Woche, Tag, Agenda und Teamraster. Adminplanung, Serien, Konflikterkennung, Freiwunschanträge und widerrufbare ICS-Abonnements.
 - Zeitbuchung mit Uhrzeiten oder Dauer, pausierbarer serverseitiger Timer, allgemeine Tätigkeiten ohne Produktion, Mitternachtsaufteilung, Tages-/Wochensummen, Projektstunden und Wochenfreigabe mit Korrekturworkflow.
 - Projektchats und allgemeiner Maskenkanal mit privaten Anhängen.
@@ -44,14 +45,18 @@ npm run typecheck
 npm run lint
 npm test
 npm run build
+npx playwright install chromium webkit
 npm run test:e2e
 ```
 
 Integrationstests benötigen eine laufende Anwendung sowie den lokalen Bootstrap-Zugang. Sie legen klar benannte QA-Datensätze an und entfernen Fachdaten wieder. Der vollständige PDF-Rasterlauf ist optional: `EXPORT_RENDER_QA=1 npm test` (PowerShell: `$env:EXPORT_RENDER_QA='1'; npm test`). Die gerenderten Fixtures in `artifacts/exports` enthalten ausschließlich synthetische Daten.
 
+Die UI-Prüfungen für Passwortfelder und Produktionsnavigation verwenden Dummywerte bzw. einen simulierten Workspace. Die Passworttests prüfen Chromium und WebKit auf Desktop und in mobiler Touchansicht; dafür ist kein echtes Konto erforderlich. WebKit-Prüfungen ersetzen keinen Test auf einem konkreten Safari-Gerät.
+
 ## Datenbankverbrauch
 
 - Kein regelmäßiger Workspace-, Timer-, Kalender- oder Benachrichtigungs-Poll. Timeranzeige, Suche, Filter, Serientermine und Summen werden lokal aus dem geladenen Datenbestand berechnet.
+- Produktionsbereiche, Kontaktrollen und Teamboard filtern denselben geladenen Workspace. Kontaktpersonen werden beim Speichern in der vorhandenen gebündelten Teamprüfung validiert; externe Kontakte erzeugen keine Authentifizierungskonten.
 - Datenbestand und Team werden gemeinsam pro Gewerk für 300 Sekunden serverseitig gecacht; danach erfolgt bedarfsabhängige Erneuerung. Änderungen invalidieren den betroffenen Scope. Timerzustand ist ebenfalls gecacht.
 - Lesende Sitzungs- und Mitgliedschaftsprüfungen sind für 60 Sekunden gecacht. Schreibzugriffe prüfen die Sitzung und aktuellen Rechte unmittelbar in der Datenbank. Entzugene Zugänge können dadurch höchstens innerhalb des kurzen Lese-Cachefensters noch bereits erlaubte Inhalte sehen, aber nichts mehr verändern.
 - Chatabfragen erfolgen alle 30 Sekunden ausschließlich im sichtbaren, fokussierten Chat, mit Änderungscursor und exponentiellem Backoff bei Fehlern. Ergebnisse werden 30 Sekunden geteilt gecacht.

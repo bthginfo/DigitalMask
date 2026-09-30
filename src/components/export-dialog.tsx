@@ -16,6 +16,15 @@ export function ExportDialog({
   filters?: Record<string, string>;
   onClose: () => void;
 }) {
+  const { workspace } = useWorkspace();
+  const contextTitle = filters.productionId
+    ? String(
+        workspace.records.productions.find((row) => row.id === filters.productionId)?.data.title ||
+          "Produktion",
+      )
+    : filters.teamOnly === "true"
+      ? "Teamboard · ohne Produktion"
+      : "";
   const [format, setFormat] = useState("pdf");
   const [from, setFrom] = useState(filters.from || "");
   const [to, setTo] = useState(filters.to || "");
@@ -43,7 +52,7 @@ export function ExportDialog({
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `digitalmask-${kind}-${localDate()}.${format}`;
+      a.download = `digitalmask-${filters.teamOnly === "true" ? "teamboard" : kind}-${localDate()}.${format}`;
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (e) {
@@ -54,6 +63,11 @@ export function ExportDialog({
   };
   return (
     <Modal title={`${labels[kind][0]} exportieren`} onClose={onClose}>
+      {contextTitle && (
+        <p className="export-context">
+          <strong>{contextTitle}</strong>
+        </p>
+      )}
       <p className="muted">
         PDF für Ausdrucke, Excel für Auswertungen oder offene Formate zur Weiterverarbeitung. Deine
         aktuellen Filter werden übernommen.

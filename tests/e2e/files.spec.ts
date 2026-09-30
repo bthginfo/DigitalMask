@@ -20,17 +20,28 @@ test("private images, printable look sheets and copied production assets", async
     return row;
   };
   try {
-    expect(
-      (
-        await admin.post("/api/login", {
-          data: {
-            username: credentials.match(/Benutzername: (.+)/)![1],
-            password: credentials.match(/Passwort: (.+)/)![1],
-          },
-        })
-      ).status(),
-    ).toBe(200);
-    const project = await create("productions", { title: `QA Dateien ${Date.now()}` });
+    const login = await admin.post("/api/login", {
+      data: {
+        username: credentials.match(/Benutzername: (.+)/)![1],
+        password: credentials.match(/Passwort: (.+)/)![1],
+      },
+    });
+    expect(login.status()).toBe(200);
+    const identity = await login.json();
+    const project = await create("productions", {
+      title: `QA Dateien ${Date.now()}`,
+      memberIds: [identity.user.id],
+    });
+    const actor = await create("actors", { name: "QA Galerie Schauspieler" });
+    const character = await create("characters", {
+      name: "QA Galerie Figur",
+      productionId: project.id,
+    });
+    const casting = await create("casting", {
+      productionId: project.id,
+      characterId: character.id,
+      actorId: actor.id,
+    });
     const look = await create("looks", {
       title: "QA Aufschrieb",
       productionId: project.id,
@@ -51,6 +62,38 @@ test("private images, printable look sheets and copied production assets", async
     });
     expect(upload.status(), await upload.text()).toBe(201);
     const asset = await upload.json();
+    const castingImageIds: string[] = [];
+    for (const [recordKind, recordId] of [
+      ["characters", character.id],
+      ["casting", casting.id],
+      ["casting", casting.id],
+    ]) {
+      const response = await admin.post("/api/files", {
+        multipart: {
+          recordKind,
+          recordId,
+          file: { name: "qa-gallery.png", mimeType: "image/png", buffer: png },
+        },
+      });
+      expect(response.status(), await response.text()).toBe(201);
+      const image = await response.json();
+      if (recordKind === "casting") castingImageIds.push(image.id);
+    }
+    const galleryWorkspace = await (await admin.get("/api/workspace")).json();
+    const currentCasting = galleryWorkspace.records.casting.find(
+      (row: { id: string }) => row.id === casting.id,
+    );
+    expect(currentCasting.data.imageIds).toEqual(castingImageIds);
+    const galleryEdit = await admin.patch(`/api/records/casting/${casting.id}`, {
+      data: { version: currentCasting.version, data: { alternate: true } },
+    });
+    expect(galleryEdit.status()).toBe(200);
+    expect((await galleryEdit.json()).data.imageIds).toEqual(castingImageIds);
+    const castingPdf = await admin.get(`/api/export?kind=casting&format=pdf&id=${casting.id}`);
+    expect(castingPdf.status(), castingPdf.status() !== 200 ? await castingPdf.text() : "").toBe(
+      200,
+    );
+    expect((await castingPdf.body()).subarray(0, 5).toString()).toBe("%PDF-");
     expect((await anonymous.get(`/api/files/${asset.id}`)).status()).toBe(401);
     const image = await admin.get(`/api/files/${asset.id}`);
     expect(image.status()).toBe(200);
@@ -72,7 +115,18 @@ test("private images, printable look sheets and copied production assets", async
       (r: { data: { productionId: string } }) => r.data.productionId === copiedProject.id,
     );
     expect(copiedLook.data.status).toBe("draft");
-    created.push({ kind: "looks", id: copiedLook.id });
+    for (const kind of ["characters", "casting", "looks"]) {
+      for (const child of workspace.records[kind].filter(
+        (row: { data: { productionId: string } }) => row.data.productionId === copiedProject.id,
+      ))
+        created.push({ kind, id: child.id });
+    }
+    const copiedCasting = workspace.records.casting.find(
+      (row: { data: { productionId: string } }) => row.data.productionId === copiedProject.id,
+    );
+    expect(copiedCasting.data.imageIds).toHaveLength(2);
+    for (const id of copiedCasting.data.imageIds)
+      expect((await admin.get(`/api/files/${id}`)).status()).toBe(200);
     const copiedFile = workspace.records.files.find(
       (r: { data: { recordId: string } }) => r.data.recordId === copiedLook.id,
     );

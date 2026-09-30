@@ -20,6 +20,26 @@ export const recordKinds = [
 export type RecordKind = (typeof recordKinds)[number];
 export type Role = "superadmin" | "admin" | "user";
 export type RecordData = Record<string, unknown>;
+export interface ProductionContact {
+  id: string;
+  role: string;
+  type: "external" | "makeup";
+  name: string;
+  memberId: string;
+}
+export const contactsValue = (value: unknown): ProductionContact[] =>
+  Array.isArray(value)
+    ? value.filter(
+        (contact): contact is ProductionContact =>
+          contact !== null &&
+          typeof contact === "object" &&
+          typeof contact.id === "string" &&
+          typeof contact.role === "string" &&
+          (contact.type === "external" || contact.type === "makeup") &&
+          typeof contact.name === "string" &&
+          typeof contact.memberId === "string",
+      )
+    : [];
 export interface DomainRecord {
   id: string;
   kind: RecordKind;

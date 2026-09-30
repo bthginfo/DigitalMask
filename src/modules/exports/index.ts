@@ -3,15 +3,19 @@ import { buildIcs } from "./ical";
 import { expandCalendar } from "./calendar";
 import { expandTime } from "./time";
 import type { ExportInput, ExportResult } from "./types";
+import { selectExportRecords } from "./selection";
+import { resolveProductionContacts } from "./contacts";
 export type { ExportInput, ExportResult, ExportFormat } from "./types";
+export { selectExportRecords } from "./selection";
 
 /** Input must already be authorized and filtered. No database or remote asset calls. */
 export async function buildExport(input: ExportInput): Promise<ExportResult> {
   const formats = ["pdf", "xlsx", "csv", "ics", "json"];
   if (!formats.includes(input.format)) throw new Error("Unbekanntes Exportformat.");
+  input = { ...input, records: selectExportRecords(input) };
   if (input.records.length > 20000)
     throw new Error("Bitte die Exportauswahl auf höchstens 20.000 Einträge begrenzen.");
-  const filename = `digitalmask-${input.kind.replace(/[^a-zA-Z0-9_-]/g, "-")}${input.from ? `-${input.from.replace(/[^0-9-]/g, "")}` : ""}.${input.format}`;
+  const filename = `digitalmask-${input.teamOnly ? "teamboard" : input.kind.replace(/[^a-zA-Z0-9_-]/g, "-")}${input.from ? `-${input.from.replace(/[^0-9-]/g, "")}` : ""}.${input.format}`;
   if (input.format === "json")
     return {
       bytes: new TextEncoder().encode(
@@ -23,7 +27,17 @@ export async function buildExport(input: ExportInput): Promise<ExportResult> {
             kind: input.kind,
             from: input.from,
             to: input.to,
+            ...(input.teamOnly ? { teamOnly: true } : {}),
+            ...(input.productionId ? { productionId: input.productionId } : {}),
             records: input.records,
+            ...(input.kind === "productions"
+              ? {
+                  contactDirectory: input.records.map((record) => ({
+                    productionId: record.id,
+                    contacts: resolveProductionContacts(record, input.members),
+                  })),
+                }
+              : {}),
           },
           null,
           2,

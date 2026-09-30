@@ -29,6 +29,7 @@ import {
   durationSeconds,
   durationText,
   exportRows,
+  exportTitle,
   readable,
   titles,
   value,
@@ -128,7 +129,7 @@ function Header({ input, label }: { input: ExportInput; label?: string }) {
   return (
     <View style={styles.header} fixed>
       <Text style={styles.brand}>DIGITALMASK / {input.department.toUpperCase()}</Text>
-      <Text style={styles.title}>{label ?? titles[input.kind] ?? "Datenexport"}</Text>
+      <Text style={styles.title}>{label ?? exportTitle(input)}</Text>
       <Text style={styles.meta}>
         {input.organization}
         {input.from
@@ -490,6 +491,69 @@ const lookFields = [
   ["changeover", "Wechsel / Umbau"],
   ["notes", "Weitere Hinweise"],
 ] as const;
+function RecordImages({ input, record }: { input: ExportInput; record: ExportRow["record"] }) {
+  const names = new Map(
+    (input.references?.files ?? []).map((file) => [file.id, readable(file.data.name)]),
+  );
+  return (
+    <>
+      {(Array.isArray(record.data.imageIds) ? record.data.imageIds : []).map((id, i) => (
+        <View key={String(id)} wrap={false} style={{ marginBottom: 20 }}>
+          <Text style={styles.fieldLabel}>
+            BILD {i + 1} · {names.get(String(id)) || "Dokumentation"}
+          </Text>
+          {input.images?.[String(id)] ? (
+            <PdfImage
+              style={styles.image}
+              src={{
+                data: Buffer.from(input.images[String(id)]),
+                format: input.images[String(id)][0] === 137 ? "png" : "jpg",
+              }}
+            />
+          ) : (
+            <Text style={styles.note}>
+              Bild konnte nicht bereitgestellt werden. Bitte die Originaldatei in der Galerie
+              prüfen.
+            </Text>
+          )}
+        </View>
+      ))}
+    </>
+  );
+}
+function GalleryPages({ input }: { input: ExportInput }) {
+  const rows = exportRows(input).filter(
+    (row) => Array.isArray(row.record.data.imageIds) && row.record.data.imageIds.length,
+  );
+  return (
+    <>
+      {rows.map((row) => (
+        <BasePage
+          key={`gallery-${row.id}`}
+          input={input}
+          label={`${titles[input.kind] ?? "Dokumentation"} · Galerie`}
+        >
+          <View style={{ ...styles.summary, marginTop: 0, marginBottom: 20 }}>
+            <Text>
+              {input.kind === "casting"
+                ? `${readable(row.values.character)} · ${readable(row.values.actor)}`
+                : readable(row.values.title)}
+            </Text>
+            <Text style={{ fontSize: 9, fontWeight: 400, marginTop: 4 }}>
+              {readable(row.values.production)} · Stand: {dateText(row.record.updatedAt, true)}
+            </Text>
+          </View>
+          {readable(row.values.description) && (
+            <Text style={{ ...styles.fieldText, marginBottom: 20 }}>
+              {readable(row.values.description)}
+            </Text>
+          )}
+          <RecordImages input={input} record={row.record} />
+        </BasePage>
+      ))}
+    </>
+  );
+}
 function LookPages({ input }: { input: ExportInput }) {
   const references = new Map(
     Object.values(input.references ?? {})
@@ -541,34 +605,14 @@ function LookPages({ input }: { input: ExportInput }) {
               </Text>
             </View>
             {lookFields.map(([key, label]) => field(key, label, readable(record.data[key])))}
-            {(Array.isArray(record.data.imageIds) ? record.data.imageIds : []).map((id, i) => (
-              <View key={String(id)} wrap={false} style={{ marginBottom: 20 }}>
-                <Text style={styles.fieldLabel}>
-                  BILD {i + 1} · {references.get(String(id)) || "Dokumentation"}
-                </Text>
-                {input.images?.[String(id)] ? (
-                  <PdfImage
-                    style={styles.image}
-                    src={{
-                      data: Buffer.from(input.images[String(id)]),
-                      format: input.images[String(id)][0] === 137 ? "png" : "jpg",
-                    }}
-                  />
-                ) : (
-                  <Text style={styles.note}>
-                    Bild konnte nicht bereitgestellt werden. Bitte die Originaldatei im Aufschrieb
-                    prüfen.
-                  </Text>
-                )}
-              </View>
-            ))}
+            <RecordImages input={input} record={record} />
           </BasePage>
         ))}
     </>
   );
 }
 export async function buildPdf(input: ExportInput): Promise<Uint8Array> {
-  if (input.kind === "looks" && input.images) {
+  if (["looks", "characters", "casting"].includes(input.kind) && input.images) {
     const normalizedImages: Record<string, Uint8Array> = {};
     const ids = [
       ...new Set(
@@ -603,7 +647,7 @@ export async function buildPdf(input: ExportInput): Promise<Uint8Array> {
   const paginatedRows = tablePages(rows, columns, landscape);
   const document = (
     <Document
-      title={titles[input.kind] ?? "DigitalMask Export"}
+      title={exportTitle(input)}
       author="DigitalMask"
       subject={`${input.organization} · ${input.department}`}
       language="de-DE"
@@ -624,6 +668,7 @@ export async function buildPdf(input: ExportInput): Promise<Uint8Array> {
               <Table input={input} columns={columns} rows={pageRows} />
             </BasePage>
           ))}
+          {["characters", "casting"].includes(input.kind) && <GalleryPages input={input} />}
           {input.kind === "time" && (
             <BasePage input={input} label="Arbeitszeit · Zusammenfassung">
               <View style={styles.summary}>

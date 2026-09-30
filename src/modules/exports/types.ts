@@ -11,6 +11,8 @@ export interface ExportInput {
   from?: string;
   to?: string;
   view?: string;
+  teamOnly?: boolean;
+  productionId?: string;
   images?: Record<string, Uint8Array>;
   references?: Partial<Record<RecordKind, DomainRecord[]>>;
 }

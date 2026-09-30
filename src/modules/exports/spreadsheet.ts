@@ -1,5 +1,5 @@
 import { formatInTimeZone } from "date-fns-tz";
-import { cellText, columnsFor, durationSeconds, exportRows, titles } from "./data";
+import { cellText, columnsFor, durationSeconds, exportRows, exportTitle } from "./data";
 import type { ExportInput } from "./types";
 
 /** Spreadsheet programs also interpret whitespace-prefixed formulas. */
@@ -37,7 +37,7 @@ export async function buildXlsx(input: ExportInput): Promise<Uint8Array> {
   const { default: ExcelJS } = await import("exceljs");
   const workbook = new ExcelJS.Workbook();
   workbook.creator = "DigitalMask";
-  workbook.title = titles[input.kind] ?? "Datenexport";
+  workbook.title = exportTitle(input);
   const sheet = workbook.addWorksheet("Daten", {
     views: [{ state: "frozen", ySplit: 4 }],
     pageSetup: {
@@ -74,7 +74,7 @@ export async function buildXlsx(input: ExportInput): Promise<Uint8Array> {
   );
   if (input.kind === "looks") sheet.pageSetup.printTitlesColumn = "A:B";
   sheet.mergeCells(1, 1, 1, columns.length);
-  sheet.getCell(1, 1).value = `${titles[input.kind] ?? input.kind} · ${input.department}`;
+  sheet.getCell(1, 1).value = `${exportTitle(input)} · ${input.department}`;
   sheet.getRow(1).height = 29;
   sheet.getCell(1, 1).font = { name: "Calibri", size: 18, bold: true, color: { argb: "FF173F39" } };
   sheet.mergeCells(2, 1, 2, columns.length);

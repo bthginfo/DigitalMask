@@ -2,16 +2,16 @@
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Eye, EyeOff, ShieldCheck } from "lucide-react";
+import { ArrowRight, ShieldCheck } from "lucide-react";
 import { post } from "@/shared/client-api";
 import { Button, ErrorMessage, Modal } from "./ui";
 import { ThemeSwitch } from "./theme-switch";
+import { PasswordInput } from "./password-input";
 export function AuthForm({ register = false }: { register?: boolean }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
-  const [show, setShow] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -108,27 +108,14 @@ export function AuthForm({ register = false }: { register?: boolean }) {
                     placeholder="Dein Benutzername"
                   />
                 </label>
-                <label>
-                  Passwort
-                  <span className="password-input">
-                    <input
-                      name="password"
-                      type={show ? "text" : "password"}
-                      autoComplete={register ? "new-password" : "current-password"}
-                      required
-                      minLength={register ? 10 : undefined}
-                      placeholder={register ? "Mindestens 10 Zeichen" : "Dein Passwort"}
-                    />
-                    <button
-                      type="button"
-                      className="icon-button"
-                      aria-label={show ? "Passwort verbergen" : "Passwort anzeigen"}
-                      onClick={() => setShow(!show)}
-                    >
-                      {show ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </button>
-                  </span>
-                </label>
+                <PasswordInput
+                  label="Passwort"
+                  name="password"
+                  autoComplete={register ? "new-password" : "current-password"}
+                  required
+                  minLength={register ? 10 : undefined}
+                  placeholder={register ? "Mindestens 10 Zeichen" : "Dein Passwort"}
+                />
                 <ErrorMessage message={error} />
                 <Button type="submit" variant="primary" disabled={busy}>
                   {busy ? "Einen Moment …" : register ? "Zugang erstellen" : "Anmelden"}
@@ -215,26 +202,20 @@ function ResetPasswordForm({ onClose }: { onClose: () => void }) {
             Wiederherstellungscode
             <input name="code" autoComplete="off" required />
           </label>
-          <label>
-            Neues Passwort
-            <input
-              name="password"
-              type="password"
-              minLength={10}
-              autoComplete="new-password"
-              required
-            />
-          </label>
-          <label>
-            Neues Passwort wiederholen
-            <input
-              name="repeat"
-              type="password"
-              minLength={10}
-              autoComplete="new-password"
-              required
-            />
-          </label>
+          <PasswordInput
+            label="Neues Passwort"
+            name="password"
+            minLength={10}
+            autoComplete="new-password"
+            required
+          />
+          <PasswordInput
+            label="Neues Passwort wiederholen"
+            name="repeat"
+            minLength={10}
+            autoComplete="new-password"
+            required
+          />
           <ErrorMessage message={error} />
           <footer className="dialog-footer">
             <Button onClick={onClose}>Abbrechen</Button>

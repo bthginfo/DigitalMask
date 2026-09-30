@@ -38,6 +38,15 @@ test("real database workflows, permissions and booking integrity", async () => {
     expect((await member.get("/api/workspace")).status()).toBe(403);
     const workspace = await (await admin.get("/api/workspace")).json();
     memberId = workspace.members.find((m: { username: string }) => m.username === name).id;
+    const inactiveContact = await admin.post("/api/records/productions", {
+      data: {
+        data: {
+          title: "QA unzulässige Maskenperson",
+          contacts: [{ id: "makeup", role: "Maskenbetreuung", type: "makeup", name: "", memberId }],
+        },
+      },
+    });
+    expect(inactiveContact.status()).toBe(400);
     expect(
       (
         await admin.post("/api/actions", {
@@ -54,8 +63,45 @@ test("real database workflows, permissions and booking integrity", async () => {
     ).toBe(200);
     const production = await create("productions", {
       title: `QA Produktion ${suffix}`,
-      memberIds: [memberId],
+      contacts: [
+        {
+          id: "direction",
+          role: "Regie",
+          type: "external",
+          name: "QA Externe Regie",
+          memberId: "",
+        },
+        {
+          id: "custom",
+          role: "Choreografie",
+          type: "external",
+          name: "QA Externer Kontakt",
+          memberId: "",
+        },
+        { id: "makeup", role: "Maskenbetreuung", type: "makeup", name: "", memberId },
+        {
+          id: "guest",
+          role: "Maskenassistenz",
+          type: "makeup",
+          name: "QA Gastassistenz",
+          memberId: "",
+        },
+      ],
     });
+    expect(production.data.memberIds).toEqual([memberId]);
+    const memberWorkspace = await (await member.get("/api/workspace")).json();
+    expect(
+      memberWorkspace.records.productions.some((row: { id: string }) => row.id === production.id),
+    ).toBe(true);
+    const expandedTeam = await admin.patch(`/api/records/productions/${production.id}`, {
+      data: { version: production.version, data: { memberIds: [memberId, workspace.user.id] } },
+    });
+    expect(expandedTeam.status()).toBe(200);
+    expect((await expandedTeam.json()).data.contacts).toEqual(production.data.contacts);
+    const contactsExport = await admin.get(
+      `/api/export?kind=productions&format=csv&id=${production.id}`,
+    );
+    expect(await contactsExport.text()).toContain("QA Externe Regie");
     const forbidden = await member.post("/api/records/productions", {
       data: { data: { title: "Verbotene Produktion" } },
     });
@@ -65,6 +111,42 @@ test("real database workflows, permissions and booking integrity", async () => {
       productionId: production.id,
       assigneeIds: [memberId],
     });
+    const teamTask = await create("tasks", {
+      title: `QA Teamboard ${suffix}`,
+      assigneeIds: [memberId],
+    });
+    expect(teamTask.data.productionId).toBe("");
+    const teamCsv = await admin.get("/api/export?kind=tasks&format=csv&teamOnly=true");
+    const teamCsvText = await teamCsv.text();
+    expect(teamCsv.status()).toBe(200);
+    expect(teamCsvText).toContain(teamTask.data.title);
+    expect(teamCsvText).not.toContain(task.data.title);
+    const productionCsv = await admin.get(
+      `/api/export?kind=tasks&format=csv&productionId=${production.id}`,
+    );
+    const productionCsvText = await productionCsv.text();
+    expect(productionCsvText).toContain(task.data.title);
+    expect(productionCsvText).not.toContain(teamTask.data.title);
+    expect(
+      (
+        await admin.get(
+          `/api/export?kind=tasks&format=csv&productionId=${production.id}&teamOnly=true`,
+        )
+      ).status(),
+    ).toBe(400);
+    const sprint = await create("sprints", {
+      title: "QA Produktionssprint",
+      productionId: production.id,
+      start: "2026-09-30",
+      end: "2026-10-14",
+    });
+    expect(
+      (
+        await admin.post("/api/records/tasks", {
+          data: { data: { title: "QA falscher Teamsprint", sprintId: sprint.id } },
+        })
+      ).status(),
+    ).toBe(400);
     expect(
       (
         await member.patch(`/api/records/tasks/${task.id}`, {

@@ -169,7 +169,11 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
           <p className="small muted">Ohne Auswahl werden alle Kalender angezeigt.</p>
           <label>
             Produktion
-            <select value={project} onChange={(e) => setProject(e.target.value)}>
+            <select
+              value={project}
+              disabled={!!productionId}
+              onChange={(e) => setProject(e.target.value)}
+            >
               <option value="">Alle Produktionen</option>
               {workspace.records.productions.map((x) => (
                 <option key={x.id} value={x.id}>
@@ -488,6 +492,7 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
       {editor && (
         <ResourceEditor
           kind={editor.kind}
+          lockedProductionId={editor.kind === "events" && productionId ? productionId : undefined}
           defaults={{ productionId: project, ...editor.defaults }}
           onClose={() => setEditor(null)}
         />

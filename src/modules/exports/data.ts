@@ -1,5 +1,6 @@
 import type { DomainRecord } from "../../shared/contracts";
 import type { Column, ExportInput, ExportRow } from "./types";
+import { productionContactsText } from "./contacts";
 
 export const titles: Record<string, string> = {
   events: "Dienst- und Kalenderplanung",
@@ -21,6 +22,9 @@ export const titles: Record<string, string> = {
   notifications: "Benachrichtigungen",
   files: "Dateiverzeichnis",
 };
+export function exportTitle(input: Pick<ExportInput, "kind" | "teamOnly">): string {
+  return input.teamOnly ? "Teamboard · Aufgaben" : (titles[input.kind] ?? "Datenexport");
+}
 export function value(record: DomainRecord, ...keys: string[]): unknown {
   for (const key of keys)
     if (record.data[key] !== undefined && record.data[key] !== null && record.data[key] !== "")
@@ -127,6 +131,7 @@ export function columnsFor(kind: string): Column[] {
         column("person", "Team", 27),
         column("status", "Status", 19),
         column("description", "Beschreibung", 42),
+        column("contacts", "Zuständigkeiten / Kontakte", 55),
       ];
     case "handovers":
       return [
@@ -297,6 +302,7 @@ export function exportRows(input: ExportInput): ExportRow[] {
           imageIds: readable(record.data.imageIds),
           season: readable(record.data.season),
           premiere: dateValue(record.data.premiere) ?? "",
+          contacts: productionContactsText(record, input.members),
         },
       };
     });

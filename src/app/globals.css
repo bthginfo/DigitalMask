@@ -1238,6 +1238,7 @@ tfoot td {
   scrollbar-width: none;
 }
 .tabs button {
+  flex: 0 0 auto;
   min-height: 48px;
   padding: 10px 0;
   border: 0;
@@ -2467,17 +2468,149 @@ tfoot td {
   margin-top: 8px;
 }
 .password-input {
-  display: flex;
-  align-items: center;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px;
+  gap: 7px;
+  align-items: stretch;
   position: relative;
 }
 .password-input input {
-  padding-right: 48px;
+  min-width: 0;
 }
-.password-input .icon-button {
-  position: absolute;
-  right: 1px;
-  top: 8px;
+.password-input .password-toggle {
+  position: static;
+  align-self: center;
+  margin-top: 7px;
+  z-index: 1;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  pointer-events: auto;
+  touch-action: manipulation;
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+}
+.password-input input::-ms-reveal,
+.password-input input::-ms-clear {
+  display: none;
+}
+.password-input input[type="text"] {
+  -webkit-text-security: none;
+}
+
+.production-contacts-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 28px;
+  margin-bottom: 28px;
+}
+.production-contact {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 16px;
+  padding: 22px 0;
+  border-bottom: 1px solid var(--border);
+}
+.production-contact .contact-role {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: 12px;
+}
+.production-contact strong {
+  font-size: 18px;
+  overflow-wrap: anywhere;
+}
+.production-contact .badge {
+  align-self: start;
+}
+.production-team-panel {
+  margin-top: 28px;
+}
+.production-team-panel h3 {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+}
+.production-team-members {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+  padding: 24px;
+}
+.production-team-member {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.production-team-member > div {
+  display: grid;
+  gap: 4px;
+}
+.production-people-fields > .panel-heading {
+  padding: 22px 0 14px;
+  flex-wrap: wrap;
+}
+.production-people-fields .panel-heading h3 {
+  margin-bottom: 6px;
+}
+.production-contact-form {
+  margin: 18px 0;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-soft);
+}
+.production-contact-form legend {
+  font-weight: 650;
+  padding: 0 8px;
+}
+.production-contact-form > .button {
+  margin-top: 10px;
+}
+.locked-production-field {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  padding-top: 4px;
+}
+.locked-production-field strong {
+  min-height: 44px;
+  padding: 12px;
+  background: var(--accent-soft);
+  border-radius: 7px;
+  font-size: 13px;
+}
+.production-chat {
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (max-width: 760px) {
+  .production-contacts-list,
+  .production-team-members {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .production-contact {
+    gap: 8px 10px;
+  }
+  .production-contact strong {
+    font-size: 16px;
+  }
+  .production-contact-form {
+    padding: 16px;
+  }
+  .production-tabs {
+    position: relative;
+    padding-bottom: 2px;
+  }
+}
+.auth-form form > .password-field {
+  margin: 20px 0;
+}
+.settings-grid form > .password-field {
+  margin-bottom: 17px;
+}
+.dialog > form > .password-field {
+  margin-bottom: 18px;
 }
 .auth-switch {
   font-size: 11px;
@@ -3006,8 +3139,8 @@ tfoot td {
     font-size: 11px;
   }
   .kanban {
-    margin-right: -18px;
-    padding-right: 18px;
+    margin-right: 0;
+    padding-right: 0;
     gap: 12px;
     min-height: 400px;
   }

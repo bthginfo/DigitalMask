@@ -22,6 +22,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
+import { recordHref } from "@/shared/client-navigation";
 import { subscribeLocation, subscribeMobile } from "@/shared/client-storage";
 import type { DomainRecord, RecordKind } from "@/shared/contracts";
 import { initials, post, value } from "@/shared/client-api";
@@ -30,7 +31,7 @@ import { Badge, Empty, Modal } from "./ui";
 import { ThemeSwitch } from "./theme-switch";
 import { RecordDetail, ResourceView } from "./resource-view";
 import { TodayModule } from "./modules/today";
-import { ProductionsModule, CastingModule } from "./modules/productions";
+import { ProductionsModule } from "./modules/productions";
 import { TasksModule } from "./modules/tasks";
 import { CalendarModule } from "./modules/calendar";
 import { TimeModule } from "./modules/time";
@@ -42,11 +43,10 @@ const nav: { id: string; label: string; icon: LucideIcon; group: string }[] = [
   { id: "today", label: "Heute", icon: Home, group: "ARBEITSRAUM" },
   { id: "productions", label: "Produktionen", icon: Theater, group: "ARBEITSRAUM" },
   { id: "calendar", label: "Kalender", icon: CalendarDays, group: "ARBEITSRAUM" },
-  { id: "tasks", label: "Aufgaben & Sprints", icon: Layers3, group: "ARBEITSRAUM" },
+  { id: "tasks", label: "Teamboard", icon: Layers3, group: "ARBEITSRAUM" },
   { id: "time", label: "Zeit buchen", icon: Clock3, group: "ARBEITSRAUM" },
   { id: "chat", label: "Kommunikation", icon: MessageSquare, group: "ARBEITSRAUM" },
   { id: "actors", label: "Schauspielerkatalog", icon: Users, group: "WISSEN & FUNDUS" },
-  { id: "casting", label: "Figuren & Besetzung", icon: Theater, group: "WISSEN & FUNDUS" },
   { id: "documentation", label: "Aufschriebe", icon: BookOpen, group: "WISSEN & FUNDUS" },
   { id: "inventory", label: "Fundus & Material", icon: Package, group: "WISSEN & FUNDUS" },
   { id: "handovers", label: "Dienstübergaben", icon: ClipboardCheck, group: "WISSEN & FUNDUS" },
@@ -147,7 +147,11 @@ export function WorkspaceShell() {
   }, [notice, notify]);
   const navigate = (next: string) => {
     setMobileMenu(false);
-    history.pushState({}, "", next === "today" ? "/" : `/?module=${next}`);
+    history.pushState(
+      {},
+      "",
+      next.startsWith("/") ? next : next === "today" ? "/" : `/?module=${next}`,
+    );
     window.dispatchEvent(new PopStateEvent("popstate"));
     window.scrollTo({ top: 0, behavior: "instant" });
   };
@@ -204,7 +208,18 @@ export function WorkspaceShell() {
     activeModule === "today" ? (
       <TodayModule navigate={navigate} />
     ) : activeModule === "productions" ? (
-      <ProductionsModule />
+      <ProductionsModule
+        productionId={params.get("productionId") || ""}
+        activeTab={params.get("tab") || "overview"}
+        onNavigate={(id, tab) => {
+          const next = new URLSearchParams({
+            module: "productions",
+            ...(id ? { productionId: id, tab } : {}),
+          });
+          history.pushState({}, "", `/?${next}`);
+          window.dispatchEvent(new PopStateEvent("popstate"));
+        }}
+      />
     ) : activeModule === "calendar" ? (
       <CalendarModule />
     ) : activeModule === "tasks" ? (
@@ -218,8 +233,6 @@ export function WorkspaceShell() {
         kind="actors"
         description="Kontakte, Perückenmaße, Hinweise und Fotos. Das Wissen über eure Schauspieler an einem Ort."
       />
-    ) : activeModule === "casting" ? (
-      <CastingModule />
     ) : activeModule === "documentation" ? (
       <DocumentationModule />
     ) : activeModule === "inventory" ? (
@@ -399,7 +412,7 @@ export function WorkspaceShell() {
         {[
           ["today", "Heute", Home],
           ["calendar", "Kalender", CalendarDays],
-          ["tasks", "Aufgaben", Layers3],
+          ["productions", "Stücke", Theater],
           ["time", "Zeit", Clock3],
           ["more", "Mehr", Menu],
         ].map(([key, label, Icon]) => {
@@ -409,7 +422,8 @@ export function WorkspaceShell() {
               key={String(key)}
               className={
                 activeModule === key ||
-                (key === "more" && !["today", "calendar", "tasks", "time"].includes(activeModule))
+                (key === "more" &&
+                  !["today", "calendar", "productions", "time"].includes(activeModule))
                   ? "active"
                   : ""
               }
@@ -459,7 +473,7 @@ export function WorkspaceShell() {
                 <button
                   key={result.id}
                   onClick={() => {
-                    setDetail(result);
+                    navigate(recordHref(result));
                     setSearchOpen(false);
                     setSearch("");
                   }}
@@ -495,7 +509,16 @@ export function WorkspaceShell() {
                       await action("notification-read", item.id);
                       setNotificationOpen(false);
                       const link = value(item.data, "link");
-                      if (link.startsWith("/")) location.href = link;
+                      if (link.startsWith("/") && !link.startsWith("//")) {
+                        const next = new URL(link, location.origin);
+                        const productionId = value(item.data, "productionId");
+                        if (next.searchParams.get("module") === "tasks" && productionId) {
+                          next.searchParams.set("module", "productions");
+                          next.searchParams.set("productionId", productionId);
+                          next.searchParams.set("tab", "tasks");
+                        }
+                        navigate(next.pathname + next.search);
+                      }
                     } catch (e) {
                       notify(e instanceof Error ? e.message : "Aktion fehlgeschlagen");
                     }

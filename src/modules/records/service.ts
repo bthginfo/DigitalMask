@@ -14,7 +14,13 @@ import { occurrences } from "@/modules/calendar/occurrences";
 import { validateRecord } from "./schemas";
 import { findRecord, assertProject, serialize } from "./repository";
 import { invalidateWorkspace } from "./workspace";
-import { type RecordKind, type RecordData, listValue, textValue } from "@/shared/contracts";
+import {
+  type RecordKind,
+  type RecordData,
+  contactsValue,
+  listValue,
+  textValue,
+} from "@/shared/contracts";
 const adminKinds = new Set<RecordKind>([
   "productions",
   "actors",
@@ -270,6 +276,19 @@ export async function saveRecord(
     assertWrite(context, kind, existing);
     if (existing) await assertRead(context, existing, tx);
     const data = validateRecord(kind, { ...existing?.data, ...input });
+    if (kind === "productions") {
+      // Resolve every team reference in the existing batched membership query.
+      data.memberIds = Array.from(
+        new Set([
+          ...listValue(data.memberIds),
+          ...contactsValue(data.contacts).flatMap((contact) =>
+            contact.memberId ? [contact.memberId] : [],
+          ),
+        ]),
+      );
+      if (listValue(data.memberIds).length > 100)
+        throw new HttpError(400, "Bitte wähle höchstens 100 Personen für das Produktionsteam.");
+    }
     if (["time", "leave", "messages"].includes(kind))
       data.userId = existing?.data.userId || context.user.id;
     if (kind === "leave") {
@@ -366,7 +385,9 @@ export async function saveRecord(
           userIds: assigned,
           title: "Neue Aufgabe",
           body: String(data.title),
-          link: "/?module=tasks",
+          link: data.productionId
+            ? `/?module=productions&productionId=${encodeURIComponent(String(data.productionId))}&tab=tasks`
+            : "/?module=tasks",
           recordId: row.id,
           productionId: data.productionId,
         });
@@ -404,7 +425,9 @@ export async function saveRecord(
           .map((member) => member.id),
         title: "Neuer Aufschrieb",
         body: String(data.title),
-        link: "/?module=documentation",
+        link: data.productionId
+          ? `/?module=productions&productionId=${encodeURIComponent(String(data.productionId))}&tab=looks`
+          : "/?module=documentation",
         recordId: row.id,
         productionId: data.productionId,
       });

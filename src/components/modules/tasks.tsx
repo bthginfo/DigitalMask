@@ -35,8 +35,13 @@ function TaskCard({
   onMove: (status: string) => void;
 }) {
   const { workspace } = useWorkspace();
+  const canEdit =
+    workspace.user.role !== "user" ||
+    task.createdBy === workspace.user.id ||
+    ids(task.data, "assigneeIds").includes(workspace.user.id);
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: task.id,
+    disabled: !canEdit,
   });
   const list = Array.isArray(task.data.checklist)
     ? (task.data.checklist as { done: boolean }[])
@@ -51,10 +56,11 @@ function TaskCard({
       <div className="task-top">
         <span className="small muted">
           {(workspace.records.productions.find((x) => x.id === task.data.productionId)?.data
-            .title as string) || "Produktion"}
+            .title as string) || "Teamboard"}
         </span>
         <button
           className="drag-handle"
+          disabled={!canEdit}
           {...listeners}
           {...attributes}
           aria-label="Aufgabe verschieben"
@@ -100,7 +106,11 @@ function TaskCard({
         </div>
         <label className="task-status-label">
           <span className="visually-hidden">Status von {value(task.data, "title")}</span>
-          <select value={value(task.data, "status")} onChange={(e) => onMove(e.target.value)}>
+          <select
+            disabled={!canEdit}
+            value={value(task.data, "status")}
+            onChange={(e) => onMove(e.target.value)}
+          >
             {columns.map(([id, label]) => (
               <option key={id} value={id}>
                 {label}
@@ -161,7 +171,7 @@ function Column({
 }
 export function TasksModule({ productionId = "" }: { productionId?: string }) {
   const { workspace, save } = useWorkspace();
-  const [project, setProject] = useState(productionId);
+  const project = productionId;
   const [sprint, setSprint] = useState("");
   const [mine, setMine] = useState(false);
   const [search, setSearch] = useState("");
@@ -180,7 +190,7 @@ export function TasksModule({ productionId = "" }: { productionId?: string }) {
   );
   const tasks = workspace.records.tasks.filter(
     (x) =>
-      (!project || x.data.productionId === project) &&
+      value(x.data, "productionId") === project &&
       (!sprint || x.data.sprintId === sprint) &&
       (!mine || ids(x.data, "assigneeIds").includes(workspace.user.id)) &&
       (!search || value(x.data, "title").toLowerCase().includes(search.toLowerCase())),
@@ -204,11 +214,15 @@ export function TasksModule({ productionId = "" }: { productionId?: string }) {
     <>
       <PageHeader
         eyebrow="GEMEINSAM VORAN"
-        title="Aufgaben & Sprints"
-        description="Vom ersten Entwurf bis zur letzten Vorstellung."
+        title={project ? "Aufgaben & Sprints" : "Teamboard"}
+        description={
+          project
+            ? "Das Kanban und die Sprints dieser Produktion."
+            : "Gemeinsame Aufgaben der Maske, unabhängig von einer Produktion."
+        }
       >
         <ExportButton onClick={() => setExporting(true)} />
-        {workspace.user.role !== "user" && (
+        {project && workspace.user.role !== "user" && (
           <Button onClick={() => setEditor({ kind: "sprints" })}>Sprint planen</Button>
         )}
         <Button variant="primary" onClick={() => setEditor({ kind: "tasks" })}>
@@ -217,31 +231,18 @@ export function TasksModule({ productionId = "" }: { productionId?: string }) {
         </Button>
       </PageHeader>
       <div className="toolbar wrap">
-        <select
-          aria-label="Produktion"
-          value={project}
-          onChange={(event) => {
-            setProject(event.target.value);
-            setSprint("");
-          }}
-        >
-          <option value="">Alle Produktionen</option>
-          {workspace.records.productions.map((x) => (
-            <option key={x.id} value={x.id}>
-              {value(x.data, "title")}
-            </option>
-          ))}
-        </select>
-        <select aria-label="Sprint" value={sprint} onChange={(e) => setSprint(e.target.value)}>
-          <option value="">Alle Sprints</option>
-          {workspace.records.sprints
-            .filter((x) => !project || x.data.productionId === project)
-            .map((x) => (
-              <option key={x.id} value={x.id}>
-                {value(x.data, "title")}
-              </option>
-            ))}
-        </select>
+        {project && (
+          <select aria-label="Sprint" value={sprint} onChange={(e) => setSprint(e.target.value)}>
+            <option value="">Alle Sprints</option>
+            {workspace.records.sprints
+              .filter((x) => x.data.productionId === project)
+              .map((x) => (
+                <option key={x.id} value={x.id}>
+                  {value(x.data, "title")}
+                </option>
+              ))}
+          </select>
+        )}
         <input
           placeholder="Aufgaben suchen …"
           aria-label="Aufgaben suchen"
@@ -310,6 +311,7 @@ export function TasksModule({ productionId = "" }: { productionId?: string }) {
       {editor && (
         <ResourceEditor
           kind={editor.kind}
+          lockedProductionId={project}
           defaults={{
             productionId: project,
             sprintId: sprint,
@@ -328,7 +330,7 @@ export function TasksModule({ productionId = "" }: { productionId?: string }) {
       {exporting && (
         <ExportDialog
           kind="tasks"
-          filters={project ? { productionId: project } : {}}
+          filters={project ? { productionId: project } : { teamOnly: "true" }}
           onClose={() => setExporting(false)}
         />
       )}

@@ -21,12 +21,18 @@ import { ResourceEditor } from "../resource-editor";
 import { RecordDetail } from "../resource-view";
 import { ExportDialog } from "../export-dialog";
 import { statusLabels } from "../resource-fields";
-export function TimerPanel({ compact = false }: { compact?: boolean }) {
+export function TimerPanel({
+  compact = false,
+  productionId = "",
+}: {
+  compact?: boolean;
+  productionId?: string;
+}) {
   const { workspace, action, busy } = useWorkspace();
   const [now, setNow] = useState(Date.now);
   const [error, setError] = useState("");
   const [title, setTitle] = useState("");
-  const [project, setProject] = useState("");
+  const [project, setProject] = useState(productionId);
   const [category, setCategory] = useState("production");
   const timer = workspace.timer;
   useEffect(() => {
@@ -117,6 +123,7 @@ export function TimerPanel({ compact = false }: { compact?: boolean }) {
           <div className="timer-selects">
             <select
               value={project}
+              disabled={!!productionId}
               aria-label="Produktion für Timer"
               onChange={(e) => setProject(e.target.value)}
             >
@@ -244,9 +251,9 @@ export function TimeModule({ productionId = "" }: { productionId?: string }) {
         </Button>
       </PageHeader>
       <div className="time-layout">
-        <TimerPanel />
+        <TimerPanel productionId={productionId} />
         <section className="time-summary">
-          <p className="eyebrow">DEINE WOCHE</p>
+          <p className="eyebrow">{productionId ? "DEINE PRODUKTIONSWOCHE" : "DEINE WOCHE"}</p>
           <strong>
             {hours(total)} <span>Stunden</span>
           </strong>
@@ -270,13 +277,15 @@ export function TimeModule({ productionId = "" }: { productionId?: string }) {
               );
             })}
           </div>
-          <Button
-            disabled={busy || !entries.length || person !== workspace.user.id}
-            onClick={() => void run(() => action("timesheet-submit", undefined, { week }))}
-          >
-            <Check size={16} />
-            Woche zur Freigabe einreichen
-          </Button>
+          {!productionId && (
+            <Button
+              disabled={busy || !entries.length || person !== workspace.user.id}
+              onClick={() => void run(() => action("timesheet-submit", undefined, { week }))}
+            >
+              <Check size={16} />
+              Woche zur Freigabe einreichen
+            </Button>
+          )}
         </section>
       </div>
       {inbox.length > 0 && (
@@ -352,6 +361,7 @@ export function TimeModule({ productionId = "" }: { productionId?: string }) {
         )}
         <select
           aria-label="Produktion"
+          disabled={!!productionId}
           value={project}
           onChange={(e) => setProject(e.target.value)}
         >
@@ -411,64 +421,69 @@ export function TimeModule({ productionId = "" }: { productionId?: string }) {
           onAction={() => setEditor(true)}
         />
       )}
-      <section className="panel margin-top">
-        <header className="panel-heading">
-          <h2>{admin ? "Wochenfreigaben im Team" : "Meine Wochenfreigaben"}</h2>
-        </header>
-        {!sheets.length ? (
-          <p className="empty-inline">Noch keine Wochen eingereicht.</p>
-        ) : (
-          <div className="list">
-            {sheets.map((sheet) => (
-              <div className="list-row" key={sheet.id}>
-                <div>
-                  <strong>{workspace.members.find((x) => x.id === sheet.data.userId)?.name}</strong>
-                  <p className="small muted">
-                    Woche ab {dateLabel(value(sheet.data, "week"))} · {value(sheet.data, "note")}
-                  </p>
-                </div>
-                <Badge tone={sheet.data.status === "approved" ? "green" : "neutral"}>
-                  {statusLabels[value(sheet.data, "status")]}
-                </Badge>
-                {admin && (
-                  <>
-                    {sheet.data.status !== "approved" && (
+      {!productionId && (
+        <section className="panel margin-top">
+          <header className="panel-heading">
+            <h2>{admin ? "Wochenfreigaben im Team" : "Meine Wochenfreigaben"}</h2>
+          </header>
+          {!sheets.length ? (
+            <p className="empty-inline">Noch keine Wochen eingereicht.</p>
+          ) : (
+            <div className="list">
+              {sheets.map((sheet) => (
+                <div className="list-row" key={sheet.id}>
+                  <div>
+                    <strong>
+                      {workspace.members.find((x) => x.id === sheet.data.userId)?.name}
+                    </strong>
+                    <p className="small muted">
+                      Woche ab {dateLabel(value(sheet.data, "week"))} · {value(sheet.data, "note")}
+                    </p>
+                  </div>
+                  <Badge tone={sheet.data.status === "approved" ? "green" : "neutral"}>
+                    {statusLabels[value(sheet.data, "status")]}
+                  </Badge>
+                  {admin && (
+                    <>
+                      {sheet.data.status !== "approved" && (
+                        <Button
+                          disabled={busy}
+                          onClick={() =>
+                            void run(() =>
+                              action("timesheet-decide", sheet.id, { status: "approved" }),
+                            )
+                          }
+                        >
+                          Freigeben
+                        </Button>
+                      )}
                       <Button
                         disabled={busy}
-                        onClick={() =>
-                          void run(() =>
-                            action("timesheet-decide", sheet.id, { status: "approved" }),
-                          )
-                        }
+                        onClick={() => {
+                          const note = prompt("Welche Korrektur wird benötigt?");
+                          if (note)
+                            void run(() =>
+                              action("timesheet-decide", sheet.id, {
+                                status: "changes_requested",
+                                note,
+                              }),
+                            );
+                        }}
                       >
-                        Freigeben
+                        Korrektur
                       </Button>
-                    )}
-                    <Button
-                      disabled={busy}
-                      onClick={() => {
-                        const note = prompt("Welche Korrektur wird benötigt?");
-                        if (note)
-                          void run(() =>
-                            action("timesheet-decide", sheet.id, {
-                              status: "changes_requested",
-                              note,
-                            }),
-                          );
-                      }}
-                    >
-                      Korrektur
-                    </Button>
-                  </>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
       {editor && (
         <ResourceEditor
           kind="time"
+          lockedProductionId={productionId || undefined}
           defaults={{ productionId: project }}
           onClose={() => setEditor(false)}
         />
@@ -504,7 +519,7 @@ export function TimeModule({ productionId = "" }: { productionId?: string }) {
                   data: {
                     title: form.get("title"),
                     date: form.get("date"),
-                    productionId: form.get("productionId"),
+                    productionId: productionId || form.get("productionId"),
                     category: form.get("category"),
                     durationSeconds: Number(form.get("minutes")) * 60,
                     pauseSeconds: 0,
@@ -529,7 +544,7 @@ export function TimeModule({ productionId = "" }: { productionId?: string }) {
               </label>
               <label>
                 Produktion
-                <select name="productionId">
+                <select name="productionId" defaultValue={productionId} disabled={!!productionId}>
                   <option value="">Allgemein</option>
                   {workspace.records.productions.map((x) => (
                     <option key={x.id} value={x.id}>

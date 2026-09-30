@@ -6,9 +6,9 @@ import { api, dateLabel, initials, post, value } from "@/shared/client-api";
 import { prepareUpload } from "@/shared/client-files";
 import { useWorkspace } from "../workspace-context";
 import { Badge, Button, Empty, ErrorMessage, PageHeader } from "../ui";
-export function ChatModule() {
+export function ChatModule({ productionId }: { productionId?: string }) {
   const { workspace, mergeMessages, refresh } = useWorkspace();
-  const [channel, setChannel] = useState("");
+  const [channel, setChannel] = useState(productionId || "");
   const [text, setText] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [sending, setSending] = useState(false);
@@ -104,33 +104,35 @@ export function ChatModule() {
     <>
       <PageHeader
         eyebrow="KURZE WEGE IM TEAM"
-        title="Kommunikation"
+        title={productionId ? "Projektchat" : "Kommunikation"}
         description="Absprachen zu Produktionen und alles, was die ganze Maske betrifft."
       />
-      <div className="chat-layout">
-        <aside className="chat-channels">
-          <p className="eyebrow">ABTEILUNG</p>
-          <button className={channel === "" ? "active" : ""} onClick={() => setChannel("")}>
-            <Hash size={17} />
-            Maske · Allgemein
-          </button>
-          <p className="eyebrow">PRODUKTIONEN</p>
-          {workspace.records.productions
-            .filter((x) => x.data.status !== "archived")
-            .map((x) => (
-              <button
-                key={x.id}
-                className={channel === x.id ? "active" : ""}
-                onClick={() => setChannel(x.id)}
-              >
-                <Hash size={17} />
-                {value(x.data, "title")}
-              </button>
-            ))}
-          {!workspace.records.productions.length && (
-            <p className="small muted">Projektchats entstehen mit euren Produktionen.</p>
-          )}
-        </aside>
+      <div className={`chat-layout ${productionId ? "production-chat" : ""}`}>
+        {!productionId && (
+          <aside className="chat-channels">
+            <p className="eyebrow">ABTEILUNG</p>
+            <button className={channel === "" ? "active" : ""} onClick={() => setChannel("")}>
+              <Hash size={17} />
+              Maske · Allgemein
+            </button>
+            <p className="eyebrow">PRODUKTIONEN</p>
+            {workspace.records.productions
+              .filter((x) => x.data.status !== "archived")
+              .map((x) => (
+                <button
+                  key={x.id}
+                  className={channel === x.id ? "active" : ""}
+                  onClick={() => setChannel(x.id)}
+                >
+                  <Hash size={17} />
+                  {value(x.data, "title")}
+                </button>
+              ))}
+            {!workspace.records.productions.length && (
+              <p className="small muted">Projektchats entstehen mit euren Produktionen.</p>
+            )}
+          </aside>
+        )}
         <section className="chat-main">
           <header className="chat-heading">
             <Hash size={20} />

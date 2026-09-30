@@ -37,7 +37,11 @@ export function CastingImpact({ previous, next }: { previous: DomainRecord; next
       <ul>
         {records.slice(0, 12).map((record) => (
           <li key={record.id}>
-            <Link href={`/?module=${module}&record=${record.id}`} target="_blank" prefetch={false}>
+            <Link
+              href={`/?module=productions&productionId=${value(previous.data, "productionId")}&tab=${module === "documentation" ? "looks" : module}&record=${record.id}`}
+              target="_blank"
+              prefetch={false}
+            >
               {value(record.data, "title")}
               <ArrowUpRight size={12} />
             </Link>

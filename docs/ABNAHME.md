@@ -10,7 +10,7 @@ Stand: 30. September 2026. Liveadresse: https://digitalmask.vercel.app. Reposito
 | ESLint                                                          | bestanden                                                                     |
 | Prettier                                                        | bestanden                                                                     |
 | Produktionsbuild lokal und Vercel                               | bestanden                                                                     |
-| Unit-/Exporttests                                               | 19 bestanden; optionaler Rastertest im Standardlauf übersprungen              |
+| Unit-/Exporttests                                               | 29 bestanden; optionaler Rastertest im Standardlauf übersprungen              |
 | Vollständiger PDF-Rasterlauf                                    | separat durchgeführt: 48 Seiten gerendert, ausgewählte Seiten visuell geprüft |
 | Reale Datenbank- und Rechteabläufe                              | lokal und auf der Liveadresse bestanden                                       |
 | Private Blob-Uploads, PDF mit Bildern und Wiederaufnahme-Kopien | lokal und live bestanden                                                      |
@@ -21,6 +21,16 @@ Stand: 30. September 2026. Liveadresse: https://digitalmask.vercel.app. Reposito
 Die Live-Integration prüft Registrierung ohne automatische Freischaltung, Adminaktivierung, Rollenverbote, Aufgabenstatus und Versionskonflikte, Zeitbuchung und Idempotenz, Überlappungen, Projektstundensumme, CSV, Wochenfreigabe inklusive Sperre einer nachträglichen Datumsverschiebung, Wiederöffnung zur Korrektur, Freiwunschentscheidung und widerrufbare Kalenderabonnements. Der Dateilauf prüft anonymen Zugriff, tatsächliche WebP-Dateien im privaten Store, Dokumentversionen, PDF-Erzeugung und Bilder nach Löschen der ursprünglichen Referenz einer Wiederaufnahme.
 
 Kalenderregeln testen zusätzlich Nachtzeiten über die Sommerzeitumstellung, Ausnahmen, inklusive Serienenddaten und alte Serien im aktuellen Sichtfenster. Exportfixtures verwenden lange Inhalte, mehrere Personen/Produktionen, Bilder, Seitenumbrüche und Monats-/Wochen-/Tages-/Teamansichten. Die Fixtures enthalten keine echten Theaterdaten.
+
+## Iteration: Produktionsarbeitsräume und Passwortfelder
+
+Produktionskontakte unterstützen freie Rollen, externe Namen ohne Konto und Maskenpersonen aus dem aktiven Team oder per freier Namenseingabe. Zugeordnete Maskenpersonen werden in der vorhandenen gebündelten Rechteprüfung validiert und in das Produktionsteam aufgenommen. Zusätzliche Teammitglieder können weiterhin zugeordnet werden. Diese JSONB-Erweiterung benötigt keine zusätzliche Tabelle oder Migration.
+
+Die erweiterten realen Integrationen prüfen inaktive Kontaktzuordnungen, automatische Produktionsmitgliedschaft, Kontakterhalt bei Teamänderungen und getrennte Produktions-/Teamboard-Exporte. Zwei Besetzungsbilder bleiben bei Bearbeitung erhalten; private Abrufe, PDFs und Wiederaufnahme-Kopien sind geprüft. Die Galerie liegt sowohl bei Figuren als auch bei Besetzungen im Produktionsbereich.
+
+Der zusätzliche Exportlauf enthält 16 synthetische PDF-Seiten mit langen Kontaktrollen/-namen, mehreren privaten Galerieabbildungen und einem getrennten Teamboard. Seitenzähler, Seitenränder, vollständige Inhalte und Bilder sind automatisiert geprüft; ausgewählte Seiten wurden zusätzlich visuell kontrolliert.
+
+Die Passwortsteuerung wird gemeinsam auf Anmeldung, Registrierung, Wiederherstellung und in den Einstellungen verwendet. 16 Browserfälle prüfen Chromium und WebKit auf Desktop und in mobiler Touchansicht: Ein-/Ausblenden, Tastatur, Berührungsflächen und Erhalt getippter bzw. per DOM-Autofill eingesetzter Werte. Eine separate Bedienprüfung ist bestanden. Der ursprüngliche Fehler wurde auf dem konkreten Safari-Gerät der Nutzerin nicht reproduziert; WebKit-Tests sind keine Prüfung dieses Geräts oder von iCloud-Schlüsselbund-Autofill.
 
 ## Infrastruktur und Zugriff
 

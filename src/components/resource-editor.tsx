@@ -1,10 +1,16 @@
 "use client";
 import { useState, type FormEvent } from "react";
-import type { DomainRecord, RecordData, RecordKind } from "@/shared/contracts";
+import {
+  contactsValue,
+  type DomainRecord,
+  type RecordData,
+  type RecordKind,
+} from "@/shared/contracts";
 import { ids, instantDate, localDate, localDateTime, num, value } from "@/shared/client-api";
 import { fields, labels, type Field } from "./resource-fields";
 import { useWorkspace } from "./workspace-context";
 import { Button, ErrorMessage, Modal } from "./ui";
+import { ProductionPeopleFields } from "./production-people";
 import { CastingImpact } from "./casting-impact";
 
 function initialData(kind: RecordKind): RecordData {
@@ -41,11 +47,15 @@ export function ResourceEditor({
   record,
   defaults = {},
   onClose,
+  lockedProductionId,
+  onSaved,
 }: {
   kind: RecordKind;
   record?: DomainRecord;
   defaults?: RecordData;
   onClose: () => void;
+  lockedProductionId?: string;
+  onSaved?: (record: DomainRecord) => void;
 }) {
   const { workspace, save, busy } = useWorkspace();
   const [data, setData] = useState<RecordData>({
@@ -54,6 +64,11 @@ export function ResourceEditor({
     ...defaults,
     ...record?.data,
   });
+  const productionContext =
+    lockedProductionId ??
+    (record && ["tasks", "sprints", "characters", "casting", "looks", "handovers"].includes(kind)
+      ? value(record.data, "productionId")
+      : undefined);
   const [error, setError] = useState("");
   const change = (key: string, next: unknown) =>
     setData((current) => ({ ...current, [key]: next }));
@@ -78,7 +93,11 @@ export function ResourceEditor({
     event.preventDefault();
     setError("");
     try {
-      const result = { ...data };
+      const result: RecordData = {
+        ...data,
+        ...(productionContext !== undefined ? { productionId: productionContext } : {}),
+      };
+      if (kind === "tasks" && productionContext === "") result.sprintId = "";
       if (Array.isArray(result.checklist))
         result.checklist = (result.checklist as { text: string; done: boolean }[]).filter((item) =>
           item.text.trim(),
@@ -108,13 +127,31 @@ export function ResourceEditor({
       for (const field of configuredFields)
         if (field.type === "datetime-local" && result[field.key])
           result[field.key] = instantDate(String(result[field.key])).toISOString();
-      await save(kind, result, record);
+      const saved = await save(kind, result, record);
       onClose();
+      onSaved?.(saved);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Speichern fehlgeschlagen");
     }
   };
   const render = (field: Field) => {
+    if (field.key === "productionId" && productionContext !== undefined)
+      return (
+        <div className="locked-production-field" key={field.key}>
+          <span className="small muted">Arbeitsraum</span>
+          <strong>
+            {productionContext
+              ? value(
+                  workspace.records.productions.find((row) => row.id === productionContext)?.data ||
+                    {},
+                  "title",
+                )
+              : "Teamboard · ohne Produktion"}
+          </strong>
+        </div>
+      );
+    if (field.key === "sprintId" && productionContext === "") return null;
+    if (kind === "productions" && field.key === "memberIds") return null;
     const options =
       field.options ||
       (field.source === "members"
@@ -126,9 +163,8 @@ export function ResourceEditor({
               .filter(
                 (x) =>
                   x.id !== record?.id &&
-                  (!data.productionId ||
-                    !["characters", "sprints", "tasks"].includes(field.source!) ||
-                    x.data.productionId === data.productionId),
+                  (!["characters", "sprints", "tasks"].includes(field.source!) ||
+                    value(x.data, "productionId") === value(data, "productionId")),
               )
               .map(
                 (x) => [x.id, value(x.data, "title") || value(x.data, "name")] as [string, string],
@@ -259,6 +295,15 @@ export function ResourceEditor({
       <form onSubmit={submit}>
         <div className="form-grid">
           {configuredFields.map(render)}
+          {kind === "productions" && (
+            <ProductionPeopleFields
+              contacts={contactsValue(data.contacts)}
+              memberIds={ids(data, "memberIds")}
+              onChange={(contacts, memberIds) =>
+                setData((current) => ({ ...current, contacts, memberIds }))
+              }
+            />
+          )}
           {kind === "casting" && record && <CastingImpact previous={record} next={data} />}
           {kind === "looks" &&
             customFields.map((name) => (
@@ -281,6 +326,12 @@ export function ResourceEditor({
               </label>
             ))}
         </div>
+        {!record && ["characters", "casting", "looks", "actors"].includes(kind) && (
+          <p className="small muted">
+            Nach dem Speichern öffnet sich die Galerie. Dort kannst du mehrere Bilder hochladen,
+            auch direkt vom Smartphone.
+          </p>
+        )}
         {kind === "time" && (
           <p className="small muted">
             Mit Beginn und Ende wird die Arbeitsdauer abzüglich Pause automatisch berechnet. Ohne

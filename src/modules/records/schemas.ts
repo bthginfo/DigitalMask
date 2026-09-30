@@ -13,6 +13,36 @@ const checklist = z
   .array(z.object({ text: z.string().min(1).max(500), done: z.boolean().default(false) }))
   .max(100)
   .default([]);
+const productionContact = z
+  .object({
+    id: z.string().min(1).max(100),
+    role: title,
+    type: z.enum(["external", "makeup"]).default("external"),
+    name: short.default(""),
+    memberId: id,
+  })
+  .superRefine((contact, context) => {
+    if (contact.type === "external" && (!contact.name || contact.memberId))
+      context.addIssue({
+        code: "custom",
+        message: "Externe Kontakte benötigen einen Namen und kein Teamkonto.",
+        path: ["name"],
+      });
+    if (contact.type === "makeup" && Boolean(contact.name) === Boolean(contact.memberId))
+      context.addIssue({
+        code: "custom",
+        message: "Bitte wähle eine Maskenperson oder trage einen Namen ein.",
+        path: ["memberId"],
+      });
+  });
+const productionContacts = z
+  .array(productionContact)
+  .max(100)
+  .refine(
+    (contacts) => new Set(contacts.map((contact) => contact.id)).size === contacts.length,
+    "Kontakte benötigen eindeutige IDs.",
+  )
+  .default([]);
 export const schemas: Record<RecordKind, z.ZodType> = {
   productions: z.object({
     title,
@@ -25,6 +55,7 @@ export const schemas: Record<RecordKind, z.ZodType> = {
       .regex(/^#[0-9a-fA-F]{6}$/)
       .default("#357b68"),
     memberIds: ids,
+    contacts: productionContacts,
     sourceId: id,
   }),
   actors: z.object({
@@ -41,6 +72,7 @@ export const schemas: Record<RecordKind, z.ZodType> = {
     characterId: id,
     actorId: id,
     alternate: z.boolean().default(false),
+    imageIds: ids,
   }),
   sprints: z.object({
     title,

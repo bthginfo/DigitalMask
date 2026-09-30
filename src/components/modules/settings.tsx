@@ -4,6 +4,7 @@ import { Check, Copy, KeyRound, Link as LinkIcon, ShieldCheck } from "lucide-rea
 import { useWorkspace } from "../workspace-context";
 import { Badge, Button, ErrorMessage, Modal, PageHeader, Section } from "../ui";
 import { ThemeSwitch } from "../theme-switch";
+import { PasswordInput } from "../password-input";
 export function SettingsModule() {
   const { workspace, action, busy } = useWorkspace();
   const [error, setError] = useState("");
@@ -88,36 +89,27 @@ export function SettingsModule() {
         </Section>
         <Section title="Passwort ändern">
           <form className="panel-content" onSubmit={password}>
-            <label>
-              Aktuelles Passwort
-              <input
-                name="currentPassword"
-                type="password"
-                autoComplete="current-password"
-                required
-              />
-            </label>
-            <label>
-              Neues Passwort
-              <input
-                name="newPassword"
-                type="password"
-                autoComplete="new-password"
-                minLength={10}
-                required
-                placeholder="Mindestens 10 Zeichen"
-              />
-            </label>
-            <label>
-              Neues Passwort wiederholen
-              <input
-                name="repeat"
-                type="password"
-                autoComplete="new-password"
-                minLength={10}
-                required
-              />
-            </label>
+            <PasswordInput
+              label="Aktuelles Passwort"
+              name="currentPassword"
+              autoComplete="current-password"
+              required
+            />
+            <PasswordInput
+              label="Neues Passwort"
+              name="newPassword"
+              autoComplete="new-password"
+              minLength={10}
+              required
+              placeholder="Mindestens 10 Zeichen"
+            />
+            <PasswordInput
+              label="Neues Passwort wiederholen"
+              name="repeat"
+              autoComplete="new-password"
+              minLength={10}
+              required
+            />
             <Button variant="primary" type="submit" disabled={busy}>
               <KeyRound size={16} />
               Passwort speichern

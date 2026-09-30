@@ -18,6 +18,7 @@ import {
   value,
   weekStart,
 } from "@/shared/client-api";
+import { recordHref } from "@/shared/client-navigation";
 import { useWorkspace } from "../workspace-context";
 import { Badge, Button, Empty, PageHeader, Section } from "../ui";
 import { RecordDetail } from "../resource-view";
@@ -73,7 +74,11 @@ export function TodayModule({ navigate }: { navigate: (module: string) => void }
         </Button>
       </PageHeader>
       <div className="today-summary">
-        <button onClick={() => navigate("tasks")}>
+        <button
+          onClick={() =>
+            navigate(myTasks.some((task) => task.data.productionId) ? "productions" : "tasks")
+          }
+        >
           <span className="summary-icon">
             <CheckCircle2 size={21} />
           </span>
@@ -172,12 +177,18 @@ export function TodayModule({ navigate }: { navigate: (module: string) => void }
           <Section
             title="Deine Aufgaben"
             meta="Was als Nächstes ansteht"
-            action={() => navigate("tasks")}
+            action={() =>
+              navigate(myTasks.some((task) => task.data.productionId) ? "productions" : "tasks")
+            }
           >
             {myTasks.length ? (
               <div className="list">
                 {myTasks.slice(0, 6).map((task) => (
-                  <button className="task-list-row" key={task.id} onClick={() => setDetail(task)}>
+                  <button
+                    className="task-list-row"
+                    key={task.id}
+                    onClick={() => navigate(recordHref(task))}
+                  >
                     <span className={`status-dot ${value(task.data, "status")}`} />
                     <div>
                       <strong>{value(task.data, "title")}</strong>

@@ -6,7 +6,7 @@ import { get } from "@vercel/blob";
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/platform/db";
 import { records } from "@/platform/db/schema";
-import { buildExport } from "@/modules/exports";
+import { buildExport, selectExportRecords } from "@/modules/exports";
 import { recordKinds, listValue } from "@/shared/contracts";
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -23,16 +23,21 @@ export async function GET(request: Request) {
       userId = query.get("userId"),
       from = query.get("from") || undefined,
       to = query.get("to") || undefined;
+    const teamOnly = query.get("teamOnly") === "true";
+    if (teamOnly && (kind !== "tasks" || productionId))
+      throw new HttpError(400, "Das Teamboard enthält ausschließlich Aufgaben ohne Produktion.");
     if ((from && !/^\d{4}-\d{2}-\d{2}$/.test(from)) || (to && !/^\d{4}-\d{2}-\d{2}$/.test(to)))
       throw new HttpError(400, "Ungültiger Zeitraum.");
     if (from && to && to < from) throw new HttpError(400, "Bitte prüfe den Zeitraum.");
     const userIds = query.get("userIds")?.split(",").filter(Boolean) || [];
     if (userIds.length > 100) throw new HttpError(400, "Zu viele Kalender ausgewählt.");
     if (id) selected = selected.filter((r) => r.id === id);
-    if (productionId)
-      selected = selected.filter(
-        (r) => r.data.productionId === productionId || r.id === productionId,
-      );
+    selected = selectExportRecords({
+      kind,
+      records: selected,
+      teamOnly,
+      productionId: productionId || undefined,
+    });
     if (userId)
       selected = selected.filter((r) =>
         kind === "events"
@@ -52,7 +57,7 @@ export async function GET(request: Request) {
         return dates.some((date) => (!from || date >= from) && (!to || date <= to));
       });
     const images: Record<string, Uint8Array> = {};
-    if (kind === "looks" && format === "pdf") {
+    if (["looks", "characters", "casting"].includes(kind) && format === "pdf") {
       const ids = Array.from(new Set(selected.flatMap((r) => listValue(r.data.imageIds))));
       if (ids.length > 80)
         throw new HttpError(
@@ -97,6 +102,8 @@ export async function GET(request: Request) {
       view: query.get("view") || undefined,
       references: workspace.records,
       images,
+      teamOnly,
+      productionId: productionId || undefined,
     });
     return new Response(Buffer.from(result.bytes), {
       headers: {

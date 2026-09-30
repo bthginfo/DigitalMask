@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/platform/db";
 import { records } from "@/platform/db/schema";
 import { requireAdmin, type Context } from "@/platform/context";
@@ -19,12 +19,20 @@ export async function copyProduction(context: Context, id: string, title: string
           inArray(records.kind, ["characters", "casting", "looks", "tasks", "handovers"]),
         ),
       );
-    const allFiles = await tx
-      .select()
-      .from(records)
-      .where(and(eq(records.departmentId, context.departmentId), eq(records.kind, "files")));
-    const childIds = new Set(children.map((c) => c.id));
-    const files = allFiles.filter((f) => childIds.has(String(f.data.recordId)));
+    const childIds = children.map((child) => child.id);
+    const files = childIds.length
+      ? await tx
+          .select()
+          .from(records)
+          .where(
+            and(
+              eq(records.departmentId, context.departmentId),
+              eq(records.kind, "files"),
+              eq(records.productionId, id),
+              inArray(sql<string>`${records.data}->>'recordId'`, childIds),
+            ),
+          )
+      : [];
     const targetId = crypto.randomUUID();
     const map = new Map([...children, ...files].map((c) => [c.id, crypto.randomUUID()]));
     map.set(id, targetId);

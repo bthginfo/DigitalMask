@@ -1,5 +1,5 @@
 /* Never cache authenticated HTML, API responses, uploads, or personal records. */
-const CACHE = "digitalmask-shell-v2";
+const CACHE = "digitalmask-shell-v3";
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(["/icon.svg", "/offline.html"])));
   self.skipWaiting();
