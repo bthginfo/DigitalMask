@@ -1,0 +1,13 @@
+.git/
+node_modules/
+.next/
+.vercel/
+.local/
+.env*
+!.env.example
+artifacts/
+test-results/
+playwright-report/
+coverage/
+*.tsbuildinfo
+.frontend-lint.json
