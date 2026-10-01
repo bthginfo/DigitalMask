@@ -10,6 +10,7 @@ import { occurrences } from "@/modules/calendar/occurrences";
 import { assertConversation } from "@/modules/chat/permissions";
 import { prepareConversation } from "@/modules/chat/conversations";
 import { prepareProductionContacts } from "@/modules/people/production-contacts";
+import { personNameKey } from "@/shared/person-identity";
 import {
   validateDomainCategory,
   assertUnusedDomainCategory,
@@ -311,11 +312,31 @@ export async function saveRecord(
   options: { deferEffects?: boolean } = {},
 ) {
   let eventQueued = false;
+  if (["productions", "people"].includes(kind)) requireAdmin(context);
   const result = await db.transaction(async (tx) => {
+    // Same lock order as approval/linking and consolidation, before locking any production.
+    if (["productions", "people"].includes(kind))
+      await tx.execute(
+        sql`select pg_advisory_xact_lock(hashtext(${`people:${context.departmentId}`}))`,
+      );
     const existing = existingId ? await findRecord(context, existingId, kind, tx, true) : undefined;
     assertWrite(context, kind, existing);
     if (existing) await assertRead(context, existing, tx);
     const data = validateRecord(kind, { ...existing?.data, ...input });
+    if (kind === "people") {
+      if (existing?.data.linkedMemberId) data.linkedMemberId = existing.data.linkedMemberId;
+      if (!existing) {
+        const people = await tx
+          .select({ data: records.data })
+          .from(records)
+          .where(and(eq(records.departmentId, context.departmentId), eq(records.kind, "people")));
+        if (people.some((person) => personNameKey(person.data.name) === personNameKey(data.name)))
+          throw new HttpError(
+            409,
+            "Diese Person ist bereits vorhanden. Bitte wähle den bestehenden Kontakt oder das Teammitglied.",
+          );
+      }
+    }
     if (
       kind === "messages" &&
       existing &&

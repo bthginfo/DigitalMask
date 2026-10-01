@@ -69,3 +69,13 @@ Anwesenheits-PDFs und XLSX erhalten eigene Tages-/Wochen-/Personensummen. Team-M
 - Migration 0008 ist angewendet: vorhandene externe Produktionskontakte sind mit dem Verzeichnis verknüpft, frühere Produktionsübergaben einschließlich Dateikontext werden allgemein geführt. Die Stückdauer eines Aufschriebs kann ausdrücklich auf die Produktionsdauer zurückgesetzt werden; Allgemeinordnerexporte schließen Produktionsdokumente aus. Die sechs gezielten Dokument-/Zeitraumprüfungen sind bestanden.
 
 Auch die finale Dokumentationsoberfläche erhielt eine unabhängige Designprüfung mit PASS. Sie umfasst die zentralen Sammelordner, strukturierten Aufschriebe, allgemeinen Übergaben, Kontaktverzeichnis und produktionsbezogene Besetzung. Acht gezielte Chromium-/WebKit-Fälle prüfen Legacytexte, wiederholbare Felder, Vorlagen, erhaltene Bildzuordnungen, direkte Kontakt-/Figurenanlage, freie Besetzung, Kategorienverwaltung und Jahres-/Exportauswahl. Die abschließende TypeScript-Prüfung, Lint, Formatierung und der Produktionsbuild sind erfolgreich; die Bereitstellung nutzt die vorhandene GitHub-/Vercel-Anbindung.
+
+## Live-Synchronisierung und Identitätsverknüpfung
+
+Die neue Kommunikationsansicht wurde unabhängig bei 1440, 768 und 375 Pixeln in Light/Dark geprüft: PASS nach zwei gezielten Responsive-Korrekturen. Live-Updates verwenden Upstash Redis/SSE, signierte sitzungsgebundene Tickets und Ereignisbündelung. Es gibt kein regelmäßiges Workspace-/Chat-Polling. Team- und Timercaches haben separate Invalidierungstags.
+
+21 gezielte Unit-/Exportprüfungen sind bestanden, einschließlich Ticketmanipulation, Ablauf, falschem Cookie/Gewerk, Reconnect-Cursor, Hintergrundpause, Namensinitialen, Mehrdeutigkeit und verlustfreier Kontaktkonsolidierung. Zwei reale Chromium-/WebKit-Abläufe prüfen Änderungen eines anderen Kontos, Offline-Replay, Chat-Neuzugang/Löschung und Accountfreigabe mit automatischer Initialen-Zuordnung. Eine gezielte Chromium-Nachprüfung bestätigt außerdem Kontaktwiederverwendung, Dublettenschutz und Timer-Cacheinvalidierung.
+
+Die reale Konsolidierung hat vier Dublettengruppen von 30 auf 21 Kontaktpersonen reduziert. Alle 30 Produktionskontaktzuordnungen wurden innerhalb der Transaktion gegen den erwarteten Bestand geprüft; Sicherungen liegen ausschließlich lokal und werden nicht veröffentlicht. Rollen und Kontaktdetails bleiben erhalten. Bereits bestehende aktive Konten wurden ebenfalls geprüft; es gab keinen offenen eindeutigen Zuordnungsfall.
+
+Die abschließende TypeScript-Prüfung, vollständiger ESLint-Lauf, Prettier-Prüfung und der Produktionsbuild sind bestanden. Die synthetischen Konten, Datensätze, Benachrichtigungen und Testdateien wurden nach den lokalen Liveprüfungen präzise anhand ihrer protokollierten IDs bereinigt.

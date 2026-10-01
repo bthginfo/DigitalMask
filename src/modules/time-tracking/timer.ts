@@ -7,7 +7,7 @@ import { HttpError } from "@/platform/http";
 import { assertProject } from "@/modules/records/repository";
 import { saveRecord } from "@/modules/records/service";
 import { validateCategoryReferences } from "@/modules/categories/service";
-import { invalidateWorkspace } from "@/modules/records/workspace";
+import { invalidateWorkspace, invalidateTimer } from "@/modules/records/workspace";
 import { localDay, durationSeconds } from "./rules";
 import type { RecordData } from "@/shared/contracts";
 export async function timerAction(
@@ -139,8 +139,10 @@ export async function timerAction(
       .delete(timerTable)
       .where(and(eq(timerTable.id, result.timerId), eq(timerTable.userId, context.user.id)));
     invalidateWorkspace(context.departmentId);
+    invalidateTimer(context.user.id);
     return booking;
   }
   invalidateWorkspace(context.departmentId);
+  invalidateTimer(context.user.id);
   return result;
 }

@@ -38,6 +38,7 @@ export function scheduleEvents() {
   });
 }
 export async function processEvents() {
+  const changedDepartments = new Set<string>();
   const due = await db.transaction(async (tx) => {
     const list = await tx
       .select()
@@ -137,8 +138,8 @@ export async function processEvents() {
           }
         }
         await tx.update(outbox).set({ status: "done" }).where(eq(outbox.id, event.id));
-        invalidateWorkspace(event.departmentId);
       });
+      changedDepartments.add(event.departmentId);
     } catch (error) {
       await db
         .update(outbox)
@@ -154,5 +155,6 @@ export async function processEvents() {
       });
     }
   }
+  for (const departmentId of changedDepartments) invalidateWorkspace(departmentId);
   return { processed: due.length };
 }

@@ -14,12 +14,14 @@ import type { DomainRecord, RecordData, RecordKind, Workspace } from "@/shared/c
 import { api, ApiFailure, post } from "@/shared/client-api";
 import { subscribeConnectivity } from "@/shared/client-storage";
 import { useRouter } from "next/navigation";
+import { connectLiveSync, type SyncStatus } from "@/shared/live-sync";
 
 interface Context {
   workspace: Workspace;
   busy: boolean;
   notice: string;
   online: boolean;
+  syncStatus: SyncStatus;
   refresh: () => Promise<void>;
   save: (kind: RecordKind, data: RecordData, record?: DomainRecord) => Promise<DomainRecord>;
   remove: (record: DomainRecord) => Promise<void>;
@@ -41,42 +43,100 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const [pending, setPending] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>("connecting");
+  const [liveAttempt, setLiveAttempt] = useState(0);
+  const liveAccess = useRef<Workspace["live"]>(null);
+  const statusRef = useRef<SyncStatus>("connecting");
+  const mutationPending = useRef(false);
   const online = useSyncExternalStore(
     subscribeConnectivity,
     () => navigator.onLine,
     () => true,
   );
-  const loading = useRef(false);
+  const loading = useRef<Promise<void> | null>(null);
+  const reloadAgain = useRef(false);
   const refresh = useCallback(async () => {
-    if (loading.current) return;
-    loading.current = true;
-    try {
-      const next = await api<Workspace>("/api/workspace");
-      setWorkspace(next);
-      setError("");
-      setPending(false);
-    } catch (e) {
-      if (e instanceof ApiFailure && e.status === 401) {
-        router.replace("/login");
-        return;
-      }
-      if (e instanceof ApiFailure && e.status === 403) setPending(true);
-      else setError(e instanceof Error ? e.message : "Verbindung fehlgeschlagen");
-    } finally {
-      loading.current = false;
+    if (loading.current) {
+      reloadAgain.current = true;
+      return loading.current;
     }
+    const run = async () => {
+      do {
+        reloadAgain.current = false;
+        try {
+          const next = await api<Workspace>("/api/workspace");
+          liveAccess.current = next.live;
+          setWorkspace(next);
+          if (statusRef.current === "unavailable" && next.live)
+            setLiveAttempt((attempt) => attempt + 1);
+          setError("");
+          setPending(false);
+        } catch (e) {
+          if (e instanceof ApiFailure && e.status === 401) {
+            router.replace("/login");
+            return;
+          }
+          if (e instanceof ApiFailure && e.status === 403) setPending(true);
+          else setError(e instanceof Error ? e.message : "Verbindung fehlgeschlagen");
+        }
+      } while (reloadAgain.current);
+    };
+    loading.current = run().finally(() => {
+      loading.current = null;
+    });
+    return loading.current;
   }, [router]);
   useEffect(() => {
     void Promise.resolve().then(refresh);
     if ("serviceWorker" in navigator) void navigator.serviceWorker.register("/sw.js");
   }, [refresh]);
+  const liveEnabled = Boolean(workspace?.live);
+  const departmentId = workspace?.department.id;
+  const userId = workspace?.user.id;
+  useEffect(() => {
+    if (!userId) return;
+    const report = (status: SyncStatus) => {
+      statusRef.current = status;
+      setSyncStatus(status);
+    };
+    if (!liveEnabled) {
+      report(navigator.onLine ? "unavailable" : "offline");
+      return;
+    }
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let disposed = false;
+    const changed = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        if (disposed) return;
+        if (mutationPending.current) {
+          changed();
+          return;
+        }
+        void refresh();
+      }, 450);
+    };
+    const disconnect = connectLiveSync({
+      access: () => liveAccess.current,
+      renew: refresh,
+      changed,
+      status: report,
+    });
+    return () => {
+      disposed = true;
+      clearTimeout(timer);
+      disconnect();
+    };
+  }, [liveEnabled, departmentId, userId, liveAttempt, refresh]);
   const mutate = async (run: () => Promise<unknown>) => {
+    mutationPending.current = true;
     setBusy(true);
     try {
       const result = await run();
       await refresh();
       return result;
     } finally {
+      mutationPending.current = false;
       setBusy(false);
     }
   };
@@ -155,6 +215,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         busy,
         notice,
         online,
+        syncStatus,
         refresh,
         save,
         remove,

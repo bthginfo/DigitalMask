@@ -31,6 +31,7 @@ import { initials, post, value } from "@/shared/client-api";
 import { useWorkspace } from "./workspace-context";
 import { Badge, Empty, Modal } from "./ui";
 import { ThemeSwitch } from "./theme-switch";
+import { LiveStatus } from "./live-status";
 import { RecordDetail, ResourceView } from "./resource-view";
 import { TodayModule } from "./modules/today";
 import { ProductionsModule } from "./modules/productions";
@@ -45,6 +46,7 @@ import { OnboardingTour } from "@/modules/profile/components/onboarding-tour";
 import { HelpModule } from "@/modules/help/components/help-module";
 import { DocumentationModule } from "@/modules/documentation/components/documentation-module";
 import { PeopleModule } from "@/modules/people/components";
+import { isDirectoryPerson } from "@/modules/people/components/person-data";
 import { ExportDialog } from "./export-dialog";
 const nav: { id: string; label: string; icon: LucideIcon; group: string }[] = [
   { id: "today", label: "Heute", icon: Home, group: "ARBEITSRAUM" },
@@ -67,7 +69,7 @@ interface InstallEvent extends Event {
   userChoice: Promise<{ outcome: string }>;
 }
 export function WorkspaceShell() {
-  const { workspace, notice, notify, online, action, refresh, busy } = useWorkspace();
+  const { workspace, notice, notify, online, action } = useWorkspace();
   const query = useSyncExternalStore(
     subscribeLocation,
     () => location.search,
@@ -214,6 +216,7 @@ export function WorkspaceShell() {
                 "calendarCategories",
                 "conversations",
               ].includes(record.kind) &&
+              (record.kind !== "people" || isDirectoryPerson(record)) &&
               JSON.stringify(record.data).toLowerCase().includes(search.toLowerCase()),
           )
           .slice(0, 30)
@@ -434,9 +437,7 @@ export function WorkspaceShell() {
         </main>
         <footer className="workspace-footer">
           <span>DigitalMask · Gemeinsam hinter der Bühne.</span>
-          <button className="text-button" disabled={busy || !online} onClick={() => void refresh()}>
-            Daten aktualisieren
-          </button>
+          <LiveStatus recovery />
           {install && (
             <button
               className="text-button"

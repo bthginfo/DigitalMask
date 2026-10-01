@@ -77,6 +77,15 @@ Die Bereitstellung erfolgt nach den Releaseprüfungen über GitHub und die beste
 - [x] Neues minimalistisches Logo, da die erste Variante nicht gefällt.
 - [x] Produktionsübersicht standardmäßig nach Premiere sortieren, andere Sortierungen auswählbar.
 
+## Live-Synchronisierung und Kontaktverknüpfung
+
+- [x] Änderungen anderer Personen und Chatnachrichten über SSE/Redis statt regelmäßiger Neon-Abfragen empfangen.
+- [x] Verbindungsstatus und Wiederverbindung; Ereignisse bündeln, Hintergrundtabs pausieren, Reconnects ohne Neon-Zugriff autorisieren.
+- [x] Kanalauswahl mit getrennten Team-/Produktions-/Direkt-/Gruppenchats und mobilem Kanalwechsler.
+- [x] Bestehende Kontaktdubletten zusammenführen und alle Produktionsverknüpfungen erhalten.
+- [x] Neue Kontakte wiederverwenden; doppelte manuelle Kontakte beim Speichern verhindern.
+- [x] Bei Adminfreigabe neue Maskenteamkonten eindeutig mit bisherigen Maskenkontakten verknüpfen, einschließlich Nachnameninitialen; Produktionsrollen und Teamzuordnungen aktualisieren, Kontaktdetails erhalten.
+
 ## QA-Nachbereitung
 
 Nach den abschließenden Liveprüfungen werden die angelegten QA-Konten, Testeinträge und Testdateien aus der produktiven Umgebung entfernt. Automatische Testdefinitionen bleiben für spätere Änderungen erhalten.

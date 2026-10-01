@@ -11,8 +11,16 @@ import {
   listValue,
 } from "@/shared/contracts";
 import { serialize, projectVisible } from "./repository";
+import { scheduleLiveChange } from "@/platform/realtime";
 export function invalidateWorkspace(departmentId: string) {
   revalidateTag(scopeTag(departmentId), { expire: 0 });
+  scheduleLiveChange(departmentId);
+}
+export function invalidateTeam(departmentId: string) {
+  revalidateTag(`team:${departmentId}`, { expire: 0 });
+}
+export function invalidateTimer(userId: string) {
+  revalidateTag(`timers:${userId}`, { expire: 0 });
 }
 async function readScope(departmentId: string) {
   const [rows, members] = await Promise.all([
@@ -21,17 +29,22 @@ async function readScope(departmentId: string) {
       .from(records)
       .where(eq(records.departmentId, departmentId))
       .orderBy(records.createdAt),
-    db
-      .select({
-        id: user.id,
-        name: user.name,
-        username: user.username,
-        role: memberships.role,
-        status: memberships.status,
-      })
-      .from(memberships)
-      .innerJoin(user, eq(memberships.userId, user.id))
-      .where(eq(memberships.departmentId, departmentId)),
+    unstable_cache(
+      () =>
+        db
+          .select({
+            id: user.id,
+            name: user.name,
+            username: user.username,
+            role: memberships.role,
+            status: memberships.status,
+          })
+          .from(memberships)
+          .innerJoin(user, eq(memberships.userId, user.id))
+          .where(eq(memberships.departmentId, departmentId)),
+      ["department-team-v2", departmentId],
+      { revalidate: 3600, tags: [`team:${departmentId}`] },
+    )(),
   ]);
   return {
     rows: rows.map(serialize),
@@ -41,7 +54,7 @@ async function readScope(departmentId: string) {
 export async function getWorkspace(context: Context): Promise<Workspace> {
   const { rows, members } = await unstable_cache(
     () => readScope(context.departmentId),
-    ["department-data", context.departmentId],
+    ["department-data-v2", context.departmentId],
     { revalidate: 300, tags: [scopeTag(context.departmentId)] },
   )();
   const visibleProjects = new Set(
@@ -130,8 +143,8 @@ export async function getWorkspace(context: Context): Promise<Workspace> {
               ),
             ),
         ),
-    ["personal-timers-v2", context.user.id],
-    { revalidate: 300, tags: [scopeTag(context.departmentId)] },
+    ["personal-timers-v3", context.user.id],
+    { revalidate: 3600, tags: [`timers:${context.user.id}`] },
   )();
   return {
     user: context.user,

@@ -6,7 +6,7 @@ import { db } from "@/platform/db";
 import { departments, memberships } from "@/platform/db/schema";
 import { readJson, route, HttpError } from "@/platform/http";
 import { throttle } from "@/platform/auth/throttle";
-import { invalidateWorkspace } from "@/modules/records/workspace";
+import { invalidateWorkspace, invalidateTeam } from "@/modules/records/workspace";
 export async function POST(request: Request) {
   return route(async () => {
     const body = z
@@ -42,6 +42,7 @@ export async function POST(request: Request) {
       role: "user",
       status: "pending",
     });
+    invalidateTeam(department.id);
     invalidateWorkspace(department.id);
     return NextResponse.json({ pending: true }, { status: 201 });
   });

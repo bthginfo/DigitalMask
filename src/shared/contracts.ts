@@ -74,6 +74,7 @@ export interface Member {
   preferences?: ProfilePreferences;
 }
 export interface Workspace {
+  live?: { channel: string; ticket: string; expiresAt: number; cursor: string } | null;
   user: Member;
   organization: { id: string; name: string };
   department: { id: string; name: string };

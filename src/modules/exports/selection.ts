@@ -26,6 +26,7 @@ export function selectExportRecords(
       "Der Allgemeinfilter ist nur für Nachrichten und Aufschriebe ohne Produktion verfügbar.",
     );
   return input.records.filter((record) => {
+    if (input.kind === "people" && record.data.linkedMemberId) return false;
     if (
       input.kind !== "backup" &&
       record.kind !== (input.kind === "calendar" ? "events" : input.kind)

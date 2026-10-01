@@ -4,7 +4,7 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui";
 import { useWorkspace } from "@/components/workspace-context";
 import { textValue, type DomainRecord } from "@/shared/contracts";
-import { filterPeople } from "./person-data";
+import { filterPeople, isDirectoryPerson } from "./person-data";
 import { PersonEditor } from "./person-editor";
 import { PersonContactLinks } from "./person-contact-links";
 import styles from "./people.module.css";
@@ -37,6 +37,8 @@ export function PersonPicker({
         : workspace.records.people,
     [created, workspace.records.people],
   );
+  // A linked legacy contact can stay selected in an existing production role.
+  // Only fresh choices and search results exclude team members.
   const selected = people.find((person) => person.id === value);
   const matches = filterPeople(people, query);
   const options =
@@ -93,7 +95,7 @@ export function PersonPicker({
       </select>
       {!matches.length && (
         <p className={styles.status} role="status">
-          {people.length
+          {people.some(isDirectoryPerson)
             ? "Kein Kontakt passt zur Suche."
             : "Noch keine weiteren Personen im Verzeichnis."}
         </p>

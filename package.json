@@ -26,6 +26,8 @@
     "@fullcalendar/react": "^6.1.21",
     "@fullcalendar/timegrid": "^6.1.21",
     "@react-pdf/renderer": "^4.9.0",
+    "@upstash/realtime": "^1.1.0",
+    "@upstash/redis": "^1.39.0",
     "@vercel/blob": "^2.8.0",
     "better-auth": "^1.7.6",
     "date-fns": "^4.4.0",

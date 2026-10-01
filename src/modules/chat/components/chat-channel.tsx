@@ -1,10 +1,11 @@
 ﻿"use client";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Hash, Paperclip, Pencil, RefreshCw, Send, Trash2, Users, X } from "lucide-react";
+import { Hash, MessageCircle, Paperclip, Pencil, Send, Trash2, Users, X } from "lucide-react";
 import type { DomainRecord } from "@/shared/contracts";
-import { api, ApiFailure, dateLabel, initials, post, value } from "@/shared/client-api";
+import { api, dateLabel, initials, post, value } from "@/shared/client-api";
 import { prepareUpload } from "@/shared/client-files";
 import { useWorkspace } from "@/components/workspace-context";
+import { LiveStatus } from "@/components/live-status";
 import { Badge, Button, Empty, ErrorMessage, ExportButton, Modal } from "@/components/ui";
 import { ExportDialog } from "@/components/export-dialog";
 
@@ -19,26 +20,19 @@ export function ChatChannel({
   title: string;
   onManage?: () => void;
 }) {
-  const { workspace, mergeMessages, refresh, save, remove, busy } = useWorkspace();
+  const { workspace, refresh, save, remove, busy } = useWorkspace();
   const conversationId = conversation?.id || "",
     archived = conversation?.data.archived === true;
   const [text, setText] = useState(""),
     [files, setFiles] = useState<File[]>([]),
     [sending, setSending] = useState(false),
     [error, setError] = useState(""),
-    [pollError, setPollError] = useState(false),
-    [denied, setDenied] = useState(false),
     [editing, setEditing] = useState<DomainRecord | null>(null),
     [editingText, setEditingText] = useState(""),
     [exporting, setExporting] = useState(false);
   const bottom = useRef<HTMLDivElement>(null),
-    after = useRef("");
-  const merge = useRef(mergeMessages),
-    reload = useRef(refresh);
-  useEffect(() => {
-    merge.current = mergeMessages;
-    reload.current = refresh;
-  }, [mergeMessages, refresh]);
+    nearBottom = useRef(true),
+    lastMessage = useRef("");
   const messages = useMemo(
     () =>
       workspace.records.messages
@@ -52,87 +46,16 @@ export function ChatChannel({
     [workspace.records.messages, conversationId, productionId],
   );
   useEffect(() => {
-    after.current = messages.reduce(
-      (latest, message) => (message.updatedAt > latest ? message.updatedAt : latest),
-      "",
-    );
-    bottom.current?.scrollIntoView({ block: "nearest" });
-  }, [messages]);
-  useEffect(() => {
-    let stopped = false,
-      delay = 30000,
-      timeout: ReturnType<typeof setTimeout> | undefined;
-    const controller = new AbortController();
-    const active = () =>
-      document.visibilityState === "visible" && document.hasFocus() && navigator.onLine;
-    const stopTimer = () => {
-      if (timeout) clearTimeout(timeout);
-    };
-    const poll = async () => {
-      if (stopped || !active()) return;
-      if (!document.querySelector("dialog[open]"))
-        try {
-          const query = new URLSearchParams({
-            ...(conversationId
-              ? { conversationId }
-              : productionId
-                ? { productionId }
-                : { generalOnly: "true" }),
-            ...(after.current ? { after: after.current } : {}),
-          });
-          const result = await api<{ messages: DomainRecord[] }>(`/api/messages?${query}`, {
-            signal: controller.signal,
-          });
-          if (!stopped) {
-            merge.current(result.messages);
-            after.current = result.messages.reduce(
-              (latest, message) => (message.updatedAt > latest ? message.updatedAt : latest),
-              after.current,
-            );
-            setPollError(false);
-            delay = 30000;
-          }
-        } catch (exception) {
-          if (!stopped) {
-            if (
-              exception instanceof ApiFailure &&
-              (exception.status === 403 || exception.status === 404)
-            ) {
-              setDenied(true);
-              stopped = true;
-              void reload.current();
-              return;
-            }
-            setPollError(true);
-            delay = Math.min(delay * 2, 300000);
-          }
-        }
-      if (!stopped && active()) timeout = setTimeout(() => void poll(), delay);
-    };
-    const resume = () => {
-      stopTimer();
-      if (!stopped && active()) timeout = setTimeout(() => void poll(), after.current ? delay : 0);
-    };
-    document.addEventListener("visibilitychange", resume);
-    window.addEventListener("focus", resume);
-    window.addEventListener("blur", stopTimer);
-    window.addEventListener("online", resume);
-    window.addEventListener("offline", stopTimer);
-    resume();
-    return () => {
-      stopped = true;
-      controller.abort();
-      stopTimer();
-      document.removeEventListener("visibilitychange", resume);
-      window.removeEventListener("focus", resume);
-      window.removeEventListener("blur", stopTimer);
-      window.removeEventListener("online", resume);
-      window.removeEventListener("offline", stopTimer);
-    };
-  }, [conversationId, productionId]);
+    const latest = messages.at(-1);
+    if (!latest || latest.id === lastMessage.current) return;
+    if (!lastMessage.current || latest.data.userId === workspace.user.id || nearBottom.current) {
+      bottom.current?.scrollIntoView({ block: "nearest" });
+    }
+    lastMessage.current = latest.id;
+  }, [messages, workspace.user.id]);
   const send = async (event: React.FormEvent) => {
     event.preventDefault();
-    if ((!text.trim() && !files.length) || sending || archived || denied) return;
+    if ((!text.trim() && !files.length) || sending || archived) return;
     setSending(true);
     setError("");
     try {
@@ -170,41 +93,42 @@ export function ChatChannel({
       setError(exception instanceof Error ? exception.message : "Aktion fehlgeschlagen");
     }
   };
-  if (denied)
-    return (
-      <Empty
-        title="Dieser Chat ist nicht mehr für dich verfügbar."
-        description="Deine Teilnahme hat sich geändert. Wähle einen anderen Chat."
-      />
-    );
   return (
     <section className="chat-main">
       <header className="chat-heading">
-        {conversation ? <Users size={20} /> : <Hash size={20} />}
+        {conversation ? (
+          conversation.data.mode === "direct" ? (
+            <MessageCircle size={20} />
+          ) : (
+            <Users size={20} />
+          )
+        ) : (
+          <Hash size={20} />
+        )}
         <div>
           <h2>{title}</h2>
           <span className="small muted">
             {conversation
-              ? `${Array.isArray(conversation.data.participantIds) ? conversation.data.participantIds.length : 0} Teilnehmende · privat`
-              : "Gemeinsame Absprachen & Dateien"}
+              ? `${conversation.data.mode === "direct" ? "Direktchat" : "Gruppenchat"} · ${Array.isArray(conversation.data.participantIds) ? conversation.data.participantIds.length : 0} Teilnehmende · privat`
+              : productionId
+                ? "Produktionskanal · Gemeinsame Absprachen & Dateien"
+                : "Teamkanal · Gemeinsame Absprachen & Dateien"}
           </span>
         </div>
         <div className="chat-heading-actions">
           {archived && <Badge>Archiviert</Badge>}
-          {pollError && <Badge tone="coral">Verbindung wird erneut geprüft</Badge>}
-          <button
-            className="icon-button"
-            disabled={sending || busy}
-            aria-label="Chat aktualisieren"
-            onClick={() => void update(refresh)}
-          >
-            <RefreshCw size={17} />
-          </button>
+          <LiveStatus recovery />
           {onManage && <Button onClick={onManage}>Verwalten</Button>}
           <ExportButton onClick={() => setExporting(true)} />
         </div>
       </header>
-      <div className="chat-messages">
+      <div
+        className="chat-messages"
+        onScroll={(event) => {
+          const list = event.currentTarget;
+          nearBottom.current = list.scrollHeight - list.scrollTop - list.clientHeight < 160;
+        }}
+      >
         {messages.length ? (
           messages.map((message) => {
             const member = workspace.members.find((person) => person.id === message.data.userId),

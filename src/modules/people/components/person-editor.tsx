@@ -4,6 +4,7 @@ import { Save } from "lucide-react";
 import { Button, ErrorMessage, Modal } from "@/components/ui";
 import { useWorkspace } from "@/components/workspace-context";
 import { textValue, type DomainRecord, type RecordData } from "@/shared/contracts";
+import { isDirectoryPerson } from "./person-data";
 import styles from "./people.module.css";
 
 export interface PersonEditorProps {
@@ -42,6 +43,7 @@ export function PersonEditor({
   const disabled = saving || busy || !online || !admin;
   const duplicates = workspace.records.people.filter(
     (person) =>
+      isDirectoryPerson(person) &&
       person.id !== record?.id &&
       textValue(person.data.name).trim().toLocaleLowerCase("de") ===
         textValue(draft.name).trim().toLocaleLowerCase("de"),

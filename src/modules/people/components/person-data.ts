@@ -1,5 +1,10 @@
 import { textValue, type DomainRecord } from "@/shared/contracts";
 
+/** Linked contacts keep historical assignments and contact details, but belong to the team. */
+export function isDirectoryPerson(record: DomainRecord): boolean {
+  return record.kind === "people" && !textValue(record.data.linkedMemberId).trim();
+}
+
 /** Links cannot introduce mail headers, fragments, scripts or dialling control codes. */
 export function emailHref(raw: string): string | undefined {
   const email = raw.trim();
@@ -27,7 +32,7 @@ export function filterPeople(
   return records
     .filter((record) => {
       if (
-        record.kind !== "people" ||
+        !isDirectoryPerson(record) ||
         (organization && textValue(record.data.organization) !== organization)
       )
         return false;

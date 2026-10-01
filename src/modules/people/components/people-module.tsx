@@ -7,7 +7,7 @@ import { useWorkspace } from "@/components/workspace-context";
 import { textValue, type DomainRecord } from "@/shared/contracts";
 import { PersonEditor } from "./person-editor";
 import { PersonContactLinks } from "./person-contact-links";
-import { filterPeople } from "./person-data";
+import { filterPeople, isDirectoryPerson } from "./person-data";
 import styles from "./people.module.css";
 
 type Panel =
@@ -25,7 +25,10 @@ export function PeopleModule() {
   const pending = useRef(false),
     id = useId(),
     admin = workspace.user.role !== "user";
-  const people = workspace.records.people;
+  const people = useMemo(
+    () => workspace.records.people.filter(isDirectoryPerson),
+    [workspace.records.people],
+  );
   const organizations = useMemo(
     () =>
       Array.from(

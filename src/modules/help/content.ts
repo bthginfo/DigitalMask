@@ -18,6 +18,7 @@ export const helpArticles: HelpArticle[] = [
       "Unter Team & Kontakte lassen sich Rollen frei benennen, etwa Regie, Kostüm oder Maskenbetreuung. Wähle externe Kontakte aus Weitere Personen, damit ihre Kontaktdaten wiederverwendet werden.",
       "Fehlt eine Person, kannst du sie direkt im Kontaktformular anlegen oder ihren Namen frei eintragen. Beim Speichern der Produktion wird ein neuer freier Kontakt im Verzeichnis hinterlegt. Es entsteht kein Benutzerkonto.",
       "Für die Maskenbetreuung kannst du ein aktives Teammitglied, eine Person aus dem Verzeichnis oder einen freien Namen wählen. Nur ein ausgewähltes Teammitglied gehört dadurch automatisch zum Produktionsteam.",
+      "Wenn eine bisher frei eingetragene Maskenperson einen Account erhält und ein Admin ihn freigibt, werden eindeutige Zuordnungen automatisch auf das Teamkonto umgestellt. Das klappt auch mit einem abgekürzten Nachnamen, etwa Julia G., wenn nur eine Person dazu passt.",
       "Weitere Teammitglieder lassen sich getrennt hinzufügen. Um eine verknüpfte Maskenbetreuung aus dem Team zu entfernen, zuerst den Kontakt entfernen oder auf einen freien Namen umstellen.",
       "Bei einer Wiederaufnahme kann ein Admin die Produktion kopieren. Prüft anschließend Termine, Aufgaben und fachliche Angaben für die neue Spielzeit.",
     ],
@@ -33,6 +34,7 @@ export const helpArticles: HelpArticle[] = [
       "Admins legen Personen mit Name, Organisation, Funktion, E-Mail, Telefon und Notizen an. Ein Kontakt erhält weder einen Zugang noch eine automatische Zuordnung zum Kalenderteam.",
       "Öffne die Kontaktdetails, um vorhandene E-Mail- oder Telefonlinks zu nutzen. Admins können dort den Eintrag bearbeiten oder löschen.",
       "Wähle denselben Kontakt in mehreren Produktionen. Die Rolle, etwa Regieassistenz, wird jeweils bei der Produktion angegeben.",
+      "Bisherige Maskenkontakte mit freigegebenem Teamkonto erscheinen als Teammitglieder. Ihre Angaben bleiben gespeichert. Bei mehreren passenden Namen erfolgt keine automatische Verknüpfung; ein Admin wählt das richtige Teammitglied in der Produktion.",
     ],
     note: "Ein Kontakt, der noch einer Produktion zugeordnet ist, lässt sich nicht löschen. Entferne zuerst die Zuordnung. Bei gleichen Namen prüfe die Organisation und Funktion, bevor du einen weiteren Eintrag anlegst.",
   },
@@ -127,6 +129,7 @@ export const helpArticles: HelpArticle[] = [
       "Teile Informationen mit der Maske, einem Produktionsteam oder ausgewählten Personen in einem privaten Chat.",
     steps: [
       "Nutze Maske · Allgemein für Informationen an die Abteilung oder den Projektchat für Absprachen zum Stück.",
+      "Neue Nachrichten und Änderungen im Team erscheinen automatisch. Live verbunden zeigt, dass die Verbindung steht. Im Hintergrund pausiert sie; beim Zurückkehren werden verpasste Änderungen nachgeholt. Bei einer Störung kannst du die Verbindung erneut versuchen.",
       "Wähle Privater Chat und eine Person oder mehrere Personen für eine Gruppe. Private Verläufe und Dateien sehen nur die Teilnehmenden, auch Admins benötigen eine Teilnahme.",
       "Eigene Nachrichten kannst du bearbeiten oder löschen. Der Ersteller eines privaten Chats verwaltet Namen und Gruppenmitglieder oder archiviert ihn. Archivierte Chats bleiben lesbar und lassen sich wieder öffnen. Beim Chatwechsel werden ungesendete Texte und Anhänge verworfen.",
     ],

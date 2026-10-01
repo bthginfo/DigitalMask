@@ -14,9 +14,10 @@ import { requireAdmin, requireSuperadmin, type Context } from "@/platform/contex
 import { HttpError } from "@/platform/http";
 import { auditChange } from "@/platform/events";
 import { findRecord, serialize } from "@/modules/records/repository";
-import { invalidateWorkspace } from "@/modules/records/workspace";
+import { invalidateWorkspace, invalidateTeam } from "@/modules/records/workspace";
 import { assertRead } from "@/modules/records/service";
 import type { RecordData } from "@/shared/contracts";
+import { linkApprovedMakeupContacts } from "@/modules/people/link-team-member";
 export async function organizationAction(
   context: Context,
   action: string,
@@ -87,7 +88,7 @@ export async function organizationAction(
       throw new HttpError(409, "Superadmin-Zugänge werden nicht über diesen Dialog deaktiviert.");
     if (member.role === "admin" && context.user.role !== "superadmin")
       throw new HttpError(403, "Admins werden durch den Superadmin verwaltet.");
-    await db.transaction(async (tx) => {
+    const linked = await db.transaction(async (tx) => {
       await tx
         .update(memberships)
         .set({
@@ -97,10 +98,14 @@ export async function organizationAction(
         .where(eq(memberships.id, member.id));
       await tx.delete(session).where(eq(session.userId, id));
       await auditChange(tx, context, "member.updated", id);
+      return data.status === "active"
+        ? linkApprovedMakeupContacts(context, id, tx)
+        : { contacts: 0, productions: 0 };
     });
     revalidateTag(`member:${id}`, { expire: 0 });
+    invalidateTeam(context.departmentId);
     invalidateWorkspace(context.departmentId);
-    return { ok: true };
+    return { ok: true, linked };
   }
   if (action === "password-reset") {
     if (member.role === "superadmin" && context.user.role !== "superadmin")

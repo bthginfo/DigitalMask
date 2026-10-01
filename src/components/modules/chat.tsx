@@ -1,12 +1,56 @@
 ﻿"use client";
-import { useState } from "react";
-import { Hash, Plus, Users } from "lucide-react";
+import { useRef, useState } from "react";
+import {
+  ChevronDown,
+  ChevronRight,
+  Hash,
+  MessageCircle,
+  Plus,
+  Search,
+  Theater,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import type { DomainRecord } from "@/shared/contracts";
 import { ids, value } from "@/shared/client-api";
 import { useWorkspace } from "../workspace-context";
 import { Badge, Button, Empty, ErrorMessage, Modal, PageHeader } from "../ui";
 import { ChatChannel } from "@/modules/chat/components/chat-channel";
 import { ConversationEditor } from "@/modules/chat/components/conversation-editor";
+
+function ChannelChoice({
+  title,
+  detail,
+  icon: Icon,
+  selected,
+  kind,
+  onSelect,
+}: {
+  title: string;
+  detail: string;
+  icon: LucideIcon;
+  selected: boolean;
+  kind: "team" | "production" | "direct" | "group";
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className={`channel-choice kind-${kind}${selected ? " active" : ""}`}
+      aria-current={selected ? "page" : undefined}
+      onClick={onSelect}
+    >
+      <span className="channel-choice-icon">
+        <Icon size={17} aria-hidden="true" />
+      </span>
+      <span className="channel-choice-copy">
+        <strong>{title}</strong>
+        <small>{detail}</small>
+      </span>
+      {selected && <ChevronRight size={15} className="channel-choice-current" aria-hidden="true" />}
+    </button>
+  );
+}
 
 export function conversationTitle(
   record: DomainRecord,
@@ -33,6 +77,9 @@ export function ChatModule({
 }) {
   const { workspace, save, remove, busy } = useWorkspace();
   const [selection, setSelection] = useState({ conversationId, productionId });
+  const channelToggle = useRef<HTMLButtonElement>(null);
+  const [channelsOpen, setChannelsOpen] = useState(false),
+    [search, setSearch] = useState("");
   const [editor, setEditor] = useState<DomainRecord | "new" | null>(null),
     [manage, setManage] = useState(false),
     [archived, setArchived] = useState(false),
@@ -44,6 +91,26 @@ export function ChatModule({
     ids(record.data, "participantIds").includes(workspace.user.id),
   );
   const conversation = visibleConversations.find((record) => record.id === selectedConversation);
+  const query = search.trim().toLocaleLowerCase("de");
+  const matches = (text: string) => !query || text.toLocaleLowerCase("de").includes(query);
+  const productions = workspace.records.productions.filter(
+    (record) => record.data.status !== "archived",
+  );
+  const matchingProductions = productions.filter((record) => matches(value(record.data, "title")));
+  const privateChats = visibleConversations.filter(
+    (record) => archived || record.data.archived !== true,
+  );
+  const matchingChats = privateChats.filter((record) =>
+    matches(
+      [
+        conversationTitle(record, workspace.members, workspace.user.id),
+        ...ids(record.data, "participantIds").map(
+          (id) => workspace.members.find((member) => member.id === id)?.name || "",
+        ),
+      ].join(" "),
+    ),
+  );
+  const showGeneral = matches("Maske · Allgemein Teamkanal");
   const title = conversation
     ? conversationTitle(conversation, workspace.members, workspace.user.id)
     : selectedProduction
@@ -54,6 +121,8 @@ export function ChatModule({
         )
       : "Maske · Allgemein";
   const choose = (id: string, project = "") => {
+    if (channelsOpen) channelToggle.current?.focus();
+    setChannelsOpen(false);
     setManage(false);
     setError("");
     if (onNavigate) onNavigate(id, project);
@@ -87,37 +156,123 @@ export function ChatModule({
       </PageHeader>
       <div className={locked ? "chat-layout single-channel" : "chat-layout"}>
         {!locked && (
-          <aside className="chat-channels" aria-label="Chats auswählen">
-            <div className="chat-channel-group">
-              <h3>Gemeinsame Kanäle</h3>
-              <button
-                className={!selectedConversation && !selectedProduction ? "active" : ""}
-                aria-current={!selectedConversation && !selectedProduction ? "page" : undefined}
-                onClick={() => choose("")}
-              >
-                <Hash size={16} />
-                Maske · Allgemein
-              </button>
-              {workspace.records.productions
-                .filter((record) => record.data.status !== "archived")
-                .map((record) => (
-                  <button
-                    key={record.id}
-                    className={
-                      !selectedConversation && selectedProduction === record.id ? "active" : ""
-                    }
-                    aria-current={
-                      !selectedConversation && selectedProduction === record.id ? "page" : undefined
-                    }
-                    onClick={() => choose("", record.id)}
-                  >
-                    <Hash size={16} />
-                    {value(record.data, "title")}
-                  </button>
-                ))}
+          <aside
+            className={`chat-channels${channelsOpen ? " is-open" : ""}`}
+            aria-label="Chats auswählen"
+          >
+            <div className="chat-channels-heading">
+              <strong>Deine Kanäle</strong>
+              <span>{1 + productions.length + privateChats.length}</span>
             </div>
-            <div className="chat-channel-group">
-              <h3>Private Chats</h3>
+            <button
+              type="button"
+              className="chat-channel-toggle"
+              ref={channelToggle}
+              aria-expanded={channelsOpen}
+              aria-controls="chat-channel-navigation"
+              onClick={() => setChannelsOpen(!channelsOpen)}
+            >
+              <span>
+                <small>Kanal wechseln</small>
+                <strong>{title || "Kanal auswählen"}</strong>
+              </span>
+              <ChevronDown size={20} aria-hidden="true" />
+            </button>
+            <div className="chat-channel-lists" id="chat-channel-navigation">
+              <div className="chat-channel-search">
+                <Search size={16} aria-hidden="true" />
+                <label className="visually-hidden" htmlFor="channel-search">
+                  Kanäle und Personen suchen
+                </label>
+                <input
+                  id="channel-search"
+                  type="search"
+                  value={search}
+                  placeholder="Kanal oder Person suchen"
+                  onChange={(event) => setSearch(event.target.value)}
+                />
+              </div>
+              <nav aria-label="Kommunikationskanäle">
+                {showGeneral && (
+                  <div className="chat-channel-group">
+                    <h3>
+                      Team <span>01</span>
+                    </h3>
+                    <ChannelChoice
+                      title="Maske · Allgemein"
+                      detail="Für das ganze Maskenteam"
+                      icon={Hash}
+                      kind="team"
+                      selected={!selectedConversation && !selectedProduction}
+                      onSelect={() => choose("")}
+                    />
+                  </div>
+                )}
+                {!!matchingProductions.length && (
+                  <div className="chat-channel-group">
+                    <h3>
+                      Produktionen <span>{matchingProductions.length}</span>
+                    </h3>
+                    {matchingProductions.map((record) => (
+                      <ChannelChoice
+                        key={record.id}
+                        title={value(record.data, "title")}
+                        detail="Absprachen zum Stück"
+                        icon={Theater}
+                        kind="production"
+                        selected={!selectedConversation && selectedProduction === record.id}
+                        onSelect={() => choose("", record.id)}
+                      />
+                    ))}
+                  </div>
+                )}
+                {(["direct", "group"] as const).map((kind) => {
+                  const chats = matchingChats.filter(
+                    (record) => (record.data.mode === "direct" ? "direct" : "group") === kind,
+                  );
+                  if (!chats.length) return null;
+                  return (
+                    <div className="chat-channel-group" key={kind}>
+                      <h3>
+                        {kind === "direct" ? "Direktnachrichten" : "Gruppen"}
+                        <span>{chats.length}</span>
+                      </h3>
+                      {chats.map((record) => (
+                        <ChannelChoice
+                          key={record.id}
+                          title={conversationTitle(record, workspace.members, workspace.user.id)}
+                          detail={
+                            record.data.archived === true
+                              ? "Archiviert · privat"
+                              : kind === "direct"
+                                ? "Persönliches Gespräch · privat"
+                                : `${ids(record.data, "participantIds").length} Teilnehmende · privat`
+                          }
+                          icon={kind === "direct" ? MessageCircle : Users}
+                          kind={kind}
+                          selected={selectedConversation === record.id}
+                          onSelect={() => choose(record.id)}
+                        />
+                      ))}
+                    </div>
+                  );
+                })}
+              </nav>
+              {query && !showGeneral && !matchingProductions.length && !matchingChats.length && (
+                <p className="channel-empty">Kein passender Kanal. Probiere einen anderen Namen.</p>
+              )}
+              {!query && !privateChats.length && (
+                <div className="channel-private-note">
+                  <MessageCircle size={17} aria-hidden="true" />
+                  <p>
+                    Ein Gespräch nur für euch?
+                    <br />
+                    <button type="button" className="text-button" onClick={() => setEditor("new")}>
+                      Privaten Chat starten
+                    </button>
+                  </p>
+                </div>
+              )}
               <label className="check-label">
                 <input
                   type="checkbox"
@@ -126,29 +281,6 @@ export function ChatModule({
                 />
                 Archivierte einblenden
               </label>
-              {workspace.records.conversations
-                ?.filter((record) => archived || record.data.archived !== true)
-                .map((record) => (
-                  <button
-                    key={record.id}
-                    className={selectedConversation === record.id ? "active" : ""}
-                    aria-current={selectedConversation === record.id ? "page" : undefined}
-                    onClick={() => choose(record.id)}
-                  >
-                    <Users size={16} />
-                    <span>
-                      {conversationTitle(record, workspace.members, workspace.user.id)}
-                      {record.data.archived === true && (
-                        <span className="small muted"> · archiviert</span>
-                      )}
-                    </span>
-                  </button>
-                ))}
-              {!visibleConversations.length && (
-                <p className="small muted">
-                  Beginne einen Chat mit einer Person oder einer Gruppe.
-                </p>
-              )}
             </div>
           </aside>
         )}
