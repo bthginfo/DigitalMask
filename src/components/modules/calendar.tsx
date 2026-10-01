@@ -1,6 +1,11 @@
 "use client";
 import { PeriodPicker, periodExportFilters } from "@/components/period-picker";
-import { recordMatchesPeriod, type PeriodFilter } from "@/shared/period-filter";
+import {
+  seasonForDate,
+  seasonBounds,
+  recordMatchesPeriod,
+  type PeriodFilter,
+} from "@/shared/period-filter";
 import { useRef, useState } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
@@ -74,7 +79,9 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
   const { workspace, save, action, busy } = useWorkspace();
   const admin = workspace.user.role !== "user";
   const calendar = useRef<FullCalendar>(null);
-  const [period, setPeriod] = useState<PeriodFilter>({});
+  const [period, setPeriod] = useState<PeriodFilter>(() => ({
+    season: seasonForDate(workspace.records.productions),
+  }));
   const [view, setView] = useState("month");
   const [teamSpan, setTeamSpan] = useState("week");
   const [categoriesOpen, setCategoriesOpen] = useState(false);
@@ -126,7 +133,14 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
     workspace.records.productions,
     workspace.records.calendarCategories,
     workspace.user,
-  );
+  ).filter((event) => {
+    const bounds = seasonBounds(period.season);
+    return (
+      !bounds ||
+      (new Date(event.end).getTime() > instantDate(bounds.from).getTime() &&
+        new Date(event.start).getTime() < instantDate(bounds.to).getTime())
+    );
+  });
   const overlaps = expanded.filter((event, i) =>
     expanded
       .slice(i + 1)
@@ -217,13 +231,28 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
         </Button>
       </PageHeader>
       <PeriodPicker
+        compact
         records={workspace.records.events}
         productions={workspace.records.productions}
         value={period}
         onChange={(next) => {
           setPeriod(next);
           if (next.year && next.year !== period.year) {
-            const date = next.year + "-01-01";
+            const bounds = seasonBounds(next.season);
+            const date =
+              bounds && Number(bounds.from.slice(0, 4)) === next.year
+                ? bounds.from
+                : next.year + "-01-01";
+            calendar.current?.getApi().gotoDate(date);
+            setTeamDate(teamSpan === "month" ? monthStart(date) : weekStart(instantDate(date)));
+          } else if (next.season && next.season !== period.season) {
+            const bounds = seasonBounds(next.season);
+            const today = localDate();
+            const date = bounds
+              ? today >= bounds.from && today < bounds.to
+                ? today
+                : bounds.from
+              : today;
             calendar.current?.getApi().gotoDate(date);
             setTeamDate(teamSpan === "month" ? monthStart(date) : weekStart(instantDate(date)));
           }

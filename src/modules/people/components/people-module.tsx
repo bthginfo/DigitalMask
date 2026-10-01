@@ -70,7 +70,7 @@ export function PeopleModule() {
     <section className={styles.directory}>
       <PageHeader
         eyebrow="Kontakte"
-        title="Weitere Personen"
+        title="Ansprechpersonen"
         description="Ansprechpersonen für eure Zusammenarbeit – mit Funktion, Organisation und Kontaktdaten."
       >
         <ExportButton onClick={() => open({ type: "export" })} />

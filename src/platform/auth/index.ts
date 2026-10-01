@@ -3,13 +3,20 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { username } from "better-auth/plugins";
 import { db } from "@/platform/db";
 import * as schema from "@/platform/db/schema";
+import { usernamePattern } from "@/shared/auth-feedback";
 export const auth = betterAuth({
   appName: "DigitalMask",
   baseURL: process.env.BETTER_AUTH_URL || "http://localhost:3000",
   secret: process.env.BETTER_AUTH_SECRET,
   database: drizzleAdapter(db, { provider: "pg", schema }),
   emailAndPassword: { enabled: true, minPasswordLength: 10, maxPasswordLength: 128 },
-  plugins: [username({ minUsernameLength: 3, maxUsernameLength: 32 })],
+  plugins: [
+    username({
+      minUsernameLength: 3,
+      maxUsernameLength: 32,
+      usernameValidator: (value) => usernamePattern.test(value),
+    }),
+  ],
   rateLimit: {
     enabled: true,
     storage: "database",

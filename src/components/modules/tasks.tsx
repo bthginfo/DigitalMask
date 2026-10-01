@@ -231,6 +231,7 @@ export function TasksModule({ productionId = "" }: { productionId?: string }) {
         </Button>
       </PageHeader>
       <PeriodPicker
+        compact
         records={workspace.records.tasks.filter(
           (row) => value(row.data, "productionId") === project,
         )}

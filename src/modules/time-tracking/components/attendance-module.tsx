@@ -2,7 +2,12 @@
 import { useMemo, useState } from "react";
 import { DoorOpen, Pencil, Plus, UploadCloud } from "lucide-react";
 import { PeriodPicker, periodExportFilters, weekForPeriod } from "@/components/period-picker";
-import { recordMatchesPeriod, type PeriodFilter } from "@/shared/period-filter";
+import {
+  dateMatchesPeriod,
+  seasonForDate,
+  recordMatchesPeriod,
+  type PeriodFilter,
+} from "@/shared/period-filter";
 import type { DomainRecord, RecordData } from "@/shared/contracts";
 import {
   dateLabel,
@@ -28,7 +33,9 @@ export function AttendanceModule() {
   const { workspace, refresh, online, busy } = useWorkspace();
   const selfBooking = workspace.user.role !== "superadmin";
   const admin = workspace.user.role !== "user";
-  const [period, setPeriod] = useState<PeriodFilter>({});
+  const [period, setPeriod] = useState<PeriodFilter>(() => ({
+    season: seasonForDate(workspace.records.productions),
+  }));
   const [week, setWeek] = useState(weekStart());
   const [person, setPerson] = useState(
     selfBooking ? workspace.user.id : workspace.members.find(isStaff)?.id || "",
@@ -63,12 +70,7 @@ export function AttendanceModule() {
     .sort((a, b) => value(b.data, "start").localeCompare(value(a.data, "start")));
   const allocations = entries
     .flatMap((record) => timeAllocations(record.data))
-    .filter(
-      (day) =>
-        day.date >= week &&
-        day.date <= until &&
-        (!period.year || Number(day.date.slice(0, 4)) === period.year),
-    );
+    .filter((day) => day.date >= week && day.date <= until && dateMatchesPeriod(day.date, period));
   const total = allocations.reduce((sum, day) => sum + day.seconds, 0);
   const sync = async () => {
     setSyncing(true);
@@ -99,7 +101,7 @@ export function AttendanceModule() {
         <ExportButton onClick={() => setExporting(true)} />
         {selfBooking && (
           <>
-            <Button onClick={() => setOffline(true)}>Offlineentwurf</Button>
+            {!online && <Button onClick={() => setOffline(true)}>Ohne Internet vormerken</Button>}
             <Button variant="primary" onClick={() => setCreating(true)}>
               <Plus size={16} />
               Anwesenheit nachtragen
@@ -108,9 +110,9 @@ export function AttendanceModule() {
         )}
       </PageHeader>
       <PeriodPicker
+        compact
         records={workspace.records.attendance || []}
         productions={workspace.records.productions}
-        season={false}
         value={period}
         onChange={(next) => {
           setPeriod(next);
@@ -126,8 +128,18 @@ export function AttendanceModule() {
             onChange={(event) => {
               if (event.target.value) {
                 setWeek(weekStart(instantDate(event.target.value)));
-                if (period.year)
-                  setPeriod({ ...period, year: Number(event.target.value.slice(0, 4)) });
+                setPeriod({
+                  ...period,
+                  ...(period.year ? { year: Number(event.target.value.slice(0, 4)) } : {}),
+                  ...(period.season
+                    ? {
+                        season: seasonForDate(
+                          workspace.records.productions,
+                          instantDate(event.target.value),
+                        ),
+                      }
+                    : {}),
+                });
               }
             }}
           />

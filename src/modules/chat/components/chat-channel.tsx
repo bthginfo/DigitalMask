@@ -97,7 +97,9 @@ export function ChatChannel({
     <section className="chat-main">
       <header className="chat-heading">
         {conversation ? (
-          conversation.data.mode === "direct" ? (
+          conversation.data.mode === "team" ? (
+            <Hash size={20} />
+          ) : conversation.data.mode === "direct" ? (
             <MessageCircle size={20} />
           ) : (
             <Users size={20} />
@@ -109,7 +111,9 @@ export function ChatChannel({
           <h2>{title}</h2>
           <span className="small muted">
             {conversation
-              ? `${conversation.data.mode === "direct" ? "Direktchat" : "Gruppenchat"} · ${Array.isArray(conversation.data.participantIds) ? conversation.data.participantIds.length : 0} Teilnehmende · privat`
+              ? conversation.data.mode === "team"
+                ? "Teamkanal · Für das ganze Maskenteam"
+                : `${conversation.data.mode === "direct" ? "Direktchat" : "Gruppenchat"} · ${Array.isArray(conversation.data.participantIds) ? conversation.data.participantIds.length : 0} Teilnehmende · privat`
               : productionId
                 ? "Produktionskanal · Gemeinsame Absprachen & Dateien"
                 : "Teamkanal · Gemeinsame Absprachen & Dateien"}
@@ -211,7 +215,7 @@ export function ChatChannel({
           <Empty
             title="Ein neuer Raum für eure Absprachen."
             description={
-              conversation
+              conversation && conversation.data.mode !== "team"
                 ? "Schreibe nur den Teilnehmenden dieses Chats. Nachrichten und Dateien bleiben hier."
                 : "Teile Informationen, stelle Fragen oder hänge eine Datei an."
             }
@@ -268,7 +272,9 @@ export function ChatChannel({
               />
             </label>
             <span className="small muted">
-              {conversation ? "Nur die Teilnehmenden haben Zugriff." : "Nur das Team hat Zugriff."}
+              {conversation && conversation.data.mode !== "team"
+                ? "Nur die Teilnehmenden haben Zugriff."
+                : "Nur das Team hat Zugriff."}
             </span>
             <Button
               type="submit"

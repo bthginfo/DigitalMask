@@ -27,6 +27,7 @@ import { expandEvents } from "./calendar";
 import { statusLabels } from "../resource-fields";
 export function TodayModule({ navigate }: { navigate: (module: string) => void }) {
   const { workspace, action, notify } = useWorkspace();
+  const [hoursPeriod, setHoursPeriod] = useState<"week" | "total">("week");
   const [detail, setDetail] = useState<DomainRecord | null>(null);
   const [now] = useState(Date.now);
   const today = localDate(new Date(now));
@@ -34,7 +35,7 @@ export function TodayModule({ navigate }: { navigate: (module: string) => void }
   const myTasks = workspace.records.tasks.filter(
     (x) => ids(x.data, "assigneeIds").includes(workspace.user.id) && x.data.status !== "done",
   );
-  const myEvents = expandEvents(
+  const upcomingEvents = expandEvents(
     workspace.records.events.filter((x) =>
       ids(x.data, "participantIds").includes(workspace.user.id),
     ),
@@ -44,12 +45,18 @@ export function TodayModule({ navigate }: { navigate: (module: string) => void }
     workspace.records.calendarCategories,
   )
     .sort((a, b) => a.start.localeCompare(b.start))
-    .filter((x) => new Date(x.end).getTime() >= now)
-    .slice(0, 5);
-  const total = workspace.records.time
+    .filter((x) => new Date(x.end).getTime() >= now);
+  const myEvents = upcomingEvents.slice(0, 5);
+  const performances = upcomingEvents.filter(
+    (event) =>
+      event.extendedProps.record.data.category === "performance" &&
+      new Date(event.start).getTime() >= now,
+  );
+  const bookedDays = workspace.records.time
     .filter((x) => x.data.userId === workspace.user.id)
-    .flatMap((x) => timeAllocations(x.data))
-    .filter((day) => day.date >= week && day.date <= today)
+    .flatMap((x) => timeAllocations(x.data));
+  const total = bookedDays
+    .filter((day) => hoursPeriod === "total" || (day.date >= week && day.date <= today))
     .reduce((sum, day) => sum + day.seconds, 0);
   const notices = workspace.records.notifications.filter(
     (x) => !x.data.read && x.data.userId === workspace.user.id,
@@ -95,23 +102,83 @@ export function TodayModule({ navigate }: { navigate: (module: string) => void }
             <CalendarDays size={21} />
           </span>
           <div>
-            <strong>{myEvents.length}</strong>
-            <span>nächste Termine</span>
+            <strong>{performances.length}</strong>
+            <span>Vorstellungen (7 Tage)</span>
           </div>
           <ChevronRight size={17} />
         </button>
-        <button onClick={() => navigate("time")}>
-          <span className="summary-icon coral">
-            <Clock3 size={21} />
-          </span>
-          <div>
-            <strong>
-              {hours(total)} <small>h</small>
-            </strong>
-            <span>diese Woche gebucht</span>
+        <div className="hours-summary">
+          <button
+            className="summary-hours-action"
+            onClick={() => navigate("time")}
+            aria-label="Zeitbuchungen öffnen"
+          >
+            <span className="summary-icon coral">
+              <Clock3 size={21} />
+            </span>
+            <div aria-live="polite">
+              <strong>
+                {hours(total)} <small>h</small>
+              </strong>
+              <span>{hoursPeriod === "week" ? "diese Woche gebucht" : "insgesamt gebucht"}</span>
+            </div>
+            <ChevronRight size={17} />
+          </button>
+          <div
+            className="hours-period-switch"
+            role="group"
+            aria-label="Zeitraum der gebuchten Stunden"
+          >
+            <button
+              type="button"
+              aria-pressed={hoursPeriod === "week"}
+              onClick={() => setHoursPeriod("week")}
+            >
+              Woche
+            </button>
+            <button
+              type="button"
+              aria-pressed={hoursPeriod === "total"}
+              onClick={() => setHoursPeriod("total")}
+            >
+              Gesamt
+            </button>
           </div>
-          <ChevronRight size={17} />
-        </button>
+        </div>
+      </div>
+      <div className="today-notifications">
+        <Section title="Neu für dich" meta={`${notices.length} ungelesene Mitteilungen`}>
+          {notices.length ? (
+            <div className="list">
+              {notices.slice(0, 6).map((notice) => (
+                <button
+                  key={notice.id}
+                  className="notification-row"
+                  onClick={async () => {
+                    try {
+                      await action("notification-read", notice.id);
+                      const link = value(notice.data, "link");
+                      if (link.startsWith("/?") || link.startsWith("/")) location.href = link;
+                    } catch (e) {
+                      notify(e instanceof Error ? e.message : "Aktion fehlgeschlagen");
+                    }
+                  }}
+                >
+                  <span className="notice-dot" />
+                  <div>
+                    <strong>{value(notice.data, "title")}</strong>
+                    <p className="small muted">{value(notice.data, "body")}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="empty-inline">
+              <Sparkles size={18} />
+              Alles auf dem neuesten Stand.
+            </p>
+          )}
+        </Section>
       </div>
       <div className="today-layout">
         <div className="today-main">
@@ -212,51 +279,6 @@ export function TodayModule({ navigate }: { navigate: (module: string) => void }
         </div>
         <aside className="today-aside">
           <TimerPanel compact />
-          <Section title="Neu für dich" meta={`${notices.length} ungelesene Mitteilungen`}>
-            {notices.length ? (
-              <div className="list">
-                {notices.slice(0, 6).map((notice) => (
-                  <button
-                    key={notice.id}
-                    className="notification-row"
-                    onClick={async () => {
-                      try {
-                        await action("notification-read", notice.id);
-                        const link = value(notice.data, "link");
-                        if (link.startsWith("/?") || link.startsWith("/")) location.href = link;
-                      } catch (e) {
-                        notify(e instanceof Error ? e.message : "Aktion fehlgeschlagen");
-                      }
-                    }}
-                  >
-                    <span className="notice-dot" />
-                    <div>
-                      <strong>{value(notice.data, "title")}</strong>
-                      <p className="small muted">{value(notice.data, "body")}</p>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <p className="empty-inline">
-                <Sparkles size={18} />
-                Alles auf dem neuesten Stand.
-              </p>
-            )}
-          </Section>
-          <section className="backstage-note">
-            <p className="eyebrow">GEMEINSAM GUT VORBEREITET</p>
-            <h2>
-              Ein Stück.
-              <br />
-              Viele gute Hände.
-            </h2>
-            <p>Aufschriebe, Bilder und Besetzungen machen euer Wissen für alle zugänglich.</p>
-            <button className="text-button" onClick={() => navigate("documentation")}>
-              Zur Dokumentation
-              <ArrowRight size={16} />
-            </button>
-          </section>
         </aside>
       </div>
       {detail && <RecordDetail record={detail} onClose={() => setDetail(null)} />}

@@ -55,7 +55,7 @@ const steps = [
     text: "Aufschriebe sammeln euer Wissen zu einer Schauspielperson. Vorbereitung, Makeup, Haare und Wechsel haben eigene Textfelder. Allgemeine und archivierte Aufschriebe findest du hier gemeinsam.",
     tips: [
       "Der Schauspielerkatalog bündelt Kontakte, Perückenmaße, Hinweise und Fotos.",
-      "Weitere Personen verwaltest du im Verzeichnis. Dienstübergaben sind ein gemeinsamer Bereich mit Hinweisen und Checklisten.",
+      "Ansprechpersonen verwaltest du im Verzeichnis. Dienstübergaben sind ein gemeinsamer Bereich mit Hinweisen und Checklisten.",
     ],
   },
   {
@@ -74,7 +74,7 @@ const steps = [
     icon: Clock3,
     text: "Zwei Timer erfassen getrennt, wie lange du im Theater bist und woran du arbeitest. Beide dürfen gleichzeitig laufen. Du kannst Zeiten auch später eintragen und korrigieren.",
     tips: [
-      "Offlineentwürfe werden erst nach ausdrücklicher Synchronisierung gespeichert.",
+      "Ohne Internet kannst du Zeiten auf dem Gerät vormerken. Sobald du wieder verbunden bist, kannst du sie speichern.",
       "Unter Produktions- / Arbeitszeiten reichst du deine Tätigkeiten zur Wochenfreigabe ein. Anwesenheit bleibt getrennt.",
     ],
   },
@@ -82,7 +82,7 @@ const steps = [
     module: "chat",
     title: "Kurze Wege und Hilfe, wenn du sie brauchst.",
     icon: MessageSquare,
-    text: "Im Maskenkanal erreichst du das Team. Private Chats sind nur für die ausgewählten Personen sichtbar. Absprachen zu einem Stück stehen im Projektchat. Hilfe erklärt dir alle Schritte.",
+    text: "In Teamkanälen erreichst du die ganze Maske. Admins können weitere Teamkanäle anlegen. Private Chats sind nur für die ausgewählten Personen sichtbar. Absprachen zu einem Stück stehen im Projektchat. Hilfe erklärt dir alle Schritte.",
     tips: [
       "Deine Rückmeldungen findest du dort im eigenen Verlauf.",
       "Du kannst diese Einführung jederzeit aus der Hilfe neu starten.",

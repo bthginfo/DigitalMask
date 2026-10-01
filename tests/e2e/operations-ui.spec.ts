@@ -185,10 +185,18 @@ for (const mobile of [false, true])
       expect(data.end).toBe("2026-10-25T03:00:00.000Z");
       expect(data.durationSeconds).toBe(19800);
       expect(data).not.toHaveProperty("productionId");
-      await page.getByRole("button", { name: "Offlineentwurf", exact: true }).click();
+      await page.evaluate(() => {
+        Object.defineProperty(navigator, "onLine", { configurable: true, value: false });
+        window.dispatchEvent(new Event("offline"));
+      });
+      await page.getByRole("button", { name: "Ohne Internet vormerken", exact: true }).click();
       editor = page.getByRole("dialog", { name: "Anwesenheit offline vormerken" });
       await editor.getByRole("button", { name: "Lokal speichern" }).click();
       await expect(page.getByText("1 lokale Anwesenheitsentwürfe")).toBeVisible();
+      await page.evaluate(() => {
+        Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
+        window.dispatchEvent(new Event("online"));
+      });
       await page.getByRole("button", { name: "Anwesenheit synchronisieren" }).click();
       expect(state.writes.filter((write) => write.kind === "attendance")).toHaveLength(2);
       await expect(page.getByText("1 lokale Anwesenheitsentwürfe")).not.toBeVisible();

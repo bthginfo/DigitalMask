@@ -15,7 +15,8 @@ export function canManageRecord(
   if (["categories", "calendarCategories"].includes(kind)) return member.role !== "user";
   if (kind === "events" && record?.data.leaveId) return false;
   if (kind === "events" && record) return canSetCalendarParticipants(member, record.data);
-  if (kind === "conversations" && record) return record.createdBy === member.id;
+  if (kind === "conversations" && record)
+    return record.data.mode === "team" ? member.role !== "user" : record.createdBy === member.id;
   if (kind === "messages" && record?.data.conversationId) return record.data.userId === member.id;
   if (kind === "feedback" && record)
     return member.role === "superadmin" || record.data.userId === member.id;

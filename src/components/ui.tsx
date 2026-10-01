@@ -59,7 +59,6 @@ export function Empty({
 export function PageHeader({
   eyebrow,
   title,
-  description,
   children,
 }: {
   eyebrow?: string;
@@ -72,7 +71,6 @@ export function PageHeader({
       <div>
         {eyebrow && <p className="eyebrow">{eyebrow}</p>}
         <h1>{title}</h1>
-        {description && <p className="muted">{description}</p>}
       </div>
       <div className="heading-actions">{children}</div>
     </header>

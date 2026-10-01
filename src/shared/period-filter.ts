@@ -4,6 +4,40 @@ export interface PeriodFilter {
   year?: number;
   season?: string;
 }
+/** The theatre season spans August through July, independent of calendar years. */
+export function seasonBounds(season?: string) {
+  const match = season?.match(/^(\d{4})\s*[\/–—-]\s*(\d{2}|\d{4})$/);
+  if (!match) return;
+  const start = Number(match[1]);
+  const end =
+    match[2].length === 2 ? Math.floor(start / 100) * 100 + Number(match[2]) : Number(match[2]);
+  if (end !== start + 1) return;
+  return { from: `${start}-08-01`, to: `${end}-08-01` };
+}
+
+export function seasonForDate(productions: DomainRecord[] = [], date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Berlin",
+    year: "numeric",
+    month: "2-digit",
+  }).formatToParts(date);
+  const year = Number(parts.find((part) => part.type === "year")?.value);
+  const month = Number(parts.find((part) => part.type === "month")?.value);
+  const start = year - (month < 8 ? 1 : 0);
+  return (
+    productions
+      .map((row) => textValue(row.data.season))
+      .find((season) => seasonBounds(season)?.from === `${start}-08-01`) || `${start}/${start + 1}`
+  );
+}
+
+export function dateMatchesPeriod(date: string, filter: PeriodFilter) {
+  const bounds = seasonBounds(filter.season);
+  return (
+    (!filter.year || yearOf(date) === filter.year) &&
+    (!bounds || (date >= bounds.from && date < bounds.to))
+  );
+}
 const yearOf = (value: unknown) => {
   const match = typeof value === "string" ? value.match(/^(\d{4})/) : null;
   return match ? Number(match[1]) : undefined;
@@ -35,8 +69,24 @@ export function recordMatchesPeriod(
       ? record
       : productions.find((row) => row.id === record.data.productionId);
   // General team documents remain available alongside season-specific productions.
-  if (filter.season && production && textValue(production.data.season) !== filter.season)
+  const dated = ["time", "attendance", "events", "leave"].includes(record.kind);
+  if (filter.season && production && !dated && textValue(production.data.season) !== filter.season)
     return false;
+  if (dated && filter.season && seasonBounds(filter.season)) {
+    const bounds = seasonBounds(filter.season)!;
+    if (["time", "attendance"].includes(record.kind) && Array.isArray(record.data.dayAllocations)) {
+      return record.data.dayAllocations.some((item) =>
+        dateMatchesPeriod(String((item as { date?: string }).date || ""), filter),
+      );
+    }
+    const start = textValue(record.data.date || record.data.start).slice(0, 10);
+    const end = textValue(
+      record.kind === "events" && record.data.recurrence && record.data.recurrence !== "none"
+        ? record.data.until || "9999-12-31"
+        : record.data.end || start,
+    ).slice(0, 10);
+    if (!start || start >= bounds.to || end < bounds.from) return false;
+  }
   if (!filter.year) return true;
   if (["time", "attendance"].includes(record.kind) && Array.isArray(record.data.dayAllocations))
     return record.data.dayAllocations.some(

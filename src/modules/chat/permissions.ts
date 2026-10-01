@@ -11,7 +11,10 @@ export async function assertConversation(
 ) {
   if (typeof conversationId !== "string" || !conversationId) return;
   const conversation = await findRecord(context, conversationId, "conversations", tx);
-  if (!listValue(conversation.data.participantIds).includes(context.user.id))
+  if (
+    conversation.data.mode !== "team" &&
+    !listValue(conversation.data.participantIds).includes(context.user.id)
+  )
     throw new HttpError(403, "Du bist kein Teilnehmer dieses privaten Chats.");
   return conversation;
 }

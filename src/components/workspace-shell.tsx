@@ -55,7 +55,7 @@ const nav: { id: string; label: string; icon: LucideIcon; group: string }[] = [
   { id: "tasks", label: "Teamboard", icon: Layers3, group: "ARBEITSRAUM" },
   { id: "time", label: "Zeit buchen", icon: Clock3, group: "ARBEITSRAUM" },
   { id: "chat", label: "Kommunikation", icon: MessageSquare, group: "ARBEITSRAUM" },
-  { id: "people", label: "Weitere Personen", icon: Users, group: "WISSEN & FUNDUS" },
+  { id: "people", label: "Ansprechpersonen", icon: Users, group: "WISSEN & FUNDUS" },
   { id: "actors", label: "Schauspielerkatalog", icon: Users, group: "WISSEN & FUNDUS" },
   { id: "documentation", label: "Aufschriebe", icon: BookOpen, group: "WISSEN & FUNDUS" },
   { id: "inventory", label: "Fundus & Material", icon: Package, group: "WISSEN & FUNDUS" },
@@ -458,6 +458,7 @@ export function WorkspaceShell() {
           ["calendar", "Kalender", CalendarDays],
           ["productions", "Stücke", Theater],
           ["time", "Zeit", Clock3],
+          ["chat", "Chat", MessageSquare],
           ["more", "Mehr", Menu],
         ].map(([key, label, Icon]) => {
           const Component = Icon as LucideIcon;
@@ -467,10 +468,12 @@ export function WorkspaceShell() {
               className={
                 activeModule === key ||
                 (key === "more" &&
-                  !["today", "calendar", "productions", "time"].includes(activeModule))
+                  !["today", "calendar", "productions", "time", "chat"].includes(activeModule))
                   ? "active"
                   : ""
               }
+              aria-current={activeModule === key ? "page" : undefined}
+              aria-label={key === "chat" ? "Kommunikation" : String(label)}
               onClick={() => (key === "more" ? openMenu() : navigate(String(key)))}
             >
               <Component size={20} />

@@ -15,7 +15,7 @@ export const helpArticles: HelpArticle[] = [
       "Auf den Produktionskarten siehst du bereits die Maskenbetreuung. Standardmäßig stehen die nächsten Premieren zuerst; über Sortieren nach wechselst du zu Namen oder zuletzt geänderten Stücken.",
     steps: [
       "Öffne Produktionen und wähle ein Stück. Alle freigegebenen Teammitglieder können Produktionen anlegen und zugängliche Produktionen bearbeiten, archivieren oder löschen. Wenn du ein Produktionsteam auswählst, bleibst du als Ersteller automatisch dabei.",
-      "Unter Team & Kontakte lassen sich Rollen frei benennen, etwa Regie, Kostüm oder Maskenbetreuung. Wähle externe Kontakte aus Weitere Personen, damit ihre Kontaktdaten wiederverwendet werden.",
+      "Unter Team & Kontakte lassen sich Rollen frei benennen, etwa Regie, Kostüm oder Maskenbetreuung. Wähle externe Kontakte aus Ansprechpersonen, damit ihre Kontaktdaten wiederverwendet werden.",
       "Fehlt eine Person, kannst du sie direkt im Kontaktformular anlegen oder ihren Namen frei eintragen. Beim Speichern der Produktion wird ein neuer freier Kontakt im Verzeichnis hinterlegt. Es entsteht kein Benutzerkonto.",
       "Für die Maskenbetreuung kannst du ein aktives Teammitglied, eine Person aus dem Verzeichnis oder einen freien Namen wählen. Nur ein ausgewähltes Teammitglied gehört dadurch automatisch zum Produktionsteam.",
       "Wenn eine bisher frei eingetragene Maskenperson einen Account erhält und ein Admin ihn freigibt, werden eindeutige Zuordnungen automatisch auf das Teamkonto umgestellt. Das klappt auch mit einem abgekürzten Nachnamen, etwa Julia G., wenn nur eine Person dazu passt.",
@@ -25,10 +25,10 @@ export const helpArticles: HelpArticle[] = [
   },
   {
     id: "people",
-    title: "Weitere Personen & Kontaktdaten",
+    title: "Ansprechpersonen & Kontaktdaten",
     module: "people",
     intro:
-      "Weitere Personen ist euer Kontaktverzeichnis, etwa für Regie, Kostüm oder Gäste. Schauspieler haben einen eigenen Katalog; Benutzerkonten sind die Zugänge zum Tool.",
+      "Ansprechpersonen ist euer Kontaktverzeichnis, etwa für Regie, Kostüm oder Gäste. Schauspieler haben einen eigenen Katalog; Benutzerkonten sind die Zugänge zum Tool.",
     steps: [
       "Suche nach Name, Funktion oder Kontaktdaten und grenze die Liste bei Bedarf auf eine Organisation ein. Alle freigegebenen Teammitglieder können die Kontakte lesen.",
       "Alle freigegebenen Teammitglieder legen Personen mit Name, Organisation, Funktion, E-Mail, Telefon und Notizen an. Ein Kontakt erhält weder einen Zugang noch eine automatische Zuordnung zum Kalenderteam.",
@@ -129,6 +129,7 @@ export const helpArticles: HelpArticle[] = [
     intro:
       "Teile Informationen mit der Maske, einem Produktionsteam oder ausgewählten Personen in einem privaten Chat.",
     steps: [
+      "Admins können mit Teamkanal einen weiteren Kanal anlegen. Darin kann das ganze Maskenteam schreiben, auch neue Kolleginnen nach der Freigabe ihres Zugangs. Admins können den Kanal umbenennen oder archivieren; Nachrichten bleiben erhalten.",
       "Nutze Maske · Allgemein für Informationen an die Abteilung oder den Projektchat für Absprachen zum Stück.",
       "Neue Nachrichten und Änderungen im Team erscheinen automatisch. Live verbunden zeigt, dass die Verbindung steht. Im Hintergrund pausiert sie; beim Zurückkehren werden verpasste Änderungen nachgeholt. Bei einer Störung kannst du die Verbindung erneut versuchen.",
       "Wähle Privater Chat und eine Person oder mehrere Personen für eine Gruppe. Private Verläufe und Dateien sehen nur die Teilnehmenden, auch Admins benötigen eine Teilnahme.",
@@ -178,6 +179,7 @@ export const helpArticles: HelpArticle[] = [
     module: "documentation",
     intro: "Mit Jahr und Spielzeit findest du auch ältere Produktionsarbeit wieder.",
     steps: [
+      "Kalender und Zeitnachweise öffnen mit der aktuellen Spielzeit von August bis Juli. Jahr und Spielzeit sind kompakte Filter. Mit Alle Spielzeiten oder Zeitraum zurücksetzen kannst du weitere Zeiträume sehen.",
       "Wähle Jahr und Spielzeit in der jeweiligen Übersicht. Im Sammelordner kannst du zusätzlich eine Produktion oder allgemeine Aufschriebe auswählen; archivierte Produktionen bleiben auffindbar.",
       "Bei Produktionsdokumenten zählt die Spielzeit beziehungsweise das Premierenjahr des Stücks. Bei allgemeinen Aufschrieben zählt das Erstellungsjahr. Zeitbuchungen und Anwesenheit richten sich nach dem tatsächlich gebuchten Tag.",
       "Öffne Exportieren aus der gefilterten Übersicht. Produktion, Jahr und Spielzeit werden übernommen. Prüfe bei Zeit- und Kalenderexporten zusätzlich den Zeitraum, damit er zur gewählten Auswahl passt.",
@@ -199,6 +201,14 @@ export const helpArticles: HelpArticle[] = [
 ];
 export const helpFaq = [
   [
+    "Warum klappt die Anmeldung nicht?",
+    "Verwende deinen bei der Registrierung gewählten Benutzernamen, nicht deinen Anzeigenamen. Prüfe Tippfehler und die Groß- und Kleinschreibung im Passwort. Neue Zugänge müssen zuerst von einem Admin freigegeben werden. Bei einem vergessenen Passwort hilft dir ein Admin mit einem Wiederherstellungscode.",
+  ],
+  [
+    "Wer kann neue Teamkanäle anlegen?",
+    "Admins legen Teamkanäle an und verwalten sie. Das ganze Maskenteam kann sie lesen und darin schreiben, auch später freigegebene Kolleginnen. Private Direkt- und Gruppenchats sind nur für ihre Teilnehmenden sichtbar.",
+  ],
+  [
     "Was darf ich als normales Teammitglied?",
     "Du kannst gemeinsame Arbeitsinhalte in deinen zugänglichen Bereichen anlegen, bearbeiten und löschen: Produktionen, Kontakte, Schauspieler, Figuren, Besetzungen, Aufgaben, Sprints, Aufschriebe und Vorlagen. Du kannst außerdem deinen eigenen Kalender planen. Kalenderplanung für andere Personen, Kategorien, Benutzerverwaltung und die Freigabe von Freiwünschen oder Wochen sind Adminaufgaben. Persönliche Zeitbuchungen und private Chats bleiben geschützt.",
   ],
@@ -212,11 +222,11 @@ export const helpFaq = [
   ],
   [
     "Kann eine externe Person ohne Account eingetragen werden?",
-    "Ja. Wähle sie in den Produktionskontakten aus Weitere Personen, lege sie direkt an oder trage einen freien Namen ein. Kontaktdaten werden im Verzeichnis wiederverwendet; ein Benutzerkonto entsteht dadurch nicht.",
+    "Ja. Wähle sie in den Produktionskontakten aus Ansprechpersonen, lege sie direkt an oder trage einen freien Namen ein. Kontaktdaten werden im Verzeichnis wiederverwendet; ein Benutzerkonto entsteht dadurch nicht.",
   ],
   [
-    "Was unterscheidet Weitere Personen, Schauspieler und Benutzer?",
-    "Weitere Personen enthält Ansprechpartner mit Kontaktdaten. Der Schauspielerkatalog enthält Angaben für Besetzung und Maskenarbeit. Benutzer melden sich im Tool an und können als Teammitglieder Aufgaben, Dienste und Zeiten erhalten.",
+    "Was unterscheidet Ansprechpersonen, Schauspieler und Benutzer?",
+    "Ansprechpersonen enthält Ansprechpartner mit Kontaktdaten. Der Schauspielerkatalog enthält Angaben für Besetzung und Maskenarbeit. Benutzer melden sich im Tool an und können als Teammitglieder Aufgaben, Dienste und Zeiten erhalten.",
   ],
   [
     "Warum kann ich eine Person oder Kategorie nicht löschen?",

@@ -8,6 +8,7 @@ import { resolveProductionContacts } from "./contacts";
 import { durationSummary } from "./duration-summary";
 import { exportRows } from "./data";
 import { documentPresentation } from "./document-presentation";
+import { seasonBounds } from "../../shared/period-filter";
 export type { ExportInput, ExportResult, ExportFormat } from "./types";
 export { selectExportRecords } from "./selection";
 
@@ -16,6 +17,16 @@ export async function buildExport(input: ExportInput): Promise<ExportResult> {
   const formats = ["pdf", "xlsx", "csv", "ics", "json"];
   if (!formats.includes(input.format)) throw new Error("Unbekanntes Exportformat.");
   input = { ...input, records: selectExportRecords(input) };
+  const season = seasonBounds(input.season);
+  if (season && ["events", "calendar", "time", "attendance"].includes(input.kind)) {
+    const last = `${Number(season.to.slice(0, 4))}-07-31`;
+    input = {
+      ...input,
+      from: input.from && input.from > season.from ? input.from : season.from,
+      to: input.to && input.to < last ? input.to : last,
+    };
+    if (input.from! > input.to!) input = { ...input, records: [], from: season.from, to: last };
+  }
   if (input.year && ["events", "calendar", "time", "attendance"].includes(input.kind)) {
     const first = `${input.year}-01-01`,
       last = `${input.year}-12-31`;

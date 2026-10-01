@@ -28,7 +28,13 @@ export function AuthForm({ register = false }: { register?: boolean }) {
       if (register) setDone(true);
       else router.replace("/");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Anmeldung fehlgeschlagen");
+      setError(
+        e instanceof TypeError
+          ? "Keine Verbindung zum Server. Prüfe deine Internetverbindung und versuche es erneut."
+          : e instanceof Error
+            ? e.message
+            : "Anmeldung fehlgeschlagen",
+      );
     } finally {
       setBusy(false);
     }
@@ -92,7 +98,7 @@ export function AuthForm({ register = false }: { register?: boolean }) {
                       name="name"
                       autoComplete="name"
                       required
-                      maxLength={120}
+                      maxLength={100}
                       placeholder="Vor- und Nachname"
                     />
                   </label>
@@ -101,13 +107,20 @@ export function AuthForm({ register = false }: { register?: boolean }) {
                   Benutzername
                   <input
                     name="username"
+                    aria-label="Benutzername"
+                    aria-describedby="username-help"
                     autoComplete="username"
                     autoCapitalize="none"
                     required
                     minLength={3}
-                    maxLength={64}
+                    maxLength={32}
                     placeholder="Dein Benutzername"
                   />
+                  <span className="small muted" id="username-help">
+                    {register
+                      ? "3–32 Zeichen: Buchstaben, Zahlen, Punkt, Bindestrich oder Unterstrich."
+                      : "Dein bei der Registrierung gewählter Benutzername – nicht dein Anzeigename."}
+                  </span>
                 </label>
                 <PasswordInput
                   label="Passwort"

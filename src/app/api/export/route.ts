@@ -23,7 +23,7 @@ export async function GET(request: Request) {
       if (kind !== "messages")
         throw new HttpError(400, "Ein Chatfilter ist nur für Nachrichten verfügbar.");
       if (!workspace.records.conversations.some((chat) => chat.id === conversationId))
-        throw new HttpError(403, "Du bist kein Teilnehmer dieses privaten Chats.");
+        throw new HttpError(403, "Kein Zugriff auf diesen Chat.");
       selected = selected.filter((row) => row.data.conversationId === conversationId);
     }
     const id = query.get("id"),

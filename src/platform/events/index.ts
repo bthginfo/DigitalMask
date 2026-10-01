@@ -1,7 +1,7 @@
 import { after } from "next/server";
-import { and, eq, lte, sql, or } from "drizzle-orm";
+import { and, eq, lte, sql, or, ne } from "drizzle-orm";
 import { db, type Transaction } from "@/platform/db";
-import { outbox, records, audit } from "@/platform/db/schema";
+import { outbox, records, audit, memberships } from "@/platform/db/schema";
 import type { Context } from "@/platform/context";
 import { invalidateWorkspace } from "@/modules/records/workspace";
 import type { RecordData } from "@/shared/contracts";
@@ -102,7 +102,21 @@ export async function processEvents() {
             const participants = Array.isArray(conversation?.data.participantIds)
               ? conversation.data.participantIds
               : [];
-            targets = targets.filter((id) => participants.includes(id));
+            if (conversation?.data.mode === "team") {
+              const activeTeam = await tx
+                .select({ id: memberships.userId })
+                .from(memberships)
+                .where(
+                  and(
+                    eq(memberships.departmentId, event.departmentId),
+                    eq(memberships.status, "active"),
+                    ne(memberships.role, "superadmin"),
+                  ),
+                );
+              targets = activeTeam.map((member) => member.id);
+            } else {
+              targets = targets.filter((id) => participants.includes(id));
+            }
           }
           for (const uid of targets) {
             if (uid === event.payload.actorId) continue;

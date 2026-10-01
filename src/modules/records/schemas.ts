@@ -100,13 +100,30 @@ export const schemas: Record<RecordKind, z.ZodType> = {
       .default("#377a68"),
     order: z.number().int().min(0).max(10000).default(0),
   }),
-  conversations: z.object({
-    title: short.default(""),
-    mode: z.enum(["direct", "group"]).default("group"),
-    participantIds: z.array(z.string().min(1).max(100)).min(2).max(100),
-    directKey: z.string().max(300).default(""),
-    archived: z.boolean().default(false),
-  }),
+  conversations: z
+    .object({
+      title: short.default(""),
+      mode: z.enum(["direct", "group", "team"]).default("group"),
+      participantIds: z.array(z.string().min(1).max(100)).max(100).default([]),
+      directKey: z.string().max(300).default(""),
+      archived: z.boolean().default(false),
+    })
+    .superRefine((conversation, context) => {
+      if (conversation.mode === "team") {
+        if (!conversation.title.trim())
+          context.addIssue({
+            code: "custom",
+            path: ["title"],
+            message: "Bitte gib dem Teamkanal einen Namen.",
+          });
+      } else if (conversation.participantIds.length < 2) {
+        context.addIssue({
+          code: "custom",
+          path: ["participantIds"],
+          message: "Ein privater Chat braucht mindestens zwei Teilnehmende.",
+        });
+      }
+    }),
   calendarCategories: z.object({
     key: z
       .string()

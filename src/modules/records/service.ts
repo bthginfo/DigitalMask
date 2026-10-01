@@ -75,7 +75,12 @@ export function assertWrite(
     existing.data.userId !== context.user.id
   )
     throw new HttpError(403, "Du kannst nur eigene private Nachrichten bearbeiten.");
-  if (kind === "conversations" && existing && existing.createdBy !== context.user.id)
+  if (
+    kind === "conversations" &&
+    existing &&
+    existing.data.mode !== "team" &&
+    existing.createdBy !== context.user.id
+  )
     throw new HttpError(403, "Nur die Person, die diesen Chat angelegt hat, kann ihn verwalten.");
   if (
     kind === "feedback" &&
@@ -480,9 +485,13 @@ export async function saveRecord(
       }
     }
     if (kind === "messages" && data.conversationId && !existing) {
+      const teamChannel = related.conversation?.data.mode === "team";
       await emit(tx, context, "ChatMessageCreatedV1", {
-        userIds: listValue(related.conversation?.data.participantIds),
-        title: "Neue private Nachricht",
+        // The worker resolves current team membership once, when delivering the message.
+        userIds: teamChannel ? [] : listValue(related.conversation?.data.participantIds),
+        title: teamChannel
+          ? `Neue Nachricht · ${textValue(related.conversation?.data.title)}`
+          : "Neue private Nachricht",
         body: String(data.text).slice(0, 160),
         conversationId: data.conversationId,
         link: `/?module=chat&conversationId=${encodeURIComponent(String(data.conversationId))}`,

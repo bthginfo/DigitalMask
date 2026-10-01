@@ -25,7 +25,7 @@ export async function GET(request: Request) {
         (chat) => chat.id === conversationId,
       )
     )
-      throw new HttpError(403, "Du bist kein Teilnehmer dieses privaten Chats.");
+      throw new HttpError(403, "Du hast keinen Zugriff auf diesen Chat.");
     if (
       productionId &&
       !(await getWorkspace(context)).records.productions.some(

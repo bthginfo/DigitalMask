@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import type { DomainRecord } from "@/shared/contracts";
 import { ids, value } from "@/shared/client-api";
+import { canManageRecord } from "@/shared/record-permissions";
 import { useWorkspace } from "../workspace-context";
 import { Badge, Button, Empty, ErrorMessage, Modal, PageHeader } from "../ui";
 import { ChatChannel } from "@/modules/chat/components/chat-channel";
@@ -80,15 +81,16 @@ export function ChatModule({
   const channelToggle = useRef<HTMLButtonElement>(null);
   const [channelsOpen, setChannelsOpen] = useState(false),
     [search, setSearch] = useState("");
-  const [editor, setEditor] = useState<DomainRecord | "new" | null>(null),
+  const [editor, setEditor] = useState<DomainRecord | "new" | "new-team" | null>(null),
     [manage, setManage] = useState(false),
     [archived, setArchived] = useState(false),
     [error, setError] = useState("");
   const locked = !!productionId && !onNavigate;
   const selectedConversation = onNavigate ? conversationId : selection.conversationId,
     selectedProduction = locked ? productionId : onNavigate ? productionId : selection.productionId;
-  const visibleConversations = (workspace.records.conversations || []).filter((record) =>
-    ids(record.data, "participantIds").includes(workspace.user.id),
+  const visibleConversations = (workspace.records.conversations || []).filter(
+    (record) =>
+      record.data.mode === "team" || ids(record.data, "participantIds").includes(workspace.user.id),
   );
   const conversation = visibleConversations.find((record) => record.id === selectedConversation);
   const query = search.trim().toLocaleLowerCase("de");
@@ -97,9 +99,14 @@ export function ChatModule({
     (record) => record.data.status !== "archived",
   );
   const matchingProductions = productions.filter((record) => matches(value(record.data, "title")));
-  const privateChats = visibleConversations.filter(
+  const channels = visibleConversations.filter(
     (record) => archived || record.data.archived !== true,
   );
+  const teamChannels = channels.filter((record) => record.data.mode === "team");
+  const matchingTeamChannels = teamChannels.filter((record) =>
+    matches(value(record.data, "title")),
+  );
+  const privateChats = channels.filter((record) => record.data.mode !== "team");
   const matchingChats = privateChats.filter((record) =>
     matches(
       [
@@ -147,6 +154,12 @@ export function ChatModule({
             : "Allgemeine Informationen, Projektkanäle und private Gespräche."
         }
       >
+        {!locked && workspace.user.role !== "user" && (
+          <Button onClick={() => setEditor("new-team")}>
+            <Plus size={16} />
+            Teamkanal
+          </Button>
+        )}
         {!locked && (
           <Button variant="primary" onClick={() => setEditor("new")}>
             <Plus size={16} />
@@ -162,7 +175,7 @@ export function ChatModule({
           >
             <div className="chat-channels-heading">
               <strong>Deine Kanäle</strong>
-              <span>{1 + productions.length + privateChats.length}</span>
+              <span>{1 + productions.length + channels.length}</span>
             </div>
             <button
               type="button"
@@ -193,19 +206,36 @@ export function ChatModule({
                 />
               </div>
               <nav aria-label="Kommunikationskanäle">
-                {showGeneral && (
+                {(showGeneral || !!matchingTeamChannels.length) && (
                   <div className="chat-channel-group">
                     <h3>
-                      Team <span>01</span>
+                      Team <span>{Number(showGeneral) + matchingTeamChannels.length}</span>
                     </h3>
-                    <ChannelChoice
-                      title="Maske · Allgemein"
-                      detail="Für das ganze Maskenteam"
-                      icon={Hash}
-                      kind="team"
-                      selected={!selectedConversation && !selectedProduction}
-                      onSelect={() => choose("")}
-                    />
+                    {showGeneral && (
+                      <ChannelChoice
+                        title="Maske · Allgemein"
+                        detail="Für das ganze Maskenteam"
+                        icon={Hash}
+                        kind="team"
+                        selected={!selectedConversation && !selectedProduction}
+                        onSelect={() => choose("")}
+                      />
+                    )}
+                    {matchingTeamChannels.map((record) => (
+                      <ChannelChoice
+                        key={record.id}
+                        title={value(record.data, "title")}
+                        detail={
+                          record.data.archived === true
+                            ? "Archiviert · Teamkanal"
+                            : "Für das ganze Maskenteam"
+                        }
+                        icon={Hash}
+                        kind="team"
+                        selected={selectedConversation === record.id}
+                        onSelect={() => choose(record.id)}
+                      />
+                    ))}
                   </div>
                 )}
                 {!!matchingProductions.length && (
@@ -258,9 +288,15 @@ export function ChatModule({
                   );
                 })}
               </nav>
-              {query && !showGeneral && !matchingProductions.length && !matchingChats.length && (
-                <p className="channel-empty">Kein passender Kanal. Probiere einen anderen Namen.</p>
-              )}
+              {query &&
+                !showGeneral &&
+                !matchingTeamChannels.length &&
+                !matchingProductions.length &&
+                !matchingChats.length && (
+                  <p className="channel-empty">
+                    Kein passender Kanal. Probiere einen anderen Namen.
+                  </p>
+                )}
               {!query && !privateChats.length && (
                 <div className="channel-private-note">
                   <MessageCircle size={17} aria-hidden="true" />
@@ -296,26 +332,36 @@ export function ChatModule({
             productionId={selectedProduction}
             conversation={conversation}
             onManage={
-              conversation?.createdBy === workspace.user.id ? () => setManage(true) : undefined
+              conversation && canManageRecord(workspace.user, "conversations", conversation)
+                ? () => setManage(true)
+                : undefined
             }
           />
         )}
       </div>
       {manage && conversation && (
-        <Modal title="Privaten Chat verwalten" onClose={() => setManage(false)}>
+        <Modal
+          title={
+            conversation.data.mode === "team" ? "Teamkanal verwalten" : "Privaten Chat verwalten"
+          }
+          onClose={() => setManage(false)}
+        >
           <p className="help-note">
-            Nur die Teilnehmenden können den Verlauf und Dateien sehen. Entfernte Personen verlieren
-            den Zugriff.
+            {conversation.data.mode === "team"
+              ? "Das gesamte Maskenteam kann den Verlauf und die Dateien sehen. Admins verwalten diesen Kanal."
+              : "Nur die Teilnehmenden können den Verlauf und Dateien sehen. Entfernte Personen verlieren den Zugriff."}
           </p>
           <h3>{title}</h3>
           <p>
-            {ids(conversation.data, "participantIds")
-              .map(
-                (id) =>
-                  workspace.members.find((person) => person.id === id)?.name ||
-                  "Ehemaliges Teammitglied",
-              )
-              .join(", ")}
+            {conversation.data.mode === "team"
+              ? "Alle aktiven Teammitglieder"
+              : ids(conversation.data, "participantIds")
+                  .map(
+                    (id) =>
+                      workspace.members.find((person) => person.id === id)?.name ||
+                      "Ehemaliges Teammitglied",
+                  )
+                  .join(", ")}
           </p>
           {conversation.data.archived === true && <Badge>Archiviert</Badge>}
           <ErrorMessage message={error} />
@@ -362,7 +408,8 @@ export function ChatModule({
       )}
       {editor && (
         <ConversationEditor
-          record={editor === "new" ? undefined : editor}
+          record={typeof editor === "string" ? undefined : editor}
+          initialMode={editor === "new-team" ? "team" : "direct"}
           onClose={() => setEditor(null)}
           onSaved={(record) => choose(record.id)}
         />

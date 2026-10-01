@@ -2,24 +2,33 @@
 import { useId } from "react";
 import { instantDate, timeAllocations, weekStart } from "@/shared/client-api";
 import type { DomainRecord } from "@/shared/contracts";
-import { periodOptions, type PeriodFilter } from "@/shared/period-filter";
+import {
+  dateMatchesPeriod,
+  periodOptions,
+  seasonBounds,
+  type PeriodFilter,
+} from "@/shared/period-filter";
 export function PeriodPicker({
   records,
   productions,
   value,
   onChange,
   season = true,
+  compact = false,
 }: {
   records: DomainRecord[];
   productions: DomainRecord[];
   value: PeriodFilter;
   onChange: (filter: PeriodFilter) => void;
   season?: boolean;
+  compact?: boolean;
 }) {
   const listId = useId();
   const options = periodOptions(records, productions);
+  if (value.season && !options.seasons.includes(value.season))
+    options.seasons.unshift(value.season);
   return (
-    <div className="period-picker">
+    <div className={`period-picker${compact ? " period-picker--compact" : ""}`}>
       <label>
         Jahr
         <input
@@ -46,6 +55,7 @@ export function PeriodPicker({
         <label>
           Spielzeit
           <select
+            aria-label="Spielzeit"
             value={value.season || ""}
             onChange={(event) => onChange({ ...value, season: event.target.value || undefined })}
           >
@@ -77,11 +87,14 @@ export function weekForPeriod(
   period: PeriodFilter,
   currentWeek: string,
 ) {
-  if (!period.year) return currentWeek;
+  if (!period.year && !period.season) return currentWeek;
+  if (dateMatchesPeriod(currentWeek, period)) return currentWeek;
   const date =
     records
       .filter((row) => row.data.userId === personId)
       .flatMap((row) => timeAllocations(row.data))
-      .find((day) => Number(day.date.slice(0, 4)) === period.year)?.date || period.year + "-01-04";
+      .find((day) => dateMatchesPeriod(day.date, period))?.date ||
+    (period.year ? period.year + "-01-04" : seasonBounds(period.season)?.from);
+  if (!date) return currentWeek;
   return weekStart(instantDate(date));
 }

@@ -5,13 +5,25 @@ import { records } from "@/platform/db/schema";
 import { HttpError } from "@/platform/http";
 import { listValue, type RecordData } from "@/shared/contracts";
 
-/** Deduplicates direct chats atomically; group membership remains creator-managed. */
+/** Team channels follow department membership; private groups remain creator-managed. */
 export async function prepareConversation(
   context: Context,
   data: RecordData,
   tx: Transaction,
   existing?: typeof records.$inferSelect,
 ) {
+  if (existing && existing.data.mode !== data.mode)
+    throw new HttpError(400, "Die Chatart kann nicht geändert werden.");
+  if (data.mode === "team") {
+    if (context.user.role === "user")
+      throw new HttpError(403, "Nur Admins können Teamkanäle anlegen und verwalten.");
+    if (!String(data.title || "").trim())
+      throw new HttpError(400, "Bitte gib dem Teamkanal einen Namen.");
+    data.title = String(data.title).trim();
+    data.participantIds = [];
+    data.directKey = "";
+    return;
+  }
   data.participantIds = Array.from(
     new Set([...listValue(data.participantIds), existing?.createdBy || context.user.id]),
   );
@@ -21,8 +33,6 @@ export async function prepareConversation(
       400,
       "Bitte wähle mindestens eine weitere Person und höchstens 100 Teilnehmer.",
     );
-  if (existing && existing.data.mode !== data.mode)
-    throw new HttpError(400, "Die Chatart kann nicht geändert werden.");
   if (data.mode !== "direct") {
     data.directKey = "";
     return;

@@ -28,6 +28,29 @@
 .period-picker .text-button {
   min-height: 44px;
 }
+.period-picker.period-picker--compact {
+  gap: 8px 12px;
+  margin: 0 0 16px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.period-picker--compact label {
+  gap: 3px;
+  min-width: 110px;
+  font-size: 11px;
+}
+.period-picker--compact input,
+.period-picker--compact select {
+  min-height: 44px;
+}
+.period-picker--compact input {
+  width: 120px;
+}
+.period-picker--compact select {
+  min-width: 160px;
+}
 .document-editor,
 .casting-editor {
   display: grid;
@@ -1010,6 +1033,59 @@ kbd {
 .today-summary > button > svg {
   margin-left: auto;
   color: var(--muted);
+}
+.hours-summary {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 22px;
+}
+.summary-hours-action {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  min-height: 44px;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+  padding: 0;
+}
+.summary-hours-action:hover {
+  background: var(--surface-soft);
+}
+.summary-hours-action > svg {
+  margin-left: auto;
+  color: var(--muted);
+}
+.hours-period-switch {
+  display: flex;
+  align-self: flex-end;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-soft);
+}
+.hours-period-switch > button {
+  min-width: 52px;
+  min-height: 44px;
+  padding: 0 8px;
+  font-size: 11px;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  border-radius: 5px;
+}
+.hours-period-switch > button[aria-pressed="true"] {
+  color: var(--accent);
+  background: var(--surface);
+  font-weight: 650;
+}
+.today-notifications {
+  margin-bottom: 24px;
 }
 .today-layout {
   display: grid;
@@ -3060,7 +3136,7 @@ tfoot td {
   }
   .today-aside {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
     align-items: start;
   }
   .backstage-note {
@@ -3068,6 +3144,12 @@ tfoot td {
   }
   .today-summary > button {
     padding: 18px 14px;
+    gap: 10px;
+  }
+  .hours-summary {
+    padding: 12px 14px;
+  }
+  .summary-hours-action {
     gap: 10px;
   }
   .today-summary strong {
@@ -3241,6 +3323,32 @@ tfoot td {
   }
   .today-summary {
     margin-bottom: 22px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .today-summary > button:nth-child(2) {
+    border-right: 0;
+  }
+  .hours-summary {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border-top: 1px solid var(--border);
+  }
+  .summary-hours-action {
+    flex: 1;
+    min-width: 0;
+  }
+  .summary-hours-action > svg {
+    display: none;
+  }
+  .hours-period-switch {
+    flex: none;
+    align-self: center;
+  }
+  .today-notifications {
+    margin-bottom: 20px;
   }
   .today-summary > button {
     flex-direction: column;
@@ -3255,7 +3363,7 @@ tfoot td {
     display: none;
   }
   .today-summary span:not(.summary-icon) {
-    font-size: 8px;
+    font-size: 11px;
   }
   .summary-icon {
     width: 31px;
@@ -3315,7 +3423,8 @@ tfoot td {
     padding: 7px 6px max(8px, env(safe-area-inset-bottom));
   }
   .bottom-nav > button {
-    flex: 1;
+    flex: 1 1 0;
+    min-width: 44px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -3801,7 +3910,7 @@ tfoot td {
     padding: 14px 9px;
   }
   .today-summary span:not(.summary-icon) {
-    font-size: 7px;
+    font-size: 11px;
   }
   .today-summary strong {
     font-size: 22px;

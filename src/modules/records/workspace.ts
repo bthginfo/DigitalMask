@@ -66,7 +66,8 @@ export async function getWorkspace(context: Context): Promise<Workspace> {
       .filter(
         (row) =>
           row.kind === "conversations" &&
-          listValue(row.data.participantIds).includes(context.user.id),
+          (row.data.mode === "team" ||
+            listValue(row.data.participantIds).includes(context.user.id)),
       )
       .map((row) => row.id),
   );

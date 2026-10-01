@@ -42,7 +42,7 @@ export const labels: Record<RecordKind, [string, string]> = {
   attendance: ["Anwesenheit", "Anwesenheitsbuchung"],
   calendarCategories: ["Kalenderarten", "Kalenderart"],
   conversations: ["Gespräche", "Gespräch"],
-  people: ["Weitere Personen", "Person"],
+  people: ["Ansprechpersonen", "Person"],
   categories: ["Kategorien", "Kategorie"],
 };
 const production: Field = {

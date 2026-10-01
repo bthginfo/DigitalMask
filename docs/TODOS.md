@@ -64,7 +64,7 @@ Die Bereitstellung erfolgt nach den Releaseprüfungen über GitHub und die beste
 
 ## Wiederverwendbare externe Kontakte
 
-- [x] Eigenes Verzeichnis „Weitere Personen“ für Kontakte ohne Benutzerkonto und ohne Schauspielerkatalog-Zuordnung.
+- [x] Eigenes Verzeichnis „Ansprechpersonen“ für Kontakte ohne Benutzerkonto und ohne Schauspielerkatalog-Zuordnung.
 - [x] Name, Organisation/Funktion, E-Mail, Telefonnummer und Notizen speichern, bearbeiten und löschen (mit Schutz genutzter Zuordnungen).
 - [x] Produktionskontakte mit dem Verzeichnis verknüpfen, direkt dort neue Kontakte anlegen und in weiteren Produktionen wiederverwenden.
 - [x] Rollen bleiben je Produktion frei benennbar; Maskenbetreuung weiter aus dem aktiven Maskenteam oder als freier Name.
@@ -102,6 +102,17 @@ Die Bereitstellung erfolgt nach den Releaseprüfungen über GitHub und die beste
 - [x] Eigene Kalenderplanung für Teammitglieder; Kalender anderer Personen und Gruppentermine ausschließlich für Admins.
 - [x] Kategorien, Benutzerverwaltung und Freigaben für Freiwünsche und Wochen bleiben Adminaufgaben.
 - [x] Hilfe, FAQ, Einführung und Architektur beschreiben die neuen Rechte.
+
+## Rückmeldungen von Lena und zusätzliche Teamkanäle
+
+- [x] Kurze Beschreibungstexte unter Seitenüberschriften entfernen; Mitteilungen auf der Startseite nach oben ziehen.
+- [x] Persönliche Vorstellungen der nächsten sieben Tage zählen und Arbeitsstunden zwischen Woche/Gesamt umschalten.
+- [x] Spielzeit-/Jahresfilter für Kalender, Teamboard und Zeitnachweise kompakter anzeigen; Kalender und Zeitnachweise mit aktueller Spielzeit öffnen.
+- [x] Offline-Vormerken nur ohne Internet anbieten, gespeicherte Entwürfe weiterhin synchronisierbar halten.
+- [x] Kommunikation in der mobilen Schnellnavigation und Kontaktverzeichnis als Ansprechpersonen benennen.
+- [x] Verständliche deutsche Anmelde-/Registrierungsfehler und konsistente Regeln für Benutzernamen.
+- [x] Admins können öffentliche Teamkanäle anlegen, umbenennen und archivieren; private Chats bleiben unverändert geschützt.
+- [x] Hilfe/Einführung aktualisieren; Rechte, Spielzeitgrenzen, Exporte und Ansichten auf Desktop, Tablet und Smartphone prüfen.
 
 ## QA-Nachbereitung
 

@@ -2,7 +2,12 @@
 import { useMemo, useState } from "react";
 import { Check, Pencil, Plus, UploadCloud } from "lucide-react";
 import { PeriodPicker, periodExportFilters, weekForPeriod } from "@/components/period-picker";
-import { recordMatchesPeriod, type PeriodFilter } from "@/shared/period-filter";
+import {
+  dateMatchesPeriod,
+  seasonForDate,
+  recordMatchesPeriod,
+  type PeriodFilter,
+} from "@/shared/period-filter";
 import { categoriesFor, categoryName } from "@/shared/domain-categories";
 import { CategoryManager } from "@/modules/categories/components/category-manager";
 import type { DomainRecord, RecordData } from "@/shared/contracts";
@@ -41,7 +46,9 @@ export function WorkTimeModule({
   embedded?: boolean;
 }) {
   const { workspace, action, refresh, online, busy } = useWorkspace();
-  const [period, setPeriod] = useState<PeriodFilter>({});
+  const [period, setPeriod] = useState<PeriodFilter>(() => ({
+    season: seasonForDate(workspace.records.productions),
+  }));
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const categoryOptions = categoriesFor("time", workspace.records.categories);
   const [week, setWeek] = useState(weekStart());
@@ -111,12 +118,7 @@ export function WorkTimeModule({
     .sort((a, b) => value(b.data, "date").localeCompare(value(a.data, "date")));
   const total = entries
     .flatMap((x) => timeAllocations(x.data))
-    .filter(
-      (day) =>
-        day.date >= week &&
-        day.date <= until &&
-        (!period.year || Number(day.date.slice(0, 4)) === period.year),
-    )
+    .filter((day) => day.date >= week && day.date <= until && dateMatchesPeriod(day.date, period))
     .reduce((sum, day) => sum + day.seconds, 0);
   const sheets = workspace.records.timesheets.filter(
     (x) => admin || x.data.userId === workspace.user.id,
@@ -132,8 +134,8 @@ export function WorkTimeModule({
         {admin && (
           <Button onClick={() => setCategoriesOpen(true)}>Tätigkeitsbereiche verwalten</Button>
         )}
-        {workspace.user.role !== "superadmin" && (
-          <Button onClick={() => setDraftModal(true)}>Offlineentwurf</Button>
+        {workspace.user.role !== "superadmin" && !online && (
+          <Button onClick={() => setDraftModal(true)}>Ohne Internet vormerken</Button>
         )}
         {workspace.user.role !== "superadmin" && (
           <Button variant="primary" onClick={() => setEditor(true)}>
@@ -154,11 +156,7 @@ export function WorkTimeModule({
               const date = shiftDate(week, i);
               const seconds = entries
                 .flatMap((x) => timeAllocations(x.data))
-                .filter(
-                  (day) =>
-                    day.date === date &&
-                    (!period.year || Number(day.date.slice(0, 4)) === period.year),
-                )
+                .filter((day) => day.date === date && dateMatchesPeriod(day.date, period))
                 .reduce((sum, day) => sum + day.seconds, 0);
               return (
                 <div key={date}>
@@ -238,6 +236,7 @@ export function WorkTimeModule({
         </div>
       )}
       <PeriodPicker
+        compact
         records={workspace.records.time}
         productions={workspace.records.productions}
         value={period}
@@ -255,7 +254,18 @@ export function WorkTimeModule({
             onChange={(e) => {
               if (e.target.value) {
                 setWeek(weekStart(instantDate(e.target.value)));
-                if (period.year) setPeriod({ ...period, year: Number(e.target.value.slice(0, 4)) });
+                setPeriod({
+                  ...period,
+                  ...(period.year ? { year: Number(e.target.value.slice(0, 4)) } : {}),
+                  ...(period.season
+                    ? {
+                        season: seasonForDate(
+                          workspace.records.productions,
+                          instantDate(e.target.value),
+                        ),
+                      }
+                    : {}),
+                });
               }
             }}
           />
