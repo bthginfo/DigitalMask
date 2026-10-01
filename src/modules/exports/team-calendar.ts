@@ -12,7 +12,7 @@ export function teamCalendarMembers(input: ExportInput): { id: string; name: str
     (member) =>
       member.status === "active" &&
       member.role !== "superadmin" &&
-      (!input.userIds?.length || input.userIds.includes(member.id)),
+      (input.userIds === undefined || input.userIds.includes(member.id)),
   );
   return input.records.some(
     (record) => record.kind === "events" && !listValue(record.data.participantIds).length,

@@ -99,6 +99,7 @@ export const helpArticles: HelpArticle[] = [
     intro: "Die persönliche Ansicht und die Teamplanung verwenden dieselben freigegebenen Termine.",
     steps: [
       "Wähle Monat, Woche, Tag, Agenda oder Team. Unter Team kannst du Teamwoche oder Teammonat wählen. Die Tabelle lässt sich seitlich bewegen; darunter findest du alle Dienste des ausgewählten Tages.",
+      "Zu Beginn siehst du nur deinen Kalender. Hake weitere Personen an, um ihre Termine dazuzuschalten. Alle anzeigen zeigt den gesamten Teamkalender. Die Teamansicht startet mit allen Personen; danach kannst du sie einschränken. Zurück in der persönlichen Ansicht gilt wieder deine vorige Auswahl. Ohne angehakte Personen bleibt der Kalender leer. Der Superadmin wählt zuerst Personen oder Alle anzeigen.",
       "Admins legen Termine mit Zeitraum, Kalenderart und Personen an. Der Titel darf leer bleiben: dann wird das Stück oder die Kalenderart angezeigt. Ganztägige Arten brauchen nur Von- und Bis-Tage, keine Uhrzeiten.",
       "Admins können unter Kalenderarten Namen, Farbe und ganztägige Arten pflegen. Verwendete Arten lassen sich nicht löschen oder zwischen Uhrzeiten und ganztägig umstellen. Teammitglieder wünschen freie Tage; ein Admin wählt bei der Genehmigung eine ganztägige Art.",
       "Im Produktionskalender ist das Stück fest vorgegeben. Im allgemeinen Kalender kannst du Produktionen und Kategorien filtern.",
@@ -115,7 +116,7 @@ export const helpArticles: HelpArticle[] = [
     steps: [
       "Anwesenheits- und Arbeitstimer dürfen gleichzeitig laufen. Unter Anwesenheit trägst du Beginn, Ende und Pause nach. Unter Produktions- / Arbeitszeiten buchst du eine Tätigkeit mit Dauer oder Zeitraum.",
       "Pausiere den Timer bei Bedarf. Stoppen & buchen legt die Zeitbuchung an. Timer verwerfen entfernt einen ungebuchten Lauf nach Bestätigung.",
-      "Öffne eine Buchung, um sie zu bearbeiten. Für freigegebene Wochen fordert ein Admin zunächst eine Korrektur an.",
+      "Wähle bei einer Buchung Bearbeiten, um Datum, Dauer, Beginn, Ende oder Pause zu korrigieren. Alle Rollen können eigene Zeiten ändern; Admins auch Zeiten anderer Teammitglieder. Korrigierte Produktionswochen werden bei Bedarf erneut zur Prüfung geöffnet.",
       "Die Tages- und Wochensummen berücksichtigen Mitternacht. Der Wochenvergleich zeigt Anwesenheit und Tätigkeiten nebeneinander. In einer Produktion stehen nur ihre Arbeitszeiten.",
       "Reiche die vollständige Woche unter Produktions- / Arbeitszeiten zur Freigabe ein. Anwesenheit wird getrennt exportiert und gehört nicht zu dieser Freigabe.",
       "Offlineentwürfe liegen auf dem Gerät. Übernehme unzugeordnete Geräteentwürfe ausdrücklich in deinen Account und synchronisiere sie anschließend. Auf gemeinsam genutzten Geräten zuerst die Tätigkeit prüfen.",
@@ -230,8 +231,8 @@ export const helpFaq = [
     "Speichere zuerst Figur, Besetzung, Schauspieler oder Aufschrieb. Öffne danach die Galerie und wähle über Hochladen mehrere Dateien.",
   ],
   [
-    "Warum lässt sich eine freigegebene Woche nicht ändern?",
-    "Ein Admin fordert zuerst eine Korrektur an. Danach kannst du die betreffenden Buchungen berichtigen und die Woche erneut einreichen.",
+    "Kann ich Zeiten nach der Wochenfreigabe korrigieren?",
+    "Ja. Wähle Bearbeiten bei der Buchung. Die betroffene Produktionswoche wird automatisch wieder zur Prüfung geöffnet. Reiche sie danach erneut ein. Anwesenheitszeiten lassen sich unabhängig davon korrigieren.",
   ],
   [
     "Sind Offlineentwürfe schon im Theater gespeichert?",

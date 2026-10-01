@@ -64,10 +64,16 @@ export async function timesheetAction(
     if (!id) throw new HttpError(400, "Bitte wähle einen Stundenzettel.");
     if (data.status !== "approved" && data.status !== "changes_requested")
       throw new HttpError(400, "Ungültige Entscheidung.");
-    const row = await findRecord(context, id, "timesheets", tx);
+    let row = await findRecord(context, id, "timesheets", tx);
     await tx.execute(
       sql`select pg_advisory_xact_lock(hashtext(${context.departmentId + ":time:" + String(row.data.userId)}))`,
     );
+    row = await findRecord(context, id, "timesheets", tx, true);
+    if (data.version !== undefined && data.version !== row.version)
+      throw new HttpError(
+        409,
+        "Die Woche wurde inzwischen geändert. Bitte prüfe die aktuellen Zeiten.",
+      );
     const [updated] = await tx
       .update(records)
       .set({

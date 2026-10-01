@@ -86,6 +86,15 @@ Die Bereitstellung erfolgt nach den Releaseprüfungen über GitHub und die beste
 - [x] Neue Kontakte wiederverwenden; doppelte manuelle Kontakte beim Speichern verhindern.
 - [x] Bei Adminfreigabe neue Maskenteamkonten eindeutig mit bisherigen Maskenkontakten verknüpfen, einschließlich Nachnameninitialen; Produktionsrollen und Teamzuordnungen aktualisieren, Kontaktdetails erhalten.
 
+## Zeitkorrekturen und Kalenderauswahl
+
+- [x] Produktionszeiten und Anwesenheit für alle Rollen nachträglich bearbeiten; eigene Buchungen für Mitglieder, fremde Buchungen für Admins.
+- [x] Geänderte Produktionszeiten öffnen betroffene eingereichte/freigegebene Wochen automatisch zur erneuten Prüfung; Konflikte mit veralteten Freigaben abfangen.
+- [x] Beim Nachtragen das Enddatum zunächst am gewählten Starttag halten; ausdrücklich abweichende Enddaten erhalten.
+- [x] Persönlicher Kalender beginnt mit der eigenen Person; leere Auswahl zeigt keine Einträge, „Alle anzeigen“ ist ausdrücklich auswählbar.
+- [x] Teamansicht beginnt mit allen aktiven Teammitgliedern; danach die vorherige persönliche Auswahl wiederherstellen. Exporte übernehmen dieselbe Auswahl.
+- [x] Teamliste getrennt von Fachdaten zwischenspeichern und gezielt bei Änderungen invalidieren.
+
 ## QA-Nachbereitung
 
 Nach den abschließenden Liveprüfungen werden die angelegten QA-Konten, Testeinträge und Testdateien aus der produktiven Umgebung entfernt. Automatische Testdefinitionen bleiben für spätere Änderungen erhalten.

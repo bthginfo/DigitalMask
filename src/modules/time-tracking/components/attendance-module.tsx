@@ -1,6 +1,6 @@
 ﻿"use client";
 import { useMemo, useState } from "react";
-import { DoorOpen, Plus, UploadCloud } from "lucide-react";
+import { DoorOpen, Pencil, Plus, UploadCloud } from "lucide-react";
 import { PeriodPicker, periodExportFilters, weekForPeriod } from "@/components/period-picker";
 import { recordMatchesPeriod, type PeriodFilter } from "@/shared/period-filter";
 import type { DomainRecord, RecordData } from "@/shared/contracts";
@@ -34,6 +34,7 @@ export function AttendanceModule() {
     selfBooking ? workspace.user.id : workspace.members.find(isStaff)?.id || "",
   );
   const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState<DomainRecord | null>(null);
   const [offline, setOffline] = useState(false);
   const [detail, setDetail] = useState<DomainRecord | null>(null);
   const [exporting, setExporting] = useState(false);
@@ -178,7 +179,8 @@ export function AttendanceModule() {
             {entries.map((record) => (
               <button
                 key={record.id}
-                onClick={() => setDetail(record)}
+                onClick={() => setEditing(record)}
+                aria-label={`Anwesenheit vom ${dateLabel(value(record.data, "date"))} bearbeiten`}
                 className="attendance-mobile-card"
               >
                 <span className="attendance-mobile-heading">
@@ -186,6 +188,7 @@ export function AttendanceModule() {
                   <strong>{hours(num(record.data, "durationSeconds"))} h</strong>
                 </span>
                 <strong>{value(record.data, "title") || "Anwesenheit"}</strong>
+                <span className="small muted">Anwesenheit bearbeiten</span>
                 {!!value(record.data, "notes") && (
                   <span className="muted">{value(record.data, "notes")}</span>
                 )}
@@ -220,6 +223,7 @@ export function AttendanceModule() {
                   <th>Beginn / Ende</th>
                   <th>Pause</th>
                   <th>Ohne Pause</th>
+                  <th>Bearbeiten</th>
                 </tr>
               </thead>
               <tbody>
@@ -239,6 +243,11 @@ export function AttendanceModule() {
                     </td>
                     <td>{Math.round(num(record.data, "pauseSeconds") / 60)} min</td>
                     <td className="strong">{hours(num(record.data, "durationSeconds"))} h</td>
+                    <td>
+                      <Button variant="ghost" onClick={() => setEditing(record)}>
+                        <Pencil size={15} /> Bearbeiten
+                      </Button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -246,6 +255,7 @@ export function AttendanceModule() {
                 <tr>
                   <td colSpan={4}>Anwesenheit in der ausgewählten Woche</td>
                   <td>{hours(total)} h</td>
+                  <td />
                 </tr>
               </tfoot>
             </table>
@@ -260,6 +270,13 @@ export function AttendanceModule() {
         />
       )}
       {creating && <TimeBookingEditor kind="attendance" onClose={() => setCreating(false)} />}
+      {editing && (
+        <TimeBookingEditor
+          kind="attendance"
+          record={workspace.records.attendance.find((row) => row.id === editing.id) || editing}
+          onClose={() => setEditing(null)}
+        />
+      )}
       {offline && (
         <TimeBookingEditor
           kind="attendance"

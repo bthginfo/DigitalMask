@@ -1,11 +1,10 @@
 import { and, eq, ne, lt, gt, sql } from "drizzle-orm";
-import { addDays, format, parseISO } from "date-fns";
 import type { Context } from "@/platform/context";
 import type { Transaction } from "@/platform/db";
 import { records } from "@/platform/db/schema";
 import { HttpError } from "@/platform/http";
 import type { RecordData } from "@/shared/contracts";
-import { durationSeconds, localDay, splitAcrossDays, startOfLocalDay } from "./rules";
+import { durationSeconds, localDay, splitAcrossDays } from "./rules";
 export async function validateBooking(
   context: Context,
   kind: "time" | "attendance",
@@ -51,31 +50,5 @@ export async function validateBooking(
       .limit(1);
     if (overlap.length)
       throw new HttpError(409, "Diese Zeit überschneidet sich mit einer vorhandenen Buchung.");
-  }
-  if (kind === "attendance") return;
-  const days = Array.isArray(data.dayAllocations)
-    ? data.dayAllocations.map((x: unknown) => String((x as { date: string }).date))
-    : [String(data.date)];
-  const approved = await tx
-    .select({ data: records.data })
-    .from(records)
-    .where(
-      and(
-        eq(records.departmentId, context.departmentId),
-        eq(records.kind, "timesheets"),
-        eq(records.ownerId, owner),
-        sql`${records.data}->>'status'='approved'`,
-      ),
-    );
-  for (const sheet of approved) {
-    const begin = startOfLocalDay(String(sheet.data.week));
-    const end = startOfLocalDay(
-      format(addDays(parseISO(String(sheet.data.week)), 7), "yyyy-MM-dd"),
-    );
-    if (days.some((d) => startOfLocalDay(d) >= begin && startOfLocalDay(d) < end))
-      throw new HttpError(
-        409,
-        "Diese Woche ist freigegeben. Bitte fordere eine Korrektur bei einem Admin an.",
-      );
   }
 }

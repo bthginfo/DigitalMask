@@ -23,40 +23,41 @@ export function invalidateTimer(userId: string) {
   revalidateTag(`timers:${userId}`, { expire: 0 });
 }
 async function readScope(departmentId: string) {
-  const [rows, members] = await Promise.all([
-    db
-      .select()
-      .from(records)
-      .where(eq(records.departmentId, departmentId))
-      .orderBy(records.createdAt),
-    unstable_cache(
-      () =>
-        db
-          .select({
-            id: user.id,
-            name: user.name,
-            username: user.username,
-            role: memberships.role,
-            status: memberships.status,
-          })
-          .from(memberships)
-          .innerJoin(user, eq(memberships.userId, user.id))
-          .where(eq(memberships.departmentId, departmentId)),
-      ["department-team-v2", departmentId],
-      { revalidate: 3600, tags: [`team:${departmentId}`] },
-    )(),
-  ]);
-  return {
-    rows: rows.map(serialize),
-    members: members.map((m) => ({ ...m, username: m.username || "" })),
-  };
+  const rows = await db
+    .select()
+    .from(records)
+    .where(eq(records.departmentId, departmentId))
+    .orderBy(records.createdAt);
+  return rows.map(serialize);
+}
+async function readTeam(departmentId: string) {
+  const members = await unstable_cache(
+    () =>
+      db
+        .select({
+          id: user.id,
+          name: user.name,
+          username: user.username,
+          role: memberships.role,
+          status: memberships.status,
+        })
+        .from(memberships)
+        .innerJoin(user, eq(memberships.userId, user.id))
+        .where(eq(memberships.departmentId, departmentId)),
+    ["department-team-v3", departmentId],
+    { revalidate: 3600, tags: [`team:${departmentId}`] },
+  )();
+  return members.map((m) => ({ ...m, username: m.username || "" }));
 }
 export async function getWorkspace(context: Context): Promise<Workspace> {
-  const { rows, members } = await unstable_cache(
-    () => readScope(context.departmentId),
-    ["department-data-v2", context.departmentId],
-    { revalidate: 300, tags: [scopeTag(context.departmentId)] },
-  )();
+  const [rows, members] = await Promise.all([
+    unstable_cache(
+      () => readScope(context.departmentId),
+      ["department-data-v3", context.departmentId],
+      { revalidate: 300, tags: [scopeTag(context.departmentId)] },
+    )(),
+    readTeam(context.departmentId),
+  ]);
   const visibleProjects = new Set(
     rows.filter((r) => r.kind === "productions" && projectVisible(context, r)).map((r) => r.id),
   );

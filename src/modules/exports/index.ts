@@ -43,7 +43,7 @@ export async function buildExport(input: ExportInput): Promise<ExportResult> {
             ...(input.teamOnly ? { teamOnly: true } : {}),
             ...(input.generalOnly ? { generalOnly: true } : {}),
             ...(input.productionId ? { productionId: input.productionId } : {}),
-            ...(input.userIds?.length ? { userIds: input.userIds } : {}),
+            ...(input.userIds !== undefined ? { userIds: input.userIds } : {}),
             ...(input.year ? { year: input.year } : {}),
             ...(input.season ? { season: input.season } : {}),
             records: input.records,

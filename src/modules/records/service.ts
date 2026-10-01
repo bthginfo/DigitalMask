@@ -6,6 +6,7 @@ import { HttpError } from "@/platform/http";
 import { emit, auditChange, scheduleEvents } from "@/platform/events";
 import { localDay } from "@/modules/time-tracking/rules";
 import { validateBooking } from "@/modules/time-tracking/validation";
+import { reopenCorrectedWeeks } from "@/modules/time-tracking/corrections";
 import { occurrences } from "@/modules/calendar/occurrences";
 import { assertConversation } from "@/modules/chat/permissions";
 import { prepareConversation } from "@/modules/chat/conversations";
@@ -414,8 +415,6 @@ export async function saveRecord(
         .limit(1);
       if (duplicate && !existing) return serialize(duplicate);
     }
-    if (existing && kind === "time")
-      await validateRelations(context, kind, { ...existing.data }, tx, existingId);
     const related = await validateRelations(context, kind, data, tx, existingId);
     if (kind === "looks" && (data.sections !== undefined || data.actorName)) {
       data.title = lookTitle(data);
@@ -460,6 +459,7 @@ export async function saveRecord(
         })
         .returning();
     }
+    if (kind === "time") await reopenCorrectedWeeks(context, tx, existing?.data, row.data);
     await auditChange(tx, context, existing ? `${kind}.updated` : `${kind}.created`, row.id);
     if (kind === "looks" || kind === "templates")
       await tx
@@ -605,6 +605,7 @@ export async function deleteRecord(context: Context, kind: RecordKind, id: strin
           ),
         );
     await tx.delete(records).where(inArray(records.id, [id, ...attachments.map((f) => f.id)]));
+    if (kind === "time") await reopenCorrectedWeeks(context, tx, row.data);
     await auditChange(tx, context, `${kind}.deleted`, id);
   });
   invalidateWorkspace(context.departmentId);

@@ -3,6 +3,7 @@ import {
   durationSeconds,
   intervalsOverlap,
   splitAcrossDays,
+  bookingWeeks,
 } from "../src/modules/time-tracking/rules";
 describe("time booking", () => {
   it("calculates pauses without confusing decimal hours", () =>
@@ -36,4 +37,13 @@ describe("time booking", () => {
     expect(durationSeconds("2026-10-25T01:00:00+02:00", "2026-10-25T04:00:00+01:00")).toBe(14400));
   it("rejects backwards intervals", () =>
     expect(() => durationSeconds("2026-09-30T10:00Z", "2026-09-30T09:00Z")).toThrow());
+  it("finds both weeks of a booking across Sunday midnight", () => {
+    expect(
+      bookingWeeks({
+        dayAllocations: splitAcrossDays("2026-10-04T23:30:00+02:00", "2026-10-05T00:30:00+02:00"),
+      }),
+    ).toEqual(["2026-09-28", "2026-10-05"]);
+    expect(bookingWeeks({ date: "2026-10-01" })).toEqual(["2026-09-28"]);
+    expect(bookingWeeks()).toEqual([]);
+  });
 });

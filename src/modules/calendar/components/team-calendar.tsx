@@ -46,13 +46,17 @@ export function TeamCalendar({
     days.includes(localDate()) ? localDate() : days[0],
   );
   const day = days.includes(selectedDay) ? selectedDay : days[0];
-  const team = members.filter(
-    (member) => isActiveStaff(member) && (!people.length || people.includes(member.id)),
+  const team: Pick<Member, "id" | "name">[] = members.filter(
+    (member) => isActiveStaff(member) && people.includes(member.id),
   );
+  if (events.some((event) => !ids(event.extendedProps.record.data, "participantIds").length))
+    team.push({ id: "", name: "Ohne Zuordnung" });
   const matches = (person: string, date: string) =>
     events.filter(
       (event) =>
-        ids(event.extendedProps.record.data, "participantIds").includes(person) &&
+        (person
+          ? ids(event.extendedProps.record.data, "participantIds").includes(person)
+          : !ids(event.extendedProps.record.data, "participantIds").length) &&
         localDate(new Date(new Date(event.end).getTime() - 1)) >= date &&
         localDate(new Date(event.start)) <= date,
     );
@@ -124,7 +128,7 @@ export function TeamCalendar({
                           onCreate({
                             start: `${date}T09:00`,
                             end: `${date}T17:00`,
-                            participantIds: [person.id],
+                            participantIds: person.id ? [person.id] : [],
                           })
                         }
                       >

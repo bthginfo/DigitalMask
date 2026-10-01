@@ -39,6 +39,14 @@ export function TimeBookingEditor({
   const [end, setEnd] = useState(
     initial.end ? localDateTime(String(initial.end)) : `${date}T17:00`,
   );
+  const [customEndDate, setCustomEndDate] = useState(
+    Boolean(
+      initial.start &&
+      initial.end &&
+      localDateTime(String(initial.start)).slice(0, 10) !==
+        localDateTime(String(initial.end)).slice(0, 10),
+    ),
+  );
   const [minutes, setMinutes] = useState(
     Math.round((num(initial, "durationSeconds") || 1800) / 60),
   );
@@ -105,6 +113,16 @@ export function TimeBookingEditor({
             : "Buche deine Tätigkeit mit Dauer oder einem genauen Zeitraum. Dein Anwesenheitstimer läuft unabhängig davon."}{" "}
           Zeiten werden in Europe/Berlin erfasst.
         </p>
+        {record && (
+          <p className="small muted">
+            Du bearbeitest die Buchung von{" "}
+            {workspace.members.find((member) => member.id === record.data.userId)?.name ||
+              workspace.user.name}
+            .
+            {!attendance &&
+              " Falls die betroffene Woche bereits eingereicht oder freigegeben ist, wird sie zur erneuten Prüfung geöffnet."}
+          </p>
+        )}
         <label>
           {attendance ? "Bezeichnung (optional)" : "Tätigkeit"}
           <input
@@ -195,7 +213,12 @@ export function TimeBookingEditor({
                   type="datetime-local"
                   required
                   value={start}
-                  onChange={(event) => setStart(event.target.value)}
+                  onChange={(event) => {
+                    const next = event.target.value;
+                    setStart(next);
+                    if (next && !customEndDate)
+                      setEnd(`${next.slice(0, 10)}T${end.slice(11) || "17:00"}`);
+                  }}
                 />
               </label>
               <label>
@@ -205,7 +228,10 @@ export function TimeBookingEditor({
                   required
                   min={start}
                   value={end}
-                  onChange={(event) => setEnd(event.target.value)}
+                  onChange={(event) => {
+                    setEnd(event.target.value);
+                    setCustomEndDate(event.target.value.slice(0, 10) !== start.slice(0, 10));
+                  }}
                 />
               </label>
             </>
@@ -217,7 +243,14 @@ export function TimeBookingEditor({
                   type="date"
                   required
                   value={day}
-                  onChange={(event) => setDay(event.target.value)}
+                  onChange={(event) => {
+                    const next = event.target.value;
+                    setDay(next);
+                    if (next) {
+                      setStart(`${next}T${start.slice(11) || "09:00"}`);
+                      if (!customEndDate) setEnd(`${next}T${end.slice(11) || "17:00"}`);
+                    }
+                  }}
                 />
               </label>
               <label>

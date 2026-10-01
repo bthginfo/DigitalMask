@@ -79,3 +79,7 @@ Die neue Kommunikationsansicht wurde unabhängig bei 1440, 768 und 375 Pixeln in
 Die reale Konsolidierung hat vier Dublettengruppen von 30 auf 21 Kontaktpersonen reduziert. Alle 30 Produktionskontaktzuordnungen wurden innerhalb der Transaktion gegen den erwarteten Bestand geprüft; Sicherungen liegen ausschließlich lokal und werden nicht veröffentlicht. Rollen und Kontaktdetails bleiben erhalten. Bereits bestehende aktive Konten wurden ebenfalls geprüft; es gab keinen offenen eindeutigen Zuordnungsfall.
 
 Die abschließende TypeScript-Prüfung, vollständiger ESLint-Lauf, Prettier-Prüfung und der Produktionsbuild sind bestanden. Die synthetischen Konten, Datensätze, Benachrichtigungen und Testdateien wurden nach den lokalen Liveprüfungen präzise anhand ihrer protokollierten IDs bereinigt.
+
+## Zeitkorrekturen und Kalenderauswahl
+
+Der Produktionsbuild, ESLint und 20 gezielte Unit-/Exportprüfungen sind bestanden. Zwei Browserabläufe gegen den lokalen Produktionsserver prüfen persönliche/leere/gesamte Kalenderauswahl einschließlich Exporten und Rückkehr aus der Teamansicht sowie Zeitkorrekturen für Mitglied, Admin und Superadmin. Desktop und Smartphone sind abgedeckt; ausdrücklich abweichende Enddaten bleiben erhalten, ansonsten folgt das Ende dem Starttag. Änderungen an Produktionszeiten öffnen betroffene Wochen erneut, unverändertes Speichern und Anwesenheitskorrekturen erhalten deren Freigabe. Veraltete Freigabeversionen werden abgewiesen, der ursprüngliche Besitzer einer Buchung bleibt erhalten.

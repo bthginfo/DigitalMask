@@ -1,7 +1,7 @@
 "use client";
 import { PeriodPicker, periodExportFilters } from "@/components/period-picker";
 import { recordMatchesPeriod, type PeriodFilter } from "@/shared/period-filter";
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
@@ -22,6 +22,7 @@ import {
   weekStart,
 } from "@/shared/client-api";
 import { isActiveStaff } from "@/shared/client-members";
+import { calendarEventSelected } from "@/shared/calendar-selection";
 import { useWorkspace } from "../workspace-context";
 import { Badge, Button, ErrorMessage, ExportButton, PageHeader } from "../ui";
 import { ResourceEditor } from "../resource-editor";
@@ -77,6 +78,12 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
   const [people, setPeople] = useState<string[]>(
     workspace.user.role === "superadmin" ? [] : [workspace.user.id],
   );
+  const [showAll, setShowAll] = useState(false);
+  const personalSelection = useRef<{ people: string[]; showAll: boolean } | null>(null);
+  const staff = workspace.members.filter(isActiveStaff);
+  const visiblePeople = showAll
+    ? staff.map((member) => member.id)
+    : people.filter((id) => staff.some((member) => member.id === id));
   const [category, setCategory] = useState("");
   const [leaveCategories, setLeaveCategories] = useState<Record<string, string>>({});
   const absenceCategories = categoryOptions.filter((option) => option.allDay);
@@ -106,26 +113,14 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
       (!project || x.data.productionId === project) &&
       recordMatchesPeriod(x, { season: period.season }, workspace.records.productions) &&
       (!category || x.data.category === category) &&
-      (!people.length || ids(x.data, "participantIds").some((id) => people.includes(id))),
+      calendarEventSelected(x.data, visiblePeople, showAll),
   );
-  const expanded = useMemo(
-    () =>
-      expandEvents(
-        filtered,
-        view === "team" ? teamStart : range.start,
-        view === "team" ? teamEnd : range.end,
-        workspace.records.productions,
-        workspace.records.calendarCategories,
-      ),
-    [
-      filtered,
-      range,
-      teamStart,
-      teamEnd,
-      view,
-      workspace.records.productions,
-      workspace.records.calendarCategories,
-    ],
+  const expanded = expandEvents(
+    filtered,
+    view === "team" ? teamStart : range.start,
+    view === "team" ? teamEnd : range.end,
+    workspace.records.productions,
+    workspace.records.calendarCategories,
   );
   const overlaps = expanded.filter((event, i) =>
     expanded
@@ -157,6 +152,14 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
     .filter((x) => admin || x.data.userId === workspace.user.id)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const changeView = (next: string) => {
+    if (next === "team" && view !== "team") {
+      personalSelection.current = { people, showAll };
+      setShowAll(true);
+    } else if (next !== "team" && view === "team" && personalSelection.current) {
+      setPeople(personalSelection.current.people);
+      setShowAll(personalSelection.current.showAll);
+      personalSelection.current = null;
+    }
     setView(next);
     if (next !== "team")
       calendar.current?.getApi().changeView(
@@ -203,7 +206,9 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
         {admin && (
           <Button
             variant="primary"
-            onClick={() => setEditor({ kind: "events", defaults: { participantIds: people } })}
+            onClick={() =>
+              setEditor({ kind: "events", defaults: { participantIds: visiblePeople } })
+            }
           >
             <Plus size={16} />
             Termin
@@ -227,22 +232,40 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
         <aside className="calendar-filters">
           <h3>Kalender einblenden</h3>
           {workspace.user.role !== "superadmin" && (
-            <button className="text-button" onClick={() => setPeople([workspace.user.id])}>
+            <button
+              className="text-button"
+              onClick={() => {
+                setShowAll(false);
+                setPeople([workspace.user.id]);
+              }}
+            >
               Nur meinen Kalender
             </button>
           )}
-          {workspace.members.filter(isActiveStaff).map((member) => (
+          <button
+            className="text-button"
+            aria-pressed={showAll}
+            onClick={() => {
+              setShowAll(!showAll);
+              if (showAll)
+                setPeople(workspace.user.role === "superadmin" ? [] : [workspace.user.id]);
+            }}
+          >
+            Alle anzeigen
+          </button>
+          {staff.map((member) => (
             <label className="check-label" key={member.id}>
               <input
                 type="checkbox"
-                checked={people.includes(member.id)}
-                onChange={(event) =>
+                checked={visiblePeople.includes(member.id)}
+                onChange={(event) => {
+                  setShowAll(false);
                   setPeople(
                     event.target.checked
-                      ? [...people, member.id]
-                      : people.filter((x) => x !== member.id),
-                  )
-                }
+                      ? [...visiblePeople, member.id]
+                      : visiblePeople.filter((x) => x !== member.id),
+                  );
+                }}
               />
               <span className="calendar-person">
                 {member.name}
@@ -250,7 +273,13 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
               </span>
             </label>
           ))}
-          <p className="small muted">Ohne Auswahl werden alle Kalender angezeigt.</p>
+          <p className="small muted" aria-live="polite">
+            {showAll
+              ? "Gesamtes Team · inklusive Terminen ohne Personenzuordnung"
+              : visiblePeople.length
+                ? `${visiblePeople.length} Kalender ausgewählt`
+                : "Kein Kalender ausgewählt. Wähle eine Person oder Alle anzeigen."}
+          </p>
           <label>
             Produktion
             <select
@@ -387,7 +416,7 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
             <TeamCalendar
               events={expanded}
               members={workspace.members}
-              people={people}
+              people={visiblePeople}
               days={teamDays}
               month={teamSpan === "month"}
               admin={admin}
@@ -436,7 +465,10 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
               select={(info) => {
                 const start = info.allDay ? `${localDate(info.start)}T09:00` : info.startStr;
                 const end = info.allDay ? `${localDate(info.start)}T17:00` : info.endStr;
-                setEditor({ kind: "events", defaults: { start, end, participantIds: people } });
+                setEditor({
+                  kind: "events",
+                  defaults: { start, end, participantIds: visiblePeople },
+                });
               }}
               eventDrop={(info) => {
                 const record = info.event.extendedProps.record as DomainRecord;
@@ -583,11 +615,8 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
             from: view === "team" ? teamStart : exportDates.from,
             to: view === "team" ? teamDays[teamDays.length - 1] : exportDates.to,
             ...(project ? { productionId: project } : {}),
-            ...(people.length === 1
-              ? { userId: people[0] }
-              : people.length > 1
-                ? { userIds: people.join(",") }
-                : {}),
+            ...(!showAll ? { userIds: visiblePeople.join(",") } : {}),
+            ...(category ? { category } : {}),
           }}
           onClose={() => setExporting(false)}
         />

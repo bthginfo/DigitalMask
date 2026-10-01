@@ -35,7 +35,7 @@ export function selectExportRecords(
     if (input.teamOnly && record.data.productionId) return false;
     if (input.generalOnly && (record.data.productionId || record.data.conversationId)) return false;
     if (!recordMatchesPeriod(record, input, input.references?.productions || [])) return false;
-    if (input.userIds?.length) {
+    if (input.userIds !== undefined) {
       if (
         record.kind === "events" &&
         !(

@@ -1,4 +1,6 @@
 import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
+import { format, parseISO, startOfWeek } from "date-fns";
+import type { RecordData } from "@/shared/contracts";
 export const THEATER_ZONE = "Europe/Berlin";
 export function durationSeconds(start: string, end: string, pause = 0) {
   const a = new Date(start).getTime(),
@@ -17,6 +19,17 @@ export function localDay(value: string | Date) {
 }
 export function startOfLocalDay(day: string) {
   return fromZonedTime(`${day}T00:00:00`, THEATER_ZONE);
+}
+export function bookingWeeks(data?: RecordData): string[] {
+  if (!data) return [];
+  const days = Array.isArray(data.dayAllocations)
+    ? data.dayAllocations.map((day) => String((day as { date: string }).date))
+    : [String(data.date)];
+  return [
+    ...new Set(
+      days.map((day) => format(startOfWeek(parseISO(day), { weekStartsOn: 1 }), "yyyy-MM-dd")),
+    ),
+  ];
 }
 export function splitAcrossDays(
   start: string,

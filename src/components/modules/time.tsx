@@ -1,6 +1,6 @@
 "use client";
 import { useMemo, useState } from "react";
-import { Check, Plus, UploadCloud } from "lucide-react";
+import { Check, Pencil, Plus, UploadCloud } from "lucide-react";
 import { PeriodPicker, periodExportFilters, weekForPeriod } from "@/components/period-picker";
 import { recordMatchesPeriod, type PeriodFilter } from "@/shared/period-filter";
 import { categoriesFor, categoryName } from "@/shared/domain-categories";
@@ -52,6 +52,7 @@ export function WorkTimeModule({
   );
   const [project, setProject] = useState(productionId);
   const [editor, setEditor] = useState(false);
+  const [editing, setEditing] = useState<DomainRecord | null>(null);
   const [detail, setDetail] = useState<DomainRecord | null>(null);
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState("");
@@ -293,6 +294,7 @@ export function WorkTimeModule({
                 <th>Produktion</th>
                 <th>Dauer</th>
                 <th>Pause</th>
+                <th>Bearbeiten</th>
               </tr>
             </thead>
             <tbody>
@@ -317,13 +319,18 @@ export function WorkTimeModule({
                   </td>
                   <td className="strong">{hours(num(row.data, "durationSeconds"))} h</td>
                   <td>{Math.round(num(row.data, "pauseSeconds") / 60)} min</td>
+                  <td>
+                    <Button variant="ghost" onClick={() => setEditing(row)}>
+                      <Pencil size={15} /> Bearbeiten
+                    </Button>
+                  </td>
                 </tr>
               ))}
             </tbody>
             <tfoot>
               <tr>
                 <td colSpan={3}>Wochensumme</td>
-                <td colSpan={2}>{hours(total)} h</td>
+                <td colSpan={3}>{hours(total)} h</td>
               </tr>
             </tfoot>
           </table>
@@ -365,7 +372,10 @@ export function WorkTimeModule({
                           disabled={busy}
                           onClick={() =>
                             void run(() =>
-                              action("timesheet-decide", sheet.id, { status: "approved" }),
+                              action("timesheet-decide", sheet.id, {
+                                status: "approved",
+                                version: sheet.version,
+                              }),
                             )
                           }
                         >
@@ -401,6 +411,13 @@ export function WorkTimeModule({
           lockedProductionId={productionId || undefined}
           defaults={{ productionId: project }}
           onClose={() => setEditor(false)}
+        />
+      )}
+      {editing && (
+        <ResourceEditor
+          kind="time"
+          record={workspace.records.time.find((row) => row.id === editing.id) || editing}
+          onClose={() => setEditing(null)}
         />
       )}
       {detail && <RecordDetail record={detail} onClose={() => setDetail(null)} />}

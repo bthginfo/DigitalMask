@@ -45,12 +45,16 @@ export async function GET(request: Request) {
     if ((from && !/^\d{4}-\d{2}-\d{2}$/.test(from)) || (to && !/^\d{4}-\d{2}-\d{2}$/.test(to)))
       throw new HttpError(400, "Ungültiger Zeitraum.");
     if (from && to && to < from) throw new HttpError(400, "Bitte prüfe den Zeitraum.");
-    const userIds = query.get("userIds")?.split(",").filter(Boolean) || [];
+    const userIds = query.has("userIds")
+      ? query.get("userIds")!.split(",").filter(Boolean)
+      : userId
+        ? [userId]
+        : undefined;
     const year = query.has("year")
       ? z.coerce.number().int().min(1900).max(2200).parse(query.get("year"))
       : undefined;
     const season = query.get("season") ? z.string().max(200).parse(query.get("season")) : undefined;
-    if (userIds.length > 100) throw new HttpError(400, "Zu viele Kalender ausgewählt.");
+    if ((userIds?.length || 0) > 100) throw new HttpError(400, "Zu viele Kalender ausgewählt.");
     if (id) selected = selected.filter((r) => r.id === id);
     selected = selectExportRecords({
       kind,
@@ -68,10 +72,12 @@ export async function GET(request: Request) {
           ? listValue(r.data.participantIds).includes(userId)
           : r.data.userId === userId,
       );
-    if (userIds.length && kind === "events")
+    if (userIds !== undefined && kind === "events")
       selected = selected.filter((r) =>
         listValue(r.data.participantIds).some((id) => userIds.includes(id)),
       );
+    if (kind === "events" && query.get("category"))
+      selected = selected.filter((record) => record.data.category === query.get("category"));
     if (kind !== "events")
       selected = selected.filter((r) => {
         const dates =
