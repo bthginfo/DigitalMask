@@ -188,7 +188,7 @@ Die persönliche Wochenansicht zeigt Tage, Tätigkeiten und Projekte sowie Tages
 
 Jede Produktion erhält einen Chat für Projektmitglieder. Ein Gewerkkanal enthält allgemeine Informationen. Nachrichten sind paginiert; eigene Bearbeitung und Löschung sowie Moderation richten sich nach Rechten. Anhänge verwenden dieselbe private Dateiablage wie die übrige Anwendung.
 
-FüNeue Nachrichten und ?nderungen anderer Personen erscheinen ?ber eine gemeinsame SSE-Verbindung mit Upstash Redis. ?nderungssignale b?ndeln das Nachladen des autorisierten, gecachten Workspace; Hintergrundtabs pausieren und holen verpasste ?nderungen beim Zur?ckkehren nach. Es gibt keine regelm??igen Chat- oder Workspace-Abfragen. Die Nachrichten bleiben in PostgreSQL, und alle Zugriffe pr?fen weiterhin die jeweiligen Kanalrechte.
+Neue Nachrichten und Änderungen anderer Personen erscheinen über eine gemeinsame SSE-Verbindung mit Upstash Redis. Änderungssignale bündeln das Nachladen des autorisierten, gecachten Workspace; Hintergrundtabs pausieren und holen verpasste Änderungen beim Zurückkehren nach. Es gibt keine regelmäßigen Chat- oder Workspace-Abfragen. Die Nachrichten bleiben in PostgreSQL, und alle Zugriffe prüfen weiterhin die jeweiligen Kanalrechte.
 
 Uploads erhalten kurz gültige, serverseitig autorisierte Berechtigungen, Größenlimits und erlaubte Dateitypen. Metadaten und Uploadabschluss werden verifiziert. Bilddateien werden komprimiert bzw. in geeigneten Größen vorgehalten. Nicht benötigte Standortmetadaten werden entfernt. SVG und ausführbare Inhalte werden nicht als beliebige Nutzerbilder akzeptiert. Downloads prüfen die Berechtigung auf den tatsächlichen Fachdatenbezug, nicht nur auf eine übergebene Datei-ID. Nicht abgeschlossene Uploads und verwaiste Assets werden bereinigt.
 
@@ -267,8 +267,8 @@ Der gewünschte Superadmin-Benutzername, die tatsächliche Excel-Farblegende und
 
 Die Quellen wurden für die Planung geprüft. Verfügbarkeit, Preise und Versionsdetails werden bei der tatsächlichen Einrichtung erneut geprüft.
 
-## ?ffentliche Teamkan?le und Spielzeit-Voreinstellung
+## Öffentliche Teamkanäle und Spielzeit-Voreinstellung
 
-Teamkan?le verwenden die bestehende Record-Art `conversations` mit `mode: team`. Sie geh?ren zum Gewerk und speichern keine feste Teilnehmerliste. Der autorisierte Workspace und alle Detail-/Nachrichten-/Dateizugriffe pr?fen das Gewerk; private Direkt- und Gruppenchats behalten ihre Teilnehmerpr?fung. Admins erstellen und verwalten Teamkan?le. Die Chatart ist unver?nderbar, damit private Verl?ufe nicht ?ffentlich werden. Benachrichtigungen ermitteln die aktiven Mitarbeitenden beim Versand, ohne zus?tzliche SQL-Abfragen beim Lesen oder regelm??iges Polling.
+Teamkanäle verwenden die bestehende Record-Art `conversations` mit `mode: team`. Sie gehören zum Gewerk und speichern keine feste Teilnehmerliste. Der autorisierte Workspace und alle Detail-/Nachrichten-/Dateizugriffe prüfen das Gewerk; private Direkt- und Gruppenchats behalten ihre Teilnehmerprüfung. Admins erstellen und verwalten Teamkanäle. Die Chatart ist unveränderbar, damit private Verläufe nicht öffentlich werden. Benachrichtigungen ermitteln die aktiven Mitarbeitenden beim Versand, ohne zusätzliche SQL-Abfragen beim Lesen oder regelmäßiges Polling.
 
-Kalender und Zeitnachweise w?hlen die aktuelle Spielzeit von August bis Juli aus bereits geladenen Daten. Zeitnachweise filtern die tats?chlichen lokalen Tagesaufteilungen, Kalender die Ereignisintervalle; Druck-/Datenexporte verwenden dieselben Zeitraumgrenzen. Ein gespeichertes Produktions-Spielzeitlabel wird f?r die Auswahl wiederverwendet. Die Filter verursachen keine Datenbankabfragen.
+Kalender und Zeitnachweise wählen die aktuelle Spielzeit von August bis Juli aus bereits geladenen Daten. Zeitnachweise filtern die tatsächlichen lokalen Tagesaufteilungen, Kalender die Ereignisintervalle; Druck-/Datenexporte verwenden dieselben Zeitraumgrenzen. Ein gespeichertes Produktions-Spielzeitlabel wird für die Auswahl wiederverwendet. Die Filter verursachen keine Datenbankabfragen.

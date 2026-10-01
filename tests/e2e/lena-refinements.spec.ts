@@ -55,6 +55,27 @@ async function mock(page: Page, role: "admin" | "user" = "admin") {
       durationSeconds: 28800,
     }),
   );
+  workspace.records.attendance.push(
+    row("attendance", "other-person", {
+      userId: "qa-user",
+      date: "2026-09-30",
+      durationSeconds: 36000,
+    }),
+    row("attendance", "previous-week", {
+      userId: workspace.user.id,
+      date: "2026-09-26",
+      durationSeconds: 36000,
+    }),
+    row("attendance", "overnight-boundary", {
+      userId: workspace.user.id,
+      date: "2026-09-27",
+      durationSeconds: 5400,
+      dayAllocations: [
+        { date: "2026-09-27", seconds: 3600 },
+        { date: "2026-09-28", seconds: 1800 },
+      ],
+    }),
+  );
   workspace.records.conversations.push(
     row("conversations", "team", { title: "Werkstatt", mode: "team", participantIds: [] }),
   );
@@ -66,6 +87,27 @@ async function mock(page: Page, role: "admin" | "user" = "admin") {
       const body = route.request().postDataJSON().data;
       writes.push(body);
       const record = row("conversations", "new-team", body);
+      workspace.records.attendance.push(
+        row("attendance", "other-person", {
+          userId: "qa-user",
+          date: "2026-09-30",
+          durationSeconds: 36000,
+        }),
+        row("attendance", "previous-week", {
+          userId: workspace.user.id,
+          date: "2026-09-26",
+          durationSeconds: 36000,
+        }),
+        row("attendance", "overnight-boundary", {
+          userId: workspace.user.id,
+          date: "2026-09-27",
+          durationSeconds: 5400,
+          dayAllocations: [
+            { date: "2026-09-27", seconds: 3600 },
+            { date: "2026-09-28", seconds: 1800 },
+          ],
+        }),
+      );
       workspace.records.conversations.push(record);
       return route.fulfill({ json: record });
     }
@@ -93,9 +135,9 @@ for (const width of [1440, 768, 375]) {
       await expect(
         page.getByText("Dein Tag hinter der Bühne. Alles Wichtige an einem Ort.", { exact: true }),
       ).toHaveCount(0);
-      await expect(page.locator(".hours-summary strong")).toHaveText("1 h");
-      await page.getByRole("button", { name: "Gesamt", exact: true }).click();
-      await expect(page.locator(".hours-summary strong")).toHaveText("3 h");
+      await expect(page.locator(".hours-summary strong")).toHaveText("8,5 h");
+      await expect(page.locator(".hours-summary")).toContainText("Anwesenheit diese Woche");
+      await expect(page.getByRole("button", { name: "Gesamt", exact: true })).toHaveCount(0);
       expect(
         await page
           .locator(".today-notifications")

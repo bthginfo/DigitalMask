@@ -106,7 +106,7 @@ Die Bereitstellung erfolgt nach den Releaseprüfungen über GitHub und die beste
 ## Rückmeldungen von Lena und zusätzliche Teamkanäle
 
 - [x] Kurze Beschreibungstexte unter Seitenüberschriften entfernen; Mitteilungen auf der Startseite nach oben ziehen.
-- [x] Persönliche Vorstellungen der nächsten sieben Tage zählen und Arbeitsstunden zwischen Woche/Gesamt umschalten.
+- [x] Persönliche Vorstellungen der nächsten sieben Tage zählen und eigene Anwesenheitsstunden der aktuellen Woche als KPI anzeigen; kein Gesamtstunden-Switch.
 - [x] Spielzeit-/Jahresfilter für Kalender, Teamboard und Zeitnachweise kompakter anzeigen; Kalender und Zeitnachweise mit aktueller Spielzeit öffnen.
 - [x] Offline-Vormerken nur ohne Internet anbieten, gespeicherte Entwürfe weiterhin synchronisierbar halten.
 - [x] Kommunikation in der mobilen Schnellnavigation und Kontaktverzeichnis als Ansprechpersonen benennen.

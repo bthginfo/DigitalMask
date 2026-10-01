@@ -14,6 +14,7 @@ import {
   hours,
   ids,
   localDate,
+  shiftDate,
   timeAllocations,
   value,
   weekStart,
@@ -27,11 +28,11 @@ import { expandEvents } from "./calendar";
 import { statusLabels } from "../resource-fields";
 export function TodayModule({ navigate }: { navigate: (module: string) => void }) {
   const { workspace, action, notify } = useWorkspace();
-  const [hoursPeriod, setHoursPeriod] = useState<"week" | "total">("week");
   const [detail, setDetail] = useState<DomainRecord | null>(null);
   const [now] = useState(Date.now);
   const today = localDate(new Date(now));
   const week = weekStart();
+  const weekEnd = shiftDate(week, 6);
   const myTasks = workspace.records.tasks.filter(
     (x) => ids(x.data, "assigneeIds").includes(workspace.user.id) && x.data.status !== "done",
   );
@@ -52,11 +53,11 @@ export function TodayModule({ navigate }: { navigate: (module: string) => void }
       event.extendedProps.record.data.category === "performance" &&
       new Date(event.start).getTime() >= now,
   );
-  const bookedDays = workspace.records.time
+  const attendanceDays = (workspace.records.attendance || [])
     .filter((x) => x.data.userId === workspace.user.id)
     .flatMap((x) => timeAllocations(x.data));
-  const total = bookedDays
-    .filter((day) => hoursPeriod === "total" || (day.date >= week && day.date <= today))
+  const total = attendanceDays
+    .filter((day) => day.date >= week && day.date <= weekEnd)
     .reduce((sum, day) => sum + day.seconds, 0);
   const notices = workspace.records.notifications.filter(
     (x) => !x.data.read && x.data.userId === workspace.user.id,
@@ -111,7 +112,7 @@ export function TodayModule({ navigate }: { navigate: (module: string) => void }
           <button
             className="summary-hours-action"
             onClick={() => navigate("time")}
-            aria-label="Zeitbuchungen öffnen"
+            aria-label={`Anwesenheit diese Woche: ${hours(total)} Stunden. Anwesenheit öffnen`}
           >
             <span className="summary-icon coral">
               <Clock3 size={21} />
@@ -120,30 +121,10 @@ export function TodayModule({ navigate }: { navigate: (module: string) => void }
               <strong>
                 {hours(total)} <small>h</small>
               </strong>
-              <span>{hoursPeriod === "week" ? "diese Woche gebucht" : "insgesamt gebucht"}</span>
+              <span>Anwesenheit diese Woche</span>
             </div>
             <ChevronRight size={17} />
           </button>
-          <div
-            className="hours-period-switch"
-            role="group"
-            aria-label="Zeitraum der gebuchten Stunden"
-          >
-            <button
-              type="button"
-              aria-pressed={hoursPeriod === "week"}
-              onClick={() => setHoursPeriod("week")}
-            >
-              Woche
-            </button>
-            <button
-              type="button"
-              aria-pressed={hoursPeriod === "total"}
-              onClick={() => setHoursPeriod("total")}
-            >
-              Gesamt
-            </button>
-          </div>
         </div>
       </div>
       <div className="today-notifications">
