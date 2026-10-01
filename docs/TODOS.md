@@ -114,6 +114,16 @@ Die Bereitstellung erfolgt nach den Releaseprüfungen über GitHub und die beste
 - [x] Admins können öffentliche Teamkanäle anlegen, umbenennen und archivieren; private Chats bleiben unverändert geschützt.
 - [x] Hilfe/Einführung aktualisieren; Rechte, Spielzeitgrenzen, Exporte und Ansichten auf Desktop, Tablet und Smartphone prüfen.
 
+## Kalender auf Smartphones
+
+- [x] Teammonat und Teamwoche mobil als vertrautes Raster mit sieben Wochentagen statt breiter Personenspalte.
+- [x] Tagesauswahl zeigt vollständige Namen, Zeiten, Kategorien und Produktionsangaben; Gruppentermine einmal darstellen.
+- [x] Kalenderfilter mobil zunächst einklappen und eigene/alle Kalender schnell auswählbar halten.
+- [x] Persönlichen Monatskalender lesbarer machen und die gewählte Tagesliste bei Navigation passend halten.
+- [x] Teammonat mit aktuellem Monat öffnen, auch wenn die laufende Woche im vorigen Monat beginnt.
+- [x] Bestehende Kalenderrechte und Exportfilter erhalten; keine zusätzlichen Datenbankabfragen.
+- [x] Mobile Kopfaktionen kompakt halten; auch volle Monate mit sechs Wochen auf kleinen Displays prüfen, einschließlich Dark Mode und unabhängiger Designbewertung.
+
 ## QA-Nachbereitung
 
 Nach den abschließenden Liveprüfungen werden die angelegten QA-Konten, Testeinträge und Testdateien aus der produktiven Umgebung entfernt. Automatische Testdefinitionen bleiben für spätere Änderungen erhalten.

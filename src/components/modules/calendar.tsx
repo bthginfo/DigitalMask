@@ -6,7 +6,7 @@ import {
   recordMatchesPeriod,
   type PeriodFilter,
 } from "@/shared/period-filter";
-import { useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
@@ -15,7 +15,14 @@ import interactionPlugin from "@fullcalendar/interaction";
 import deLocale from "@fullcalendar/core/locales/de";
 import luxonPlugin from "@fullcalendar/luxon3";
 import { occurrences } from "@/modules/calendar/occurrences";
-import { AlertTriangle, ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import {
+  AlertTriangle,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  SlidersHorizontal,
+} from "lucide-react";
 import type { DomainRecord, Member } from "@/shared/contracts";
 import { canManageRecord } from "@/shared/record-permissions";
 import {
@@ -42,6 +49,7 @@ import {
 } from "@/modules/calendar/components/client-calendar";
 import { CalendarCategoriesDialog } from "@/modules/calendar/components/categories-dialog";
 import { TeamCalendar } from "@/modules/calendar/components/team-calendar";
+import { MobileDayAgenda } from "@/modules/calendar/components/mobile-day-agenda";
 import { statusLabels } from "../resource-fields";
 export function expandEvents(
   records: DomainRecord[],
@@ -79,12 +87,24 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
   const { workspace, save, action, busy } = useWorkspace();
   const admin = workspace.user.role !== "user";
   const calendar = useRef<FullCalendar>(null);
+  const actionsMenu = useRef<HTMLDetailsElement>(null);
+  const [mobile, setMobile] = useState(false);
+  useEffect(() => {
+    const query = window.matchMedia("(max-width: 760px)");
+    const update = () => setMobile(query.matches);
+    update();
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
   const [period, setPeriod] = useState<PeriodFilter>(() => ({
     season: seasonForDate(workspace.records.productions),
   }));
   const [view, setView] = useState("month");
   const [teamSpan, setTeamSpan] = useState("week");
   const [categoriesOpen, setCategoriesOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [mobileDay, setMobileDay] = useState(localDate());
+  const filtersId = useId();
   const categoryOptions = calendarCategories(workspace);
   const [people, setPeople] = useState<string[]>(
     workspace.user.role === "superadmin" ? [] : [workspace.user.id],
@@ -109,7 +129,7 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
   }));
   const [exportDates, setExportDates] = useState(() => ({ from: localDate(), to: localDate() }));
   const [title, setTitle] = useState("");
-  const [teamDate, setTeamDate] = useState(weekStart());
+  const [teamDate, setTeamDate] = useState(localDate());
   const [editor, setEditor] = useState<{
     kind: "events" | "leave";
     defaults?: Record<string, unknown>;
@@ -117,7 +137,7 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
   const [detail, setDetail] = useState<DomainRecord | null>(null);
   const [error, setError] = useState("");
   const [exporting, setExporting] = useState(false);
-  const teamStart = teamSpan === "month" ? monthStart(teamDate) : teamDate;
+  const teamStart = teamSpan === "month" ? monthStart(teamDate) : weekStart(instantDate(teamDate));
   const teamEnd = teamSpan === "month" ? shiftMonth(teamStart, 1) : shiftDate(teamStart, 7);
   const filtered = workspace.records.events.filter(
     (x) =>
@@ -211,17 +231,19 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
     (_, i) => shiftDate(teamStart, i),
   );
   return (
-    <>
+    <div className="calendar-module">
       <PageHeader
         eyebrow="DEIN DIENSTPLAN. GEMEINSAM GEPLANT."
         title="Kalender"
         description="Eigene Dienste, Teamkalender und freie Tage im Überblick."
       >
-        <ExportButton onClick={() => setExporting(true)} />
-        {workspace.user.role !== "superadmin" && (
-          <Button onClick={() => setEditor({ kind: "leave" })}>Freien Tag wünschen</Button>
-        )}
-        {admin && <Button onClick={() => setCategoriesOpen(true)}>Kalenderarten</Button>}
+        <div className="calendar-desktop-actions">
+          <ExportButton onClick={() => setExporting(true)} />
+          {workspace.user.role !== "superadmin" && (
+            <Button onClick={() => setEditor({ kind: "leave" })}>Freien Tag wünschen</Button>
+          )}
+          {admin && <Button onClick={() => setCategoriesOpen(true)}>Kalenderarten</Button>}
+        </div>
         <Button
           variant="primary"
           onClick={() => setEditor({ kind: "events", defaults: { participantIds: visiblePeople } })}
@@ -229,37 +251,76 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
           <Plus size={16} />
           Termin
         </Button>
+        <details
+          ref={actionsMenu}
+          className="calendar-mobile-actions"
+          onKeyDown={(event) => {
+            if (event.key === "Escape") {
+              actionsMenu.current?.removeAttribute("open");
+              actionsMenu.current?.querySelector("summary")?.focus();
+            }
+          }}
+        >
+          <summary className="button">
+            Aktionen
+            <ChevronDown size={14} />
+          </summary>
+          <div className="calendar-action-menu">
+            <ExportButton
+              onClick={() => {
+                actionsMenu.current?.removeAttribute("open");
+                setExporting(true);
+              }}
+            />
+            {workspace.user.role !== "superadmin" && (
+              <Button
+                onClick={() => {
+                  actionsMenu.current?.removeAttribute("open");
+                  setEditor({ kind: "leave" });
+                }}
+              >
+                Freien Tag wünschen
+              </Button>
+            )}
+            {admin && (
+              <Button
+                onClick={() => {
+                  actionsMenu.current?.removeAttribute("open");
+                  setCategoriesOpen(true);
+                }}
+              >
+                Kalenderarten
+              </Button>
+            )}
+          </div>
+        </details>
       </PageHeader>
-      <PeriodPicker
-        compact
-        records={workspace.records.events}
-        productions={workspace.records.productions}
-        value={period}
-        onChange={(next) => {
-          setPeriod(next);
-          if (next.year && next.year !== period.year) {
-            const bounds = seasonBounds(next.season);
-            const date =
-              bounds && Number(bounds.from.slice(0, 4)) === next.year
-                ? bounds.from
-                : next.year + "-01-01";
-            calendar.current?.getApi().gotoDate(date);
-            setTeamDate(teamSpan === "month" ? monthStart(date) : weekStart(instantDate(date)));
-          } else if (next.season && next.season !== period.season) {
-            const bounds = seasonBounds(next.season);
-            const today = localDate();
-            const date = bounds
-              ? today >= bounds.from && today < bounds.to
-                ? today
-                : bounds.from
-              : today;
-            calendar.current?.getApi().gotoDate(date);
-            setTeamDate(teamSpan === "month" ? monthStart(date) : weekStart(instantDate(date)));
-          }
-        }}
-      />
+      <div className="calendar-mobile-selection">
+        <button
+          className="calendar-filter-toggle"
+          aria-expanded={filtersOpen}
+          aria-controls={filtersId}
+          onClick={() => setFiltersOpen(!filtersOpen)}
+        >
+          <SlidersHorizontal size={16} />
+          <span>{showAll ? "Gesamtes Team" : `${visiblePeople.length} Kalender`}</span>
+          {(category || project) && (
+            <span className="calendar-filter-dot" aria-label="Weitere Filter aktiv" />
+          )}
+        </button>
+        <button
+          className="calendar-all-toggle"
+          aria-pressed={showAll}
+          onClick={() => {
+            setShowAll(!showAll);
+            if (showAll) setPeople(workspace.user.role === "superadmin" ? [] : [workspace.user.id]);
+          }}
+        >
+          {showAll ? (workspace.user.role === "superadmin" ? "Auswahl" : "Nur ich") : "Alle"}
+        </button>
+      </div>
       <div className="calendar-layout">
-        <aside className="calendar-filters">
+        <aside id={filtersId} className={`calendar-filters${filtersOpen ? " is-open" : ""}`}>
           <h3>Kalender einblenden</h3>
           {workspace.user.role !== "superadmin" && (
             <button
@@ -336,6 +397,34 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
               ))}
             </select>
           </label>
+          <PeriodPicker
+            compact
+            records={workspace.records.events}
+            productions={workspace.records.productions}
+            value={period}
+            onChange={(next) => {
+              setPeriod(next);
+              if (next.year && next.year !== period.year) {
+                const bounds = seasonBounds(next.season);
+                const date =
+                  bounds && Number(bounds.from.slice(0, 4)) === next.year
+                    ? bounds.from
+                    : next.year + "-01-01";
+                calendar.current?.getApi().gotoDate(date);
+                setTeamDate(date);
+              } else if (next.season && next.season !== period.season) {
+                const bounds = seasonBounds(next.season);
+                const today = localDate();
+                const date = bounds
+                  ? today >= bounds.from && today < bounds.to
+                    ? today
+                    : bounds.from
+                  : today;
+                calendar.current?.getApi().gotoDate(date);
+                setTeamDate(date);
+              }
+            }}
+          />
           <div className="calendar-legend">
             {categoryOptions.map(({ key, color, name }) => (
               <span key={key}>
@@ -376,9 +465,7 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
               </button>
               <Button
                 onClick={() =>
-                  view === "team"
-                    ? setTeamDate(teamSpan === "month" ? monthStart(localDate()) : weekStart())
-                    : calendar.current?.getApi().today()
+                  view === "team" ? setTeamDate(localDate()) : calendar.current?.getApi().today()
                 }
               >
                 Heute
@@ -424,9 +511,6 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
                   className={teamSpan === key ? "active" : ""}
                   onClick={() => {
                     setTeamSpan(key);
-                    setTeamDate(
-                      key === "month" ? monthStart(teamDate) : weekStart(instantDate(teamDate)),
-                    );
                   }}
                 >
                   {label}
@@ -455,81 +539,147 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
               onCreate={(defaults) => setEditor({ kind: "events", defaults })}
             />
           ) : (
-            <FullCalendar
-              ref={calendar}
-              plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin, luxonPlugin]}
-              initialView={
-                view === "week"
-                  ? "timeGridWeek"
-                  : view === "day"
-                    ? "timeGridDay"
-                    : view === "agenda"
-                      ? "listMonth"
-                      : "dayGridMonth"
-              }
-              locale={deLocale}
-              timeZone="Europe/Berlin"
-              firstDay={1}
-              headerToolbar={false}
-              height="auto"
-              nowIndicator
-              dayMaxEvents={3}
-              selectable={true}
-              editable={true}
-              eventStartEditable={true}
-              events={expanded}
-              datesSet={(info) => {
-                setTitle(info.view.title);
-                setExportDates((current) => {
-                  const from = localDate(info.view.currentStart),
-                    to = shiftDate(localDate(info.view.currentEnd), -1);
-                  return current.from === from && current.to === to ? current : { from, to };
-                });
-                setRange((current) =>
-                  current.start === info.startStr && current.end === info.endStr
-                    ? current
-                    : { start: info.startStr, end: info.endStr },
-                );
-              }}
-              eventClick={(info) => setDetail(info.event.extendedProps.record as DomainRecord)}
-              select={(info) => {
-                const start = info.allDay ? `${localDate(info.start)}T09:00` : info.startStr;
-                const end = info.allDay ? `${localDate(info.start)}T17:00` : info.endStr;
-                setEditor({
-                  kind: "events",
-                  defaults: { start, end, participantIds: visiblePeople },
-                });
-              }}
-              eventDrop={(info) => {
-                const record = info.event.extendedProps.record as DomainRecord;
-                void run(async () => {
-                  try {
-                    await save(
-                      "events",
-                      {
-                        start: info.event.start?.toISOString(),
-                        end: info.event.end?.toISOString(),
-                      },
-                      record,
-                    );
-                  } catch (e) {
-                    info.revert();
-                    throw e;
+            <>
+              <FullCalendar
+                ref={calendar}
+                plugins={[
+                  dayGridPlugin,
+                  timeGridPlugin,
+                  listPlugin,
+                  interactionPlugin,
+                  luxonPlugin,
+                ]}
+                initialView={
+                  view === "week"
+                    ? "timeGridWeek"
+                    : view === "day"
+                      ? "timeGridDay"
+                      : view === "agenda"
+                        ? "listMonth"
+                        : "dayGridMonth"
+                }
+                locale={deLocale}
+                timeZone="Europe/Berlin"
+                firstDay={1}
+                headerToolbar={false}
+                height="auto"
+                fixedWeekCount={!mobile}
+                nowIndicator
+                dayMaxEvents={mobile ? 1 : 3}
+                dayCellClassNames={(info) =>
+                  localDate(info.date) === mobileDay ? ["mobile-selected-day"] : []
+                }
+                selectable={true}
+                editable={true}
+                eventStartEditable={true}
+                events={expanded}
+                datesSet={(info) => {
+                  setTitle(info.view.title);
+                  const firstDay = localDate(info.view.currentStart);
+                  const afterLastDay = localDate(info.view.currentEnd);
+                  const today = localDate();
+                  setMobileDay((current) =>
+                    current >= firstDay && current < afterLastDay
+                      ? current
+                      : today >= firstDay && today < afterLastDay
+                        ? today
+                        : firstDay,
+                  );
+                  setExportDates((current) => {
+                    const from = localDate(info.view.currentStart),
+                      to = shiftDate(localDate(info.view.currentEnd), -1);
+                    return current.from === from && current.to === to ? current : { from, to };
+                  });
+                  setRange((current) =>
+                    current.start === info.startStr && current.end === info.endStr
+                      ? current
+                      : { start: info.startStr, end: info.endStr },
+                  );
+                }}
+                eventClick={(info) => setDetail(info.event.extendedProps.record as DomainRecord)}
+                dateClick={(info) => setMobileDay(localDate(info.date))}
+                select={(info) => {
+                  if (
+                    info.view.type === "dayGridMonth" &&
+                    window.matchMedia("(max-width: 760px)").matches
+                  ) {
+                    setMobileDay(localDate(info.start));
+                    calendar.current?.getApi().unselect();
+                    return;
                   }
-                });
-              }}
-              eventResize={(info) => {
-                const record = info.event.extendedProps.record as DomainRecord;
-                void run(async () => {
-                  try {
-                    await save("events", { end: info.event.end?.toISOString() }, record);
-                  } catch (e) {
-                    info.revert();
-                    throw e;
-                  }
-                });
-              }}
-            />
+                  const start = info.allDay ? `${localDate(info.start)}T09:00` : info.startStr;
+                  const end = info.allDay ? `${localDate(info.start)}T17:00` : info.endStr;
+                  setEditor({
+                    kind: "events",
+                    defaults: { start, end, participantIds: visiblePeople },
+                  });
+                }}
+                eventDrop={(info) => {
+                  const record = info.event.extendedProps.record as DomainRecord;
+                  void run(async () => {
+                    try {
+                      await save(
+                        "events",
+                        {
+                          start: info.event.start?.toISOString(),
+                          end: info.event.end?.toISOString(),
+                        },
+                        record,
+                      );
+                    } catch (e) {
+                      info.revert();
+                      throw e;
+                    }
+                  });
+                }}
+                eventResize={(info) => {
+                  const record = info.event.extendedProps.record as DomainRecord;
+                  void run(async () => {
+                    try {
+                      await save("events", { end: info.event.end?.toISOString() }, record);
+                    } catch (e) {
+                      info.revert();
+                      throw e;
+                    }
+                  });
+                }}
+              />
+              {view === "month" && (
+                <section className="personal-mobile-day-detail">
+                  <h3>
+                    {new Intl.DateTimeFormat("de-DE", {
+                      timeZone: "Europe/Berlin",
+                      weekday: "long",
+                      day: "numeric",
+                      month: "long",
+                    }).format(instantDate(mobileDay))}
+                  </h3>
+                  <MobileDayAgenda
+                    events={expanded}
+                    day={mobileDay}
+                    members={workspace.members}
+                    productions={workspace.records.productions}
+                    onOpen={setDetail}
+                  />
+                  <button
+                    className="text-button"
+                    onClick={() =>
+                      setEditor({
+                        kind: "events",
+                        defaults: {
+                          start: `${mobileDay}T09:00`,
+                          end: `${mobileDay}T17:00`,
+                          participantIds: visiblePeople,
+                        },
+                      })
+                    }
+                  >
+                    <Plus size={15} />
+                    Termin an diesem Tag
+                  </button>
+                </section>
+              )}
+            </>
           )}
         </section>
       </div>
@@ -651,6 +801,6 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
           onClose={() => setExporting(false)}
         />
       )}
-    </>
+    </div>
   );
 }

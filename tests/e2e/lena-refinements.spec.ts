@@ -162,11 +162,13 @@ for (const width of [1440, 768, 375]) {
         expect(box!.height).toBeGreaterThanOrEqual(44);
       }
       await page.goto("/?module=calendar");
+      if (mobile) await page.locator(".calendar-filter-toggle").click();
       await expect(page.getByLabel("Spielzeit", { exact: true })).toHaveValue("2026/27");
       await expect(page.locator(".period-picker--compact")).toBeVisible();
       await noOverflow(page);
       await page.evaluate(() => (document.activeElement as HTMLElement)?.blur());
       await page.screenshot({ path: testInfo.outputPath("calendar.png"), fullPage: true });
+      if (mobile) await page.locator(".calendar-filter-toggle").click();
       await page.goto("/?module=time");
       await expect(page.getByLabel("Spielzeit", { exact: true })).toHaveValue("2026/27");
       await expect(page.getByRole("button", { name: "Offlineentwurf", exact: true })).toHaveCount(

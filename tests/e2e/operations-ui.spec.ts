@@ -215,13 +215,19 @@ for (const mobile of [false, true])
       await page.goto("/?module=calendar");
       await page.getByRole("button", { name: "Team", exact: true }).click();
       await page.getByRole("button", { name: "Teammonat", exact: true }).click();
-      const region = page.getByRole("region", { name: "Teammonatskalender" });
+      const region = page.getByRole("region", {
+        name: mobile ? "Mobiler Teammonatskalender" : "Teammonatskalender",
+        exact: true,
+      });
       await expect(region).toBeVisible();
-      expect(await region.locator("thead th").count()).toBeGreaterThanOrEqual(29);
+      expect(
+        await region.locator(mobile ? "button[data-date]" : "thead th").count(),
+      ).toBeGreaterThanOrEqual(28);
       await page.getByRole("button", { name: "Nächster Zeitraum" }).click();
       await page.getByRole("button", { name: "Vorheriger Zeitraum" }).click();
       expect(state.reads()).toBe(1);
       await noOverflow(page);
+      if (mobile) await page.locator(".calendar-mobile-actions > summary").click();
       await page.getByRole("button", { name: "Exportieren", exact: true }).click();
       const exportDialog = page.getByRole("dialog", { name: "Kalender exportieren" });
       await exportDialog.getByLabel("Format").selectOption("csv");
@@ -247,6 +253,7 @@ for (const mobile of [false, true])
     }) => {
       const state = await mock(page, { emptyCategories: true });
       await page.goto("/?module=calendar");
+      if (mobile) await page.locator(".calendar-filter-toggle").click();
       await expect(page.getByLabel("Kategorie").locator("option")).toHaveCount(1);
       await expect(page.getByRole("button", { name: "Genehmigen", exact: true })).toBeDisabled();
       await page.getByRole("button", { name: "Termin", exact: true }).click();
@@ -263,6 +270,7 @@ for (const mobile of [false, true])
     }) => {
       const state = await mock(page);
       await page.goto("/?module=calendar");
+      if (mobile) await page.locator(".calendar-mobile-actions > summary").click();
       await page.getByRole("button", { name: "Kalenderarten", exact: true }).click();
       await page.getByRole("button", { name: "Kalenderart anlegen" }).click();
       const editor = page.getByRole("dialog", { name: "Kalenderart anlegen" });

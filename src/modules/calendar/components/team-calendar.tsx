@@ -1,10 +1,11 @@
-﻿"use client";
+"use client";
 import { useState } from "react";
 import { Plus } from "lucide-react";
 import type { DomainRecord, Member, RecordData } from "@/shared/contracts";
-import { ids, localDate, value } from "@/shared/client-api";
+import { ids, instantDate, localDate, shiftDate, value, weekStart } from "@/shared/client-api";
 import { isActiveStaff } from "@/shared/client-members";
 import { Empty } from "@/components/ui";
+import { MobileDayAgenda } from "./mobile-day-agenda";
 export type CalendarInstance = {
   id: string;
   title: string;
@@ -21,6 +22,13 @@ const clock = (date: string) =>
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(date));
+const fullDay = (date: string) =>
+  new Intl.DateTimeFormat("de-DE", {
+    timeZone: "Europe/Berlin",
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  }).format(instantDate(date));
 export function TeamCalendar({
   events,
   members,
@@ -63,8 +71,65 @@ export function TeamCalendar({
   const selected = team.flatMap((person) =>
     matches(person.id, day).map((event) => ({ person, event })),
   );
+  const entriesForDay = (date: string) =>
+    events.filter(
+      (event) =>
+        localDate(new Date(new Date(event.end).getTime() - 1)) >= date &&
+        localDate(new Date(event.start)) <= date,
+    );
+  const gridStart = weekStart(instantDate(days[0]));
+  const offset = Math.round(
+    (instantDate(days[0]).getTime() - instantDate(gridStart).getTime()) / 86400000,
+  );
+  const gridDays = Array.from({ length: Math.ceil((offset + days.length) / 7) * 7 }, (_, index) =>
+    shiftDate(gridStart, index),
+  );
+
   return (
     <>
+      <section
+        className="team-mobile-calendar"
+        aria-label={month ? "Mobiler Teammonatskalender" : "Mobiler Teamwochenkalender"}
+      >
+        <div className="team-mobile-weekdays" aria-hidden="true">
+          {["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"].map((name) => (
+            <span key={name}>{name}</span>
+          ))}
+        </div>
+        <div className={`team-mobile-dates${gridDays.length > 35 ? " is-six-weeks" : ""}`}>
+          {gridDays.map((date) => {
+            const inPeriod = days.includes(date);
+            const entries = inPeriod ? entriesForDay(date) : [];
+            const colors = [...new Set(entries.map((event) => event.backgroundColor))].slice(0, 3);
+            return inPeriod ? (
+              <button
+                key={date}
+                data-date={date}
+                className={`team-mobile-date${day === date ? " is-selected" : ""}${date === localDate() ? " is-today" : ""}`}
+                aria-pressed={day === date}
+                aria-label={`${fullDay(date)}: ${entries.length} ${entries.length === 1 ? "Termin" : "Termine"}. Details anzeigen`}
+                onClick={() => setSelectedDay(date)}
+              >
+                <span className="team-mobile-date-number">{Number(date.slice(-2))}</span>
+                <span className="team-mobile-date-markers" aria-hidden="true">
+                  {colors.map((color) => (
+                    <i key={color} style={{ background: color }} />
+                  ))}
+                </span>
+                {!!entries.length && (
+                  <span className="team-mobile-date-count" aria-hidden="true">
+                    {entries.length}
+                  </span>
+                )}
+              </button>
+            ) : (
+              <span className="team-mobile-date outside-period" key={date} aria-hidden="true">
+                {Number(date.slice(-2))}
+              </span>
+            );
+          })}
+        </div>
+      </section>
       <p className="team-scroll-hint small muted">
         Weitere Tage findest du durch seitliches Wischen oder mit den Pfeiltasten. Ein Tag lässt
         sich darunter einzeln ansehen.
@@ -146,7 +211,7 @@ export function TeamCalendar({
         <header>
           <div>
             <p className="eyebrow">AUSGEWÄHLTE DIENSTE</p>
-            <h3>Ein Tag im Team</h3>
+            <h3>{fullDay(day)}</h3>
           </div>
           <label>
             Tag auswählen
@@ -159,8 +224,39 @@ export function TeamCalendar({
             />
           </label>
         </header>
+        <div className="team-mobile-services" aria-live="polite">
+          <MobileDayAgenda
+            events={events}
+            day={day}
+            members={team}
+            productions={productions}
+            onOpen={onOpen}
+          />
+          {team.some((person) => canPlan(person.id)) && (
+            <div className="team-mobile-create">
+              {team
+                .filter((person) => canPlan(person.id))
+                .map((person) => (
+                  <button
+                    key={person.id}
+                    className="text-button"
+                    onClick={() =>
+                      onCreate({
+                        start: `${day}T09:00`,
+                        end: `${day}T17:00`,
+                        participantIds: person.id ? [person.id] : [],
+                      })
+                    }
+                  >
+                    <Plus size={15} />
+                    Termin für {person.name}
+                  </button>
+                ))}
+            </div>
+          )}
+        </div>
         {selected.length ? (
-          <div className="team-day-services">
+          <div className="team-day-services team-desktop-services">
             {selected.map(({ person, event }) => (
               <button
                 key={`${person.id}:${event.id}`}
@@ -188,10 +284,12 @@ export function TeamCalendar({
             ))}
           </div>
         ) : (
-          <Empty
-            title="Keine Dienste an diesem Tag."
-            description="Wähle einen anderen Tag oder blende weitere Teammitglieder ein."
-          />
+          <div className="team-desktop-services">
+            <Empty
+              title="Keine Dienste an diesem Tag."
+              description="Wähle einen anderen Tag oder blende weitere Teammitglieder ein."
+            />
+          </div>
         )}
       </section>
     </>

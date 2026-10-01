@@ -64,7 +64,7 @@ const steps = [
     icon: CalendarDays,
     text: "Wähle die Personen aus, deren Termine du sehen möchtest. Unter Team siehst du eine ganze Woche oder einen Monat gemeinsam. Deinen eigenen Kalender kannst du selbst planen. Termine für andere Personen und die Freigabe freier Tage übernehmen Admins.",
     tips: [
-      "Exporte übernehmen den aktuellen Zeitraum und die ausgewählten Personen.",
+      "Am Smartphone öffnest du die Kalenderauswahl über dem Kalender. Tippe einen Tag an, um Namen und Zeiten zu sehen. Unter Aktionen kannst du den Kalender exportieren oder einen freien Tag wünschen.",
       "Kategorien verwalten Admins. Unter Einstellungen kannst du deinen persönlichen Kalender abonnieren.",
     ],
   },
