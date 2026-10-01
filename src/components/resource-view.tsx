@@ -23,6 +23,7 @@ import { lookTitle } from "@/shared/document-sections";
 import { CategoryManager } from "@/modules/categories/components/category-manager";
 import { categoryName } from "@/shared/domain-categories";
 import { EventDetail } from "@/modules/calendar/components/event-detail";
+import { canManageRecord } from "@/shared/record-permissions";
 import { ExportDialog, ImportDialog } from "./export-dialog";
 
 function recordTitle(record: DomainRecord, workspace: Workspace) {
@@ -45,27 +46,7 @@ function GenericRecordDetail({ record, onClose }: { record: DomainRecord; onClos
   const [timeBooking, setTimeBooking] = useState(false);
   const [exporting, setExporting] = useState(false);
   const current = workspace.records[record.kind].find((x) => x.id === record.id) || record;
-  const canEdit =
-    current.kind === "messages" && current.data.conversationId
-      ? current.data.userId === workspace.user.id
-      : current.kind === "conversations"
-        ? current.createdBy === workspace.user.id
-        : workspace.user.role !== "user" ||
-          (![
-            "productions",
-            "actors",
-            "characters",
-            "casting",
-            "sprints",
-            "events",
-            "templates",
-          ].includes(current.kind) &&
-            (!["time", "attendance", "leave", "messages"].includes(current.kind) ||
-              current.data.userId === workspace.user.id) &&
-            (current.kind !== "tasks" ||
-              current.createdBy === workspace.user.id ||
-              ids(current.data, "assigneeIds").includes(workspace.user.id)) &&
-            (current.kind !== "looks" || current.createdBy === workspace.user.id));
+  const canEdit = canManageRecord(workspace.user, current.kind, current);
   const linkedFiles = workspace.records.files.filter(
     (x) => x.data.recordKind === current.kind && x.data.recordId === current.id,
   );
@@ -506,18 +487,7 @@ export function ResourceView({
   const [low, setLow] = useState(false);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const admin = workspace.user.role !== "user";
-  const allowedCreate =
-    canCreate !== false &&
-    (admin ||
-      ![
-        "productions",
-        "actors",
-        "characters",
-        "casting",
-        "sprints",
-        "events",
-        "templates",
-      ].includes(kind));
+  const allowedCreate = canCreate !== false && canManageRecord(workspace.user, kind);
   const rows = workspace.records[kind].filter(
     (row) =>
       (!filter || filter(row)) &&

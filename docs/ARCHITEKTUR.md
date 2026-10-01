@@ -128,13 +128,15 @@ Archivieren ist die bevorzugte Aktion für Produktionen mit referenzierten Stund
 
 ## Rollen und Registrierung
 
-| Rolle      | Geplante Rechte                                                                                                                   |
-| ---------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| Superadmin | Organisation und Gewerke verwalten, Admins bestimmen, zentrale Einstellungen bearbeiten                                           |
-| Admin      | Im zugewiesenen Gewerk Projekte und Dienstplan verwalten, Freiwünsche entscheiden, Team und Berichte verwalten                    |
-| User       | Eigene Zeiten buchen, eigene Aufgaben bearbeiten, freigegebene Projekte und Aufschriebe lesen, chatten und Freiwünsche beantragen |
+| Rolle      | Rechte                                                                                                                                                                                                                                   |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Superadmin | Admins bestimmen, zentrale Einstellungen und Feedback verwalten; außerdem Adminrechte                                                                                                                                                    |
+| Admin      | Gemeinsame Arbeitsinhalte verwalten, Kalender für andere planen, Kategorien und Zugänge verwalten, Freiwünsche und Wochen freigeben                                                                                                      |
+| User       | Zugängliche Produktionen, Kontakte, Schauspieler, Figuren, Besetzungen, Aufgaben, Sprints, gemeinsame Aufschriebe und Vorlagen anlegen und bearbeiten; eigenen Kalender planen, eigene Zeiten buchen, chatten und Freiwünsche beantragen |
 
 Projektbezogene Rechte ergänzen die Gewerkrolle. Die Oberfläche blendet passende Aktionen ein; die verbindliche Prüfung findet immer auf dem Server statt. Persönliche Detailzeiten sind zunächst für die betroffene Person und zuständige Admins sichtbar. Projektstunden werden entsprechend der Projektberechtigung angezeigt. Geteilte Kalender zeigen Verfügbarkeit und erlaubte Dienstdetails; private Abwesenheitsgründe bleiben geschützt.
+
+Die gemeinsame Berechtigungsfunktion in `src/shared/record-permissions.ts` wird von Frontend und Fachservice verwendet. Teammitglieder dürfen gemeinsame Einträge auch löschen, sofern keine abhängigen Zuordnungen bestehen. Sie können nur Kalendertermine mit genau ihrer eigenen Person verändern; Gruppentermine, unzugeordnete Termine und Termine anderer Personen sind Adminaufgaben. Für Wiederaufnahmen prüft der Server die Quellproduktion und kopiert keine fremden privaten Entwürfe.
 
 Die Registrierung bietet Benutzername, Anzeigename und Passwort. Anmeldung erfolgt ausschließlich mit Benutzername und Passwort. Better Auth benötigt intern ein E-Mail-Feld; die Anwendung erzeugt dafür eine eindeutige technische Adresse auf Basis einer unveränderlichen ID unter einer reservierten .invalid-Domain. Diese Adresse wird nicht für Nachrichten oder die Anmeldung angeboten. Direkte alternative Registrierungswege müssen entsprechend gesperrt bzw. auf dieselben Regeln verpflichtet werden. Ein Integrationstest prüft diesen Adapter frühzeitig.
 

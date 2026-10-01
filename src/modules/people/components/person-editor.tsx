@@ -39,8 +39,7 @@ export function PersonEditor({
   const pending = useRef(false),
     container = useRef<HTMLDivElement>(null),
     id = useId();
-  const admin = workspace.user.role !== "user";
-  const disabled = saving || busy || !online || !admin;
+  const disabled = saving || busy || !online;
   const duplicates = workspace.records.people.filter(
     (person) =>
       isDirectoryPerson(person) &&

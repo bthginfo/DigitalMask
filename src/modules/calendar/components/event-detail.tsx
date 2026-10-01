@@ -9,6 +9,7 @@ import { Badge, Button, ErrorMessage, ExportButton, Modal } from "@/components/u
 import { ExportDialog } from "@/components/export-dialog";
 import { TimeBookingEditor } from "@/modules/time-tracking/components/time-booking-editor";
 import { EventEditor } from "./event-editor";
+import { canManageRecord } from "@/shared/record-permissions";
 export function EventDetail({ record, onClose }: { record: DomainRecord; onClose: () => void }) {
   const { workspace, remove, busy } = useWorkspace();
   const [editing, setEditing] = useState(false),
@@ -21,7 +22,7 @@ export function EventDetail({ record, onClose }: { record: DomainRecord; onClose
     workspace.records.productions,
     workspace.records.calendarCategories,
   );
-  const canEdit = workspace.user.role !== "user" && !current.data.leaveId;
+  const canEdit = canManageRecord(workspace.user, "events", current);
   const production = workspace.records.productions.find(
     (row) => row.id === current.data.productionId,
   );

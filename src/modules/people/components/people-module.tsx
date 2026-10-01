@@ -5,6 +5,7 @@ import { Button, Empty, ErrorMessage, ExportButton, Modal, PageHeader } from "@/
 import { ExportDialog } from "@/components/export-dialog";
 import { useWorkspace } from "@/components/workspace-context";
 import { textValue, type DomainRecord } from "@/shared/contracts";
+import { canManageRecord } from "@/shared/record-permissions";
 import { PersonEditor } from "./person-editor";
 import { PersonContactLinks } from "./person-contact-links";
 import { filterPeople, isDirectoryPerson } from "./person-data";
@@ -24,7 +25,7 @@ export function PeopleModule() {
     [deleting, setDeleting] = useState(false);
   const pending = useRef(false),
     id = useId(),
-    admin = workspace.user.role !== "user";
+    canManage = canManageRecord(workspace.user, "people");
   const people = useMemo(
     () => workspace.records.people.filter(isDirectoryPerson),
     [workspace.records.people],
@@ -48,7 +49,7 @@ export function PeopleModule() {
     if (!pending.current) open(null);
   };
   const deletePerson = async (person: DomainRecord) => {
-    if (pending.current || busy || !online || !admin) return;
+    if (pending.current || busy || !online || !canManage) return;
     pending.current = true;
     setDeleting(true);
     setError("");
@@ -73,7 +74,7 @@ export function PeopleModule() {
         description="Ansprechpersonen für eure Zusammenarbeit – mit Funktion, Organisation und Kontaktdaten."
       >
         <ExportButton onClick={() => open({ type: "export" })} />
-        {admin && (
+        {canManage && (
           <Button
             variant="primary"
             onClick={() => open({ type: "create" })}
@@ -119,17 +120,12 @@ export function PeopleModule() {
         {filtered.length === people.length
           ? `${people.length} ${people.length === 1 ? "Person" : "Personen"}`
           : `${filtered.length} von ${people.length} Personen`}
-        {!admin && <span>· Schreibzugriff für Admins</span>}
       </p>
       {!people.length ? (
         <Empty
           title="Kontakte an einem Ort"
-          description={
-            admin
-              ? "Lege eure ersten Ansprechpersonen an. Du kannst sie später direkt einer Produktion zuordnen."
-              : "Eure Admins können hier Ansprechpersonen für Produktionen und Zusammenarbeit hinterlegen."
-          }
-          action={admin && online ? "Person anlegen" : undefined}
+          description="Lege eure ersten Ansprechpersonen an. Du kannst sie später direkt einer Produktion zuordnen."
+          action={canManage && online ? "Person anlegen" : undefined}
           onAction={() => open({ type: "create" })}
         />
       ) : !filtered.length ? (
@@ -231,7 +227,7 @@ export function PeopleModule() {
             </dl>
             <PersonContactLinks data={panel.person.data} />
             <div className={styles.actions}>
-              {admin && (
+              {canManage && (
                 <>
                   <Button
                     onClick={() => open({ type: "edit", person: panel.person })}

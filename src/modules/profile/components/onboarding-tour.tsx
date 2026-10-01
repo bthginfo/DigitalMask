@@ -34,7 +34,7 @@ const steps = [
     icon: Theater,
     text: "Öffne ein Stück, um Team, Aufgaben, Figuren, Bilder und Termine zu sehen. Die Maskenbetreuung steht schon auf der Produktionskarte.",
     tips: [
-      "Admins pflegen Produktionen, externe Kontakte und Maskenbetreuungen.",
+      "Ihr könnt Produktionen, Kontakte, Figuren und Besetzungen gemeinsam anlegen und bearbeiten.",
       "Figuren und Besetzungen können mehrere Bilder bekommen: zuerst speichern, dann die Galerie nutzen.",
     ],
   },
@@ -62,10 +62,10 @@ const steps = [
     module: "calendar",
     title: "Gemeinsam planen, persönlich sehen.",
     icon: CalendarDays,
-    text: "Wähle die Personen aus, deren Termine du sehen möchtest. Unter Team kannst du eine ganze Woche oder einen Monat gemeinsam ansehen. Admins planen Dienste; du kannst freie Tage wünschen.",
+    text: "Wähle die Personen aus, deren Termine du sehen möchtest. Unter Team siehst du eine ganze Woche oder einen Monat gemeinsam. Deinen eigenen Kalender kannst du selbst planen. Termine für andere Personen und die Freigabe freier Tage übernehmen Admins.",
     tips: [
       "Exporte übernehmen den aktuellen Zeitraum und die ausgewählten Personen.",
-      "Unter Einstellungen kannst du deinen persönlichen Kalender abonnieren.",
+      "Kategorien verwalten Admins. Unter Einstellungen kannst du deinen persönlichen Kalender abonnieren.",
     ],
   },
   {

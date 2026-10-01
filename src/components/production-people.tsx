@@ -243,9 +243,7 @@ export function ProductionTeamModule({ production }: { production: DomainRecord 
         title="Team & Kontakte"
         description="Zuständigkeiten und wichtige Personen für dieses Stück."
       >
-        {workspace.user.role !== "user" && (
-          <Button onClick={edit}>Team & Kontakte bearbeiten</Button>
-        )}
+        <Button onClick={edit}>Team & Kontakte bearbeiten</Button>
       </PageHeader>
       {currentContacts.length ? (
         <div className="production-contacts-list">
@@ -265,7 +263,7 @@ export function ProductionTeamModule({ production }: { production: DomainRecord 
         <Empty
           title="Wer wirkt an diesem Stück mit?"
           description="Ergänzt eure Kontakte mit frei gewählten Rollen, auch ohne Theateraccount."
-          action={workspace.user.role !== "user" ? "Kontakte hinzufügen" : undefined}
+          action="Kontakte hinzufügen"
           onAction={edit}
         />
       )}

@@ -49,7 +49,7 @@ export function PersonPicker({
     <div className={styles.picker}>
       <div className={styles.pickerHeading}>
         <label htmlFor={`${id}-select`}>{label}</label>
-        {workspace.user.role !== "user" && !creating && (
+        {!creating && (
           <Button onClick={() => setCreating(true)} disabled={disabled || busy || !online}>
             <Plus size={14} />
             Person anlegen

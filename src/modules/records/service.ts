@@ -1,7 +1,8 @@
 import { and, eq, ne, or, sql, inArray } from "drizzle-orm";
 import { db, type Transaction } from "@/platform/db";
 import { records, memberships, recordHistory } from "@/platform/db/schema";
-import { requireAdmin, type Context } from "@/platform/context";
+import { type Context } from "@/platform/context";
+import { canManageRecord, canSetCalendarParticipants } from "@/shared/record-permissions";
 import { HttpError } from "@/platform/http";
 import { emit, auditChange, scheduleEvents } from "@/platform/events";
 import { localDay } from "@/modules/time-tracking/rules";
@@ -34,18 +35,6 @@ import {
   listValue,
   textValue,
 } from "@/shared/contracts";
-const adminKinds = new Set<RecordKind>([
-  "productions",
-  "actors",
-  "characters",
-  "casting",
-  "sprints",
-  "events",
-  "templates",
-  "calendarCategories",
-  "people",
-  "categories",
-]);
 export async function assertRead(
   context: Context,
   row: typeof records.$inferSelect,
@@ -97,21 +86,14 @@ export function assertWrite(
     throw new HttpError(403, "Du kannst nur eigene Rückmeldungen bearbeiten.");
   if (["notifications", "timesheets", "files"].includes(kind))
     throw new HttpError(403, "Bitte verwende den dafür vorgesehenen Arbeitsablauf.");
-  if (adminKinds.has(kind)) requireAdmin(context);
+  if (!canManageRecord(context.user, kind, existing))
+    throw new HttpError(403, "Du hast keine Berechtigung, diesen Eintrag zu verändern.");
   if (existing && context.user.role === "user") {
     if (
       ["time", "attendance", "leave", "messages"].includes(kind) &&
       existing.data.userId !== context.user.id
     )
       throw new HttpError(403, "Du kannst nur eigene Einträge bearbeiten.");
-    if (
-      kind === "tasks" &&
-      existing.createdBy !== context.user.id &&
-      !listValue(existing.data.assigneeIds).includes(context.user.id)
-    )
-      throw new HttpError(403, "Diese Aufgabe ist dir nicht zugeordnet.");
-    if (kind === "looks" && existing.createdBy !== context.user.id)
-      throw new HttpError(403, "Du kannst nur eigene Aufschriebe bearbeiten.");
   }
 }
 async function validateRelations(
@@ -313,7 +295,7 @@ export async function saveRecord(
   options: { deferEffects?: boolean } = {},
 ) {
   let eventQueued = false;
-  if (["productions", "people"].includes(kind)) requireAdmin(context);
+  assertWrite(context, kind);
   const result = await db.transaction(async (tx) => {
     // Same lock order as approval/linking and consolidation, before locking any production.
     if (["productions", "people"].includes(kind))
@@ -324,6 +306,11 @@ export async function saveRecord(
     assertWrite(context, kind, existing);
     if (existing) await assertRead(context, existing, tx);
     const data = validateRecord(kind, { ...existing?.data, ...input });
+    if (kind === "events" && !canSetCalendarParticipants(context.user, data))
+      throw new HttpError(
+        403,
+        "Du kannst nur Einträge in deinem eigenen Kalender planen. Für andere Personen ist ein Admin zuständig.",
+      );
     if (kind === "people") {
       if (existing?.data.linkedMemberId) data.linkedMemberId = existing.data.linkedMemberId;
       if (!existing) {
@@ -366,6 +353,8 @@ export async function saveRecord(
           ),
         ]),
       );
+      if (!existing && context.user.role === "user" && listValue(data.memberIds).length)
+        data.memberIds = Array.from(new Set([...listValue(data.memberIds), context.user.id]));
       if (listValue(data.memberIds).length > 100)
         throw new HttpError(400, "Bitte wähle höchstens 100 Personen für das Produktionsteam.");
     }

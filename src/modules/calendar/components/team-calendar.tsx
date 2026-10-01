@@ -27,7 +27,7 @@ export function TeamCalendar({
   people,
   days,
   month,
-  admin,
+  canPlan,
   productions,
   onOpen,
   onCreate,
@@ -37,7 +37,7 @@ export function TeamCalendar({
   people: string[];
   days: string[];
   month: boolean;
-  admin: boolean;
+  canPlan: (person: string) => boolean;
   productions: DomainRecord[];
   onOpen: (record: DomainRecord) => void;
   onCreate: (data: RecordData) => void;
@@ -120,7 +120,7 @@ export function TeamCalendar({
                         </span>
                       </button>
                     ))}
-                    {admin && (
+                    {canPlan(person.id) && (
                       <button
                         className="team-add"
                         aria-label={`Termin für ${person.name} am ${date}`}

@@ -19,6 +19,7 @@ import { useWorkspace } from "../workspace-context";
 import { Badge, Button, ErrorMessage, ExportButton, PageHeader } from "../ui";
 import { ResourceEditor } from "../resource-editor";
 import { RecordDetail } from "../resource-view";
+import { canManageRecord } from "@/shared/record-permissions";
 import { ExportDialog } from "../export-dialog";
 const columns = [
   ["backlog", "Backlog"],
@@ -37,10 +38,7 @@ function TaskCard({
   onMove: (status: string) => void;
 }) {
   const { workspace } = useWorkspace();
-  const canEdit =
-    workspace.user.role !== "user" ||
-    task.createdBy === workspace.user.id ||
-    ids(task.data, "assigneeIds").includes(workspace.user.id);
+  const canEdit = canManageRecord(workspace.user, "tasks", task);
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: task.id,
     disabled: !canEdit,
@@ -226,9 +224,7 @@ export function TasksModule({ productionId = "" }: { productionId?: string }) {
         }
       >
         <ExportButton onClick={() => setExporting(true)} />
-        {project && workspace.user.role !== "user" && (
-          <Button onClick={() => setEditor({ kind: "sprints" })}>Sprint planen</Button>
-        )}
+        {project && <Button onClick={() => setEditor({ kind: "sprints" })}>Sprint planen</Button>}
         <Button variant="primary" onClick={() => setEditor({ kind: "tasks" })}>
           <Plus size={16} />
           Aufgabe

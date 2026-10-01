@@ -126,9 +126,7 @@ export function ProductionsModule({
             <p className="eyebrow">{statusLabels[value(production.data, "status")]}</p>
             <h1>{value(production.data, "title")}</h1>
           </div>
-          <Button onClick={() => setDetails(true)}>
-            {workspace.user.role === "user" ? "Produktionsdetails" : "Produktion verwalten"}
-          </Button>
+          <Button onClick={() => setDetails(true)}>Produktion verwalten</Button>
         </header>
         <div ref={tabs} className="tabs production-tabs" aria-label="Produktionsbereiche">
           {[
@@ -278,12 +276,10 @@ export function ProductionsModule({
         {workspace.user.role !== "user" && (
           <Button onClick={() => setImporting(true)}>Importieren</Button>
         )}
-        {workspace.user.role !== "user" && (
-          <Button variant="primary" onClick={() => setEditor(true)}>
-            <Plus size={16} />
-            Produktion anlegen
-          </Button>
-        )}
+        <Button variant="primary" onClick={() => setEditor(true)}>
+          <Plus size={16} />
+          Produktion anlegen
+        </Button>
       </PageHeader>
       <PeriodPicker
         records={workspace.records.productions}
@@ -385,12 +381,8 @@ export function ProductionsModule({
               ? "Keine Produktionen in dieser Ansicht."
               : "Platz für euer nächstes Stück."
           }
-          description={
-            workspace.user.role !== "user"
-              ? "Lege eine Produktion an. Hier laufen Aufgaben, Besetzung, Dokumentation, Termine und Arbeitszeit zusammen."
-              : "Hier erscheinen deine freigegebenen Produktionen. Dein Admin kann dich dem Produktionsteam zuordnen."
-          }
-          action={workspace.user.role !== "user" ? "Erste Produktion anlegen" : undefined}
+          description="Lege eine Produktion an. Hier laufen Aufgaben, Besetzung, Dokumentation, Termine und Arbeitszeit zusammen."
+          action="Erste Produktion anlegen"
           onAction={() => setEditor(true)}
         />
       )}

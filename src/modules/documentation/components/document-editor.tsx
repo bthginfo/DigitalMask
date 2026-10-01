@@ -286,7 +286,7 @@ export function DocumentEditor({
                               ))}
                             </select>
                           </label>
-                          {workspace.user.role !== "user" && (
+                          {
                             <Button
                               disabled={!actor && !production}
                               onClick={() => setCreating(actor ? "actors" : "characters")}
@@ -294,7 +294,7 @@ export function DocumentEditor({
                               <Plus size={15} />
                               {label} direkt anlegen
                             </Button>
-                          )}
+                          }
                         </>
                       )}
                     </fieldset>

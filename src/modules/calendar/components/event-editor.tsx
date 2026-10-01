@@ -46,7 +46,10 @@ export function EventEditor({
   const [production, setProduction] = useState(
     lockedProductionId ?? value(initial, "productionId"),
   );
-  const [people, setPeople] = useState(ids(initial, "participantIds"));
+  const admin = workspace.user.role !== "user";
+  const [people, setPeople] = useState(
+    admin ? ids(initial, "participantIds") : [workspace.user.id],
+  );
   const [location, setLocation] = useState(value(initial, "location"));
   const [recurrence, setRecurrence] = useState(value(initial, "recurrence") || "none");
   const [until, setUntil] = useState(value(initial, "until"));
@@ -62,7 +65,9 @@ export function EventEditor({
     selected?.name ||
     "Termin";
   const members = workspace.members.filter(
-    (member) => isActiveStaff(member) || people.includes(member.id),
+    (member) =>
+      (admin || member.id === workspace.user.id) &&
+      (isActiveStaff(member) || people.includes(member.id)),
   );
   return (
     <Modal title={`Termin ${record ? "bearbeiten" : "anlegen"}`} onClose={onClose} wide>
@@ -243,6 +248,7 @@ export function EventEditor({
             <label className="check-label" key={member.id}>
               <input
                 type="checkbox"
+                disabled={!admin}
                 checked={people.includes(member.id)}
                 onChange={(event) =>
                   setPeople(
@@ -260,6 +266,11 @@ export function EventEditor({
           ))}
           {!members.length && (
             <p className="small muted">Keine aktiven Teammitglieder verfügbar.</p>
+          )}
+          {!admin && (
+            <p className="small muted">
+              Du planst deinen eigenen Kalender. Einträge für andere Personen übernehmen Admins.
+            </p>
           )}
         </fieldset>
         <label>

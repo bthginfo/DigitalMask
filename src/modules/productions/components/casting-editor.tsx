@@ -134,7 +134,7 @@ export function CastingEditor({
                           ))}
                         </select>
                       </label>
-                      {workspace.user.role !== "user" && (
+                      {
                         <Button
                           disabled={figure && !production}
                           onClick={() => setCreating(figure ? "characters" : "actors")}
@@ -142,7 +142,7 @@ export function CastingEditor({
                           <Plus size={15} />
                           {figure ? "Figur" : "Schauspielperson"} direkt anlegen
                         </Button>
-                      )}
+                      }
                     </>
                   )}
                 </fieldset>

@@ -11,7 +11,8 @@ import deLocale from "@fullcalendar/core/locales/de";
 import luxonPlugin from "@fullcalendar/luxon3";
 import { occurrences } from "@/modules/calendar/occurrences";
 import { AlertTriangle, ChevronLeft, ChevronRight, Plus } from "lucide-react";
-import type { DomainRecord } from "@/shared/contracts";
+import type { DomainRecord, Member } from "@/shared/contracts";
+import { canManageRecord } from "@/shared/record-permissions";
 import {
   dateLabel,
   ids,
@@ -43,6 +44,7 @@ export function expandEvents(
   rangeEnd: string,
   productions: DomainRecord[] = [],
   categories?: DomainRecord[],
+  member?: Member,
 ) {
   return records.flatMap((record) => {
     if (
@@ -61,7 +63,9 @@ export function expandEvents(
       backgroundColor: presentation.color,
       borderColor: "transparent",
       editable:
-        !record.data.leaveId && (!record.data.recurrence || record.data.recurrence === "none"),
+        !record.data.leaveId &&
+        (!record.data.recurrence || record.data.recurrence === "none") &&
+        (!member || canManageRecord(member, "events", record)),
       extendedProps: { record },
     }));
   });
@@ -121,6 +125,7 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
     view === "team" ? teamEnd : range.end,
     workspace.records.productions,
     workspace.records.calendarCategories,
+    workspace.user,
   );
   const overlaps = expanded.filter((event, i) =>
     expanded
@@ -203,17 +208,13 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
           <Button onClick={() => setEditor({ kind: "leave" })}>Freien Tag wünschen</Button>
         )}
         {admin && <Button onClick={() => setCategoriesOpen(true)}>Kalenderarten</Button>}
-        {admin && (
-          <Button
-            variant="primary"
-            onClick={() =>
-              setEditor({ kind: "events", defaults: { participantIds: visiblePeople } })
-            }
-          >
-            <Plus size={16} />
-            Termin
-          </Button>
-        )}
+        <Button
+          variant="primary"
+          onClick={() => setEditor({ kind: "events", defaults: { participantIds: visiblePeople } })}
+        >
+          <Plus size={16} />
+          Termin
+        </Button>
       </PageHeader>
       <PeriodPicker
         records={workspace.records.events}
@@ -419,7 +420,7 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
               people={visiblePeople}
               days={teamDays}
               month={teamSpan === "month"}
-              admin={admin}
+              canPlan={(person) => admin || person === workspace.user.id}
               productions={workspace.records.productions}
               onOpen={setDetail}
               onCreate={(defaults) => setEditor({ kind: "events", defaults })}
@@ -444,9 +445,9 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
               height="auto"
               nowIndicator
               dayMaxEvents={3}
-              selectable={admin}
-              editable={admin}
-              eventStartEditable={admin}
+              selectable={true}
+              editable={true}
+              eventStartEditable={true}
               events={expanded}
               datesSet={(info) => {
                 setTitle(info.view.title);

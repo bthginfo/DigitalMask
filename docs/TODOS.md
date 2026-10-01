@@ -95,6 +95,14 @@ Die Bereitstellung erfolgt nach den Releaseprüfungen über GitHub und die beste
 - [x] Teamansicht beginnt mit allen aktiven Teammitgliedern; danach die vorherige persönliche Auswahl wiederherstellen. Exporte übernehmen dieselbe Auswahl.
 - [x] Teamliste getrennt von Fachdaten zwischenspeichern und gezielt bei Änderungen invalidieren.
 
+## Gemeinsame Teamrechte
+
+- [x] Freigegebene Teammitglieder können gemeinsame Produktionen, Kontakte, Schauspieler, Figuren, Besetzungen, Aufgaben, Sprints, Aufschriebe und Vorlagen verwalten.
+- [x] Gemeinsame Rechte in Frontend und Backend; Produktionszugriff, private Entwürfe und persönliche Zeitbuchungen weiter schützen.
+- [x] Eigene Kalenderplanung für Teammitglieder; Kalender anderer Personen und Gruppentermine ausschließlich für Admins.
+- [x] Kategorien, Benutzerverwaltung und Freigaben für Freiwünsche und Wochen bleiben Adminaufgaben.
+- [x] Hilfe, FAQ, Einführung und Architektur beschreiben die neuen Rechte.
+
 ## QA-Nachbereitung
 
 Nach den abschließenden Liveprüfungen werden die angelegten QA-Konten, Testeinträge und Testdateien aus der produktiven Umgebung entfernt. Automatische Testdefinitionen bleiben für spätere Änderungen erhalten.
