@@ -4,7 +4,7 @@ import Image from "next/image";
 import { Image as ImageIcon, MoreHorizontal, Pencil, Plus, Trash2, Upload } from "lucide-react";
 import type { DomainRecord, RecordData, RecordKind, Workspace } from "@/shared/contracts";
 import { api, dateLabel, hours, ids, localDate, num, value } from "@/shared/client-api";
-import { prepareUpload } from "@/shared/client-files";
+import { imageAccept, prepareUpload } from "@/shared/client-files";
 import { HistoryPanel } from "./history-panel";
 import { fields, labels, statusLabels } from "./resource-fields";
 import { useWorkspace } from "./workspace-context";
@@ -370,7 +370,7 @@ function GenericRecordDetail({
                           : "Hochladen"}
                     <input
                       type="file"
-                      accept={current.kind === "casting" ? ".jpg,.jpeg,.png,.webp" : documentAccept}
+                      accept={current.kind === "casting" ? imageAccept : documentAccept}
                       multiple={current.kind !== "actors"}
                       className="visually-hidden"
                       disabled={uploading}

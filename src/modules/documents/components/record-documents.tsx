@@ -7,13 +7,13 @@ import { useWorkspace } from "@/components/workspace-context";
 import { canManageRecord } from "@/shared/record-permissions";
 import type { DomainRecord } from "@/shared/contracts";
 import { api, dateLabel, post, value } from "@/shared/client-api";
-import { prepareUpload } from "@/shared/client-files";
+import { imageAccept, prepareUpload } from "@/shared/client-files";
 import { DocumentAttachment } from "./document-attachment";
 import { NewDocumentDialog } from "./new-document-dialog";
 import "../documents.css";
 const DocumentEditor = dynamic(() => import("./document-editor"), { ssr: false });
 
-export const documentAccept = ".docx,.xlsx,.csv,.pdf,.jpg,.jpeg,.png,.webp";
+export const documentAccept = `.docx,.xlsx,.csv,.pdf,${imageAccept}`;
 export function RecordDocuments({ record }: { record: DomainRecord }) {
   const { workspace, refresh } = useWorkspace();
   const [creating, setCreating] = useState(false),
