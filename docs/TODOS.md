@@ -154,3 +154,13 @@ Nach den abschließenden Liveprüfungen werden die angelegten QA-Konten, Testein
 - [x] Änderungen gesammelt speichern; Entwürfe bei Versionskonflikten erhalten. Neue Ansichten oder Uhrzeiten lösen keine Datenbankabfragen aus.
 - [x] Maskenpläne bei Wiederaufnahmen mitkopieren und PDF-/Excel-Zeittabellen sowie CSV-/JSON-Ausgaben bereitstellen.
 - [x] Anleitungen und gezielte Bild-, Daten-, Export- und Bedienprüfungen ergänzen.
+
+## Schnellzuweisung und Bedienung des Maskenplans
+
+- [x] Aktive Personen im Produktionsteam mit einem Klick als Maskenbetreuung auswählen; mehrere Betreuungen und Entfernen bei erhaltener Teammitgliedschaft unterstützen.
+- [x] Dieselbe Auswahl beim Anlegen und Bearbeiten einer Produktion anbieten, ohne zusätzliche Abrufe oder Änderungen vor dem Speichern.
+- [x] Zahlenfelder für Vorlauf, Zeitblöcke, Buchungen, Bestände, Kategorien, Vorlagen und Jahresfilter vollständig leeren und ersetzen lassen; Zahlen erst beim Übernehmen validieren.
+- [x] Neue Zeitblöcke direkt in eine Personalspalte auf die gewünschte Zeit ziehen, danach das vorbelegte Formular öffnen; alternativ ausdrücklich per Tipp platzieren.
+- [x] Bestehende Zeitblöcke am Desktop ziehen und am Smartphone nach längerem Halten verschieben; kurzer Tipp bearbeitet weiterhin, normales Wischen scrollt.
+- [x] Beim Verschieben Dauer und Inhalte erhalten, aufs Zeitraster runden und den Vorstellungsbeginn als Endgrenze beachten. Alle Änderungen bleiben bis Plan speichern lokal; Live-Konflikte erhalten den ursprünglichen Entwurf.
+- [x] Hilfe und Modulbeschreibung an die neuen Abläufe anpassen.

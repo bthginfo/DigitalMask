@@ -1,5 +1,5 @@
 ﻿"use client";
-import { useId } from "react";
+import { useId, useState } from "react";
 import { instantDate, timeAllocations, weekStart } from "@/shared/client-api";
 import type { DomainRecord } from "@/shared/contracts";
 import {
@@ -8,6 +8,7 @@ import {
   seasonBounds,
   type PeriodFilter,
 } from "@/shared/period-filter";
+import { numberDraft, previewNumberDraft } from "@/shared/number-draft";
 export function PeriodPicker({
   records,
   productions,
@@ -24,6 +25,9 @@ export function PeriodPicker({
   compact?: boolean;
 }) {
   const listId = useId();
+  const year = numberDraft(value.year);
+  const [yearEdit, setYearEdit] = useState({ base: year, text: year });
+  const yearDraft = yearEdit.base === year ? yearEdit.text : year;
   const options = periodOptions(records, productions);
   if (value.season && !options.seasons.includes(value.season))
     options.seasons.unshift(value.season);
@@ -37,13 +41,13 @@ export function PeriodPicker({
           max={2100}
           list={listId}
           placeholder="Alle Jahre"
-          value={value.year || ""}
-          onChange={(event) =>
-            onChange({
-              ...value,
-              year: event.target.value ? Number(event.target.value) : undefined,
-            })
-          }
+          value={yearDraft}
+          onChange={(event) => {
+            const text = event.target.value;
+            setYearEdit({ base: year, text });
+            const parsed = previewNumberDraft(text, { min: 1900, max: 2100, integer: true });
+            if (!text || parsed !== undefined) onChange({ ...value, year: parsed });
+          }}
         />
         <datalist id={listId}>
           {options.years.map((year) => (
@@ -68,8 +72,15 @@ export function PeriodPicker({
           </select>
         </label>
       )}
-      {(value.year || value.season) && (
-        <button type="button" className="text-button" onClick={() => onChange({})}>
+      {(yearDraft || value.season) && (
+        <button
+          type="button"
+          className="text-button"
+          onClick={() => {
+            setYearEdit({ base: year, text: "" });
+            onChange({});
+          }}
+        >
           Zeitraum zurücksetzen
         </button>
       )}

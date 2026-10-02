@@ -7,8 +7,10 @@ Each named plan is one `maskPlans` record linked to a production. Its lanes cont
 - `layout.ts` places parallel appointments and splits printable staff/time ranges.
 - `service.ts` validates all linked actors and casting in one batched query. The shared record service batches active department staff validation and retains production access checks.
 - `components/` edits a local versioned draft. Saving is one record mutation; view changes and clock previews have no server calls. Live changes preserve dirty drafts and stale modal snapshots; conflict recovery can reload or create a separate plan.
+- The timetable supports dragging a new block to its lane/time before opening its editor, with a deliberate tap-to-place alternative. Existing blocks move by mouse drag or a 350 ms touch hold; short taps still edit and ordinary swipes still scroll. Moves snap to the time grid, preserve duration/content and cannot extend past zero. Drag snapshots retain the original record version, including during a live update. Only explicit Save writes the plan.
+- Number fields retain string drafts until applying a form. Clearing or partially replacing a value does not coerce it to zero; previews omit incomplete required numbers and validated numeric values enter the plan only on Apply.
 - `export.ts` and `pdf.tsx` generate printable timetables and complete data exports from authorized in-memory references.
 
 Shared records, history, cache invalidation and event-driven workspace updates need no separate infrastructure. Generic actor deletion checks nested references. Production copying remaps lane/block IDs while preserving global actor links.
 
-Focused checks: `tests/mask-plans.test.ts`, `tests/mask-plan-exports.test.ts` and `tests/e2e/mask-plans-ui.spec.ts`. Browser fixtures intercept API traffic and create no production data.
+Focused checks: `tests/mask-plans.test.ts`, `tests/mask-plan-exports.test.ts`, `tests/e2e/mask-plans-ui.spec.ts` and `tests/e2e/numeric-mask-drag.spec.ts`. Browser fixtures intercept API traffic and create no production data. Quick production responsibility choices are covered separately by `tests/e2e/production-makeup-choice.spec.ts`.

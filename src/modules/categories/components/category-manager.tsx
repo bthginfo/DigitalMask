@@ -6,6 +6,7 @@ import { categoriesFor, type CategoryScope } from "@/shared/domain-categories";
 import { value } from "@/shared/client-api";
 import { useWorkspace } from "@/components/workspace-context";
 import { Button, Empty, ErrorMessage, Modal } from "@/components/ui";
+import { numberDraft, parseNumberDraft } from "@/shared/number-draft";
 const scopes = {
   time: "Tätigkeitsbereiche",
   materials: "Funduskategorien",
@@ -93,7 +94,7 @@ function CategoryEditor({
   const { save, busy } = useWorkspace();
   const [name, setName] = useState(value(record?.data || {}, "name")),
     [color, setColor] = useState(value(record?.data || {}, "color") || "#377a68"),
-    [order, setOrder] = useState(Number(record?.data.order || 0)),
+    [order, setOrder] = useState(numberDraft(record?.data.order, 0)),
     [error, setError] = useState("");
   return (
     <Modal title={`Kategorie ${record ? "bearbeiten" : "anlegen"}`} onClose={onClose}>
@@ -110,7 +111,13 @@ function CategoryEditor({
                 key: record ? record.data.key : `category-${crypto.randomUUID()}`,
                 name: name.trim(),
                 color,
-                order,
+                order: parseNumberDraft(order, {
+                  label: "Reihenfolge",
+                  fallback: 0,
+                  min: 0,
+                  max: 10000,
+                  integer: true,
+                }),
               },
               record,
             );
@@ -140,7 +147,7 @@ function CategoryEditor({
             min={0}
             max={10000}
             value={order}
-            onChange={(event) => setOrder(Number(event.target.value))}
+            onChange={(event) => setOrder(event.target.value)}
           />
         </label>
         <ErrorMessage message={error} />

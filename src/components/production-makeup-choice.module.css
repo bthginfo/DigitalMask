@@ -1,0 +1,157 @@
+.choice {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  cursor: pointer;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease;
+}
+
+.choice svg {
+  flex-shrink: 0;
+}
+
+.choice:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.choice[aria-pressed="true"] {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.choice:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.choice:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.savedMember {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 10px 12px;
+  align-items: center;
+  min-width: 0;
+}
+
+.savedMember > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.savedMember .choice {
+  grid-column: 2;
+  justify-self: start;
+}
+
+.formTeam {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+  margin: 18px 0;
+  padding: 12px 16px;
+  min-width: 0;
+}
+
+.formTeam > p {
+  margin: 0 0 10px;
+}
+
+.formMember {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+  min-width: 0;
+}
+
+.memberCheck {
+  min-width: 0;
+  min-height: 44px;
+  overflow-wrap: anywhere;
+}
+
+.feedback {
+  padding: 0 24px 20px;
+}
+
+.success {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  font-size: 13px;
+}
+
+.success svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--accent);
+}
+
+.spinner {
+  animation: spin 900ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (min-width: 1200px) {
+  .savedMember {
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+  }
+
+  .savedMember .choice {
+    grid-column: 3;
+  }
+}
+
+@media (max-width: 560px) {
+  .formMember {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+
+  .formMember .choice {
+    justify-self: start;
+    margin-left: 28px;
+    max-width: calc(100% - 28px);
+  }
+
+  .feedback {
+    padding-right: 20px;
+    padding-left: 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .choice {
+    transition: none;
+  }
+
+  .spinner {
+    animation: none;
+  }
+}

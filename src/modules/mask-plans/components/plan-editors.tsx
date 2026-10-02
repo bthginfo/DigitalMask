@@ -10,6 +10,7 @@ import type { DomainRecord } from "@/shared/contracts";
 import { maskPlanClock, type MaskPlanBlock, type MaskPlanData, type MaskPlanLane } from "../model";
 import { NamePicker } from "./name-picker";
 import styles from "./mask-plans.module.css";
+import { numberDraft, parseNumberDraft, previewNumberDraft } from "@/shared/number-draft";
 
 function closeEdited(previous: unknown, next: unknown, close: () => void) {
   if (
@@ -31,17 +32,38 @@ export function PlanOptions({
   onClose: () => void;
 }) {
   const [data, setData] = useState(plan);
+  const [windowMinutes, setWindowMinutes] = useState(numberDraft(plan.windowMinutes));
+  const [error, setError] = useState("");
+  const close = () =>
+    closeEdited(
+      { data: plan, windowMinutes: numberDraft(plan.windowMinutes) },
+      { data, windowMinutes },
+      onClose,
+    );
   return (
     <Modal
       title={creating ? "Maskenplan anlegen" : "Plan bearbeiten"}
-      onClose={() => closeEdited(plan, data, onClose)}
+      onClose={close}
       className={styles.modal}
     >
       <form
         onSubmit={(event) => {
           event.preventDefault();
-          onApply(data);
-          onClose();
+          try {
+            onApply({
+              ...data,
+              windowMinutes: parseNumberDraft(windowMinutes, {
+                label: "Vorlauf in Minuten",
+                required: true,
+                min: 5,
+                max: 720,
+                integer: true,
+              })!,
+            });
+            onClose();
+          } catch (exception) {
+            setError(exception instanceof Error ? exception.message : "Bitte prüfe den Vorlauf.");
+          }
         }}
       >
         <label>
@@ -62,8 +84,11 @@ export function PlanOptions({
               required
               min={5}
               max={720}
-              value={data.windowMinutes}
-              onChange={(event) => setData({ ...data, windowMinutes: Number(event.target.value) })}
+              value={windowMinutes}
+              onChange={(event) => {
+                setWindowMinutes(event.target.value);
+                setError("");
+              }}
             />
           </label>
           <label>
@@ -98,8 +123,9 @@ export function PlanOptions({
             onChange={(event) => setData({ ...data, notes: event.target.value })}
           />
         </label>
+        <ErrorMessage message={error} />
         <footer className="dialog-footer">
-          <Button onClick={() => closeEdited(plan, data, onClose)}>Abbrechen</Button>
+          <Button onClick={close}>Abbrechen</Button>
           <Button type="submit" variant="primary">
             {creating ? "Plan anlegen" : "Übernehmen"}
           </Button>
@@ -227,6 +253,8 @@ export function BlockEditor({
 }) {
   const { workspace } = useWorkspace();
   const [data, setData] = useState(block);
+  const [startMinutes, setStartMinutes] = useState(numberDraft(-block.startMinutes));
+  const [durationMinutes, setDurationMinutes] = useState(numberDraft(block.durationMinutes));
   const [error, setError] = useState("");
   const actors = [
     ...castActors,
@@ -237,9 +265,23 @@ export function BlockEditor({
     ),
   ];
   const unknown = data.actorIds.filter((id) => !actors.some((actor) => actor.id === id));
-  const end = data.startMinutes + data.durationMinutes;
-  const clock = maskPlanClock(data.startMinutes, performanceTime);
-  const close = () => closeEdited(block, data, onClose);
+  const startValue = previewNumberDraft(startMinutes, { min: 1, max: 720, integer: true });
+  const durationValue = previewNumberDraft(durationMinutes, { min: 1, max: 720, integer: true });
+  const end =
+    startValue === undefined || durationValue === undefined
+      ? undefined
+      : -startValue + durationValue;
+  const clock = startValue === undefined ? "" : maskPlanClock(-startValue, performanceTime);
+  const close = () =>
+    closeEdited(
+      {
+        data: block,
+        startMinutes: numberDraft(-block.startMinutes),
+        durationMinutes: numberDraft(block.durationMinutes),
+      },
+      { data, startMinutes, durationMinutes },
+      onClose,
+    );
   return (
     <Modal
       title={creating ? "Zeitblock hinzufügen" : "Zeitblock bearbeiten"}
@@ -250,7 +292,29 @@ export function BlockEditor({
       <form
         onSubmit={(event) => {
           event.preventDefault();
-          if (end > 0) {
+          let parsedStart: number, parsedDuration: number;
+          try {
+            parsedStart = -parseNumberDraft(startMinutes, {
+              label: "Minuten vor Beginn",
+              required: true,
+              min: 1,
+              max: 720,
+              integer: true,
+            })!;
+            parsedDuration = parseNumberDraft(durationMinutes, {
+              label: "Dauer in Minuten",
+              required: true,
+              min: 1,
+              max: 720,
+              integer: true,
+            })!;
+          } catch (exception) {
+            setError(
+              exception instanceof Error ? exception.message : "Bitte prüfe Zeit und Dauer.",
+            );
+            return;
+          }
+          if (parsedStart + parsedDuration > 0) {
             setError(
               "Der Zeitblock endet nach dem Vorstellungsbeginn. Verkürze die Dauer oder beginne früher.",
             );
@@ -260,7 +324,7 @@ export function BlockEditor({
             setError("Wähle mindestens eine Schauspielperson oder trage eine Tätigkeit ein.");
             return;
           }
-          onApply(data);
+          onApply({ ...data, startMinutes: parsedStart, durationMinutes: parsedDuration });
           onClose();
         }}
       >
@@ -294,9 +358,9 @@ export function BlockEditor({
               type="number"
               min={1}
               max={720}
-              value={-data.startMinutes}
+              value={startMinutes}
               onChange={(event) => {
-                setData({ ...data, startMinutes: -Number(event.target.value) });
+                setStartMinutes(event.target.value);
                 setError("");
               }}
             />
@@ -308,17 +372,23 @@ export function BlockEditor({
               type="number"
               min={1}
               max={720}
-              value={data.durationMinutes}
+              value={durationMinutes}
               onChange={(event) => {
-                setData({ ...data, durationMinutes: Number(event.target.value) });
+                setDurationMinutes(event.target.value);
                 setError("");
               }}
             />
           </label>
         </div>
         <p className={styles.timingPreview}>
-          Von {data.startMinutes} bis {end === 0 ? "0 · Beginn" : end} Minuten
-          {clock ? ` · ${clock}–${maskPlanClock(end, performanceTime)}` : ""}
+          {end === undefined ? (
+            "Bitte Zeit und Dauer eintragen."
+          ) : (
+            <>
+              Von {-startValue!} bis {end === 0 ? "0 · Beginn" : end} Minuten
+              {clock ? ` · ${clock}–${maskPlanClock(end, performanceTime)}` : ""}
+            </>
+          )}
         </p>
         <NamePicker
           legend="Schauspieler aus dieser Besetzung"

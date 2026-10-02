@@ -70,6 +70,7 @@ export function MaskPlansModule({ production }: { production: DomainRecord }) {
   const [conflict, setConflict] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [pending, setPending] = useState(false);
+  const dragSnapshot = useRef<Draft | null>(null);
   const selected =
     plans.find((record) => record.id === selectedId) || (!draft ? plans[0] : undefined);
   const dirty =
@@ -146,8 +147,12 @@ export function MaskPlansModule({ production }: { production: DomainRecord }) {
     setDraft({ data, base: dirty ? draft?.base : base || selected });
     setError("");
   };
-  const openEditor = (next: Exclude<Editor, null>) =>
-    setEditor({ ...next, base: dirty ? draft?.base : selected, snapshot: plan || undefined });
+  const openEditor = (next: Exclude<Editor, null>, origin?: Draft) =>
+    setEditor({
+      ...next,
+      base: origin ? origin.base : dirty ? draft?.base : selected,
+      snapshot: origin?.data || plan || undefined,
+    });
   const beginNew = () => {
     if (!guard()) return;
     openEditor({ type: "options", creating: true, plan: newMaskPlan(production.id) });
@@ -187,23 +192,43 @@ export function MaskPlansModule({ production }: { production: DomainRecord }) {
       lane: { id: crypto.randomUUID(), label: "", memberIds, staffNames },
     });
   };
-  const addBlock = (laneId = plan?.lanes[0]?.id || "") => {
-    if (!plan || !laneId) return;
-    openEditor({
-      type: "block",
-      creating: true,
-      block: {
-        id: crypto.randomUUID(),
-        laneId,
-        startMinutes: -30,
-        durationMinutes: 15,
-        actorIds: [],
-        actorNames: [],
-        title: "",
-        notes: "",
-        color: "",
+  const addBlock = (laneId = plan?.lanes[0]?.id || "", startMinutes = -30) => {
+    if (!plan || !laneId || plan.blocks.length >= 250) return;
+    openEditor(
+      {
+        type: "block",
+        creating: true,
+        block: {
+          id: crypto.randomUUID(),
+          laneId,
+          startMinutes,
+          durationMinutes: Math.min(15, -startMinutes),
+          actorIds: [],
+          actorNames: [],
+          title: "",
+          notes: "",
+          color: "",
+        },
       },
+      dragSnapshot.current || undefined,
+    );
+  };
+  const moveBlock = (id: string, laneId: string, startMinutes: number) => {
+    const origin =
+      dragSnapshot.current || (plan ? { data: plan, base: dirty ? draft?.base : selected } : null);
+    if (!origin) return;
+    const original = origin.data.blocks.find((block) => block.id === id);
+    if (!original || (original.laneId === laneId && original.startMinutes === startMinutes)) return;
+    setDraft({
+      data: {
+        ...origin.data,
+        blocks: origin.data.blocks.map((block) =>
+          block.id === id ? { ...block, laneId, startMinutes } : block,
+        ),
+      },
+      base: origin.base,
     });
+    setError("");
   };
   const castings = workspace.records.casting.filter(
     (record) => record.data.productionId === production.id,
@@ -248,6 +273,25 @@ export function MaskPlansModule({ production }: { production: DomainRecord }) {
     } finally {
       setPending(false);
     }
+  };
+  const beginDrag = () => {
+    if (plan) dragSnapshot.current = { data: plan, base: dirty ? draft?.base : selected };
+  };
+  const cancelDrag = () => {
+    dragSnapshot.current = null;
+  };
+  const timetableProps = {
+    plan: plan!,
+    members: workspace.members,
+    actors: workspace.records.actors,
+    performanceTime,
+    productionColor: value(production.data, "color"),
+    onEditLane: (lane: MaskPlanLane) => openEditor({ type: "lane", creating: false, lane }),
+    onEditBlock: (block: MaskPlanBlock) => openEditor({ type: "block", creating: false, block }),
+    onAddBlock: addBlock,
+    onMoveBlock: moveBlock,
+    onDragStart: beginDrag,
+    onDragCancel: cancelDrag,
   };
 
   return (
@@ -465,21 +509,11 @@ export function MaskPlansModule({ production }: { production: DomainRecord }) {
             }}
           >
             {plan.lanes.length ? (
-              (() => {
-                const props = {
-                  plan,
-                  members: workspace.members,
-                  actors: workspace.records.actors,
-                  performanceTime,
-                  productionColor: value(production.data, "color"),
-                  onEditLane: (lane: MaskPlanLane) =>
-                    openEditor({ type: "lane", creating: false, lane }),
-                  onEditBlock: (block: MaskPlanBlock) =>
-                    openEditor({ type: "block", creating: false, block }),
-                  onAddBlock: (laneId: string) => addBlock(laneId),
-                };
-                return view === "table" ? <Timetable {...props} /> : <PlanAgenda {...props} />;
-              })()
+              view === "table" ? (
+                <Timetable {...timetableProps} />
+              ) : (
+                <PlanAgenda {...timetableProps} />
+              )
             ) : (
               <div className={styles.empty}>
                 <Empty

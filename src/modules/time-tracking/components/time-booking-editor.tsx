@@ -5,6 +5,7 @@ import type { DomainRecord, RecordData } from "@/shared/contracts";
 import { hours, instantDate, localDate, localDateTime, num, value } from "@/shared/client-api";
 import { useWorkspace } from "@/components/workspace-context";
 import { Button, ErrorMessage, Modal } from "@/components/ui";
+import { numberDraft, parseNumberDraft, previewNumberDraft } from "@/shared/number-draft";
 
 export function TimeBookingEditor({
   kind = "time",
@@ -48,9 +49,9 @@ export function TimeBookingEditor({
     ),
   );
   const [minutes, setMinutes] = useState(
-    Math.round((num(initial, "durationSeconds") || 1800) / 60),
+    numberDraft(Math.round((num(initial, "durationSeconds") || 1800) / 60)),
   );
-  const [pause, setPause] = useState(Math.round(num(initial, "pauseSeconds") / 60));
+  const [pause, setPause] = useState(numberDraft(Math.round(num(initial, "pauseSeconds") / 60)));
   const [production, setProduction] = useState(
     lockedProductionId ?? value(initial, "productionId"),
   );
@@ -60,10 +61,17 @@ export function TimeBookingEditor({
   );
   const [taskId, setTaskId] = useState(value(initial, "taskId"));
   const [error, setError] = useState("");
+  const pauseValue = previewNumberDraft(pause, { fallback: 0, min: 0, max: 1440, integer: true });
+  const minutesValue = previewNumberDraft(minutes, { min: 1, max: 10080, integer: true });
   const elapsed =
-    mode === "interval" && start && end
-      ? Math.floor((instantDate(end).getTime() - instantDate(start).getTime()) / 1000) - pause * 60
-      : minutes * 60;
+    pauseValue === undefined
+      ? undefined
+      : mode === "interval" && start && end
+        ? Math.floor((instantDate(end).getTime() - instantDate(start).getTime()) / 1000) -
+          pauseValue * 60
+        : minutesValue === undefined
+          ? undefined
+          : minutesValue * 60;
   const tasks = workspace.records.tasks.filter(
     (task) => value(task.data, "productionId") === production,
   );
@@ -79,7 +87,33 @@ export function TimeBookingEditor({
           event.preventDefault();
           setError("");
           try {
-            if (!Number.isFinite(elapsed) || elapsed <= 0 || elapsed > 7 * 86400)
+            const parsedPause = parseNumberDraft(pause, {
+              label: "Pause in Minuten",
+              fallback: 0,
+              min: 0,
+              max: 1440,
+              integer: true,
+            })!;
+            const parsedMinutes =
+              mode === "duration"
+                ? parseNumberDraft(minutes, {
+                    label: "Dauer in Minuten",
+                    required: true,
+                    min: 1,
+                    max: 10080,
+                    integer: true,
+                  })!
+                : undefined;
+            const durationSeconds =
+              mode === "interval"
+                ? Math.floor((instantDate(end).getTime() - instantDate(start).getTime()) / 1000) -
+                  parsedPause * 60
+                : parsedMinutes! * 60;
+            if (
+              !Number.isFinite(durationSeconds) ||
+              durationSeconds <= 0 ||
+              durationSeconds > 7 * 86400
+            )
               throw new Error(
                 "Prüfe Beginn, Ende und Pause. Eine Buchung muss zwischen einer Sekunde und sieben Tagen liegen.",
               );
@@ -88,8 +122,8 @@ export function TimeBookingEditor({
             const data: RecordData = {
               title: title.trim() || "Anwesenheit",
               date: mode === "interval" ? localDate(instantDate(start)) : day,
-              durationSeconds: elapsed,
-              pauseSeconds: pause * 60,
+              durationSeconds,
+              pauseSeconds: parsedPause * 60,
               start: mode === "interval" ? instantDate(start).toISOString() : "",
               end: mode === "interval" ? instantDate(end).toISOString() : "",
               ...(attendance
@@ -261,7 +295,7 @@ export function TimeBookingEditor({
                   min={1}
                   max={10080}
                   value={minutes}
-                  onChange={(event) => setMinutes(Number(event.target.value))}
+                  onChange={(event) => setMinutes(event.target.value)}
                 />
               </label>
             </>
@@ -273,7 +307,7 @@ export function TimeBookingEditor({
               min={0}
               max={1440}
               value={pause}
-              onChange={(event) => setPause(Number(event.target.value))}
+              onChange={(event) => setPause(event.target.value)}
             />
           </label>
         </div>
@@ -292,7 +326,11 @@ export function TimeBookingEditor({
           <span>
             {mode === "interval" ? "Berechnete Zeit ohne Pause" : "Gebuchte Tätigkeitsdauer"}
           </span>
-          <strong>{hours(Math.max(0, Number.isFinite(elapsed) ? elapsed : 0))} h</strong>
+          <strong>
+            {elapsed === undefined || !Number.isFinite(elapsed)
+              ? "–"
+              : `${hours(Math.max(0, elapsed))} h`}
+          </strong>
         </div>
         <ErrorMessage message={error} />
         <footer className="dialog-footer">

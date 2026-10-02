@@ -11,6 +11,7 @@ import { ResourceEditor } from "@/components/resource-editor";
 import { RepeatableList } from "@/components/repeatable-list";
 import { CategoryManager } from "@/modules/categories/components/category-manager";
 import { SectionFields } from "./section-fields";
+import { numberDraft, parseNumberDraft } from "@/shared/number-draft";
 export function DocumentEditor({
   kind,
   record,
@@ -43,7 +44,7 @@ export function DocumentEditor({
     [duration, setDuration] = useState(
       initial.productionDurationMinutes == null ? "" : String(initial.productionDurationMinutes),
     ),
-    [version, setVersion] = useState(Number(initial.version || 1)),
+    [version, setVersion] = useState(numberDraft(initial.version, 1)),
     [checklist, setChecklist] = useState<{ text: string; done: boolean }[]>(
       Array.isArray(initial.checklist)
         ? (initial.checklist as { text: string; done: boolean }[])
@@ -154,11 +155,23 @@ export function DocumentEditor({
                           .version || 1,
                       ),
                       sections,
-                      productionDurationMinutes: duration !== "" ? Number(duration) : null,
+                      productionDurationMinutes:
+                        parseNumberDraft(duration, { label: "Stückdauer", min: 0, max: 10000 }) ??
+                        null,
                       imageIds: ids(initial, "imageIds"),
                     }
                   : kind === "templates"
-                    ? { title, version, sections, fields: ids(initial, "fields") }
+                    ? {
+                        title,
+                        version: parseNumberDraft(version, {
+                          label: "Vorlagenversion",
+                          required: true,
+                          min: 1,
+                          integer: true,
+                        }),
+                        sections,
+                        fields: ids(initial, "fields"),
+                      }
                     : {
                         title,
                         productionId: "",
@@ -305,6 +318,7 @@ export function DocumentEditor({
                 Stückdauer (Minuten, optional abweichend)
                 <input
                   type="number"
+                  step="any"
                   min={0}
                   max={10000}
                   value={duration}
@@ -323,9 +337,10 @@ export function DocumentEditor({
               Vorlagenversion
               <input
                 type="number"
+                required
                 min={1}
                 value={version}
-                onChange={(event) => setVersion(Number(event.target.value))}
+                onChange={(event) => setVersion(event.target.value)}
               />
             </label>
           )}

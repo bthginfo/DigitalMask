@@ -1,14 +1,74 @@
 "use client";
-import { useId, useState } from "react";
-import { Plus, Trash2, Users } from "lucide-react";
-import { contactsValue, type DomainRecord, type ProductionContact } from "@/shared/contracts";
-import { ids, initials, value } from "@/shared/client-api";
+import { useId, useRef, useState } from "react";
+import { Check, LoaderCircle, Plus, Trash2, Users } from "lucide-react";
+import {
+  contactsValue,
+  type DomainRecord,
+  type Member,
+  type ProductionContact,
+} from "@/shared/contracts";
+import { ApiFailure, ids, initials, value } from "@/shared/client-api";
 import { PersonPicker } from "@/modules/people/components";
-import { productionContactName } from "@/shared/production-contacts";
+import {
+  hasMakeupResponsibility,
+  productionContactName,
+  toggleMakeupResponsibility,
+} from "@/shared/production-contacts";
 import { isActiveStaff } from "@/shared/client-members";
 import { useWorkspace } from "./workspace-context";
 import { Badge, Button, Empty, ErrorMessage, Modal, PageHeader } from "./ui";
 import { RecordLink } from "./record-link";
+import styles from "./production-makeup-choice.module.css";
+
+function MakeupChoice({
+  member,
+  selected,
+  disabled,
+  pending = false,
+  onClick,
+}: {
+  member: Member;
+  selected: boolean;
+  disabled: boolean;
+  pending?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className={styles.choice}
+      aria-label={`Maskenbetreuung für ${member.name}`}
+      aria-pressed={selected}
+      disabled={disabled}
+      title={
+        selected
+          ? "Betreuung entfernen. Die Person bleibt im Produktionsteam."
+          : "Als Maskenbetreuung auswählen"
+      }
+      onClick={onClick}
+    >
+      {pending ? (
+        <LoaderCircle size={16} className={styles.spinner} aria-hidden="true" />
+      ) : selected ? (
+        <Check size={16} aria-hidden="true" />
+      ) : (
+        <Plus size={16} aria-hidden="true" />
+      )}
+      {selected ? "Maskenbetreuung" : "Als Maskenbetreuung"}
+    </button>
+  );
+}
+
+const productionChangedMessage =
+  "Die Produktion wurde inzwischen geändert. Deine Zuordnung wurde nicht gespeichert. Lade den aktuellen Stand und versuche es erneut.";
+
+function saveError(exception: unknown) {
+  return exception instanceof ApiFailure && exception.status === 409
+    ? productionChangedMessage
+    : exception instanceof Error
+      ? exception.message
+      : "Speichern fehlgeschlagen. Bitte versuche es erneut.";
+}
 
 export function ProductionPeopleFields({
   contacts,
@@ -19,7 +79,7 @@ export function ProductionPeopleFields({
   memberIds: string[];
   onChange: (contacts: ProductionContact[], memberIds: string[]) => void;
 }) {
-  const { workspace } = useWorkspace();
+  const { workspace, busy } = useWorkspace();
   const roleList = useId();
   const roles = [
     ...new Set([
@@ -53,6 +113,7 @@ export function ProductionPeopleFields({
           </p>
         </div>
         <Button
+          disabled={busy}
           onClick={() =>
             onChange(
               [
@@ -72,13 +133,65 @@ export function ProductionPeopleFields({
           <option key={role} value={role} />
         ))}
       </datalist>
+      <fieldset className={`form-multi ${styles.formTeam}`} disabled={busy}>
+        <legend>Produktionsteam</legend>
+        <p className="small muted">
+          Teammitglieder auswählen und bei Bedarf direkt als Maskenbetreuung zuweisen. Wenn du die
+          Betreuung entfernst, bleibt die Person im Team.
+        </p>
+        {teamChoices.map((member) => {
+          const included = memberIds.includes(member.id) || contactMembers.includes(member.id);
+          return (
+            <div className={styles.formMember} key={member.id}>
+              <label className={`check-label ${styles.memberCheck}`}>
+                <input
+                  type="checkbox"
+                  checked={included}
+                  disabled={contactMembers.includes(member.id)}
+                  onChange={(event) =>
+                    onChange(
+                      contacts,
+                      event.target.checked
+                        ? [...new Set([...memberIds, member.id])]
+                        : memberIds.filter((id) => id !== member.id),
+                    )
+                  }
+                />
+                <span>
+                  {member.name}
+                  {!isActiveStaff(member) && (
+                    <span className="small muted"> · Historische Zuordnung, entfernen</span>
+                  )}
+                </span>
+              </label>
+              {included && isActiveStaff(member) && (
+                <MakeupChoice
+                  member={member}
+                  selected={hasMakeupResponsibility(contacts, member.id)}
+                  disabled={busy}
+                  onClick={() => {
+                    const next = toggleMakeupResponsibility(
+                      contacts,
+                      memberIds,
+                      member.id,
+                      crypto.randomUUID(),
+                    );
+                    onChange(next.contacts, next.memberIds);
+                  }}
+                />
+              )}
+            </div>
+          );
+        })}
+        {!members.length && <p className="small muted">Noch keine aktiven Teammitglieder.</p>}
+      </fieldset>
       {!contacts.length && (
         <p className="empty-inline">
           Noch keine Kontakte. Externe Personen benötigen keinen Account.
         </p>
       )}
       {contacts.map((contact, index) => (
-        <fieldset className="production-contact-form" key={contact.id}>
+        <fieldset className="production-contact-form" key={contact.id} disabled={busy}>
           <legend>Kontakt {index + 1}</legend>
           <div className="form-grid">
             <label>
@@ -184,49 +297,21 @@ export function ProductionPeopleFields({
           </Button>
         </fieldset>
       ))}
-      <fieldset className="form-multi">
-        <legend>Produktionsteam</legend>
-        <p className="small muted">
-          Weitere aktive Teammitglieder hinzufügen. Zugeordnete Maskenbetreuungen gehören
-          automatisch zum Team. Zum Entfernen zuerst den entsprechenden Kontakt entfernen oder auf
-          einen freien Namen umstellen.
-        </p>
-        {teamChoices.map((member) => (
-          <label className="check-label" key={member.id}>
-            <input
-              type="checkbox"
-              checked={memberIds.includes(member.id) || contactMembers.includes(member.id)}
-              disabled={contactMembers.includes(member.id)}
-              onChange={(event) =>
-                onChange(
-                  contacts,
-                  event.target.checked
-                    ? [...memberIds, member.id]
-                    : memberIds.filter((id) => id !== member.id),
-                )
-              }
-            />
-            {member.name}
-            {!isActiveStaff(member) && (
-              <span className="small muted"> · Historische Zuordnung, entfernen</span>
-            )}
-            {contactMembers.includes(member.id) && (
-              <span className="small muted"> · Maskenbetreuung</span>
-            )}
-          </label>
-        ))}
-        {!members.length && <p className="small muted">Noch keine aktiven Teammitglieder.</p>}
-      </fieldset>
     </section>
   );
 }
 
 export function ProductionTeamModule({ production }: { production: DomainRecord }) {
-  const { workspace, save, busy } = useWorkspace();
+  const { workspace, save, refresh, busy } = useWorkspace();
   const [editing, setEditing] = useState(false);
+  const [editingBase, setEditingBase] = useState<DomainRecord | null>(null);
   const [contacts, setContacts] = useState(contactsValue(production.data.contacts));
   const [memberIds, setMemberIds] = useState(ids(production.data, "memberIds"));
   const [error, setError] = useState("");
+  const [quickError, setQuickError] = useState("");
+  const [quickNotice, setQuickNotice] = useState("");
+  const [pendingMemberId, setPendingMemberId] = useState("");
+  const quickMutation = useRef(false);
   const currentContacts = contactsValue(production.data.contacts);
   const team = workspace.members.filter((member) =>
     ids(production.data, "memberIds").includes(member.id),
@@ -235,7 +320,37 @@ export function ProductionTeamModule({ production }: { production: DomainRecord 
     setContacts(currentContacts);
     setMemberIds(ids(production.data, "memberIds"));
     setError("");
+    setEditingBase(production);
     setEditing(true);
+  };
+  const toggleSaved = async (member: Member) => {
+    if (quickMutation.current || busy || !isActiveStaff(member)) return;
+    quickMutation.current = true;
+    setPendingMemberId(member.id);
+    setQuickError("");
+    setQuickNotice("");
+    const original = production;
+    const originalContacts = contactsValue(original.data.contacts);
+    const selected = hasMakeupResponsibility(originalContacts, member.id);
+    const next = toggleMakeupResponsibility(
+      originalContacts,
+      ids(original.data, "memberIds"),
+      member.id,
+      crypto.randomUUID(),
+    );
+    try {
+      await save("productions", next, original);
+      setQuickNotice(
+        selected
+          ? `${member.name} bleibt im Team, ohne Maskenbetreuung.`
+          : `${member.name} ist jetzt Maskenbetreuung.`,
+      );
+    } catch (exception) {
+      setQuickError(saveError(exception));
+    } finally {
+      quickMutation.current = false;
+      setPendingMemberId("");
+    }
   };
   return (
     <>
@@ -244,7 +359,9 @@ export function ProductionTeamModule({ production }: { production: DomainRecord 
         title="Team & Kontakte"
         description="Zuständigkeiten und wichtige Personen für dieses Stück."
       >
-        <Button onClick={edit}>Team & Kontakte bearbeiten</Button>
+        <Button onClick={edit} disabled={busy || !!pendingMemberId}>
+          Team & Kontakte bearbeiten
+        </Button>
       </PageHeader>
       {currentContacts.length ? (
         <div className="production-contacts-list">
@@ -282,7 +399,7 @@ export function ProductionTeamModule({ production }: { production: DomainRecord 
           onAction={edit}
         />
       )}
-      <section className="panel production-team-panel">
+      <section className="panel production-team-panel" aria-label="Produktionsteam">
         <header className="panel-heading">
           <h3>
             <Users size={17} /> Produktionsteam
@@ -292,7 +409,7 @@ export function ProductionTeamModule({ production }: { production: DomainRecord 
         <div className="production-team-members">
           {team.length ? (
             team.map((member) => (
-              <div className="production-team-member" key={member.id}>
+              <div className={`production-team-member ${styles.savedMember}`} key={member.id}>
                 <span className="avatar">{initials(member.name)}</span>
                 <div>
                   <strong>{member.name}</strong>
@@ -304,12 +421,46 @@ export function ProductionTeamModule({ production }: { production: DomainRecord 
                     {member.status !== "active" ? " · Nicht aktiv" : ""}
                   </span>
                 </div>
+                {isActiveStaff(member) && (
+                  <MakeupChoice
+                    member={member}
+                    selected={hasMakeupResponsibility(currentContacts, member.id)}
+                    disabled={busy || !!pendingMemberId}
+                    pending={pendingMemberId === member.id}
+                    onClick={() => void toggleSaved(member)}
+                  />
+                )}
               </div>
             ))
           ) : (
             <p className="small muted">Noch kein Produktionsteam zugeteilt.</p>
           )}
         </div>
+        {(quickNotice || quickError) && (
+          <div className={styles.feedback}>
+            {quickNotice && (
+              <p className={styles.success} role="status">
+                <Check size={16} aria-hidden="true" /> {quickNotice}
+              </p>
+            )}
+            <ErrorMessage message={quickError} />
+            {quickError === productionChangedMessage && (
+              <Button
+                disabled={busy || !!pendingMemberId}
+                onClick={async () => {
+                  setQuickError("");
+                  try {
+                    await refresh();
+                  } catch (exception) {
+                    setQuickError(saveError(exception));
+                  }
+                }}
+              >
+                Aktuellen Stand laden
+              </Button>
+            )}
+          </div>
+        )}
       </section>
       {editing && (
         <Modal
@@ -322,12 +473,12 @@ export function ProductionTeamModule({ production }: { production: DomainRecord 
               event.preventDefault();
               setError("");
               try {
-                await save("productions", { contacts, memberIds }, production);
+                await save("productions", { contacts, memberIds }, editingBase || production);
+                setQuickError("");
+                setQuickNotice("");
                 setEditing(false);
               } catch (exception) {
-                setError(
-                  exception instanceof Error ? exception.message : "Speichern fehlgeschlagen",
-                );
+                setError(saveError(exception));
               }
             }}
           >

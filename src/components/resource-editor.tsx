@@ -20,6 +20,7 @@ import { CastingEditor } from "@/modules/productions/components/casting-editor";
 import { RepeatableList } from "./repeatable-list";
 import { categoriesFor } from "@/shared/domain-categories";
 import { CastingImpact } from "./casting-impact";
+import { numberDraft, parseNumberDraft } from "@/shared/number-draft";
 
 function initialData(kind: RecordKind): RecordData {
   return {
@@ -101,6 +102,7 @@ function GenericResourceEditor({
       ? value(record.data, "productionId")
       : undefined);
   const [error, setError] = useState("");
+  const [numberDrafts, setNumberDrafts] = useState<Record<string, string>>({});
   const change = (key: string, next: unknown) =>
     setData((current) => ({ ...current, [key]: next }));
   const configuredFields = fields[kind] || [];
@@ -128,6 +130,20 @@ function GenericResourceEditor({
         ...data,
         ...(productionContext !== undefined ? { productionId: productionContext } : {}),
       };
+      for (const field of configuredFields.filter((field) => field.type === "number")) {
+        const factor =
+          kind === "time" && ["durationSeconds", "pauseSeconds"].includes(field.key) ? 60 : 1;
+        const raw =
+          numberDrafts[field.key] ??
+          numberDraft(data[field.key] === undefined ? 0 : Number(data[field.key]) / factor);
+        result[field.key] =
+          parseNumberDraft(raw, {
+            label: field.label,
+            required: field.required,
+            fallback: 0,
+            min: field.min,
+          })! * factor;
+      }
       if (kind === "tasks" && productionContext === "") result.sprintId = "";
       if (Array.isArray(result.checklist))
         result.checklist = (result.checklist as { text: string; done: boolean }[]).filter((item) =>
@@ -266,8 +282,11 @@ function GenericResourceEditor({
       );
     const val =
       field.type === "number"
-        ? Number(data[field.key] || 0) /
-          (kind === "time" && ["durationSeconds", "pauseSeconds"].includes(field.key) ? 60 : 1)
+        ? (numberDrafts[field.key] ??
+          numberDraft(
+            Number(data[field.key] || 0) /
+              (kind === "time" && ["durationSeconds", "pauseSeconds"].includes(field.key) ? 60 : 1),
+          ))
         : field.type === "datetime-local" && data[field.key]
           ? localDateTime(String(data[field.key]))
           : value(data, field.key);
@@ -305,15 +324,9 @@ function GenericResourceEditor({
             placeholder={field.placeholder}
             value={val}
             onChange={(event) =>
-              change(
-                field.key,
-                field.type === "number"
-                  ? Number(event.target.value) *
-                      (kind === "time" && ["durationSeconds", "pauseSeconds"].includes(field.key)
-                        ? 60
-                        : 1)
-                  : event.target.value,
-              )
+              field.type === "number"
+                ? setNumberDrafts((current) => ({ ...current, [field.key]: event.target.value }))
+                : change(field.key, event.target.value)
             }
           />
         )}
