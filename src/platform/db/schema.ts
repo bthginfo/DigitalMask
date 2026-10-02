@@ -32,6 +32,23 @@ export const profilePreferences = pgTable("profile_preferences", {
   onboardingCompletedAt: timestamp("onboarding_completed_at", { withTimezone: true }),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+export const pushSubscriptions = pgTable(
+  "push_subscriptions",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    departmentId: text("department_id")
+      .notNull()
+      .references(() => departments.id),
+    endpoint: text("endpoint").notNull(),
+    keys: jsonb("keys").$type<{ p256dh: string; auth: string }>().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("push_subscription_scope_user_idx").on(t.departmentId, t.userId)],
+);
 export const session = pgTable(
   "app_session",
   {

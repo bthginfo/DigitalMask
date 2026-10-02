@@ -29,6 +29,8 @@ import { subscribeLocation, subscribeMobile } from "@/shared/client-storage";
 import { onboardingVersion, type DomainRecord, type RecordKind } from "@/shared/contracts";
 import { initials, post, value } from "@/shared/client-api";
 import { useWorkspace } from "./workspace-context";
+import { stopPushOnLogout } from "@/modules/notifications/client";
+import { chatUnreadCounts } from "@/modules/notifications/unread";
 import { Badge, Empty, Modal } from "./ui";
 import { ThemeSwitch } from "./theme-switch";
 import { LiveStatus } from "./live-status";
@@ -188,6 +190,7 @@ export function WorkspaceShell() {
     )
       return;
     try {
+      await stopPushOnLogout(workspace.user.id);
       await post("/api/logout", {});
       localStorage.removeItem(`digitalmask-time-drafts:${workspace.user.id}`);
       delete document.documentElement.dataset.accent;
@@ -199,6 +202,7 @@ export function WorkspaceShell() {
   const unread = workspace.records.notifications.filter(
     (x) => !x.data.read && x.data.userId === workspace.user.id,
   );
+  const chatUnread = chatUnreadCounts(workspace.records.notifications, workspace.user.id).total;
   const results =
     search.length >= 2
       ? Object.values(workspace.records)
@@ -354,10 +358,20 @@ export function WorkspaceShell() {
                     key={item.id}
                     onClick={() => navigate(item.id)}
                     aria-current={activeModule === item.id ? "page" : undefined}
+                    aria-label={item.label}
+                    aria-description={
+                      item.id === "chat" && chatUnread
+                        ? `${chatUnread} ungelesene Nachrichten`
+                        : undefined
+                    }
                   >
                     <item.icon size={18} strokeWidth={1.7} />
                     <span>{item.label}</span>
-                    {item.id === "chat" && <span className="nav-dot" />}
+                    {item.id === "chat" && chatUnread > 0 && (
+                      <span className="chat-unread-count" aria-hidden="true">
+                        {chatUnread > 99 ? "99+" : chatUnread}
+                      </span>
+                    )}
                   </button>
                 ))}
             </div>
@@ -474,9 +488,17 @@ export function WorkspaceShell() {
               }
               aria-current={activeModule === key ? "page" : undefined}
               aria-label={key === "chat" ? "Kommunikation" : String(label)}
+              aria-description={
+                key === "chat" && chatUnread ? `${chatUnread} ungelesene Nachrichten` : undefined
+              }
               onClick={() => (key === "more" ? openMenu() : navigate(String(key)))}
             >
               <Component size={20} />
+              {key === "chat" && chatUnread > 0 && (
+                <span className="chat-unread-count" aria-hidden="true">
+                  {chatUnread > 99 ? "99+" : chatUnread}
+                </span>
+              )}
               <span>{String(label)}</span>
             </button>
           );

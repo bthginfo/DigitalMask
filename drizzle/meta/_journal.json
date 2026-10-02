@@ -64,6 +64,13 @@
       "when": 1790793932946,
       "tag": "0008_shared_contacts_and_global_handovers",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1790936315244,
+      "tag": "0009_open_fixer",
+      "breakpoints": true
     }
   ]
 }

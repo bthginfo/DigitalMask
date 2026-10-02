@@ -124,6 +124,20 @@ Die Bereitstellung erfolgt nach den Releaseprüfungen über GitHub und die beste
 - [x] Bestehende Kalenderrechte und Exportfilter erhalten; keine zusätzlichen Datenbankabfragen.
 - [x] Mobile Kopfaktionen kompakt halten; auch volle Monate mit sechs Wochen auf kleinen Displays prüfen, einschließlich Dark Mode und unabhängiger Designbewertung.
 
+## Chat-Kanalauswahl und Gerätemitteilungen
+
+- [x] Desktop-Kanalauswahl einklappen und pro Benutzer auf dem Gerät merken; mobiler Kanalwechsler bleibt erhalten.
+- [x] Ungelesene Nachrichten global, je Kanal/Chat und am eingeklappten Schalter mit Zählern anzeigen; beim sichtbaren Lesen gesammelt quittieren.
+- [x] Push auf Geräten ausdrücklich aktivieren/deaktivieren, Testmitteilung und klare iPhone-/Systemhinweise in Einstellungen anbieten.
+- [x] Ereignisgesteuerter Versand und App-Symbolzähler mit Rollen-/Privatheitsprüfung, sicheren Endpoints, Wiederholungen und Bereinigung abgelaufener Geräte.
+- [x] Vercel-Schlüssel und Gerätemigration einrichten; Hilfe und Architektur aktualisieren.
+
+## Weitere Produktionsänderungen
+
+- [ ] Ensemble-Import für Admins aus der Schauspielerübersicht des Stadttheaters Ingolstadt; eindeutige vorhandene Schauspieler aktualisieren, zusätzliche Einträge erhalten und Bilder übernehmen.
+- [ ] Figuren- und Besetzungs-KPIs in Produktionsübersichten anhand „Abschiedsdinner“ korrigieren.
+- [ ] Produktionsreiter „Figuren & Bilder“ entfernen; Besetzung als zentralen Bereich mit Bild-Uploads je Besetzung nutzen und bestehende Daten erhalten.
+
 ## QA-Nachbereitung
 
 Nach den abschließenden Liveprüfungen werden die angelegten QA-Konten, Testeinträge und Testdateien aus der produktiven Umgebung entfernt. Automatische Testdefinitionen bleiben für spätere Änderungen erhalten.

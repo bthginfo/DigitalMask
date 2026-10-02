@@ -1,10 +1,12 @@
 import { after } from "next/server";
-import { and, eq, lte, sql, or, ne } from "drizzle-orm";
+import { and, eq, lte, sql, or, ne, inArray } from "drizzle-orm";
 import { db, type Transaction } from "@/platform/db";
 import { outbox, records, audit, memberships } from "@/platform/db/schema";
 import type { Context } from "@/platform/context";
 import { invalidateWorkspace } from "@/modules/records/workspace";
 import type { RecordData } from "@/shared/contracts";
+import { listValue } from "@/shared/contracts";
+import { deliverNotifications } from "@/modules/notifications/service";
 export async function emit(tx: Transaction, context: Context, type: string, payload: RecordData) {
   await tx.insert(outbox).values({
     id: crypto.randomUUID(),
@@ -60,6 +62,7 @@ export async function processEvents() {
   });
   for (const event of due) {
     try {
+      const noticeIds: string[] = [];
       if (event.type === "FileDeletionRequestedV1") {
         const [reference] = await db
           .select({ id: records.id })
@@ -87,24 +90,30 @@ export async function processEvents() {
           let targets = Array.isArray(event.payload.userIds)
             ? event.payload.userIds.filter((x): x is string => typeof x === "string")
             : [];
+          let targetsChecked = false;
           if (event.type === "ChatMessageCreatedV1") {
-            const [conversation] = await tx
-              .select({ data: records.data })
-              .from(records)
-              .where(
-                and(
-                  eq(records.departmentId, event.departmentId),
-                  eq(records.id, String(event.payload.conversationId)),
-                  eq(records.kind, "conversations"),
-                ),
-              )
-              .limit(1);
+            const [conversation] = event.payload.conversationId
+              ? await tx
+                  .select({ data: records.data })
+                  .from(records)
+                  .where(
+                    and(
+                      eq(records.departmentId, event.departmentId),
+                      eq(records.id, String(event.payload.conversationId)),
+                      eq(records.kind, "conversations"),
+                    ),
+                  )
+                  .limit(1)
+              : [];
             const participants = Array.isArray(conversation?.data.participantIds)
               ? conversation.data.participantIds
               : [];
-            if (conversation?.data.mode === "team") {
+            if (
+              conversation?.data.mode === "team" ||
+              (!event.payload.conversationId && event.payload.audience === "team")
+            ) {
               const activeTeam = await tx
-                .select({ id: memberships.userId })
+                .select({ id: memberships.userId, role: memberships.role })
                 .from(memberships)
                 .where(
                   and(
@@ -114,16 +123,56 @@ export async function processEvents() {
                   ),
                 );
               targets = activeTeam.map((member) => member.id);
+              targetsChecked = true;
+              if (event.payload.productionId) {
+                const [production] = await tx
+                  .select({ data: records.data })
+                  .from(records)
+                  .where(
+                    and(
+                      eq(records.departmentId, event.departmentId),
+                      eq(records.id, String(event.payload.productionId)),
+                      eq(records.kind, "productions"),
+                    ),
+                  )
+                  .limit(1);
+                const permitted = listValue(production?.data.memberIds);
+                targets = production
+                  ? activeTeam
+                      .filter(
+                        (member) =>
+                          member.role !== "user" ||
+                          !permitted.length ||
+                          permitted.includes(member.id),
+                      )
+                      .map((member) => member.id)
+                  : [];
+              }
             } else {
               targets = targets.filter((id) => participants.includes(id));
             }
           }
+          if (targets.length && !targetsChecked) {
+            const active = await tx
+              .select({ id: memberships.userId })
+              .from(memberships)
+              .where(
+                and(
+                  eq(memberships.departmentId, event.departmentId),
+                  eq(memberships.status, "active"),
+                  inArray(memberships.userId, targets),
+                ),
+              );
+            targets = [...new Set(active.map((member) => member.id))];
+          }
           for (const uid of targets) {
             if (uid === event.payload.actorId) continue;
+            const noticeId = `notice:${event.id}:${uid}`;
+            noticeIds.push(noticeId);
             await tx
               .insert(records)
               .values({
-                id: `notice:${event.id}:${uid}`,
+                id: noticeId,
                 kind: "notifications",
                 organizationId: String(event.payload.organizationId),
                 departmentId: event.departmentId,
@@ -134,6 +183,8 @@ export async function processEvents() {
                     ? event.payload.productionId
                     : null,
                 data: {
+                  type: event.type,
+                  recordId: event.payload.recordId || "",
                   ...(event.payload.conversationId
                     ? { conversationId: event.payload.conversationId }
                     : {}),
@@ -151,9 +202,10 @@ export async function processEvents() {
               .onConflictDoNothing();
           }
         }
-        await tx.update(outbox).set({ status: "done" }).where(eq(outbox.id, event.id));
       });
       changedDepartments.add(event.departmentId);
+      await deliverNotifications(event.departmentId, event.type, noticeIds);
+      await db.update(outbox).set({ status: "done" }).where(eq(outbox.id, event.id));
     } catch (error) {
       await db
         .update(outbox)

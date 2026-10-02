@@ -1,10 +1,12 @@
 ﻿"use client";
-import { useRef, useState } from "react";
+import { useId, useRef, useState, useSyncExternalStore } from "react";
 import {
   ChevronDown,
   ChevronRight,
   Hash,
   MessageCircle,
+  PanelLeftClose,
+  PanelLeftOpen,
   Plus,
   Search,
   Theater,
@@ -18,6 +20,26 @@ import { useWorkspace } from "../workspace-context";
 import { Badge, Button, Empty, ErrorMessage, Modal, PageHeader } from "../ui";
 import { ChatChannel } from "@/modules/chat/components/chat-channel";
 import { ConversationEditor } from "@/modules/chat/components/conversation-editor";
+import { chatUnreadCounts } from "@/modules/notifications/unread";
+
+const sidebarFallback = new Map<string, boolean>();
+const sidebarChange = "digitalmask:chat-sidebar";
+function subscribeSidebar(onChange: () => void) {
+  window.addEventListener("storage", onChange);
+  window.addEventListener(sidebarChange, onChange);
+  return () => {
+    window.removeEventListener("storage", onChange);
+    window.removeEventListener(sidebarChange, onChange);
+  };
+}
+function sidebarCollapsed(key: string) {
+  try {
+    const stored = localStorage.getItem(key);
+    return stored === null ? sidebarFallback.get(key) === true : stored === "collapsed";
+  } catch {
+    return sidebarFallback.get(key) === true;
+  }
+}
 
 function ChannelChoice({
   title,
@@ -25,6 +47,7 @@ function ChannelChoice({
   icon: Icon,
   selected,
   kind,
+  unread = 0,
   onSelect,
 }: {
   title: string;
@@ -32,6 +55,7 @@ function ChannelChoice({
   icon: LucideIcon;
   selected: boolean;
   kind: "team" | "production" | "direct" | "group";
+  unread?: number;
   onSelect: () => void;
 }) {
   return (
@@ -39,6 +63,11 @@ function ChannelChoice({
       type="button"
       className={`channel-choice kind-${kind}${selected ? " active" : ""}`}
       aria-current={selected ? "page" : undefined}
+      aria-label={
+        unread
+          ? `${title} · ${detail} · ${unread} ungelesene ${unread === 1 ? "Nachricht" : "Nachrichten"}`
+          : undefined
+      }
       onClick={onSelect}
     >
       <span className="channel-choice-icon">
@@ -48,6 +77,11 @@ function ChannelChoice({
         <strong>{title}</strong>
         <small>{detail}</small>
       </span>
+      {unread > 0 && (
+        <span className="chat-unread-count" aria-hidden="true">
+          {unread > 99 ? "99+" : unread}
+        </span>
+      )}
       {selected && <ChevronRight size={15} className="channel-choice-current" aria-hidden="true" />}
     </button>
   );
@@ -77,6 +111,23 @@ export function ChatModule({
   onNavigate?: (conversationId: string, productionId?: string) => void;
 }) {
   const { workspace, save, remove, busy } = useWorkspace();
+  const unread = chatUnreadCounts(workspace.records.notifications, workspace.user.id);
+  const sidebarId = useId();
+  const sidebarKey = `digitalmask:chat-sidebar:${workspace.user.id}`;
+  const collapsed = useSyncExternalStore(
+    subscribeSidebar,
+    () => sidebarCollapsed(sidebarKey),
+    () => false,
+  );
+  const toggleSidebar = () => {
+    sidebarFallback.set(sidebarKey, !collapsed);
+    try {
+      localStorage.setItem(sidebarKey, collapsed ? "expanded" : "collapsed");
+    } catch {
+      // The in-memory preference still works when device storage is unavailable.
+    }
+    window.dispatchEvent(new Event(sidebarChange));
+  };
   const [selection, setSelection] = useState({ conversationId, productionId });
   const channelToggle = useRef<HTMLButtonElement>(null);
   const [channelsOpen, setChannelsOpen] = useState(false),
@@ -88,6 +139,12 @@ export function ChatModule({
   const locked = !!productionId && !onNavigate;
   const selectedConversation = onNavigate ? conversationId : selection.conversationId,
     selectedProduction = locked ? productionId : onNavigate ? productionId : selection.productionId;
+  const selectedUnread = selectedConversation
+    ? unread.conversations[selectedConversation] || 0
+    : selectedProduction
+      ? unread.productions[selectedProduction] || 0
+      : unread.general;
+  const otherUnread = Math.max(0, unread.total - selectedUnread);
   const visibleConversations = (workspace.records.conversations || []).filter(
     (record) =>
       record.data.mode === "team" || ids(record.data, "participantIds").includes(workspace.user.id),
@@ -143,6 +200,29 @@ export function ChatModule({
       setError(exception instanceof Error ? exception.message : "Aktion fehlgeschlagen");
     }
   };
+  const sidebarToggle = !locked && (
+    <button
+      type="button"
+      className="button ghost chat-desktop-sidebar-toggle"
+      aria-label={`${collapsed ? "Kanalauswahl öffnen" : "Kanalauswahl einklappen"}${collapsed && unread.total ? ` · ${unread.total} ungelesene ${unread.total === 1 ? "Nachricht" : "Nachrichten"}` : ""}`}
+      title={collapsed ? "Kanalauswahl öffnen" : "Kanalauswahl einklappen"}
+      aria-expanded={!collapsed}
+      aria-controls={sidebarId}
+      onClick={toggleSidebar}
+    >
+      {collapsed ? (
+        <PanelLeftOpen size={20} aria-hidden="true" />
+      ) : (
+        <PanelLeftClose size={20} aria-hidden="true" />
+      )}
+      <span className="visually-hidden">Kanalauswahl</span>
+      {collapsed && unread.total > 0 && (
+        <span className="chat-unread-count" aria-hidden="true">
+          {unread.total > 99 ? "99+" : unread.total}
+        </span>
+      )}
+    </button>
+  );
   return (
     <>
       <PageHeader
@@ -167,9 +247,16 @@ export function ChatModule({
           </Button>
         )}
       </PageHeader>
-      <div className={locked ? "chat-layout single-channel" : "chat-layout"}>
+      <div
+        className={
+          locked
+            ? "chat-layout single-channel"
+            : `chat-layout${collapsed ? " channels-collapsed" : ""}`
+        }
+      >
         {!locked && (
           <aside
+            id={sidebarId}
             className={`chat-channels${channelsOpen ? " is-open" : ""}`}
             aria-label="Chats auswählen"
           >
@@ -183,12 +270,22 @@ export function ChatModule({
               ref={channelToggle}
               aria-expanded={channelsOpen}
               aria-controls="chat-channel-navigation"
+              aria-label={
+                otherUnread
+                  ? `${title || "Kanal auswählen"} · Kanal wechseln · ${otherUnread} ungelesene ${otherUnread === 1 ? "Nachricht" : "Nachrichten"} in anderen Kanälen`
+                  : undefined
+              }
               onClick={() => setChannelsOpen(!channelsOpen)}
             >
               <span>
                 <small>Kanal wechseln</small>
                 <strong>{title || "Kanal auswählen"}</strong>
               </span>
+              {otherUnread > 0 && (
+                <span className="chat-unread-count" aria-hidden="true">
+                  {otherUnread > 99 ? "99+" : otherUnread}
+                </span>
+              )}
               <ChevronDown size={20} aria-hidden="true" />
             </button>
             <div className="chat-channel-lists" id="chat-channel-navigation">
@@ -217,6 +314,7 @@ export function ChatModule({
                         detail="Für das ganze Maskenteam"
                         icon={Hash}
                         kind="team"
+                        unread={unread.general}
                         selected={!selectedConversation && !selectedProduction}
                         onSelect={() => choose("")}
                       />
@@ -232,6 +330,7 @@ export function ChatModule({
                         }
                         icon={Hash}
                         kind="team"
+                        unread={unread.conversations[record.id] || 0}
                         selected={selectedConversation === record.id}
                         onSelect={() => choose(record.id)}
                       />
@@ -250,6 +349,7 @@ export function ChatModule({
                         detail="Absprachen zum Stück"
                         icon={Theater}
                         kind="production"
+                        unread={unread.productions[record.id] || 0}
                         selected={!selectedConversation && selectedProduction === record.id}
                         onSelect={() => choose("", record.id)}
                       />
@@ -280,6 +380,7 @@ export function ChatModule({
                           }
                           icon={kind === "direct" ? MessageCircle : Users}
                           kind={kind}
+                          unread={unread.conversations[record.id] || 0}
                           selected={selectedConversation === record.id}
                           onSelect={() => choose(record.id)}
                         />
@@ -321,16 +422,20 @@ export function ChatModule({
           </aside>
         )}
         {selectedConversation && !conversation ? (
-          <Empty
-            title="Dieser Chat ist nicht verfügbar."
-            description="Wähle einen anderen Chat aus deinen freigegebenen Gesprächen."
-          />
+          <section className="chat-unavailable">
+            {sidebarToggle}
+            <Empty
+              title="Dieser Chat ist nicht verfügbar."
+              description="Wähle einen anderen Chat aus deinen freigegebenen Gesprächen."
+            />
+          </section>
         ) : (
           <ChatChannel
             key={selectedConversation || `production:${selectedProduction}`}
             title={title}
             productionId={selectedProduction}
             conversation={conversation}
+            sidebarToggle={sidebarToggle}
             onManage={
               conversation && canManageRecord(workspace.user, "conversations", conversation)
                 ? () => setManage(true)

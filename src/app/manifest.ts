@@ -5,6 +5,8 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: "DigitalMask",
     description: "Dein Arbeitsraum hinter der Bühne",
     start_url: "/",
+    id: "/",
+    scope: "/",
     display: "standalone",
     background_color: "#f5f5ef",
     theme_color: "#16735c",

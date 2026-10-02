@@ -12,9 +12,9 @@ import {
 } from "@/shared/contracts";
 import { serialize, projectVisible } from "./repository";
 import { scheduleLiveChange } from "@/platform/realtime";
-export function invalidateWorkspace(departmentId: string) {
+export function invalidateWorkspace(departmentId: string, broadcast = true) {
   revalidateTag(scopeTag(departmentId), { expire: 0 });
-  scheduleLiveChange(departmentId);
+  if (broadcast) scheduleLiveChange(departmentId);
 }
 export function invalidateTeam(departmentId: string) {
   revalidateTag(`team:${departmentId}`, { expire: 0 });

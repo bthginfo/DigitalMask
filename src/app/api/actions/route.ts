@@ -9,6 +9,7 @@ import { decideLeave } from "@/modules/calendar/leave";
 import { organizationAction } from "@/modules/organization/actions";
 import { copyProduction } from "@/modules/productions/copy";
 import { updateProfile } from "@/modules/profile/service";
+import { readChatNotifications } from "@/modules/notifications/read";
 export async function POST(request: Request) {
   return route(async () => {
     const {
@@ -25,6 +26,8 @@ export async function POST(request: Request) {
     const context = await requireContext(true);
     let result: unknown;
     if (action === "profile-update") result = await updateProfile(context, data);
+    else if (action === "chat-notifications-read")
+      result = await readChatNotifications(context, data);
     else if (action.startsWith("attendance-timer-"))
       result = await timerAction(context, action.replace("attendance-", ""), data, "attendance");
     else if (action.startsWith("timer-")) result = await timerAction(context, action, data);

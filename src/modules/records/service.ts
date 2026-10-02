@@ -484,17 +484,26 @@ export async function saveRecord(
         eventQueued = true;
       }
     }
-    if (kind === "messages" && data.conversationId && !existing) {
+    if (kind === "messages" && !existing) {
       const teamChannel = related.conversation?.data.mode === "team";
       await emit(tx, context, "ChatMessageCreatedV1", {
         // The worker resolves current team membership once, when delivering the message.
         userIds: teamChannel ? [] : listValue(related.conversation?.data.participantIds),
+        audience: data.conversationId ? "conversation" : "team",
         title: teamChannel
           ? `Neue Nachricht · ${textValue(related.conversation?.data.title)}`
-          : "Neue private Nachricht",
+          : data.conversationId
+            ? "Neue private Nachricht"
+            : "Neue Nachricht",
         body: String(data.text).slice(0, 160),
         conversationId: data.conversationId,
-        link: `/?module=chat&conversationId=${encodeURIComponent(String(data.conversationId))}`,
+        productionId: data.conversationId ? "" : data.productionId,
+        recordId: row.id,
+        link: data.conversationId
+          ? `/?module=chat&conversationId=${encodeURIComponent(String(data.conversationId))}`
+          : data.productionId
+            ? `/?module=chat&productionId=${encodeURIComponent(String(data.productionId))}`
+            : "/?module=chat",
       });
       eventQueued = true;
     }

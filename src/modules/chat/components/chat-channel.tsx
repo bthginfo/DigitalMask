@@ -1,5 +1,5 @@
 ﻿"use client";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Hash, MessageCircle, Paperclip, Pencil, Send, Trash2, Users, X } from "lucide-react";
 import type { DomainRecord } from "@/shared/contracts";
 import { api, dateLabel, initials, post, value } from "@/shared/client-api";
@@ -8,17 +8,20 @@ import { useWorkspace } from "@/components/workspace-context";
 import { LiveStatus } from "@/components/live-status";
 import { Badge, Button, Empty, ErrorMessage, ExportButton, Modal } from "@/components/ui";
 import { ExportDialog } from "@/components/export-dialog";
+import { useChatRead } from "@/modules/notifications/use-chat-read";
 
 export function ChatChannel({
   productionId = "",
   conversation,
   title,
   onManage,
+  sidebarToggle,
 }: {
   productionId?: string;
   conversation?: DomainRecord;
   title: string;
   onManage?: () => void;
+  sidebarToggle?: ReactNode;
 }) {
   const { workspace, refresh, save, remove, busy } = useWorkspace();
   const conversationId = conversation?.id || "",
@@ -33,6 +36,7 @@ export function ChatChannel({
   const bottom = useRef<HTMLDivElement>(null),
     nearBottom = useRef(true),
     lastMessage = useRef("");
+  useChatRead(conversationId, productionId, bottom);
   const messages = useMemo(
     () =>
       workspace.records.messages
@@ -96,6 +100,7 @@ export function ChatChannel({
   return (
     <section className="chat-main">
       <header className="chat-heading">
+        {sidebarToggle}
         {conversation ? (
           conversation.data.mode === "team" ? (
             <Hash size={20} />

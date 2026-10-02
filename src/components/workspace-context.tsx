@@ -15,6 +15,7 @@ import { api, ApiFailure, post } from "@/shared/client-api";
 import { subscribeConnectivity } from "@/shared/client-storage";
 import { useRouter } from "next/navigation";
 import { connectLiveSync, type SyncStatus } from "@/shared/live-sync";
+import { syncAppBadge } from "@/modules/notifications/client";
 
 interface Context {
   workspace: Workspace;
@@ -88,11 +89,21 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   }, [router]);
   useEffect(() => {
     void Promise.resolve().then(refresh);
-    if ("serviceWorker" in navigator) void navigator.serviceWorker.register("/sw.js");
+    if ("serviceWorker" in navigator)
+      void navigator.serviceWorker
+        .register("/sw.js", { updateViaCache: "none" })
+        .catch(() => undefined);
   }, [refresh]);
   const liveEnabled = Boolean(workspace?.live);
   const departmentId = workspace?.department.id;
   const userId = workspace?.user.id;
+  const unreadCount =
+    workspace?.records.notifications.filter(
+      (notice) => notice.data.userId === userId && !notice.data.read,
+    ).length || 0;
+  useEffect(() => {
+    if (userId) void syncAppBadge(userId, unreadCount).catch(() => undefined);
+  }, [userId, unreadCount]);
   useEffect(() => {
     if (!userId) return;
     const report = (status: SyncStatus) => {

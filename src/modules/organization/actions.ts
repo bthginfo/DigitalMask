@@ -59,7 +59,7 @@ export async function organizationAction(
       .set({ data: { ...row.data, read: true }, version: row.version + 1 })
       .where(eq(records.id, id))
       .returning();
-    invalidateWorkspace(context.departmentId);
+    invalidateWorkspace(context.departmentId, false);
     return serialize(updated);
   }
   requireAdmin(context);

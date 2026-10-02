@@ -133,8 +133,23 @@ export const helpArticles: HelpArticle[] = [
       "Admins können mit Teamkanal einen weiteren Kanal anlegen. Darin kann das ganze Maskenteam schreiben, auch neue Kolleginnen nach der Freigabe ihres Zugangs. Admins können den Kanal umbenennen oder archivieren; Nachrichten bleiben erhalten.",
       "Nutze Maske · Allgemein für Informationen an die Abteilung oder den Projektchat für Absprachen zum Stück.",
       "Neue Nachrichten und Änderungen im Team erscheinen automatisch. Live verbunden zeigt, dass die Verbindung steht. Im Hintergrund pausiert sie; beim Zurückkehren werden verpasste Änderungen nachgeholt. Bei einer Störung kannst du die Verbindung erneut versuchen.",
+      "Die roten Zähler an Kommunikation und an den einzelnen Kanälen zeigen ungelesene Nachrichten. Öffne einen Chat: seine Mitteilungen werden als gelesen markiert. Am Desktop kannst du die Kanalauswahl im Chatkopf einklappen und wieder öffnen; die App merkt sich die Auswahl auf diesem Gerät.",
       "Wähle Privater Chat und eine Person oder mehrere Personen für eine Gruppe. Private Verläufe und Dateien sehen nur die Teilnehmenden, auch Admins benötigen eine Teilnahme.",
       "Eigene Nachrichten kannst du bearbeiten oder löschen. Der Ersteller eines privaten Chats verwaltet Namen und Gruppenmitglieder oder archiviert ihn. Archivierte Chats bleiben lesbar und lassen sich wieder öffnen. Beim Chatwechsel werden ungesendete Texte und Anhänge verworfen.",
+    ],
+  },
+  {
+    id: "push",
+    title: "Mitteilungen auf dem Handy",
+    module: "settings",
+    intro:
+      "DigitalMask kann dich auch bei geschlossener App über neue Nachrichten, Aufgaben und Änderungen informieren.",
+    steps: [
+      "Öffne Einstellungen und Mitteilungen auf diesem Gerät. Wähle Mitteilungen aktivieren und erlaube die Nachfrage deines Geräts. Für jedes Handy oder jeden Computer entscheidest du getrennt.",
+      "Auf iPhone oder iPad füge DigitalMask in Safari über Teilen zum Home-Bildschirm hinzu. Öffne die App dort und aktiviere dann Mitteilungen. Dafür brauchst du iOS oder iPadOS 16.4 oder neuer.",
+      "Mit Testmitteilung prüfst du den Empfang. Deaktivieren schaltet Mitteilungen auf diesem Gerät aus. Beim Abmelden wird die Verbindung dieses Geräts ebenfalls beendet.",
+      "Der Punkt oder Zähler am App-Symbol zeigt ungelesene Mitteilungen. Er wird beim Empfang und Öffnen der App aktualisiert; beim Lesen sinkt er. Auf anderen gerade geschlossenen Geräten kann der Zähler bis zur nächsten Mitteilung oder zum Öffnen der App abweichen.",
+      "Falls Mitteilungen ausbleiben, prüfe die Geräte- oder Browser-Einstellungen, den Fokusmodus und die Verbindung. Android entscheidet je nach Launcher, ob ein Punkt oder eine Zahl angezeigt wird. Nachrichteninhalte und persönliche Planungsangaben erscheinen erst nach dem Öffnen der App.",
     ],
   },
   {
