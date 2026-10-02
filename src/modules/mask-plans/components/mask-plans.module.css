@@ -1,0 +1,945 @@
+.module {
+  --time-rail: 80px;
+  --lane-width: 235px;
+  min-width: 0;
+  display: grid;
+  gap: 18px;
+}
+.heading,
+.planBar,
+.toolbar,
+.saveBar,
+.agendaHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+}
+.heading h2 {
+  margin: 0;
+  font-size: 24px;
+  letter-spacing: -0.5px;
+}
+.planCount {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.planBar {
+  align-items: end;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+}
+.planSelect {
+  flex: 1 1 260px;
+  max-width: 420px;
+}
+.module label,
+.modal label {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+}
+.module input,
+.module select,
+.modal input,
+.modal select {
+  min-height: 44px;
+}
+.planActions,
+.addActions,
+.viewControls,
+.bannerActions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.moreActions {
+  position: relative;
+}
+.moreActions summary {
+  cursor: pointer;
+  list-style: none;
+}
+.moreActions summary::-webkit-details-marker {
+  display: none;
+}
+.moreMenu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  width: 210px;
+  display: grid;
+  gap: 4px;
+  padding: 8px;
+  z-index: 12;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px #0002;
+}
+.moreMenu > :global(.button) {
+  justify-content: start;
+}
+.planNotes summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--muted);
+}
+.planNotes summary::before {
+  content: "+";
+  font-size: 16px;
+  margin-right: 7px;
+}
+.planNotes[open] summary::before {
+  content: "−";
+}
+.planNotes p {
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  padding-bottom: 8px;
+}
+.planTitle h3 {
+  font-size: 20px;
+  line-height: 1.4;
+  margin: 0;
+}
+.planTitle p {
+  margin-top: 6px;
+  color: var(--muted);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-width: 76ch;
+}
+.viewControls {
+  align-items: end;
+  gap: 12px;
+}
+.viewControls input {
+  max-width: 190px;
+}
+.viewSwitch {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 3px;
+  background: var(--surface-soft);
+  gap: 3px;
+}
+.viewSwitch button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+.viewSwitch button[aria-pressed="true"] {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 1px 3px #0001;
+}
+.empty {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.workspaceContent {
+  min-width: 0;
+  display: grid;
+  gap: 16px;
+}
+.scrollHint {
+  margin: -4px 0 -8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.timelineScroll {
+  min-width: 0;
+  max-width: 100%;
+  max-height: 72dvh;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+}
+.sheet {
+  display: grid;
+  min-width: 100%;
+  width: max-content;
+}
+.corner,
+.laneHeader {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  background: var(--surface);
+  border-bottom: 2px solid var(--accent);
+  min-height: 96px;
+}
+.corner {
+  left: 0;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface-soft);
+  border-right: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+}
+.laneHeader {
+  border-right: 1px solid var(--border);
+  padding: 8px 10px 6px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.laneTitle {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 2px 8px;
+  min-height: 44px;
+  padding: 5px 6px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  font-size: 14px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.laneTitle span {
+  grid-column: 1 / -1;
+  font-size: 11px;
+  color: var(--muted);
+}
+.laneTitle svg {
+  color: var(--muted);
+}
+.laneTitle:hover,
+.laneAdd:hover,
+.agendaStaff:hover {
+  background: var(--surface-soft);
+}
+.laneAdd {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  width: fit-content;
+  padding: 5px 6px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--accent);
+  font-size: 12px;
+}
+.timeRail {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  background: var(--surface-soft);
+  border-right: 1px solid var(--border);
+  font-variant-numeric: tabular-nums;
+}
+.tick {
+  position: absolute;
+  width: 100%;
+  min-height: 35px;
+  padding: 3px 8px;
+  text-align: right;
+  transform: none;
+  font-size: 13px;
+  line-height: 1.2;
+}
+.tick strong,
+.tick span,
+.zeroRail strong,
+.zeroRail span {
+  display: block;
+}
+.tick span,
+.zeroRail span {
+  margin-top: 4px;
+  font-size: 10px;
+  color: var(--muted);
+  line-height: 1.2;
+}
+.tick span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.laneBody {
+  position: relative;
+  border-right: 1px solid var(--border);
+  background: repeating-linear-gradient(
+    to bottom,
+    var(--border) 0,
+    var(--border) 1px,
+    transparent 1px,
+    transparent var(--tick-height)
+  );
+}
+.block {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 3px;
+  min-height: 44px;
+  padding: 7px 9px;
+  border: 1px solid color-mix(in srgb, var(--block-color) 60%, var(--border));
+  border-left: 4px solid var(--block-color);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--block-color) 20%, var(--surface));
+  color: var(--text);
+  text-align: left;
+  font-size: 13px;
+  line-height: 1.3;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+.block:hover {
+  background: color-mix(in srgb, var(--block-color) 32%, var(--surface));
+  box-shadow: 0 1px 6px #0002;
+}
+.blockTime {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  font-weight: 650;
+}
+.blockTime span,
+.blockClock {
+  font-weight: 500;
+  font-size: 11px;
+}
+.blockNotes {
+  font-size: 12px;
+  margin-top: 3px;
+  white-space: pre-wrap;
+}
+.emptyLane {
+  position: absolute;
+  top: 16px;
+  left: 12px;
+  right: 12px;
+  min-height: 60px;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--muted);
+  text-align: left;
+  font-size: 12px;
+}
+.zeroRail,
+.begin {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  min-height: 54px;
+  padding: 10px 8px;
+  background: var(--accent-soft);
+  border-top: 3px solid var(--accent);
+  color: var(--text);
+}
+.zeroRail {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  text-align: right;
+  border-right: 1px solid var(--border);
+  font-variant-numeric: tabular-nums;
+}
+.begin {
+  border-right: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding-inline: 16px;
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: 1.2px;
+}
+.saveBar {
+  padding: 13px 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 4px 18px #0001;
+}
+.saveBar > div {
+  display: flex;
+  gap: 8px;
+}
+.saveStatus {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.saveStatus small {
+  width: 100%;
+  color: var(--muted);
+  font-weight: 400;
+  padding-left: 16px;
+  font-size: 11px;
+}
+.saveStatus svg {
+  color: var(--accent);
+}
+.dirtyDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--coral);
+}
+.offline {
+  flex-basis: 100%;
+  font-size: 12px;
+  color: var(--muted);
+}
+.conflict {
+  display: flex;
+  align-items: start;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--coral);
+  border-radius: 8px;
+  background: var(--coral-soft);
+  font-size: 13px;
+}
+.conflict > svg {
+  flex: none;
+}
+.conflict p {
+  margin-top: 5px;
+  line-height: 1.6;
+}
+.bannerActions {
+  margin-top: 12px;
+}
+.warnings {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0 15px;
+  background: var(--surface-soft);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.warnings summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.warnings summary svg {
+  color: var(--coral);
+}
+.warnings p {
+  margin-bottom: 12px;
+}
+.warnings ul {
+  padding-left: 18px;
+  margin-bottom: 12px;
+}
+.warnings button {
+  min-height: 44px;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  text-decoration: underline;
+  text-align: left;
+}
+.agenda {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.agendaLane {
+  background: var(--surface);
+}
+.agendaHeading {
+  padding: 8px 14px;
+  background: var(--surface-soft);
+  border-bottom: 1px solid var(--border);
+}
+.agendaStaff {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 4px;
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 14px;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.agendaStaff svg {
+  flex: none;
+  color: var(--muted);
+}
+.agendaBlocks {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.agendaBlocks li {
+  display: grid;
+  grid-template-columns: 90px 1fr 44px;
+  align-items: start;
+  gap: 12px;
+  padding: 16px 14px;
+  border-bottom: 1px solid var(--border);
+  border-left: 4px solid var(--block-color);
+  background: color-mix(in srgb, var(--block-color) 8%, var(--surface));
+}
+.agendaTime {
+  display: grid;
+  gap: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.agendaTime strong {
+  font-size: 20px;
+  line-height: 1.2;
+}
+.agendaTime span {
+  font-size: 12px;
+}
+.agendaTime small {
+  font-size: 11px;
+  color: var(--muted);
+}
+.agendaText {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.agendaText p {
+  white-space: pre-wrap;
+}
+.actorLinks {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  font-weight: 650;
+}
+.actorLinks a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+.agendaEmpty {
+  padding: 20px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.agendaBegin {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px;
+  border-top: 3px solid var(--accent);
+  background: var(--accent-soft);
+  font-size: 13px;
+}
+.modal {
+  font-size: 14px;
+}
+.modal form {
+  display: grid;
+  gap: 18px;
+}
+.modal form > label {
+  margin-bottom: 0;
+}
+.formGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+.hint {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.65;
+}
+.hint:empty {
+  display: none;
+}
+.timingPreview {
+  padding: 10px 12px;
+  border-left: 3px solid var(--accent);
+  background: var(--accent-soft);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.picker {
+  min-width: 0;
+  padding: 12px 14px 16px;
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+}
+.picker legend,
+.colors legend {
+  padding: 0 5px;
+  font-size: 13px;
+  font-weight: 650;
+}
+.choices {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));
+  gap: 3px 8px;
+  max-height: 230px;
+  overflow-y: auto;
+}
+.choice {
+  display: flex !important;
+  align-items: center;
+  min-height: 44px;
+  padding: 6px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  gap: 9px !important;
+  cursor: pointer;
+}
+.choice:has(input:checked) {
+  background: var(--accent-soft);
+  border-color: var(--border);
+}
+.choice input,
+.colorChoice input {
+  width: 17px;
+  min-height: 17px;
+  height: 17px;
+  flex: none;
+}
+.choice span {
+  min-width: 0;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.choice small {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  margin-top: 3px;
+}
+.names {
+  list-style: none;
+  display: grid;
+  gap: 6px;
+  padding: 0;
+  margin: 0;
+}
+.names li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-left: 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-soft);
+  font-size: 13px;
+}
+.names span {
+  overflow-wrap: anywhere;
+}
+.addName {
+  display: flex;
+  align-items: end;
+  gap: 8px;
+}
+.addName label {
+  flex: 1;
+  min-width: 0;
+}
+.colors {
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+}
+.colorChoice {
+  display: flex !important;
+  align-items: center;
+  gap: 7px !important;
+  min-height: 44px;
+}
+.swatch,
+.defaultSwatch {
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--choice-color);
+}
+.defaultSwatch {
+  background: var(--accent-soft);
+}
+.editorFooter {
+  flex-wrap: wrap;
+}
+.editorFooter > :first-child {
+  margin-right: auto;
+}
+.exportLinks {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+@media (max-width: 760px) {
+  .module {
+    --time-rail: 60px;
+    --lane-width: 218px;
+    gap: 12px;
+  }
+  .heading h2 {
+    font-size: 22px;
+  }
+  .heading {
+    gap: 10px;
+  }
+  .planSelect {
+    flex-basis: 100%;
+    max-width: none;
+  }
+  .planCount {
+    display: none;
+  }
+  .planBar {
+    padding-bottom: 12px;
+  }
+  .planTitle {
+    display: none;
+  }
+  .scrollHint {
+    font-size: 11px;
+    line-height: 1.5;
+  }
+  .planActions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .moreActions summary {
+    width: 100%;
+  }
+  .planTitle h3 {
+    display: none;
+  }
+  .planActions > :global(.button) {
+    min-width: 0;
+    white-space: normal;
+    padding: 9px 10px;
+  }
+  .planTitle h3 {
+    font-size: 18px;
+  }
+  .toolbar {
+    gap: 15px;
+  }
+  .addActions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+  }
+  .addActions > :global(.button) {
+    padding-inline: 9px;
+    min-width: 0;
+    white-space: normal;
+  }
+  .viewControls {
+    justify-content: space-between;
+    width: 100%;
+    align-items: end;
+    gap: 10px;
+  }
+  .viewControls label {
+    flex: 1 1 110px;
+    min-width: 0;
+  }
+  .viewControls input {
+    width: 100%;
+  }
+  .viewSwitch {
+    flex-shrink: 0;
+  }
+  .viewSwitch button {
+    padding-inline: 9px;
+    gap: 5px;
+  }
+  .timelineScroll {
+    max-height: 65dvh;
+    scrollbar-gutter: auto;
+  }
+  .tick {
+    padding-inline: 5px;
+  }
+  .tick span {
+    font-size: 9px;
+    overflow-wrap: anywhere;
+  }
+  .corner {
+    font-size: 10px;
+  }
+  .laneTitle {
+    font-size: 13px;
+  }
+  .saveBar {
+    bottom: 78px;
+    padding: 12px;
+    gap: 10px;
+  }
+  .saveBar > div {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .saveBar > div > :global(.button) {
+    padding-inline: 8px;
+    white-space: normal;
+  }
+  .saveStatus small {
+    width: auto;
+    padding-left: 0;
+  }
+  .agendaBlocks li {
+    grid-template-columns: 56px 1fr 44px;
+    gap: 9px;
+    padding: 12px 9px;
+  }
+  .agendaTime strong {
+    font-size: 18px;
+  }
+  .agendaTime small {
+    overflow-wrap: anywhere;
+  }
+  .agendaHeading {
+    padding-inline: 12px;
+    gap: 8px;
+  }
+  .agendaStaff {
+    flex: 1;
+  }
+  .formGrid {
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .formGrid label {
+    min-width: 0;
+  }
+  .picker {
+    padding-inline: 10px;
+  }
+  .choices {
+    grid-template-columns: 1fr;
+  }
+  .addName {
+    flex-wrap: wrap;
+  }
+  .addName label {
+    flex-basis: 100%;
+  }
+  .addName > :global(.button) {
+    width: 100%;
+  }
+  .exportLinks {
+    grid-template-columns: 1fr;
+  }
+  .conflict {
+    padding: 13px;
+    gap: 8px;
+  }
+  .bannerActions > :global(.button) {
+    white-space: normal;
+    width: 100%;
+  }
+  .editorFooter {
+    justify-content: stretch;
+  }
+  .editorFooter > :global(.button) {
+    flex: 1;
+    white-space: normal;
+  }
+  .editorFooter > :first-child {
+    margin-right: 0;
+  }
+}
+@media print {
+  .heading > :global(.button),
+  .planBar,
+  .toolbar,
+  .scrollHint,
+  .saveBar,
+  .warnings,
+  .laneAdd {
+    display: none;
+  }
+  .timelineScroll {
+    max-height: none;
+    overflow: visible;
+    border-radius: 0;
+  }
+  .block,
+  .begin,
+  .zeroRail {
+    print-color-adjust: exact;
+  }
+  .begin,
+  .zeroRail,
+  .corner,
+  .laneHeader,
+  .timeRail {
+    position: static;
+  }
+}

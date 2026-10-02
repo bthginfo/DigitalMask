@@ -20,12 +20,14 @@ import { CalendarModule } from "./calendar";
 import { TimeModule } from "./time";
 import { statusLabels } from "../resource-fields";
 import { RecordDocuments } from "@/modules/documents/components/record-documents";
+import { MaskPlansModule } from "@/modules/mask-plans/components/mask-plans-module";
 import { RecordLink } from "../record-link";
 import relationStyles from "../record-links.module.css";
 const productionTabs = [
   "overview",
   "team",
   "casting",
+  "mask-plan",
   "tasks",
   "looks",
   "documents",
@@ -145,6 +147,7 @@ export function ProductionsModule({
             ["overview", "Überblick"],
             ["team", "Team & Kontakte"],
             ["casting", "Besetzung"],
+            ["mask-plan", "Maskenplan"],
             ["tasks", "Aufgaben & Sprints"],
             ["looks", "Aufschriebe"],
             ["documents", "Dokumente"],
@@ -285,6 +288,8 @@ export function ProductionsModule({
           <TimeModule key={production.id} productionId={production.id} />
         ) : tab === "casting" ? (
           <CastingModule key={production.id} productionId={production.id} />
+        ) : tab === "mask-plan" ? (
+          <MaskPlansModule key={production.id} production={production} />
         ) : tab === "documents" ? (
           <RecordDocuments key={production.id} record={production} />
         ) : (

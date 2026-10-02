@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { RecordKind } from "@/shared/contracts";
 import { categoryScopes } from "@/shared/domain-categories";
+import { maskPlanSchema } from "@/modules/mask-plans/schema";
 const short = z.string().trim().max(200);
 const title = short.min(1, "Ein Titel ist erforderlich.");
 const note = z.string().max(20000).default("");
@@ -78,6 +79,7 @@ const productionContacts = z
   )
   .default([]);
 export const schemas: Record<RecordKind, z.ZodType> = {
+  maskPlans: maskPlanSchema,
   people: z.object({
     name: title,
     organization: short.default(""),

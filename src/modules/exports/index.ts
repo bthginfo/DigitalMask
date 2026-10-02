@@ -103,6 +103,16 @@ export async function buildExport(input: ExportInput): Promise<ExportResult> {
       throw new Error("ICS ist ausschließlich für Kalenderdaten verfügbar.");
     return { bytes: buildIcs(input), mime: "text/calendar; charset=utf-8", filename };
   }
+  if (input.kind === "maskPlans" && ["csv", "xlsx"].includes(input.format)) {
+    const { buildMaskPlanCsv, buildMaskPlanXlsx } = await import("../mask-plans/export");
+    return input.format === "csv"
+      ? { bytes: buildMaskPlanCsv(input), mime: "text/csv; charset=utf-8", filename }
+      : {
+          bytes: await buildMaskPlanXlsx(input),
+          mime: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          filename,
+        };
+  }
   const normalized =
     input.kind === "events" || input.kind === "calendar"
       ? expandCalendar(input)

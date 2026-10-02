@@ -3,6 +3,7 @@ export const recordKinds = [
   "actors",
   "characters",
   "casting",
+  "maskPlans",
   "sprints",
   "tasks",
   "events",

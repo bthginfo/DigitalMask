@@ -35,6 +35,7 @@ import {
 } from "./data";
 import { DocumentPages } from "./document-pdf";
 import { ProductionPages } from "./production-pdf";
+import { MaskPlanPages } from "../mask-plans/pdf";
 import { calendarRange, localDay } from "./calendar";
 import type { Column, ExportInput, ExportRow } from "./types";
 import { addPageNumbers } from "./page-numbers";
@@ -623,6 +624,13 @@ export async function buildPdf(input: ExportInput): Promise<Uint8Array> {
         <DocumentPages input={input} Page={BasePage} Images={RecordImages} />
       ) : input.kind === "productions" ? (
         <ProductionPages input={input} Page={BasePage} />
+      ) : input.kind === "maskPlans" ? (
+        <MaskPlanPages
+          input={input}
+          Page={BasePage}
+          availableHeight={(label) => 542 - headerLayout(input, label, true).bodyTop}
+          wrapLines={headerLines}
+        />
       ) : (
         <>
           {calendar && <CalendarPreview input={input} />}

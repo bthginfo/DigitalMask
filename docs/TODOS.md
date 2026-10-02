@@ -142,3 +142,15 @@ Die Bereitstellung erfolgt nach den Releaseprüfungen über GitHub und die beste
 ## QA-Nachbereitung
 
 Nach den abschließenden Liveprüfungen werden die angelegten QA-Konten, Testeinträge und Testdateien aus der produktiven Umgebung entfernt. Automatische Testdefinitionen bleiben für spätere Änderungen erhalten.
+
+## iPhone-Fotos und Maskenpläne
+
+- [x] Große Mediathekfotos zuverlässig verkleinern, das tatsächliche Browser-Bildformat erkennen und bei Bedarf JPEG oder weitere Größenstufen verwenden. Transparente Bilder bleiben transparent.
+- [x] Native Bilddekodierung als Alternative und HEIC/HEIF-Auswahl unterstützen; Dateien vor dem Upload in ein zulässiges Format umwandeln.
+- [x] Je Produktion mehrere benannte Maskenpläne mit gemeinsam besetzten Personalspalten und bearbeitbaren Zeitblöcken anlegen, duplizieren und löschen.
+- [x] Abstände und Dauer vor Vorstellungsbeginn planen, mit fester Nullmarke, optionalen Uhrzeiten und Hinweisen auf Überschneidungen.
+- [x] Schauspieler aus der Besetzung, mehrere Personen pro Block und individuelle freie Namen oder Tätigkeiten anbieten.
+- [x] Smartphone-Zeittabelle mit fester Zeitspalte, seitlich verschiebbaren Personalspalten und zusätzlicher Listenansicht.
+- [x] Änderungen gesammelt speichern; Entwürfe bei Versionskonflikten erhalten. Neue Ansichten oder Uhrzeiten lösen keine Datenbankabfragen aus.
+- [x] Maskenpläne bei Wiederaufnahmen mitkopieren und PDF-/Excel-Zeittabellen sowie CSV-/JSON-Ausgaben bereitstellen.
+- [x] Anleitungen und gezielte Bild-, Daten-, Export- und Bedienprüfungen ergänzen.

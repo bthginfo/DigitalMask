@@ -17,6 +17,7 @@ export interface ExportInput {
   userIds?: string[];
   year?: number;
   season?: string;
+  performanceTime?: string;
   images?: Record<string, Uint8Array>;
   references?: Partial<Record<RecordKind, DomainRecord[]>>;
 }

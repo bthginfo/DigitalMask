@@ -219,7 +219,7 @@ export function WorkspaceShell() {
   const queryRecord = recordId
     ? Object.values(workspace.records)
         .flat()
-        .find((record) => record.id === recordId)
+        .find((record) => record.id === recordId && record.kind !== "maskPlans")
     : undefined;
   const closeDetail = () => {
     setDetail(null);

@@ -6,6 +6,7 @@ const productionTabs: Record<string, string> = {
   sprints: "tasks",
   characters: "casting",
   casting: "casting",
+  maskPlans: "mask-plan",
   looks: "looks",
   events: "calendar",
   time: "time",

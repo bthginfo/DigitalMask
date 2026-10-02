@@ -23,6 +23,7 @@ export const titles: Record<string, string> = {
   people: "Kontaktverzeichnis",
   characters: "Figurenkatalog",
   casting: "Besetzungsliste",
+  maskPlans: "Maskenpläne",
   tasks: "Aufgaben",
   productions: "Produktionen",
   handovers: "Dienstübergaben",

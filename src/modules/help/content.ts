@@ -21,7 +21,25 @@ export const helpArticles: HelpArticle[] = [
       "Für die Maskenbetreuung kannst du ein aktives Teammitglied, eine Person aus dem Verzeichnis oder einen freien Namen wählen. Nur ein ausgewähltes Teammitglied gehört dadurch automatisch zum Produktionsteam.",
       "Wenn eine bisher frei eingetragene Maskenperson einen Account erhält und ein Admin ihn freigibt, werden eindeutige Zuordnungen automatisch auf das Teamkonto umgestellt. Das klappt auch mit einem abgekürzten Nachnamen, etwa Julia G., wenn nur eine Person dazu passt.",
       "Weitere Teammitglieder lassen sich getrennt hinzufügen. Um eine verknüpfte Maskenbetreuung aus dem Team zu entfernen, zuerst den Kontakt entfernen oder auf einen freien Namen umstellen.",
+      "Unter Maskenplan plant ihr je Stück, wer vor der Vorstellung wann in die Maske kommt. Eine Produktion darf mehrere Pläne haben, etwa für AMA, Proben und Premiere.",
       "Bei einer Wiederaufnahme könnt ihr die Produktion kopieren. Prüft anschließend Termine, Aufgaben und fachliche Angaben für die neue Spielzeit.",
+    ],
+  },
+  {
+    id: "mask-plans",
+    title: "Maskenplan vor der Vorstellung",
+    module: "productions",
+    intro:
+      "Der Maskenplan zählt rückwärts: −60 bedeutet 60 Minuten vor Beginn, 0 ist der Vorstellungsbeginn. Jede Personalspalte kann eine oder mehrere Maskenpersonen enthalten.",
+    steps: [
+      "Öffne die Produktion und den Reiter Maskenplan. Mit Neuer Plan legst du einen benannten Ablauf an, zum Beispiel AMA / HP1+2 / GP / Premiere. Ihr könnt mehrere Pläne je Stück speichern, bearbeiten, duplizieren und löschen.",
+      "Füge eine Personalspalte hinzu. Wähle eine oder mehrere aktive Maskenpersonen oder ergänze einzelne freie Namen. In der ersten Spalte wird die eingetragene Maskenbetreuung als Vorschlag angeboten. Weitere Spalten lassen sich danach ergänzen.",
+      "Mit Zeitblock wählst du eine Personalspalte, Schauspieler aus der Besetzung und die Dauer. Unter Minuten vor Beginn trägst du eine positive Zahl ein: 30 wird in der Tabelle als −30 angezeigt. Mehrere Schauspieler und freie Namen sind möglich. Für Wege oder Vorbereitung genügt eine Tätigkeit wie Ins Studio rüber.",
+      "Ein Block darf spätestens bei 0 enden. Das Zeitraster ist nur die Einteilung der Tabelle; die Dauer kann davon abweichen. Tippe einen Block oder einen Spaltenkopf an, um ihn zu ändern. Beim Entfernen einer Spalte werden auch ihre Zeitblöcke entfernt.",
+      "Am Smartphone bleibt es eine Zeittabelle mit einer festen Zeitspalte. Verschiebe die Personalspalten seitlich oder wechsle zu Liste, um lange Namen und Hinweise vollständig zu lesen. In der Liste führen verknüpfte Schauspielernamen zum Katalog.",
+      "Mit Vorstellungsbeginn kannst du zusätzlich echte Uhrzeiten anzeigen, zum Beispiel bei einem Beginn um 19:30. Das ändert nur deine Ansicht; die gespeicherten Abstände bleiben für andere Vorstellungstage gleich.",
+      "Änderungen bleiben zunächst im Entwurf. Plan speichern übernimmt alle Änderungen gemeinsam. Verwerfen lädt den gespeicherten Stand. Wenn jemand den Plan in der Zwischenzeit geändert hat, bleiben deine Eingaben erhalten: Lade den aktuellen Stand oder behalte deinen Entwurf als neuen Plan. Hinweise auf Überschneidungen verhindern das Speichern nicht.",
+      "Speichere vor dem Export. PDF ist die druckbare Zeittabelle, Excel eignet sich zur Weiterarbeit, CSV zeigt die Zeitblöcke und JSON enthält den vollständigen Plan. Ein eingetragener Vorstellungsbeginn erscheint auch im Export.",
     ],
   },
   {

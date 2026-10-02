@@ -24,7 +24,7 @@ export function safeSpreadsheetText(value: string): string {
 export function csvCell(value: string): string {
   return `"${safeSpreadsheetText(value).replace(/"/g, '""')}"`;
 }
-function printChunks(text: string, width: number): string[] {
+export function printChunks(text: string, width: number): string[] {
   const capacity = Math.max(12, width - 4),
     lines: string[] = [];
   for (let line of text.split("\n")) {

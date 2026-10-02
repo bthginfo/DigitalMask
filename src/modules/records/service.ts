@@ -12,6 +12,8 @@ import { occurrences } from "@/modules/calendar/occurrences";
 import { assertConversation } from "@/modules/chat/permissions";
 import { prepareConversation } from "@/modules/chat/conversations";
 import { prepareProductionContacts } from "@/modules/people/production-contacts";
+import { maskPlanValue } from "@/modules/mask-plans/model";
+import { validateMaskPlanActors } from "@/modules/mask-plans/service";
 import { personNameKey } from "@/shared/person-identity";
 import {
   validateDomainCategory,
@@ -109,6 +111,7 @@ async function validateRelations(
   recordId?: string,
 ) {
   const production = await assertProject(context, data.productionId, tx);
+  const maskPlan = kind === "maskPlans" ? maskPlanValue(data) : undefined;
   let eventTitle = textValue(data.title);
   let conversation: typeof records.$inferSelect | undefined;
   if (kind === "messages") {
@@ -120,6 +123,7 @@ async function validateRelations(
   const ids = listValue(data.assigneeIds).concat(
     listValue(data.participantIds),
     listValue(data.memberIds),
+    maskPlan?.lanes.flatMap((lane) => lane.memberIds) || [],
   );
   if (ids.length) {
     const valid = await tx
@@ -138,8 +142,10 @@ async function validateRelations(
       );
     if (new Set(valid.map((x) => x.id)).size !== new Set(ids).size)
       throw new HttpError(400, "Eine ausgewählte Person gehört nicht zum aktiven Team.");
-    if (data.productionId) {
-      const project = await findRecord(context, String(data.productionId), "productions", tx);
+    // Makeup cover can be scheduled without changing the production's permanent team.
+    if (data.productionId && !maskPlan) {
+      const project =
+        production || (await findRecord(context, String(data.productionId), "productions", tx));
       const permitted = listValue(project.data.memberIds);
       if (
         permitted.length &&
@@ -151,6 +157,7 @@ async function validateRelations(
         );
     }
   }
+  if (maskPlan) await validateMaskPlanActors(context, maskPlan, tx);
   for (const [field, target] of [
     ["actorId", "actors"],
     ["characterId", "characters"],
@@ -199,7 +206,7 @@ async function validateRelations(
         throw new HttpError(400, "Private Chatdateien bleiben im zugehörigen Chat.");
     }
   }
-  if (["characters", "casting", "sprints"].includes(kind) && !data.productionId)
+  if (["characters", "casting", "sprints", "maskPlans"].includes(kind) && !data.productionId)
     throw new HttpError(400, "Bitte wähle eine Produktion.");
   if (
     kind === "casting" &&
@@ -579,7 +586,7 @@ export async function deleteRecord(context: Context, kind: RecordKind, id: strin
           eq(records.departmentId, context.departmentId),
           ne(records.id, id),
           ne(records.kind, "notifications"),
-          sql`(${records.productionId}=${id} or ${records.parentId}=${id} or ${records.data}->>'actorId'=${id} or ${records.data}->>'characterId'=${id} or ${records.data}->>'sprintId'=${id} or ${records.data}->>'taskId'=${id} or ${records.data}->>'templateId'=${id} or ${records.data}->>'conversationId'=${id} or ${records.data}->'contacts' @> ${JSON.stringify([{ personId: id }])}::jsonb)`,
+          sql`(${records.productionId}=${id} or ${records.parentId}=${id} or ${records.data}->>'actorId'=${id} or ${records.data}->>'characterId'=${id} or ${records.data}->>'sprintId'=${id} or ${records.data}->>'taskId'=${id} or ${records.data}->>'templateId'=${id} or ${records.data}->>'conversationId'=${id} or ${records.data}->'contacts' @> ${JSON.stringify([{ personId: id }])}::jsonb or (${records.kind}='maskPlans' and ${records.data}->'blocks' @> ${JSON.stringify([{ actorIds: [id] }])}::jsonb))`,
         ),
       )
       .limit(1);

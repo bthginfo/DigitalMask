@@ -54,6 +54,14 @@ export async function GET(request: Request) {
       ? z.coerce.number().int().min(1900).max(2200).parse(query.get("year"))
       : undefined;
     const season = query.get("season") ? z.string().max(200).parse(query.get("season")) : undefined;
+    const performanceTime = query.has("performanceTime")
+      ? z
+          .string()
+          .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Bitte wähle einen gültigen Vorstellungsbeginn.")
+          .parse(query.get("performanceTime"))
+      : undefined;
+    if (performanceTime && kind !== "maskPlans")
+      throw new HttpError(400, "Der Vorstellungsbeginn gehört zum Maskenplan-Export.");
     if ((userIds?.length || 0) > 100) throw new HttpError(400, "Zu viele Kalender ausgewählt.");
     if (id) selected = selected.filter((r) => r.id === id);
     selected = selectExportRecords({
@@ -138,6 +146,7 @@ export async function GET(request: Request) {
       userIds,
       year,
       season,
+      performanceTime,
     });
     return new Response(Buffer.from(result.bytes), {
       headers: {

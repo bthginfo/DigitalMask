@@ -6,6 +6,7 @@ import { findRecord, serialize } from "@/modules/records/repository";
 import { invalidateWorkspace } from "@/modules/records/workspace";
 import { auditChange } from "@/platform/events";
 import { assertRead } from "@/modules/records/service";
+import { cloneMaskPlan, maskPlanValue } from "@/modules/mask-plans/model";
 export async function copyProduction(context: Context, id: string, title: string) {
   const result = await db.transaction(async (tx) => {
     const source = await findRecord(context, id, "productions", tx);
@@ -17,7 +18,7 @@ export async function copyProduction(context: Context, id: string, title: string
         and(
           eq(records.departmentId, context.departmentId),
           eq(records.productionId, id),
-          inArray(records.kind, ["characters", "casting", "looks", "tasks"]),
+          inArray(records.kind, ["characters", "casting", "looks", "tasks", "maskPlans"]),
         ),
       );
     const children = candidates.filter(
@@ -77,6 +78,8 @@ export async function copyProduction(context: Context, id: string, title: string
         data.due = "";
       }
       if (child.kind === "looks") data.status = data.sections === undefined ? "draft" : "published";
+      if (child.kind === "maskPlans")
+        Object.assign(data, cloneMaskPlan(maskPlanValue(child.data), targetId));
       await tx.insert(records).values({
         id: map.get(child.id)!,
         kind: child.kind,

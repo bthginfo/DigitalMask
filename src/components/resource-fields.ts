@@ -25,6 +25,7 @@ export const labels: Record<RecordKind, [string, string]> = {
   actors: ["Schauspieler", "Schauspieler"],
   characters: ["Figuren", "Figur"],
   casting: ["Besetzung", "Besetzung"],
+  maskPlans: ["Maskenpläne", "Maskenplan"],
   sprints: ["Sprints", "Sprint"],
   tasks: ["Aufgaben", "Aufgabe"],
   events: ["Kalender", "Termin"],
