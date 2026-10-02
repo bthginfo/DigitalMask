@@ -206,10 +206,10 @@ for (const width of [1440, 768, 375]) {
     expect(state.reads()).toBe(before + 1);
     await dialog.getByRole("button", { name: "Fertig", exact: true }).click();
     await page
-      .getByRole("button", { name: "Michael Amelung · Details und Galerie öffnen", exact: true })
+      .getByRole("link", { name: "Michael Amelung · Details und Galerie öffnen", exact: true })
       .click();
     await expect(
-      page.getByRole("heading", { name: "Aus dem Ensemble", exact: true }),
+      page.getByRole("heading", { name: "Angaben des Stadttheaters", exact: true }),
     ).toBeVisible();
     await expect(page.getByText("Abschiedsdinner – Pierre", { exact: true })).toBeVisible();
     await expect(page.getByText("Testfotografin", { exact: false })).toBeVisible();
@@ -236,7 +236,7 @@ test("production has one Besetzung view, correct KPI and multiple linked image u
   await expect(page.getByRole("button", { name: "Figuren & Bilder", exact: true })).toHaveCount(0);
   await expect(page.locator(".editorial-card")).toHaveCount(2);
   await page
-    .getByRole("button", {
+    .getByRole("link", {
       name: "Pierre · Michael Amelung · Details und Galerie öffnen",
       exact: true,
     })

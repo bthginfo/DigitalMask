@@ -2,6 +2,9 @@ import * as Y from "yjs";
 import ExcelJS from "exceljs";
 import Papa from "papaparse";
 import { HttpError } from "@/platform/http";
+import { inspectOfficeArchive } from "./file-policy";
+import { themeColors } from "./office-colors";
+import { spreadsheetFormatting } from "./sheet-formatting";
 import {
   SHEETS_MAP,
   MAX_SHEET_CELLS,
@@ -49,7 +52,7 @@ export async function importSpreadsheet(bytes: Buffer, csv = false) {
     return map;
   }
   const warnings = [
-    "Zellen, Formeln und Tabellenblätter werden gemeinsam bearbeitet. Makros, Diagramm-Bearbeitung und besondere Excel-Funktionen werden nicht unterstützt. Beim XLSX-Download bleiben vorhandene Zellformate soweit möglich erhalten.",
+    "Zellen, Formeln und Tabellenblätter werden gemeinsam bearbeitet. Zell- und Schriftfarben, einfache Schriftformate, Ausrichtung, Rahmen und verbundene Zellen werden angezeigt. Makros, Diagramm-Bearbeitung und bedingte Formatierungen werden im Editor nicht unterstützt; das Original bleibt verfügbar.",
   ];
   try {
     if (csv) {
@@ -74,6 +77,7 @@ export async function importSpreadsheet(bytes: Buffer, csv = false) {
       );
     } else {
       const workbook = new ExcelJS.Workbook();
+      const palette = themeColors(inspectOfficeArchive(bytes, "sheet")["xl/theme/theme1.xml"]);
       await workbook.xlsx.load(bytes as unknown as ExcelJS.Buffer);
       for (const worksheet of workbook.worksheets) {
         const map = add(
@@ -84,13 +88,16 @@ export async function importSpreadsheet(bytes: Buffer, csv = false) {
         );
         const meta = info.at(-1)!;
         meta.widths = (worksheet.columns || []).map((column) =>
-          Math.min(400, Math.max(72, (column.width || 12) * 7)),
+          Math.min(
+            600,
+            Math.max(
+              8,
+              Math.round((column.width ?? worksheet.properties.defaultColWidth ?? 8.43) * 7 + 5),
+            ),
+          ),
         );
         meta.merges = worksheet.model.merges || [];
-        if (meta.merges.length)
-          warnings.push(
-            `„${worksheet.name}“ enthält verbundene Zellen. Die Verbindung bleibt im Download erhalten; Inhalte bitte in der ersten Zelle des Bereichs ändern.`,
-          );
+        Object.assign(meta, spreadsheetFormatting(worksheet, palette));
         worksheet.eachRow((row, r) =>
           row.eachCell((cell, c) => {
             if (cell.isMerged && cell.master.address !== cell.address) return;

@@ -3,12 +3,14 @@ import {
   parseEnsemble,
   parseProfile,
   sourceAssetUrl,
+  mergeEnsembleLists,
   type EnsemblePerson,
 } from "../src/modules/ensemble/source";
 import { importedActorData, matchActor } from "../src/modules/ensemble/matching";
 import { productionCastingCounts } from "../src/modules/productions/counts";
 import { validateRecord } from "../src/modules/records/schemas";
 import type { DomainRecord } from "../src/shared/contracts";
+import { selectActorPortrait } from "../src/modules/files/portrait-selection";
 const person: EnsemblePerson = {
   sourceId: "2331",
   name: "Michael Amelung",
@@ -38,6 +40,29 @@ describe("Ensemble source and safe catalog matching", () => {
     );
     expect(profile.biography).toBe("Ausbildung & Ensemble\n\nZweite Angabe");
     expect(profile.productions).toEqual(["Neues Stück (Rolle)"]);
+  });
+  it("imports guest cards with real portraits and ignores the theatre's placeholder image", () => {
+    const guests = parseEnsemble(
+      `<ul class="tt_address_list gallery"><li class="vcard"><img src="/fileadmin/guest.jpg"><figcaption><a href="/ensemble/schauspielerinnen/schauspielerinnen-detailseite/4510.html">Franziska Beyer</a></figcaption></li><li class="vcard"><img src="/fileadmin/_processed_/csm_platzhalter.png"><figcaption><a href="/ensemble/schauspielerinnen/schauspielerinnen-detailseite/3227.html">Miriam Haltmeier</a></figcaption></li></ul>`,
+      "Gast",
+    );
+    expect(guests.map((item) => [item.name, item.ensembleStatus, !!item.imageUrl])).toEqual([
+      ["Franziska Beyer", "Gast", true],
+      ["Miriam Haltmeier", "Gast", false],
+    ]);
+    const own = { ...person, imageUrl: "https://theater.ingolstadt.de/fileadmin/own.jpg" };
+    expect(
+      mergeEnsembleLists([own], [{ ...own, ensembleStatus: "Gast", imageUrl: "" }, ...guests]),
+    ).toHaveLength(3);
+    expect(
+      mergeEnsembleLists([own], [{ ...own, ensembleStatus: "Gast", imageUrl: "" }])[0],
+    ).toEqual(own);
+    expect(
+      parseProfile(
+        `<div class="tt_address_detail"><h1 itemprop="name">Name</h1><img src="/fileadmin/platzhalter.jpg"></div>`,
+        own,
+      ).imageUrl,
+    ).toBe(own.imageUrl);
   });
   it("rejects broken source markup and unsafe image hosts/protocols/credentials", () => {
     expect(() => parseEnsemble("<p>Unavailable</p>")).toThrow();
@@ -94,6 +119,39 @@ describe("Ensemble source and safe catalog matching", () => {
     const actors = [{ id: "extra", data: { name: "Gast Schauspieler" } }];
     expect(matchActor(person, actors)).toEqual({ action: "create" });
     expect(actors[0].id).toBe("extra");
+  });
+});
+describe("single actor portrait selection", () => {
+  const photo = (id: string, actorId = "actor", kind = "actors") => ({
+    id,
+    data: { recordId: actorId, recordKind: kind, mime: "image/webp", image: true },
+  });
+  it("prefers the chosen portrait and never selects another actor's or a casting's photo", () => {
+    const files = [
+      photo("casting", "actor", "casting"),
+      photo("foreign", "other"),
+      photo("manual"),
+      photo("official"),
+    ];
+    expect(
+      selectActorPortrait("actor", { portraitFileId: "official", imageIds: ["manual"] }, files)?.id,
+    ).toBe("official");
+    expect(
+      selectActorPortrait(
+        "actor",
+        { portraitFileId: "foreign", imageIds: ["casting", "manual"] },
+        files,
+      )?.id,
+    ).toBe("manual");
+  });
+  it("does not choose documents as a portrait, including when stale IDs reference them", () => {
+    const document = {
+      id: "doc",
+      data: { recordId: "actor", recordKind: "actors", mime: "application/pdf", image: false },
+    };
+    expect(
+      selectActorPortrait("actor", { portraitFileId: "doc", imageIds: ["doc"] }, [document]),
+    ).toBeUndefined();
   });
 });
 const row = (id: string, data: DomainRecord["data"]) => ({ id, data }) as DomainRecord;

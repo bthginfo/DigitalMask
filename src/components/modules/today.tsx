@@ -20,6 +20,7 @@ import {
   weekStart,
 } from "@/shared/client-api";
 import { recordHref } from "@/shared/client-navigation";
+import { isStaff } from "@/shared/client-members";
 import { useWorkspace } from "../workspace-context";
 import { Badge, Button, Empty, PageHeader, Section } from "../ui";
 import { RecordDetail } from "../resource-view";
@@ -28,6 +29,7 @@ import { expandEvents } from "./calendar";
 import { statusLabels } from "../resource-fields";
 export function TodayModule({ navigate }: { navigate: (module: string) => void }) {
   const { workspace, action, notify } = useWorkspace();
+  const showTimer = isStaff(workspace.user);
   const [detail, setDetail] = useState<DomainRecord | null>(null);
   const [now] = useState(Date.now);
   const today = localDate(new Date(now));
@@ -127,42 +129,42 @@ export function TodayModule({ navigate }: { navigate: (module: string) => void }
           </button>
         </div>
       </div>
-      <div className="today-notifications">
-        <Section title="Neu für dich" meta={`${notices.length} ungelesene Mitteilungen`}>
-          {notices.length ? (
-            <div className="list">
-              {notices.slice(0, 6).map((notice) => (
-                <button
-                  key={notice.id}
-                  className="notification-row"
-                  onClick={async () => {
-                    try {
-                      await action("notification-read", notice.id);
-                      const link = value(notice.data, "link");
-                      if (link.startsWith("/?") || link.startsWith("/")) location.href = link;
-                    } catch (e) {
-                      notify(e instanceof Error ? e.message : "Aktion fehlgeschlagen");
-                    }
-                  }}
-                >
-                  <span className="notice-dot" />
-                  <div>
-                    <strong>{value(notice.data, "title")}</strong>
-                    <p className="small muted">{value(notice.data, "body")}</p>
-                  </div>
-                </button>
-              ))}
-            </div>
-          ) : (
-            <p className="empty-inline">
-              <Sparkles size={18} />
-              Alles auf dem neuesten Stand.
-            </p>
-          )}
-        </Section>
-      </div>
-      <div className="today-layout">
+      <div className={`today-layout${showTimer ? " today-layout--with-timer" : ""}`}>
         <div className="today-main">
+          <div className="today-notifications">
+            <Section title="Neu für dich" meta={`${notices.length} ungelesene Mitteilungen`}>
+              {notices.length ? (
+                <div className="list">
+                  {notices.slice(0, 6).map((notice) => (
+                    <button
+                      key={notice.id}
+                      className="notification-row"
+                      onClick={async () => {
+                        try {
+                          await action("notification-read", notice.id);
+                          const link = value(notice.data, "link");
+                          if (link.startsWith("/?") || link.startsWith("/")) location.href = link;
+                        } catch (e) {
+                          notify(e instanceof Error ? e.message : "Aktion fehlgeschlagen");
+                        }
+                      }}
+                    >
+                      <span className="notice-dot" />
+                      <div>
+                        <strong>{value(notice.data, "title")}</strong>
+                        <p className="small muted">{value(notice.data, "body")}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="empty-inline">
+                  <Sparkles size={18} />
+                  Alles auf dem neuesten Stand.
+                </p>
+              )}
+            </Section>
+          </div>
           <Section
             title="Als Nächstes"
             meta="Dein persönlicher Kalender"
@@ -258,9 +260,11 @@ export function TodayModule({ navigate }: { navigate: (module: string) => void }
             )}
           </Section>
         </div>
-        <aside className="today-aside">
-          <TimerPanel compact />
-        </aside>
+        {showTimer && (
+          <aside className="today-aside">
+            <TimerPanel compact />
+          </aside>
+        )}
       </div>
       {detail && <RecordDetail record={detail} onClose={() => setDetail(null)} />}
     </>

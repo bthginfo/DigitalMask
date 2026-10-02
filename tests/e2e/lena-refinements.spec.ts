@@ -144,7 +144,7 @@ for (const width of [1440, 768, 375]) {
           .evaluate(
             (element) =>
               !!(
-                element.compareDocumentPosition(document.querySelector(".today-layout")!) &
+                element.compareDocumentPosition(document.querySelector(".today-main > .panel")!) &
                 Node.DOCUMENT_POSITION_FOLLOWING
               ),
           ),

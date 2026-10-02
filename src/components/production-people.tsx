@@ -8,6 +8,7 @@ import { productionContactName } from "@/shared/production-contacts";
 import { isActiveStaff } from "@/shared/client-members";
 import { useWorkspace } from "./workspace-context";
 import { Badge, Button, Empty, ErrorMessage, Modal, PageHeader } from "./ui";
+import { RecordLink } from "./record-link";
 
 export function ProductionPeopleFields({
   contacts,
@@ -251,7 +252,21 @@ export function ProductionTeamModule({ production }: { production: DomainRecord 
             <article className="production-contact" key={contact.id}>
               <span className="contact-role">{contact.role}</span>
               <strong>
-                {productionContactName(contact, workspace.members, workspace.records.people)}
+                {contact.personId &&
+                workspace.records.people.some(
+                  (person) =>
+                    person.id === contact.personId && !value(person.data, "linkedMemberId"),
+                ) ? (
+                  <RecordLink
+                    record={workspace.records.people.find(
+                      (person) => person.id === contact.personId,
+                    )!}
+                  >
+                    {productionContactName(contact, workspace.members, workspace.records.people)}
+                  </RecordLink>
+                ) : (
+                  productionContactName(contact, workspace.members, workspace.records.people)
+                )}
               </strong>
               <Badge tone={contact.type === "makeup" ? "green" : "neutral"}>
                 {contact.type === "makeup" ? "Maskenbetreuung" : "Extern"}

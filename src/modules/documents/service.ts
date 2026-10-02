@@ -1,4 +1,5 @@
 import { and, eq } from "drizzle-orm";
+import * as Y from "yjs";
 import { get } from "@vercel/blob";
 import { db } from "@/platform/db";
 import { collaborativeDocuments } from "@/platform/db/schema";
@@ -19,8 +20,13 @@ import {
   readDocumentState,
   clearDocumentCache,
   dirtyDocumentsKey,
+  appendDocumentUpdate,
 } from "./storage";
-import { encodeDocument, mergedDocument } from "./state";
+import { decodeState, encodeDocument, mergedDocument } from "./state";
+import { inspectOfficeArchive } from "./file-policy";
+import { restoreWordFormatting, wordStyleParagraphs } from "./word-formatting";
+import { upgradeSheetMetadata, safeSheetMetadata } from "./format-upgrade";
+import { notifyDocument } from "./live";
 
 export async function sourceBytes(path: string) {
   const blob = await get(path, { access: "private" });
@@ -74,6 +80,105 @@ export async function ensureSharedDocument(context: Context, id: string) {
     row = created || (await query())[0];
   }
   await initializeDocumentCache(id, row.state, row.checkpointRevision);
+  if (row.metadata.formattingVersion !== 1 && access.format !== "pdf") {
+    const bytes = await sourceBytes(String(access.file.data.path));
+    const source =
+      access.format === "sheet"
+        ? await importDocument(
+            bytes,
+            String(access.file.data.name),
+            "sheet",
+            access.file.data.mime === "text/csv",
+          )
+        : null;
+    const ranges =
+      access.format === "text" ? wordStyleParagraphs(inspectOfficeArchive(bytes, "text")) : [];
+    const epoch = String(
+      (await liveRedis().get<string>(permissionEpochKey(context.departmentId))) || "",
+    );
+    // Serialise this one-time upgrade with normal checkpoints, without replacing pending edits.
+    const result = await db.transaction(async (tx) => {
+      const [current] = await tx
+        .select()
+        .from(collaborativeDocuments)
+        .where(eq(collaborativeDocuments.fileId, id))
+        .limit(1)
+        .for("update");
+      if (!current) throw new HttpError(404, "Das Dokument wurde gelöscht.");
+      if (current.metadata.formattingVersion === 1) return { row: current, changed: false };
+      let metadata = source
+        ? upgradeSheetMetadata(current.metadata, source.metadata)
+        : {
+            ...current.metadata,
+            formattingVersion: 1 as const,
+            warnings: [
+              "Text, Schriftfarben, einfache Schriftformate, Überschriften, Listen, Bilder und einfache Tabellen werden übernommen. Seitenlayout, Kopf-/Fußzeilen und besondere Word-Funktionen können abweichen. Das Original bleibt verfügbar.",
+              ...current.metadata.warnings.filter((warning) => !warning.startsWith("Text, ")),
+            ],
+          };
+      if (source) {
+        await initializeDocumentCache(id, current.state, current.checkpointRevision);
+        const log = await readDocumentLog(id, context.departmentId, epoch);
+        const document = mergedDocument([log.state, ...log.entries.map((entry) => entry[1])]);
+        try {
+          metadata = safeSheetMetadata(document, metadata);
+        } finally {
+          document.destroy();
+        }
+      }
+      if (Buffer.byteLength(JSON.stringify(metadata)) > 1_500_000)
+        throw new HttpError(
+          413,
+          "Die Dokumentformatierung ist zu groß. Bitte teile die Datei auf.",
+        );
+      let state = current.state,
+        revision = current.checkpointRevision,
+        changed = false;
+      if (ranges.length) {
+        await initializeDocumentCache(id, current.state, current.checkpointRevision);
+        const log = await readDocumentLog(id, context.departmentId, epoch);
+        const document = mergedDocument([log.state, ...log.entries.map((entry) => entry[1])]);
+        try {
+          const vector = Y.encodeStateVector(document);
+          if (restoreWordFormatting(document, ranges)) {
+            const update = Buffer.from(Y.encodeStateAsUpdate(document, vector)).toString("base64");
+            const appended = await appendDocumentUpdate(
+              {
+                fileId: id,
+                departmentId: context.departmentId,
+                userId: context.user.id,
+                format: "text",
+                canEdit: true,
+                epoch,
+                binding: "",
+                expiresAt: Date.now() + 60_000,
+              },
+              update,
+              log.revision,
+            );
+            // Include any concurrently appended edits before committing the new checkpoint.
+            Y.applyUpdate(document, decodeState(appended.state));
+            state = encodeDocument(document);
+            revision = appended.revision;
+            changed = true;
+          }
+        } finally {
+          document.destroy();
+        }
+      }
+      const [updated] = await tx
+        .update(collaborativeDocuments)
+        .set({ metadata, state, checkpointRevision: revision })
+        .where(eq(collaborativeDocuments.fileId, id))
+        .returning();
+      return { row: updated, changed };
+    });
+    row = result.row;
+    if (result.changed) {
+      await acknowledgeCheckpoint(id, row.state, row.checkpointRevision);
+      notifyDocument(id, row.checkpointRevision);
+    }
+  }
   return { ...access, row };
 }
 export async function openDocument(context: Context, id: string, cookie: string) {
@@ -105,12 +210,21 @@ export async function openDocument(context: Context, id: string, cookie: string)
   };
   const access = createDocumentTicket(claims, cookie);
   const state = await readDocumentState({ ...claims, binding: "", expiresAt: access.expiresAt });
+  let metadata = row.metadata;
+  if (row.format === "sheet") {
+    const document = mergedDocument([state.state]);
+    try {
+      metadata = safeSheetMetadata(document, metadata);
+    } finally {
+      document.destroy();
+    }
+  }
   return {
     ...state,
     fileId: id,
     name: String(file.data.name),
     format: row.format,
-    metadata: row.metadata,
+    metadata,
     canEdit,
     access,
   };

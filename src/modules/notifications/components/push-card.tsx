@@ -11,6 +11,7 @@ import {
   testPush,
   type PushDeviceState,
 } from "@/modules/notifications/client";
+import styles from "./push-card.module.css";
 
 export function PushCard() {
   const { workspace } = useWorkspace();
@@ -111,14 +112,36 @@ export function PushCard() {
           Ungelesene Mitteilungen können als Punkt oder Zahl am App-Symbol erscheinen. Aussehen und
           Anzeige hängen von deinem Handy und seinen Einstellungen ab.
         </p>
+        {!device?.active && (
+          <div className={styles.setup}>
+            <strong>Auf dem iPhone: Nach der Installation Mitteilungen freigeben</strong>
+            <ol>
+              <li>Öffne DigitalMask über das App-Symbol auf deinem Home-Bildschirm.</li>
+              <li>
+                Gehe in DigitalMask zu{" "}
+                <strong>Einstellungen → Mitteilungen auf diesem Gerät</strong>.
+              </li>
+              <li>
+                Tippe auf <strong>Mitteilungen aktivieren</strong> und bei der Nachfrage von iOS auf{" "}
+                <strong>Erlauben</strong>.
+              </li>
+              <li>
+                Tippe danach auf <strong>Testmitteilung</strong>, um den Empfang zu prüfen.
+              </li>
+            </ol>
+            <p>
+              Die Installation allein aktiviert noch keine Mitteilungen. Dafür brauchst du iOS oder
+              iPadOS 16.4 oder neuer.
+            </p>
+          </div>
+        )}
         {device?.needsHomeScreen ? (
           <div className="push-device-guidance">
             <Smartphone size={20} aria-hidden="true" />
             <p>
               <strong>Öffne DigitalMask als App.</strong>
               Auf dem iPhone oder iPad: Öffne DigitalMask in Safari, wähle „Teilen“ und „Zum
-              Home-Bildschirm“. Starte die App dort und aktiviere die Mitteilungen. Dafür brauchst
-              du iOS oder iPadOS 16.4 oder neuer.
+              Home-Bildschirm“. Öffne die App danach über ihr Symbol und folge den Schritten oben.
             </p>
           </div>
         ) : blocked ? (
@@ -127,7 +150,8 @@ export function PushCard() {
             <p>
               <strong>Mitteilungen sind auf diesem Gerät blockiert.</strong>
               Erlaube Mitteilungen für DigitalMask in den Geräte- oder Browser-Einstellungen. Öffne
-              diese Seite danach erneut oder prüfe den Status unten.
+              diese Seite danach erneut oder prüfe den Status unten. Auf dem iPhone:{" "}
+              <strong>Einstellungen → Mitteilungen → DigitalMask → Mitteilungen erlauben</strong>.
             </p>
           </div>
         ) : device && !device.supported ? (

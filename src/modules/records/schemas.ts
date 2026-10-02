@@ -332,6 +332,18 @@ export const schemas: Record<RecordKind, z.ZodType> = {
     recordId: id,
     path: z.string().max(1000),
     image: z.boolean().default(false),
+    width: z.number().int().positive().optional(),
+    height: z.number().int().positive().optional(),
+    portraitFocus: z
+      .object({
+        x: z.number().min(0).max(1),
+        y: z.number().min(0).max(1),
+        faceWidth: z.number().min(0).max(1),
+        faceHeight: z.number().min(0).max(1),
+        detected: z.boolean(),
+        version: z.literal(1),
+      })
+      .optional(),
   }),
 };
 export function validateRecord(kind: RecordKind, data: unknown) {

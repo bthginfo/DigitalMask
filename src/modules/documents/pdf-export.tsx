@@ -13,9 +13,13 @@ import {
 import { PDFDocument } from "pdf-lib";
 import { prepareFonts } from "@/modules/exports/pdf";
 import { addPageNumbers } from "@/modules/exports/page-numbers";
-import { SHEETS_MAP, cellKey, type DocumentMetadata } from "./contracts";
+import { SHEETS_MAP, type DocumentMetadata } from "./contracts";
 import { createSheetCalculator, displayCell, columnName } from "./sheet-values";
 import { documentNotes, plainText, sheetDimensions } from "./presentation";
+import { textRunStyle } from "./word-formatting";
+import { cellFormatting } from "./sheet-formatting";
+import { sheetPrintPages } from "./sheet-print-layout";
+import { safeSheetMetadata } from "./format-upgrade";
 
 const style = StyleSheet.create({
   page: {
@@ -104,6 +108,9 @@ function Inline({ nodes }: { nodes: JSONContent[] }) {
             key={index}
             style={{
               fontWeight: node.marks?.some((mark) => mark.type === "bold") ? 700 : 400,
+              color: textRunStyle(node).color,
+              backgroundColor: textRunStyle(node).backgroundColor,
+              fontSize: textRunStyle(node).fontSize,
               textDecoration: node.marks?.some((mark) => mark.type === "underline")
                 ? "underline"
                 : node.marks?.some((mark) => mark.type === "strike")
@@ -243,6 +250,7 @@ export async function exportSpreadsheetPdf(
   metadata: DocumentMetadata,
   name: string,
 ) {
+  metadata = safeSheetMetadata(document, metadata);
   await prepareFonts();
   const info = metadata.sheets || [];
   const sheets = document.getMap<Y.Map<string>>(SHEETS_MAP);
@@ -260,55 +268,120 @@ export async function exportSpreadsheetPdf(
         lastRow = Math.max(lastRow, row);
       }
     });
+    for (const key of Object.keys(sheet.cellStyles || {})) {
+      const [row, column] = key.split(":").map(Number);
+      if (row >= 1 && column >= 1 && row <= dimension.rows && column <= dimension.columns) {
+        lastColumn = Math.max(lastColumn, column);
+        lastRow = Math.max(lastRow, row);
+      }
+    }
     const bands = Math.ceil(lastColumn / 7);
     for (let band = 0; band < bands; band++) {
       const columns = Array.from(
         { length: Math.min(7, lastColumn - band * 7) },
         (_, i) => band * 7 + i + 1,
       );
-      const rows = Array.from({ length: lastRow }, (_, i) => i + 1).filter((row) =>
-        columns.some((col) => Boolean(values?.get(cellKey(row, col)))),
-      );
-      // Bound row height by splitting very long cell contents, preserving their full text.
-      const rendered = rows.flatMap((row) => {
-        const cells = columns.map((col) => displayCell(evaluate(sheet.id, row, col)));
-        const chunks = Math.max(1, ...cells.map((cell) => Math.ceil(cell.length / 800)));
-        return Array.from({ length: chunks }, (_, chunk) => (
-          <View key={`${row}:${chunk}`} style={style.row} wrap={false}>
-            <Text style={style.rowNumber}>
-              {row}
-              {chunk ? " ↳" : ""}
-            </Text>
-            {cells.map((cell, c) => (
-              <Text key={c} style={style.sheetCell}>
-                {cell.slice(chunk * 800, (chunk + 1) * 800)}
-              </Text>
-            ))}
-          </View>
-        ));
-      });
       const label = `${name} · ${sheet.name}${bands > 1 ? ` · Spalten ${columnName(columns[0])}–${columnName(columns.at(-1)!)}` : ""}`;
-      pages.push(
-        <PrintPage key={`${sheet.id}:${band}`} name={label} landscape>
-          <View
-            fixed
-            style={{
-              ...style.row,
-              backgroundColor: "#edf3ef",
-              borderTopWidth: 0.5,
-              borderColor: "#cbd6cf",
-            }}
-          >
-            <Text style={style.rowNumber}>#</Text>
-            {columns.map((col) => (
-              <Text key={col} style={{ ...style.sheetCell, fontWeight: 700 }}>
-                {columnName(col)}
-              </Text>
-            ))}
-          </View>
-          {rendered.length ? rendered : <Text>Leere Tabelle</Text>}
-        </PrintPage>,
+      const printed = sheetPrintPages(sheet, columns, lastRow, (row, column) =>
+        displayCell(evaluate(sheet.id, row, column)),
       );
+      for (const [index, page] of printed.entries())
+        pages.push(
+          <PrintPage key={`${sheet.id}:${band}:${index}`} name={label} landscape>
+            <View style={{ ...style.row, backgroundColor: "#edf3ef" }}>
+              <Text style={style.rowNumber}>#</Text>
+              {columns.map((column, c) => (
+                <Text
+                  key={column}
+                  style={{
+                    ...style.sheetCell,
+                    flexGrow: 0,
+                    flexBasis: undefined,
+                    width: page.widths[c],
+                    fontWeight: 700,
+                  }}
+                >
+                  {columnName(column)}
+                </Text>
+              ))}
+            </View>
+            <View wrap={false} style={{ height: page.height, position: "relative" }}>
+              {page.segments.map((segment, s) => (
+                <Text
+                  key={s}
+                  style={{
+                    ...style.rowNumber,
+                    position: "absolute",
+                    left: 0,
+                    top: page.tops[s],
+                    height: segment.height,
+                  }}
+                >
+                  {segment.row}
+                  {segment.chunk ? " ↳" : ""}
+                </Text>
+              ))}
+              {page.cells.map((cell, c) => {
+                const formatting = cellFormatting(sheet, cell.row, cell.column);
+                const borders = Object.fromEntries(
+                  (["top", "right", "bottom", "left"] as const).flatMap((side) => {
+                    const edge = formatting.borders?.[side],
+                      name = side[0].toUpperCase() + side.slice(1);
+                    return edge
+                      ? [
+                          [`border${name}Color`, edge.color],
+                          [`border${name}Width`, edge.width * 0.75],
+                          [`border${name}Style`, edge.style === "double" ? "solid" : edge.style],
+                        ]
+                      : [];
+                  }),
+                );
+                return (
+                  <View
+                    key={c}
+                    style={{
+                      position: "absolute",
+                      left: 30 + cell.left,
+                      top: cell.top,
+                      width: cell.width,
+                      height: cell.height,
+                      backgroundColor: formatting.background || "#FFFFFF",
+                      borderBottomWidth: 0.5,
+                      borderRightWidth: 0.5,
+                      borderColor: "#cbd6cf",
+                      paddingHorizontal: 4,
+                      paddingVertical: 1.5,
+                      justifyContent:
+                        formatting.vertical === "middle"
+                          ? "center"
+                          : formatting.vertical === "bottom"
+                            ? "flex-end"
+                            : "flex-start",
+                      ...borders,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: formatting.color || "#000000",
+                        fontSize: Math.max(4.5, Math.min(72, (formatting.fontSize || 11) * 0.75)),
+                        fontWeight: formatting.bold ? 700 : 400,
+                        textAlign: formatting.horizontal || "left",
+                        textDecoration: formatting.underline
+                          ? "underline"
+                          : formatting.strike
+                            ? "line-through"
+                            : undefined,
+                        lineHeight: 1.15,
+                      }}
+                    >
+                      {cell.value}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+          </PrintPage>,
+        );
     }
   }
   return Buffer.from(

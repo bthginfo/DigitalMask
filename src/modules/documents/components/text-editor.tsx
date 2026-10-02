@@ -16,6 +16,7 @@ import {
 import type * as Y from "yjs";
 import { textExtensions } from "../text-schema";
 import { TEXT_FRAGMENT } from "../contracts";
+import { TextColorControl } from "./text-color-control";
 
 export function TextEditor({ doc, editable }: { doc: Y.Doc; editable: boolean }) {
   const editor = useEditor({
@@ -39,6 +40,7 @@ export function TextEditor({ doc, editable }: { doc: Y.Doc; editable: boolean })
       bullet: current?.isActive("bulletList"),
       ordered: current?.isActive("orderedList"),
       link: current?.isActive("link"),
+      color: current?.getAttributes("textStyle").color as string | undefined,
       heading: current?.isActive("heading", { level: 1 })
         ? "1"
         : current?.isActive("heading", { level: 2 })
@@ -141,6 +143,7 @@ export function TextEditor({ doc, editable }: { doc: Y.Doc; editable: boolean })
             <Icon size={18} />
           </button>
         ))}
+        <TextColorControl editor={editor} editable={editable} color={selected?.color} />
         {editor?.isActive("table") && (
           <>
             <button

@@ -21,6 +21,7 @@ import { Badge, Button, Empty, ErrorMessage, Modal, PageHeader } from "../ui";
 import { ChatChannel } from "@/modules/chat/components/chat-channel";
 import { ConversationEditor } from "@/modules/chat/components/conversation-editor";
 import { chatUnreadCounts } from "@/modules/notifications/unread";
+import { chatChoiceKey, unreadFirstChoices, type ChatChoice } from "@/modules/chat/channel-order";
 
 const sidebarFallback = new Map<string, boolean>();
 const sidebarChange = "digitalmask:chat-sidebar";
@@ -175,6 +176,75 @@ export function ChatModule({
     ),
   );
   const showGeneral = matches("Maske · Allgemein Teamkanal");
+  const choices: ChatChoice[] = [
+    ...(showGeneral
+      ? [
+          {
+            key: "general",
+            title: "Maske · Allgemein",
+            detail: "Für das ganze Maskenteam",
+            kind: "team" as const,
+            conversationId: "",
+            productionId: "",
+            unread: unread.general,
+          },
+        ]
+      : []),
+    ...matchingTeamChannels.map((record): ChatChoice => ({
+      key: chatChoiceKey(record.id),
+      title: value(record.data, "title"),
+      detail: record.data.archived === true ? "Archiviert · Teamkanal" : "Für das ganze Maskenteam",
+      kind: "team",
+      conversationId: record.id,
+      productionId: "",
+      unread: unread.conversations[record.id] || 0,
+    })),
+    ...matchingProductions.map((record): ChatChoice => ({
+      key: chatChoiceKey("", record.id),
+      title: value(record.data, "title"),
+      detail: "Absprachen zum Stück",
+      kind: "production",
+      conversationId: "",
+      productionId: record.id,
+      unread: unread.productions[record.id] || 0,
+    })),
+    ...matchingChats.map((record): ChatChoice => ({
+      key: chatChoiceKey(record.id),
+      title: conversationTitle(record, workspace.members, workspace.user.id),
+      detail:
+        record.data.archived === true
+          ? "Archiviert · privat"
+          : record.data.mode === "direct"
+            ? "Persönliches Gespräch · privat"
+            : `${ids(record.data, "participantIds").length} Teilnehmende · privat`,
+      kind: record.data.mode === "direct" ? "direct" : "group",
+      conversationId: record.id,
+      productionId: "",
+      unread: unread.conversations[record.id] || 0,
+    })),
+  ];
+  const ordered = unreadFirstChoices(
+    choices,
+    workspace.records.messages,
+    workspace.records.notifications,
+    workspace.user.id,
+  );
+  const icons = { team: Hash, production: Theater, direct: MessageCircle, group: Users };
+  const renderChoice = (choice: ChatChoice) => (
+    <ChannelChoice
+      key={choice.key}
+      title={choice.title}
+      detail={choice.detail}
+      icon={icons[choice.kind]}
+      kind={choice.kind}
+      unread={choice.unread}
+      selected={
+        selectedConversation === choice.conversationId &&
+        (!choice.conversationId ? selectedProduction === choice.productionId : true)
+      }
+      onSelect={() => choose(choice.conversationId, choice.productionId)}
+    />
+  );
   const title = conversation
     ? conversationTitle(conversation, workspace.members, workspace.user.id)
     : selectedProduction
@@ -303,88 +373,31 @@ export function ChatModule({
                 />
               </div>
               <nav aria-label="Kommunikationskanäle">
-                {(showGeneral || !!matchingTeamChannels.length) && (
+                {ordered.unread.length > 0 && (
                   <div className="chat-channel-group">
                     <h3>
-                      Team <span>{Number(showGeneral) + matchingTeamChannels.length}</span>
+                      Ungelesen <span>{ordered.unread.length}</span>
                     </h3>
-                    {showGeneral && (
-                      <ChannelChoice
-                        title="Maske · Allgemein"
-                        detail="Für das ganze Maskenteam"
-                        icon={Hash}
-                        kind="team"
-                        unread={unread.general}
-                        selected={!selectedConversation && !selectedProduction}
-                        onSelect={() => choose("")}
-                      />
-                    )}
-                    {matchingTeamChannels.map((record) => (
-                      <ChannelChoice
-                        key={record.id}
-                        title={value(record.data, "title")}
-                        detail={
-                          record.data.archived === true
-                            ? "Archiviert · Teamkanal"
-                            : "Für das ganze Maskenteam"
-                        }
-                        icon={Hash}
-                        kind="team"
-                        unread={unread.conversations[record.id] || 0}
-                        selected={selectedConversation === record.id}
-                        onSelect={() => choose(record.id)}
-                      />
-                    ))}
+                    {ordered.unread.map(renderChoice)}
                   </div>
                 )}
-                {!!matchingProductions.length && (
-                  <div className="chat-channel-group">
-                    <h3>
-                      Produktionen <span>{matchingProductions.length}</span>
-                    </h3>
-                    {matchingProductions.map((record) => (
-                      <ChannelChoice
-                        key={record.id}
-                        title={value(record.data, "title")}
-                        detail="Absprachen zum Stück"
-                        icon={Theater}
-                        kind="production"
-                        unread={unread.productions[record.id] || 0}
-                        selected={!selectedConversation && selectedProduction === record.id}
-                        onSelect={() => choose("", record.id)}
-                      />
-                    ))}
-                  </div>
-                )}
-                {(["direct", "group"] as const).map((kind) => {
-                  const chats = matchingChats.filter(
-                    (record) => (record.data.mode === "direct" ? "direct" : "group") === kind,
-                  );
-                  if (!chats.length) return null;
+                {(
+                  [
+                    ["team", "Team"],
+                    ["production", "Produktionen"],
+                    ["direct", "Direktnachrichten"],
+                    ["group", "Gruppen"],
+                  ] as const
+                ).map(([kind, label]) => {
+                  const group = ordered.ordinary.filter((choice) => choice.kind === kind);
+                  if (!group.length) return null;
                   return (
                     <div className="chat-channel-group" key={kind}>
                       <h3>
-                        {kind === "direct" ? "Direktnachrichten" : "Gruppen"}
-                        <span>{chats.length}</span>
+                        {label}
+                        <span>{group.length}</span>
                       </h3>
-                      {chats.map((record) => (
-                        <ChannelChoice
-                          key={record.id}
-                          title={conversationTitle(record, workspace.members, workspace.user.id)}
-                          detail={
-                            record.data.archived === true
-                              ? "Archiviert · privat"
-                              : kind === "direct"
-                                ? "Persönliches Gespräch · privat"
-                                : `${ids(record.data, "participantIds").length} Teilnehmende · privat`
-                          }
-                          icon={kind === "direct" ? MessageCircle : Users}
-                          kind={kind}
-                          unread={unread.conversations[record.id] || 0}
-                          selected={selectedConversation === record.id}
-                          onSelect={() => choose(record.id)}
-                        />
-                      ))}
+                      {group.map(renderChoice)}
                     </div>
                   );
                 })}

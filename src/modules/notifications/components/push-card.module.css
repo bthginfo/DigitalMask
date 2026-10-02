@@ -1,0 +1,33 @@
+.setup {
+  margin-block: 1rem;
+  padding: 1rem 1.125rem;
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+.setup > strong {
+  display: block;
+  margin-bottom: 0.625rem;
+}
+.setup ol {
+  margin: 0;
+  padding-left: 1.25rem;
+  list-style: decimal;
+  display: grid;
+  gap: 0.5rem;
+}
+.setup li::marker {
+  color: var(--accent);
+  font-weight: 600;
+}
+.setup li {
+  padding-left: 0.25rem;
+}
+.setup p {
+  margin: 0.75rem 0 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}

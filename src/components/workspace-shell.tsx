@@ -235,6 +235,8 @@ export function WorkspaceShell() {
     setDetail(null);
     const next = new URL(location.href);
     next.searchParams.delete("record");
+    next.searchParams.delete("relatedSeason");
+    next.searchParams.delete("relatedYear");
     history.replaceState({}, "", next.pathname + next.search);
     window.dispatchEvent(new PopStateEvent("popstate"));
   };
@@ -620,7 +622,12 @@ export function WorkspaceShell() {
         />
       )}
       {(detail || queryRecord) && (
-        <RecordDetail record={(detail || queryRecord)!} onClose={closeDetail} />
+        <RecordDetail
+          key={(detail || queryRecord)!.id}
+          record={(detail || queryRecord)!}
+          onClose={closeDetail}
+          onNavigate={() => setDetail(null)}
+        />
       )}
     </div>
   );

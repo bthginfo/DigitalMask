@@ -12,8 +12,16 @@ import {
   type SheetInfo,
 } from "../contracts";
 import { columnName, createSheetCalculator, displayCell } from "../sheet-values";
+import {
+  createSheetLayout,
+  nextSheetCell,
+  pasteIntersectsMerge,
+  sheetMaster,
+  type SheetDirection,
+} from "../sheet-layout";
 import { SHEET_EDIT } from "../client/shared-document";
 import { useDocumentRevision } from "../client/use-document-revision";
+import { SheetGrid } from "./sheet-grid";
 
 const PAGE_ROWS = 50;
 export function SheetEditor({
@@ -34,13 +42,14 @@ export function SheetEditor({
     [doc],
   );
   const [sheetId, setSheetId] = useState(info[0]?.id || ""),
-    [selected, setSelected] = useState({ row: 1, column: 1 }),
-    [page, setPage] = useState(0),
+    [selection, setSelected] = useState({ row: 1, column: 1 }),
+    [rowPage, setPage] = useState(0),
     [draft, setDraft] = useState(""),
     [error, setError] = useState("");
   const input = useRef<HTMLInputElement>(null),
     grid = useRef<HTMLDivElement>(null),
-    dirty = useRef(false);
+    dirty = useRef(false),
+    focusGrid = useRef(false);
   const sheet = info.find((item) => item.id === sheetId) || info[0];
   const current = sheets.get(sheet?.id || "");
   useEffect(() => {
@@ -49,6 +58,16 @@ export function SheetEditor({
   const size = dimensions.get(sheet?.id || "") || sheet || { rows: 1, columns: 1 };
   const rows = Math.min(MAX_SHEET_ROWS, Math.max(1, size.rows)),
     columns = Math.min(MAX_SHEET_COLUMNS, Math.max(1, size.columns));
+  const layout = useMemo(
+    () => createSheetLayout(sheet || {}, rows, columns),
+    [sheet, rows, columns],
+  );
+  const selected = sheetMaster(
+    layout,
+    Math.min(rows, selection.row),
+    Math.min(columns, selection.column),
+  );
+  const page = Math.min(rowPage, Math.floor((rows - 1) / PAGE_ROWS));
   const cell = cellKey(selected.row, selected.column),
     raw = current?.get(cell) || "";
   const calculator = useMemo(() => {
@@ -67,6 +86,13 @@ export function SheetEditor({
   useEffect(() => {
     if (!dirty.current) setDraft(raw);
   }, [raw, cell, sheetId]);
+  useEffect(() => {
+    if (!focusGrid.current) return;
+    focusGrid.current = false;
+    const target = grid.current?.querySelector<HTMLButtonElement>(`[data-cell="${cell}"]`);
+    target?.focus({ preventScroll: true });
+    target?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [cell, page, sheetId]);
   const commit = () => {
     if (!dirty.current || !editable || !current) return;
     doc.transact(() => current.set(cell, draft), SHEET_EDIT);
@@ -75,18 +101,16 @@ export function SheetEditor({
   const selectCell = (row: number, column: number, edit = false) => {
     commit();
     dirty.current = false;
-    setSelected({ row, column });
-    setDraft(current?.get(cellKey(row, column)) || "");
+    const master = sheetMaster(layout, row, column);
+    setSelected(master);
+    setDraft(current?.get(cellKey(master.row, master.column)) || "");
     setPage(Math.floor((row - 1) / PAGE_ROWS));
     if (edit) input.current?.focus();
-    else if (document.activeElement?.classList.contains("sheet-cell"))
-      requestAnimationFrame(() => {
-        const target = grid.current?.querySelector<HTMLButtonElement>(
-          `[data-cell="${row}:${column}"]`,
-        );
-        target?.focus({ preventScroll: true });
-        target?.scrollIntoView({ block: "nearest", inline: "nearest" });
-      });
+    else if (document.activeElement?.classList.contains("sheet-cell")) focusGrid.current = true;
+  };
+  const navigate = (direction: SheetDirection) => {
+    const next = nextSheetCell(layout, selected, direction, rows, columns);
+    selectCell(next.row, next.column);
   };
   const grow = (axis: "rows" | "columns") => {
     if (!sheet || !editable) return;
@@ -103,15 +127,22 @@ export function SheetEditor({
       return;
     }
     doc.transact(() => dimensions.set(sheet.id, next), SHEET_EDIT);
-    if (axis === "rows") setPage(Math.floor((next.rows - 1) / PAGE_ROWS));
+    if (axis === "rows") selectCell(next.rows, selected.column);
   };
   const paste = (event: React.ClipboardEvent) => {
     if (!editable || !current) return;
     const text = event.clipboardData.getData("text/plain");
-    if (!/[\t\n]/.test(text)) return;
+    if (!/[\t\n\r]/.test(text)) return;
     event.preventDefault();
+    if (text.length > 100000) {
+      setError(
+        "Die eingefügten Daten sind zu groß. Füge bitte einen kleineren Tabellenbereich ein.",
+      );
+      return;
+    }
     const values = text
       .replace(/\r\n/g, "\n")
+      .replace(/\r/g, "\n")
       .replace(/\n$/, "")
       .split("\n")
       .map((line) => line.split("\t"));
@@ -121,18 +152,29 @@ export function SheetEditor({
     if (
       endRow > MAX_SHEET_ROWS ||
       endColumn > MAX_SHEET_COLUMNS ||
-      next.rows * next.columns > MAX_SHEET_CELLS ||
-      text.length > 100000
+      next.rows * next.columns > MAX_SHEET_CELLS
     ) {
       setError(
         "Die eingefügten Daten sind zu groß. Füge bitte einen kleineren Tabellenbereich ein.",
       );
       return;
     }
+    if (values.some((line) => line.some((value) => value.length > 4000))) {
+      setError(
+        "Eine eingefügte Zelle enthält mehr als 4.000 Zeichen. Kürze diesen Zellwert und versuche es erneut.",
+      );
+      return;
+    }
+    if (pasteIntersectsMerge(layout, selected, values)) {
+      setError(
+        "Der eingefügte Bereich enthält verbundene Zellen. Füge die Werte in einen freien Bereich ein oder bearbeite die verbundene Zelle einzeln.",
+      );
+      return;
+    }
     doc.transact(() => {
       values.forEach((line, r) =>
         line.forEach((value, c) =>
-          current.set(cellKey(selected.row + r, selected.column + c), value.slice(0, 4000)),
+          current.set(cellKey(selected.row + r, selected.column + c), value),
         ),
       );
       dimensions.set(sheet!.id, next);
@@ -197,8 +239,7 @@ export function SheetEditor({
             aria-label="Vorherige Zeilen"
             disabled={page === 0}
             onClick={() => {
-              commit();
-              setPage(page - 1);
+              selectCell((page - 1) * PAGE_ROWS + 1, selected.column);
             }}
           >
             <ArrowLeft size={17} />
@@ -211,8 +252,7 @@ export function SheetEditor({
             aria-label="Weitere Zeilen"
             disabled={last >= rows}
             onClick={() => {
-              commit();
-              setPage(page + 1);
+              selectCell((page + 1) * PAGE_ROWS + 1, selected.column);
             }}
           >
             <ArrowRight size={17} />
@@ -241,7 +281,7 @@ export function SheetEditor({
             if (event.key === "Enter") {
               event.preventDefault();
               commit();
-              selectCell(Math.min(rows, selected.row + 1), selected.column);
+              navigate("down");
             } else if (event.key === "Escape") {
               event.preventDefault();
               dirty.current = false;
@@ -261,74 +301,19 @@ export function SheetEditor({
         </button>
       </div>
       <ErrorMessage message={error} />
-      <div ref={grid} className="sheet-grid-scroll" onPaste={paste}>
-        <table className="shared-sheet-grid" aria-label={sheet?.name || "Tabelle"}>
-          <thead>
-            <tr>
-              <th className="sheet-corner" aria-label="Zeile" />
-              {Array.from({ length: columns }, (_, c) => (
-                <th
-                  scope="col"
-                  key={c}
-                  style={{ width: Math.min(230, Math.max(90, (sheet?.widths?.[c] || 14) * 7)) }}
-                >
-                  {columnName(c + 1)}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {Array.from({ length: Math.max(0, last - first + 1) }, (_, r) => {
-              const row = r + first;
-              return (
-                <tr key={row}>
-                  <th scope="row">{row}</th>
-                  {Array.from({ length: columns }, (_, c) => {
-                    const column = c + 1,
-                      contents = displayCell(calculator(sheet!.id, row, column)),
-                      active = row === selected.row && column === selected.column;
-                    return (
-                      <td key={column} className={active ? "selected" : ""}>
-                        <button
-                          type="button"
-                          className="sheet-cell"
-                          data-cell={`${row}:${column}`}
-                          tabIndex={active ? 0 : -1}
-                          aria-label={`Zelle ${columnName(column)}${row}${contents ? `: ${contents}` : ""}`}
-                          aria-pressed={active}
-                          onClick={() => selectCell(row, column)}
-                          onDoubleClick={() => selectCell(row, column, true)}
-                          onKeyDown={(event) => {
-                            const movement: Record<string, [number, number]> = {
-                              ArrowDown: [1, 0],
-                              ArrowUp: [-1, 0],
-                              ArrowLeft: [0, -1],
-                              ArrowRight: [0, 1],
-                            };
-                            if (movement[event.key]) {
-                              event.preventDefault();
-                              const [dr, dc] = movement[event.key];
-                              selectCell(
-                                Math.min(rows, Math.max(1, row + dr)),
-                                Math.min(columns, Math.max(1, column + dc)),
-                              );
-                            } else if (event.key === "Enter" || event.key === "F2") {
-                              event.preventDefault();
-                              selectCell(row, column, true);
-                            }
-                          }}
-                        >
-                          {contents || <span aria-hidden="true">&nbsp;</span>}
-                        </button>
-                      </td>
-                    );
-                  })}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+      <SheetGrid
+        sheet={sheet}
+        columns={columns}
+        first={first}
+        last={last}
+        layout={layout}
+        selected={selected}
+        grid={grid}
+        display={(row, column) => displayCell(calculator(sheet.id, row, column))}
+        onSelect={selectCell}
+        onNavigate={navigate}
+        onPaste={paste}
+      />
       <footer className="sheet-tabs" aria-label="Tabellenblätter">
         {info.map((item) => (
           <button

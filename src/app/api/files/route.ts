@@ -5,6 +5,7 @@ import { route, assertOrigin, HttpError } from "@/platform/http";
 import { recordKinds } from "@/shared/contracts";
 import { uploadFile } from "@/modules/files/service";
 export const runtime = "nodejs";
+export const maxDuration = 60;
 export async function POST(request: Request) {
   return route(async () => {
     assertOrigin(request);

@@ -1061,19 +1061,20 @@ kbd {
   margin-left: auto;
   color: var(--muted);
 }
-.today-notifications {
-  margin-bottom: 24px;
-}
 .today-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 300px;
+  grid-template-columns: minmax(0, 1fr);
   gap: 24px;
+}
+.today-layout--with-timer {
+  grid-template-columns: minmax(0, 1fr) 300px;
 }
 .today-main,
 .today-aside {
   display: flex;
   flex-direction: column;
   gap: 22px;
+  min-width: 0;
 }
 .schedule-row {
   background: transparent;
@@ -3179,7 +3180,7 @@ tfoot td {
   .main-content {
     padding: 42px 50px;
   }
-  .today-layout {
+  .today-layout--with-timer {
     grid-template-columns: minmax(0, 1fr) 350px;
   }
   .production-card h2 {
@@ -3206,7 +3207,7 @@ tfoot td {
   .topbar {
     padding: 0 25px;
   }
-  .today-layout {
+  .today-layout--with-timer {
     grid-template-columns: minmax(0, 1fr) 275px;
     gap: 18px;
   }
@@ -3272,8 +3273,8 @@ tfoot td {
   .user-summary strong {
     max-width: 95px;
   }
-  .today-layout {
-    grid-template-columns: 1fr;
+  .today-layout--with-timer {
+    grid-template-columns: minmax(0, 1fr);
   }
   .today-aside {
     display: grid;
@@ -3483,9 +3484,6 @@ tfoot td {
   }
   .summary-hours-action > svg {
     display: none;
-  }
-  .today-notifications {
-    margin-bottom: 20px;
   }
   .today-summary > button {
     flex-direction: column;

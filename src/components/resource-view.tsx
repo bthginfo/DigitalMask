@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import Image from "next/image";
 import { Image as ImageIcon, MoreHorizontal, Pencil, Plus, Trash2, Upload } from "lucide-react";
 import type { DomainRecord, RecordData, RecordKind, Workspace } from "@/shared/contracts";
@@ -19,6 +19,18 @@ import { canManageRecord } from "@/shared/record-permissions";
 import { ExportDialog, ImportDialog } from "./export-dialog";
 import { DocumentAttachment } from "@/modules/documents/components/document-attachment";
 import { documentAccept, RecordDocuments } from "@/modules/documents/components/record-documents";
+import { RecordLink } from "./record-link";
+import {
+  ActorRelationships,
+  CharacterRelationships,
+  SprintRelationships,
+} from "./record-relationships";
+import { PersonDetails } from "@/modules/people/components/person-details";
+import { navigateRecord } from "@/shared/client-navigation";
+import relationStyles from "./record-links.module.css";
+import { actorPortrait } from "@/modules/ensemble/portrait-layout";
+import { ActorPortrait } from "@/modules/ensemble/components/actor-portrait";
+import portraitStyles from "@/modules/ensemble/components/actor-portrait.module.css";
 
 function recordTitle(record: DomainRecord, workspace: Workspace) {
   if (record.kind === "looks") return lookTitle(record.data, workspace.records.actors);
@@ -27,11 +39,37 @@ function recordTitle(record: DomainRecord, workspace: Workspace) {
   return value(record.data, "title") || value(record.data, "name") || labels[record.kind][1];
 }
 
-export function RecordDetail({ record, onClose }: { record: DomainRecord; onClose: () => void }) {
-  if (record.kind === "events") return <EventDetail record={record} onClose={onClose} />;
-  return <GenericRecordDetail record={record} onClose={onClose} />;
+export function RecordDetail({
+  record,
+  onClose,
+  onNavigate = onClose,
+}: {
+  record: DomainRecord;
+  onClose: () => void;
+  onNavigate?: () => void;
+}) {
+  if (record.kind === "events")
+    return <EventDetail record={record} onClose={onClose} onNavigate={onNavigate} />;
+  if (record.kind === "people")
+    return <PersonDetails record={record} onClose={onClose} onNavigate={onNavigate} />;
+  return (
+    <GenericRecordDetail
+      key={record.id}
+      record={record}
+      onClose={onClose}
+      onNavigate={onNavigate}
+    />
+  );
 }
-function GenericRecordDetail({ record, onClose }: { record: DomainRecord; onClose: () => void }) {
+function GenericRecordDetail({
+  record,
+  onClose,
+  onNavigate,
+}: {
+  record: DomainRecord;
+  onClose: () => void;
+  onNavigate: () => void;
+}) {
   const { workspace, save, remove, refresh, action, busy } = useWorkspace();
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState("");
@@ -39,12 +77,18 @@ function GenericRecordDetail({ record, onClose }: { record: DomainRecord; onClos
   const [subtask, setSubtask] = useState(false);
   const [timeBooking, setTimeBooking] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const [figureOpen, setFigureOpen] = useState(false);
   const current = workspace.records[record.kind].find((x) => x.id === record.id) || record;
   const canEdit = canManageRecord(workspace.user, current.kind, current);
-  const linkedFiles = workspace.records.files.filter(
+  const allLinkedFiles = workspace.records.files.filter(
     (x) => x.data.recordKind === current.kind && x.data.recordId === current.id,
   );
+  const portrait = current.kind === "actors" ? actorPortrait(current, allLinkedFiles) : undefined;
+  const linkedFiles =
+    current.kind === "actors"
+      ? allLinkedFiles.filter(
+          (file) => !value(file.data, "mime").startsWith("image/") || file.id === portrait?.id,
+        )
+      : allLinkedFiles;
   const linkedFigure =
     current.kind === "casting"
       ? workspace.records.characters.find((row) => row.id === current.data.characterId)
@@ -139,22 +183,39 @@ function GenericRecordDetail({ record, onClose }: { record: DomainRecord; onClos
                   current.data[field.key] !== "",
               )
               .map((field) => {
-                let display = String(current.data[field.key]);
+                let display: ReactNode = String(current.data[field.key]);
                 if (field.source) {
-                  const rows =
-                    field.source === "members"
-                      ? workspace.members.map((x) => ({ id: x.id, name: x.name }))
-                      : workspace.records[field.source].map((x) => ({
-                          id: x.id,
-                          name: value(x.data, "title") || value(x.data, "name"),
-                        }));
                   const selected =
                     field.type === "multi"
                       ? ids(current.data, field.key)
                       : [value(current.data, field.key)];
-                  display = selected
-                    .map((id) => rows.find((x) => x.id === id)?.name || "–")
-                    .join(", ");
+                  const source = field.source;
+                  display = (
+                    <span className={relationStyles.values}>
+                      {selected.map((id) => {
+                        if (source === "members")
+                          return (
+                            <span key={id}>
+                              {workspace.members.find((member) => member.id === id)?.name ||
+                                "Nicht mehr verfügbar"}
+                            </span>
+                          );
+                        const linked = workspace.records[source].find((row) => row.id === id);
+                        return linked ? (
+                          <RecordLink
+                            key={id}
+                            record={linked}
+                            from={current}
+                            onNavigate={onNavigate}
+                          >
+                            {recordTitle(linked, workspace)}
+                          </RecordLink>
+                        ) : (
+                          <span key={id}>Nicht mehr verfügbar</span>
+                        );
+                      })}
+                    </span>
+                  );
                 } else if (field.options)
                   display =
                     field.options.find((x) => x[0] === current.data[field.key])?.[1] || display;
@@ -163,7 +224,7 @@ function GenericRecordDetail({ record, onClose }: { record: DomainRecord; onClos
                 else if (field.key === "pauseSeconds")
                   display = `${Math.round(num(current.data, field.key) / 60)} min`;
                 else if (field.type === "date" || field.type === "datetime-local")
-                  display = dateLabel(display, field.type === "datetime-local");
+                  display = dateLabel(String(display), field.type === "datetime-local");
                 else if (field.type === "checkbox")
                   display = current.data[field.key] ? "Ja" : "Nein";
                 else if (field.type === "lines") display = ids(current.data, field.key).join(" · ");
@@ -184,11 +245,20 @@ function GenericRecordDetail({ record, onClose }: { record: DomainRecord; onClos
                 );
               })}
           </dl>
+          {current.kind === "actors" && (
+            <ActorRelationships record={current} onNavigate={onNavigate} />
+          )}
+          {current.kind === "characters" && (
+            <CharacterRelationships record={current} onNavigate={onNavigate} />
+          )}
+          {current.kind === "sprints" && (
+            <SprintRelationships record={current} onNavigate={onNavigate} />
+          )}
           {current.kind === "actors" &&
             (value(current.data, "biography") || value(current.data, "sourceUrl")) && (
               <section className="detail-section actor-ensemble-detail">
                 <header className="panel-heading">
-                  <h3>Aus dem Ensemble</h3>
+                  <h3>Angaben des Stadttheaters</h3>
                   {value(current.data, "ensembleStatus") && (
                     <Badge>{value(current.data, "ensembleStatus")}</Badge>
                   )}
@@ -198,7 +268,10 @@ function GenericRecordDetail({ record, onClose }: { record: DomainRecord; onClos
                 )}
                 {ids(current.data, "ensembleProductions").length > 0 && (
                   <>
-                    <h4>Aktuelle Produktionen</h4>
+                    <h4>Produktionen auf der Theaterwebsite</h4>
+                    <p className="small muted">
+                      Diese Theaterangaben sind unabhängig von euren oben verknüpften Besetzungen.
+                    </p>
                     <ul>
                       {ids(current.data, "ensembleProductions").map((name, index) => (
                         <li key={`${name}-${index}`}>{name}</li>
@@ -256,7 +329,10 @@ function GenericRecordDetail({ record, onClose }: { record: DomainRecord; onClos
                 .filter((x) => x.data.parentId === current.id)
                 .map((x) => (
                   <p key={x.id}>
-                    {value(x.data, "title")} <Badge>{statusLabels[value(x.data, "status")]}</Badge>
+                    <RecordLink record={x} from={current} onNavigate={onNavigate}>
+                      {value(x.data, "title")}
+                    </RecordLink>{" "}
+                    <Badge>{statusLabels[value(x.data, "status")]}</Badge>
                   </p>
                 ))}
               <Button onClick={() => setSubtask(true)}>
@@ -311,7 +387,11 @@ function GenericRecordDetail({ record, onClose }: { record: DomainRecord; onClos
             <section className="detail-section">
               <header className="panel-heading">
                 <h3>
-                  {current.kind === "casting" ? "Bilder dieser Besetzung" : "Bilder & Dateien"}
+                  {current.kind === "casting"
+                    ? "Bilder dieser Besetzung"
+                    : current.kind === "actors"
+                      ? "Porträt & Dateien"
+                      : "Bilder & Dateien"}
                 </h3>
                 {canEdit && (
                   <label className="button secondary">
@@ -320,11 +400,15 @@ function GenericRecordDetail({ record, onClose }: { record: DomainRecord; onClos
                       ? "Wird hochgeladen …"
                       : current.kind === "casting"
                         ? "Bilder hinzufügen"
-                        : "Hochladen"}
+                        : current.kind === "actors"
+                          ? portrait
+                            ? "Porträt ersetzen / Datei ergänzen"
+                            : "Porträt / Datei hinzufügen"
+                          : "Hochladen"}
                     <input
                       type="file"
                       accept={current.kind === "casting" ? ".jpg,.jpeg,.png,.webp" : documentAccept}
-                      multiple
+                      multiple={current.kind !== "actors"}
                       className="visually-hidden"
                       disabled={uploading}
                       onChange={(event) => void upload(event.target.files)}
@@ -338,14 +422,22 @@ function GenericRecordDetail({ record, onClose }: { record: DomainRecord; onClos
                     <div key={file.id} className="gallery-item">
                       {value(file.data, "mime").startsWith("image/") ? (
                         <a href={`/api/files/${file.id}`} target="_blank" rel="noreferrer">
-                          <Image
-                            unoptimized
-                            width={1800}
-                            height={1800}
-                            src={`/api/files/${file.id}`}
-                            alt={value(file.data, "name")}
-                            loading="lazy"
-                          />
+                          {current.kind === "actors" ? (
+                            <ActorPortrait
+                              file={file}
+                              className={portraitStyles.detail}
+                              alt={value(current.data, "name")}
+                            />
+                          ) : (
+                            <Image
+                              unoptimized
+                              width={1800}
+                              height={1800}
+                              src={`/api/files/${file.id}`}
+                              alt={value(file.data, "name")}
+                              loading="lazy"
+                            />
+                          )}
                         </a>
                       ) : (
                         <DocumentAttachment file={file} />
@@ -389,10 +481,9 @@ function GenericRecordDetail({ record, onClose }: { record: DomainRecord; onClos
             <section className="detail-section">
               <header className="panel-heading">
                 <h3>Figur: {value(linkedFigure.data, "name")}</h3>
-                <Button onClick={() => setFigureOpen(true)}>
-                  <Pencil size={15} />
+                <RecordLink record={linkedFigure} from={current} onNavigate={onNavigate}>
                   Figur öffnen
-                </Button>
+                </RecordLink>
               </header>
               {value(linkedFigure.data, "description") && (
                 <p>{value(linkedFigure.data, "description")}</p>
@@ -497,9 +588,6 @@ function GenericRecordDetail({ record, onClose }: { record: DomainRecord; onClos
           </footer>
         </Modal>
       )}
-      {figureOpen && linkedFigure && (
-        <RecordDetail record={linkedFigure} onClose={() => setFigureOpen(false)} />
-      )}
       {timeBooking && (
         <ResourceEditor
           kind="time"
@@ -552,7 +640,6 @@ export function ResourceView({
   children,
   headerActions,
   canCreate,
-  initialRecord,
   lockedProductionId,
 }: {
   kind: RecordKind;
@@ -563,15 +650,11 @@ export function ResourceView({
   children?: React.ReactNode;
   headerActions?: React.ReactNode;
   canCreate?: boolean;
-  initialRecord?: string;
   lockedProductionId?: string;
 }) {
   const { workspace } = useWorkspace();
   const [search, setSearch] = useState("");
   const [editor, setEditor] = useState(false);
-  const [detail, setDetail] = useState<DomainRecord | null>(
-    initialRecord ? workspace.records[kind].find((x) => x.id === initialRecord) || null : null,
-  );
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
   const [low, setLow] = useState(false);
@@ -645,14 +728,7 @@ export function ResourceView({
             {rows.map((row) => {
               const displayName = recordTitle(row, workspace);
               const photo =
-                (kind === "actors"
-                  ? workspace.records.files.find(
-                      (file) =>
-                        file.id === row.data.portraitFileId &&
-                        file.data.recordId === row.id &&
-                        value(file.data, "mime").startsWith("image/"),
-                    )
-                  : undefined) ||
+                (kind === "actors" ? actorPortrait(row, workspace.records.files) : undefined) ||
                 workspace.records.files.find(
                   (file) =>
                     file.data.recordId === row.id && value(file.data, "mime").startsWith("image/"),
@@ -674,22 +750,27 @@ export function ResourceView({
                     ).length
                   : 0;
               return (
-                <button
+                <RecordLink
+                  record={row}
                   key={row.id}
                   aria-label={`${displayName} · Details und Galerie öffnen`}
                   className="editorial-card"
-                  onClick={() => setDetail(row)}
+                  decoration={false}
                 >
                   {photo ? (
-                    <Image
-                      unoptimized
-                      width={1800}
-                      height={1800}
-                      className="editorial-image"
-                      src={`/api/files/${photo.id}`}
-                      alt=""
-                      loading="lazy"
-                    />
+                    kind === "actors" ? (
+                      <ActorPortrait key={photo.id} file={photo} className="editorial-image" />
+                    ) : (
+                      <Image
+                        unoptimized
+                        width={1800}
+                        height={1800}
+                        className="editorial-image"
+                        src={`/api/files/${photo.id}`}
+                        alt=""
+                        loading="lazy"
+                      />
+                    )
                   ) : (
                     <div className="editorial-placeholder">
                       <span>{displayName.slice(0, 2).toUpperCase()}</span>
@@ -726,7 +807,7 @@ export function ResourceView({
                       </span>
                     )}
                   </div>
-                </button>
+                </RecordLink>
               );
             })}
           </div>
@@ -767,25 +848,31 @@ export function ResourceView({
                   return (
                     <tr key={row.id}>
                       <td>
-                        <button className="text-button strong" onClick={() => setDetail(row)}>
+                        <RecordLink record={row} className="strong">
                           {value(row.data, "title") ||
                             value(row.data, "name") ||
                             `${figure ? value(figure.data, "name") : "Figur"} · ${actor ? value(actor.data, "name") : "Schauspieler"}`}
-                        </button>
+                        </RecordLink>
                         {row.data.alternate === true && (
                           <span className="small muted">Alternierende Besetzung</span>
                         )}
                       </td>
                       <td>
-                        {kind === "handovers"
-                          ? Array.isArray(row.data.checklist) && row.data.checklist.length
-                            ? `${(row.data.checklist as { done: boolean }[]).filter((item) => item.done).length} / ${row.data.checklist.length} erledigt`
-                            : "Keine Checkliste"
-                          : kind === "materials"
-                            ? value(row.data, "location")
-                            : production
-                              ? value(production.data, "title")
-                              : statusLabels[value(row.data, "category")] || "–"}
+                        {kind === "handovers" ? (
+                          Array.isArray(row.data.checklist) && row.data.checklist.length ? (
+                            `${(row.data.checklist as { done: boolean }[]).filter((item) => item.done).length} / ${row.data.checklist.length} erledigt`
+                          ) : (
+                            "Keine Checkliste"
+                          )
+                        ) : kind === "materials" ? (
+                          value(row.data, "location")
+                        ) : production ? (
+                          <RecordLink record={production}>
+                            {value(production.data, "title")}
+                          </RecordLink>
+                        ) : (
+                          statusLabels[value(row.data, "category")] || "–"
+                        )}
                       </td>
                       <td>
                         {kind === "handovers" ? (
@@ -820,13 +907,14 @@ export function ResourceView({
                         )}
                       </td>
                       <td>
-                        <button
+                        <RecordLink
+                          record={row}
                           className="icon-button"
                           aria-label="Details öffnen"
-                          onClick={() => setDetail(row)}
+                          decoration={false}
                         >
                           <MoreHorizontal size={18} />
-                        </button>
+                        </RecordLink>
                       </td>
                     </tr>
                   );
@@ -861,11 +949,10 @@ export function ResourceView({
           lockedProductionId={lockedProductionId}
           onClose={() => setEditor(false)}
           onSaved={(saved) => {
-            if (["characters", "casting", "looks", "actors"].includes(kind)) setDetail(saved);
+            if (["characters", "casting", "looks", "actors"].includes(kind)) navigateRecord(saved);
           }}
         />
       )}
-      {detail && <RecordDetail record={detail} onClose={() => setDetail(null)} />}
       {exporting && (
         <ExportDialog
           kind={kind}

@@ -8,6 +8,7 @@ import { sheetDimensions } from "./presentation";
 import { originalCellInput } from "./sheet-import";
 import ExcelJS from "exceljs";
 import { HttpError } from "@/platform/http";
+import { safeSheetMetadata } from "./format-upgrade";
 
 const xml = (bytes: Uint8Array) => load(new TextDecoder().decode(bytes), { xmlMode: true });
 const relationTypes = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/";
@@ -18,6 +19,7 @@ export async function patchOriginalSpreadsheet(
   document: Y.Doc,
   metadata: DocumentMetadata,
 ) {
+  metadata = safeSheetMetadata(document, metadata);
   const archive = unzipSync(original);
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(original as unknown as ExcelJS.Buffer);
@@ -39,6 +41,20 @@ export async function patchOriginalSpreadsheet(
       throw new HttpError(400, "Die Tabellenstruktur konnte nicht exportiert werden.");
     const $sheet = xml(archive[path]);
     const data = $sheet("sheetData");
+    if (sheet.merges) {
+      for (const merge of source.model.merges || []) {
+        if (!sheet.merges.includes(merge)) {
+          source.unMergeCells(merge);
+          $sheet("mergeCell")
+            .filter((_i, node) => node.attribs.ref === merge)
+            .remove();
+        }
+      }
+      const mergeCells = $sheet("mergeCells");
+      if (mergeCells.children().length)
+        mergeCells.attr("count", String(mergeCells.children().length));
+      else mergeCells.remove();
+    }
     const dimension = sheetDimensions(document, sheet);
     sheets.get(sheet.id)?.forEach((raw, key) => {
       const [row, col] = key.split(":").map(Number);

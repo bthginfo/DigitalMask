@@ -1,10 +1,19 @@
 import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["postgres", "sharp"],
+  serverExternalPackages: [
+    "postgres",
+    "sharp",
+    "@tensorflow-models/face-detection",
+    "@tensorflow/tfjs-core",
+    "@tensorflow/tfjs-converter",
+    "@tensorflow/tfjs-backend-cpu",
+  ],
   poweredByHeader: false,
   outputFileTracingIncludes: {
     "/api/export": ["./src/modules/exports/assets/**/*"],
     "/api/documents/*/export": ["./src/modules/exports/assets/**/*"],
+    "/api/files": ["./src/modules/files/assets/face-detection/**/*"],
+    "/api/ensemble": ["./src/modules/files/assets/face-detection/**/*"],
   },
   async headers() {
     return [

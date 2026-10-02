@@ -4,13 +4,15 @@ import { put, del } from "@vercel/blob";
 import { db } from "@/platform/db";
 import { records } from "@/platform/db/schema";
 import { type Context, requireAdmin } from "@/platform/context";
-import { auditChange, emit, scheduleEvents } from "@/platform/events";
+import { auditChange, scheduleEvents } from "@/platform/events";
 import { HttpError } from "@/platform/http";
 import { listValue } from "@/shared/contracts";
 import { validateRecord } from "@/modules/records/schemas";
 import { invalidateWorkspace } from "@/modules/records/workspace";
 import { getEnsemble, getProfile, fetchTheatre, type EnsemblePerson } from "./source";
 import { importedActorData, matchActor } from "./matching";
+import { analyzePortrait, type PortraitMetadata } from "@/modules/files/portrait-analysis";
+import { normalizeActorPortrait } from "@/modules/files/actor-portraits";
 
 const actorScope = (context: Context) =>
   and(eq(records.departmentId, context.departmentId), eq(records.kind, "actors"));
@@ -44,6 +46,7 @@ interface StagedPortrait {
   id: string;
   path: string;
   size: number;
+  metadata: PortraitMetadata;
 }
 async function stagePortrait(context: Context, person: EnsemblePerson): Promise<StagedPortrait> {
   const response = await fetchTheatre(person.imageUrl, true);
@@ -56,8 +59,9 @@ async function stagePortrait(context: Context, person: EnsemblePerson): Promise<
     .toBuffer();
   const id = crypto.randomUUID(),
     path = `${context.organizationId}/${context.departmentId}/ensemble/${id}.webp`;
+  const metadata = await analyzePortrait(bytes);
   await put(path, bytes, { access: "private", contentType: "image/webp", addRandomSuffix: false });
-  return { id, path, size: bytes.length };
+  return { id, path, size: bytes.length, metadata };
 }
 export async function importEnsemble(context: Context, sourceIds: string[]) {
   requireAdmin(context);
@@ -142,11 +146,7 @@ export async function importEnsemble(context: Context, sourceIds: string[]) {
               listValue(actor.data.imageIds).includes(String(actor.data.portraitFileId))
             );
           if (usePortrait && portrait) {
-            const oldId = String(actor?.data.portraitFileId || "");
-            data.imageIds = [
-              ...listValue(data.imageIds).filter((imageId) => imageId !== oldId),
-              portrait.id,
-            ];
+            data.imageIds = [portrait.id];
             data.portraitFileId = portrait.id;
             data.portraitSourceUrl = person.imageUrl;
             data.portraitCredit = person.imageCredit;
@@ -166,29 +166,15 @@ export async function importEnsemble(context: Context, sourceIds: string[]) {
                 path: portrait.path,
                 sourceUrl: person.imageUrl,
                 credit: person.imageCredit,
+                ...portrait.metadata,
               },
             });
-            if (oldId) {
-              const [old] = await tx
-                .delete(records)
-                .where(
-                  and(
-                    eq(records.id, oldId),
-                    eq(records.departmentId, context.departmentId),
-                    eq(records.kind, "files"),
-                    sql`${records.data}->>'recordId'=${id}`,
-                  ),
-                )
-                .returning();
-              if (old?.data.path) {
-                await emit(tx, context, "FileDeletionRequestedV1", { path: old.data.path });
-                deletionQueued = true;
-              }
-            }
             usedPaths.add(portrait.path);
             images++;
           }
-          const validated = validateRecord("actors", data);
+          const normalized = await normalizeActorPortrait(tx, context, id, data);
+          deletionQueued ||= normalized.deletionQueued;
+          const validated = validateRecord("actors", normalized.data);
           if (
             actor &&
             JSON.stringify(validateRecord("actors", actor.data)) === JSON.stringify(validated)
@@ -223,7 +209,7 @@ export async function importEnsemble(context: Context, sourceIds: string[]) {
       });
     committed = true;
   } finally {
-    // Compensate unused uploads and rollback uploads without touching any manual photo.
+    // Compensate unused uploads and rollback uploads. Committed portrait replacements use the outbox.
     const unused = staged.flatMap((x) =>
       x.portrait && (!committed || !usedPaths.has(x.portrait.path)) ? [x.portrait.path] : [],
     );

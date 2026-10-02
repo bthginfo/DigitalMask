@@ -11,6 +11,8 @@ import { invalidateWorkspace } from "@/modules/records/workspace";
 import { emit, scheduleEvents, auditChange } from "@/platform/events";
 import { listValue, type RecordKind } from "@/shared/contracts";
 import { officeUpload } from "@/modules/documents/file-policy";
+import { analyzePortrait, type PortraitMetadata } from "./portrait-analysis";
+import { normalizeActorPortrait } from "./actor-portraits";
 export async function uploadFile(
   context: Context,
   file: File,
@@ -28,6 +30,7 @@ export async function uploadFile(
   let bytes: Buffer = Buffer.from(await file.arrayBuffer());
   let mime = file.type;
   let image = false;
+  let portrait: PortraitMetadata | undefined;
   let extension = "pdf";
   if (["image/jpeg", "image/png", "image/webp"].includes(mime)) {
     try {
@@ -53,8 +56,10 @@ export async function uploadFile(
     extension = office.extension;
   }
   const id = crypto.randomUUID();
+  if (image && recordKind === "actors") portrait = await analyzePortrait(bytes);
   const path = `${context.organizationId}/${context.departmentId}/${recordKind}/${recordId}/${id}.${extension}`;
   await put(path, bytes, { access: "private", contentType: mime, addRandomSuffix: false });
+  let deletionQueued = false;
   try {
     const result = await db.transaction(async (tx) => {
       const current = await findRecord(context, recordId, recordKind, tx, true);
@@ -77,23 +82,32 @@ export async function uploadFile(
             recordId,
             path,
             image,
+            ...(portrait || {}),
           },
         })
         .returning();
       const field = recordKind === "messages" ? "attachmentIds" : "imageIds";
-      if (image || recordKind === "messages")
+      if (image || recordKind === "messages") {
+        let data = { ...current.data, [field]: [...listValue(current.data[field]), id] };
+        if (image && recordKind === "actors") {
+          const normalized = await normalizeActorPortrait(tx, context, recordId, data, id);
+          data = normalized.data;
+          deletionQueued = normalized.deletionQueued;
+        }
         await tx
           .update(records)
           .set({
-            data: { ...current.data, [field]: [...listValue(current.data[field]), id] },
+            data,
             version: current.version + 1,
             updatedAt: new Date(),
           })
           .where(eq(records.id, recordId));
+      }
       await auditChange(tx, context, "file.uploaded", id);
       return serialize(row);
     });
     invalidateWorkspace(context.departmentId);
+    if (deletionQueued) scheduleEvents();
     return result;
   } catch (error) {
     await del(path).catch(() => {});
@@ -116,10 +130,16 @@ export async function deleteFile(context: Context, id: string) {
     assertWrite(context, linked.kind, linked);
     await tx.delete(records).where(eq(records.id, id));
     const field = linked.kind === "messages" ? "attachmentIds" : "imageIds";
+    const data = { ...linked.data, [field]: listValue(linked.data[field]).filter((x) => x !== id) };
+    if (linked.kind === "actors" && linked.data.portraitFileId === id) {
+      data.portraitFileId = "";
+      data.portraitSourceUrl = "";
+      data.portraitCredit = "";
+    }
     await tx
       .update(records)
       .set({
-        data: { ...linked.data, [field]: listValue(linked.data[field]).filter((x) => x !== id) },
+        data,
         version: linked.version + 1,
         updatedAt: new Date(),
       })

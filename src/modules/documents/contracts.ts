@@ -1,6 +1,29 @@
 import type { LiveAccess } from "@/shared/live-sync";
 
 export type DocumentFormat = "text" | "sheet" | "pdf";
+export interface SheetCellStyle {
+  background?: string;
+  color?: string;
+  fontSize?: number;
+  fontFamily?: string;
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
+  strike?: boolean;
+  horizontal?: "left" | "center" | "right" | "justify";
+  vertical?: "top" | "middle" | "bottom";
+  wrap?: boolean;
+  borders?: Partial<
+    Record<
+      "top" | "right" | "bottom" | "left",
+      {
+        color: string;
+        width: number;
+        style: "solid" | "dashed" | "dotted" | "double";
+      }
+    >
+  >;
+}
 export interface SheetInfo {
   id: string;
   name: string;
@@ -8,12 +31,17 @@ export interface SheetInfo {
   columns: number;
   widths?: number[];
   merges?: string[];
+  /** All layout dimensions use CSS pixels, including legacy widths. */
+  heights?: number[];
+  styles?: SheetCellStyle[];
+  cellStyles?: Record<string, number>;
 }
 export interface DocumentMetadata {
   sourceName: string;
   warnings: string[];
   sheets?: SheetInfo[];
   pdfPages?: number;
+  formattingVersion?: 1;
 }
 export interface DocumentState {
   state: string;

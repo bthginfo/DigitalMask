@@ -7,6 +7,8 @@ import { prosemirrorJSONToYDoc } from "@tiptap/y-tiptap";
 import { textSchema } from "./text-schema";
 import { TEXT_FRAGMENT } from "./contracts";
 import { HttpError } from "@/platform/http";
+import { inspectOfficeArchive } from "./file-policy";
+import { applyWordFormatting, wordStyleParagraphs } from "./word-formatting";
 
 const marks: Record<string, string> = {
   b: "bold",
@@ -129,7 +131,7 @@ export function htmlToTextJson(html: string): JSONContent {
     content = [{ type: "paragraph", content }];
   return { type: "doc", content };
 }
-export async function importWord(bytes: Buffer) {
+export async function importWord(bytes: Buffer, archive = inspectOfficeArchive(bytes, "text")) {
   let imageBytes = 0;
   const result = await mammoth.convertToHtml(
     { buffer: bytes },
@@ -157,9 +159,10 @@ export async function importWord(bytes: Buffer) {
       }),
     },
   );
-  const document = prosemirrorJSONToYDoc(textSchema(), htmlToTextJson(result.value), TEXT_FRAGMENT);
+  const json = applyWordFormatting(htmlToTextJson(result.value), wordStyleParagraphs(archive));
+  const document = prosemirrorJSONToYDoc(textSchema(), json, TEXT_FRAGMENT);
   const warnings = [
-    "Text, Überschriften, Listen, Bilder und einfache Tabellen werden übernommen. Seitenlayout, Kopf-/Fußzeilen und besondere Word-Funktionen können abweichen. Das Original bleibt verfügbar.",
+    "Text, Schriftfarben, einfache Schriftformate, Überschriften, Listen, Bilder und einfache Tabellen werden übernommen. Seitenlayout, Kopf-/Fußzeilen und besondere Word-Funktionen können abweichen. Das Original bleibt verfügbar.",
   ];
   if (imageBytes > 1_200_000)
     warnings.push(

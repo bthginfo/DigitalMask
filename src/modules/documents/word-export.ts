@@ -16,6 +16,7 @@ import {
 import type { JSONContent } from "@tiptap/core";
 import sharp from "sharp";
 import { safeLink } from "./text-import";
+import { textRunStyle } from "./word-formatting";
 
 type Run = TextRun | ImageRun | ExternalHyperlink;
 async function inline(nodes: JSONContent[]): Promise<Run[]> {
@@ -50,13 +51,19 @@ async function inline(nodes: JSONContent[]): Promise<Run[]> {
       }
     } else if (node.type === "text") {
       const mark = (name: string) => node.marks?.find((entry) => entry.type === name);
+      const formatting = textRunStyle(node);
       const run = new TextRun({
         text: node.text || "",
         bold: Boolean(mark("bold")),
         italics: Boolean(mark("italic")),
         strike: Boolean(mark("strike")),
         underline: mark("underline") ? {} : undefined,
-        font: mark("code") ? "Consolas" : undefined,
+        font: mark("code") ? "Consolas" : formatting.fontFamily,
+        color: formatting.color?.slice(1),
+        size: formatting.fontSize ? formatting.fontSize * 2 : undefined,
+        shading: formatting.backgroundColor
+          ? { fill: formatting.backgroundColor.slice(1) }
+          : undefined,
       });
       const href = safeLink(String(mark("link")?.attrs?.href || ""));
       result.push(href ? new ExternalHyperlink({ link: href, children: [run] }) : run);

@@ -10,7 +10,16 @@ import { ExportDialog } from "@/components/export-dialog";
 import { TimeBookingEditor } from "@/modules/time-tracking/components/time-booking-editor";
 import { EventEditor } from "./event-editor";
 import { canManageRecord } from "@/shared/record-permissions";
-export function EventDetail({ record, onClose }: { record: DomainRecord; onClose: () => void }) {
+import { RecordLink } from "@/components/record-link";
+export function EventDetail({
+  record,
+  onClose,
+  onNavigate = onClose,
+}: {
+  record: DomainRecord;
+  onClose: () => void;
+  onNavigate?: () => void;
+}) {
   const { workspace, remove, busy } = useWorkspace();
   const [editing, setEditing] = useState(false),
     [booking, setBooking] = useState(false),
@@ -81,7 +90,15 @@ export function EventDetail({ record, onClose }: { record: DomainRecord; onClose
             </div>
             <div>
               <dt>Produktion</dt>
-              <dd>{production ? value(production.data, "title") : "Ohne Produktion"}</dd>
+              <dd>
+                {production ? (
+                  <RecordLink record={production} from={current} onNavigate={onNavigate}>
+                    {value(production.data, "title")}
+                  </RecordLink>
+                ) : (
+                  "Ohne Produktion"
+                )}
+              </dd>
             </div>
             <div>
               <dt>

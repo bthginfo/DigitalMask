@@ -5,12 +5,15 @@ import { SHEETS_MAP, cellKey, type DocumentMetadata } from "./contracts";
 import { inputValue, excelFormula, createSheetCalculator, displayCell } from "./sheet-values";
 import { sheetDimensions } from "./presentation";
 import { originalCellInput } from "./sheet-import";
+import { cellFormatting } from "./sheet-formatting";
+import { safeSheetMetadata } from "./format-upgrade";
 
 export async function exportSpreadsheet(
   document: Y.Doc,
   metadata: DocumentMetadata,
   original?: Buffer,
 ) {
+  metadata = safeSheetMetadata(document, metadata);
   const workbook = new ExcelJS.Workbook();
   if (original) await workbook.xlsx.load(original as unknown as ExcelJS.Buffer);
   const info = metadata.sheets || [];
@@ -21,6 +24,67 @@ export async function exportSpreadsheet(
       workbook.worksheets.find((entry) => String(entry.id) === sheet.id) ||
       workbook.addWorksheet(sheet.name);
     const dimension = sheetDimensions(document, sheet);
+    if (original && sheet.merges)
+      for (const merge of worksheet.model.merges || []) {
+        if (!sheet.merges.includes(merge)) worksheet.unMergeCells(merge);
+      }
+    if (!original) {
+      sheet.widths?.forEach((width, index) => {
+        worksheet.getColumn(index + 1).width = Math.max(1, (width - 5) / 7);
+      });
+      sheet.heights?.forEach((height, index) => {
+        worksheet.getRow(index + 1).height = height * 0.75;
+      });
+      for (const key of Object.keys(sheet.cellStyles || {})) {
+        const [row, column] = key.split(":").map(Number);
+        if (row < 1 || column < 1 || row > dimension.rows || column > dimension.columns) continue;
+        const formatting = cellFormatting(sheet, row, column),
+          cell = worksheet.getCell(row, column);
+        if (formatting.background)
+          cell.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: `FF${formatting.background.slice(1)}` },
+          };
+        cell.font = {
+          name: formatting.fontFamily,
+          size: formatting.fontSize ? formatting.fontSize * 0.75 : undefined,
+          color: formatting.color ? { argb: `FF${formatting.color.slice(1)}` } : undefined,
+          bold: formatting.bold,
+          italic: formatting.italic,
+          underline: formatting.underline,
+          strike: formatting.strike,
+        };
+        cell.alignment = {
+          horizontal: formatting.horizontal,
+          vertical: formatting.vertical,
+          wrapText: formatting.wrap,
+        };
+        for (const side of ["top", "right", "bottom", "left"] as const) {
+          const edge = formatting.borders?.[side];
+          if (edge)
+            cell.border = {
+              ...cell.border,
+              [side]: {
+                color: { argb: `FF${edge.color.slice(1)}` },
+                style:
+                  edge.style === "double"
+                    ? "double"
+                    : edge.style === "dashed"
+                      ? "dashed"
+                      : edge.style === "dotted"
+                        ? "dotted"
+                        : edge.width >= 3
+                          ? "thick"
+                          : edge.width >= 2
+                            ? "medium"
+                            : "thin",
+              },
+            };
+        }
+      }
+      for (const merge of sheet.merges || []) worksheet.mergeCells(merge);
+    }
     const map = sheets.get(sheet.id);
     map?.forEach((raw, key) => {
       const [row, col] = key.split(":").map(Number);
@@ -65,9 +129,6 @@ export async function exportSpreadsheet(
       orientation: dimension.columns > 6 ? "landscape" : "portrait",
     };
     if (!original) {
-      worksheet.columns.forEach((col, i) => {
-        col.width = Math.max(10, Math.min(35, (sheet.widths?.[i] || 110) / 7));
-      });
       worksheet.views = [{ state: "frozen", ySplit: 1 }];
     }
   }

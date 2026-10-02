@@ -19,14 +19,12 @@ export async function importDocument(
   csv = false,
 ) {
   let document: Y.Doc;
-  const metadata: DocumentMetadata = { sourceName: name, warnings: [] };
+  const metadata: DocumentMetadata = { sourceName: name, warnings: [], formattingVersion: 1 };
   if (format === "text") {
-    inspectOfficeArchive(bytes, format);
-    const imported = await importWord(bytes);
+    const imported = await importWord(bytes, inspectOfficeArchive(bytes, format));
     document = imported.document;
     metadata.warnings = imported.warnings;
   } else if (format === "sheet") {
-    if (!csv) inspectOfficeArchive(bytes, format);
     const imported = await importSpreadsheet(bytes, csv);
     document = imported.document;
     metadata.sheets = imported.sheets;
@@ -52,6 +50,8 @@ export async function importDocument(
   }
   try {
     const state = encodeDocument(document);
+    if (Buffer.byteLength(JSON.stringify(metadata)) > 1_500_000)
+      throw new HttpError(413, "Die Dokumentformatierung ist zu groß. Bitte teile die Datei auf.");
     if (Buffer.byteLength(state, "base64") > MAX_DOCUMENT_BYTES - 1_000_000)
       throw new HttpError(
         413,

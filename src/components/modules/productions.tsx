@@ -20,6 +20,8 @@ import { CalendarModule } from "./calendar";
 import { TimeModule } from "./time";
 import { statusLabels } from "../resource-fields";
 import { RecordDocuments } from "@/modules/documents/components/record-documents";
+import { RecordLink } from "../record-link";
+import relationStyles from "../record-links.module.css";
 const productionTabs = [
   "overview",
   "team",
@@ -167,7 +169,35 @@ export function ProductionsModule({
               <div>
                 <span className="eyebrow">MASKENBETREUUNG</span>
                 <strong>
-                  {makeupNames(production.data) || "Noch keine Maskenbetreuung eingetragen"}
+                  {contactsValue(production.data.contacts).some(
+                    (contact) => contact.type === "makeup",
+                  ) ? (
+                    <span className={relationStyles.compact}>
+                      {contactsValue(production.data.contacts)
+                        .filter((contact) => contact.type === "makeup")
+                        .map((contact) => {
+                          const person = workspace.records.people.find(
+                            (person) =>
+                              person.id === contact.personId &&
+                              !value(person.data, "linkedMemberId"),
+                          );
+                          const name = productionContactName(
+                            contact,
+                            workspace.members,
+                            workspace.records.people,
+                          );
+                          return person ? (
+                            <RecordLink key={contact.id} record={person}>
+                              {name}
+                            </RecordLink>
+                          ) : (
+                            <span key={contact.id}>{name}</span>
+                          );
+                        })}
+                    </span>
+                  ) : (
+                    "Noch keine Maskenbetreuung eingetragen"
+                  )}
                 </strong>
                 <p className="small muted">Deine Ansprechpersonen für dieses Stück.</p>
               </div>

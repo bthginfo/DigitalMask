@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   del: vi.fn(),
   emit: vi.fn(),
   schedule: vi.fn(),
+  analyze: vi.fn(),
 }));
 vi.mock("@vercel/blob", () => ({ put: mocks.put, del: mocks.del }));
 vi.mock("../src/platform/db", () => ({ db: mocks.db }));
@@ -30,6 +31,7 @@ vi.mock("../src/platform/events", () => ({
   emit: mocks.emit,
   scheduleEvents: mocks.schedule,
 }));
+vi.mock("../src/modules/files/portrait-analysis", () => ({ analyzePortrait: mocks.analyze }));
 import { ensemblePreview, importEnsemble } from "../src/modules/ensemble/service";
 const context = {
   departmentId: "maske",
@@ -52,6 +54,11 @@ describe("ensemble authorization and transactional update", () => {
     vi.clearAllMocks();
     mocks.getEnsemble.mockResolvedValue([person]);
     mocks.getProfile.mockResolvedValue(person);
+    mocks.analyze.mockResolvedValue({
+      width: 2,
+      height: 2,
+      portraitFocus: { x: 0.5, y: 0.24, faceWidth: 0, faceHeight: 0, detected: false, version: 1 },
+    });
   });
   it("denies members before contacting source or database", async () => {
     const member = { ...context, user: { ...context.user, role: "user" as const } };
@@ -71,11 +78,20 @@ describe("ensemble authorization and transactional update", () => {
     ];
     mocks.db.select.mockReturnValue({ from: () => ({ where: () => Promise.resolve(rows) }) });
     const updated: { id: string; data: unknown }[] = [];
+    let select = 0;
+    const ownPhoto = {
+      id: "own-photo",
+      kind: "files",
+      data: { recordId: "existing", recordKind: "actors", image: true, mime: "image/webp" },
+    };
     const tx = {
       execute: vi.fn(),
       select: () => ({
         from: () => ({
-          where: () => ({ for: () => Promise.resolve(rows.map((row) => ({ ...row }))) }),
+          where: () => ({
+            for: () =>
+              Promise.resolve(++select === 1 ? rows.map((row) => ({ ...row })) : [ownPhoto]),
+          }),
         }),
       }),
       update: () => ({
@@ -113,10 +129,15 @@ describe("ensemble authorization and transactional update", () => {
     ];
     mocks.db.select.mockReturnValue({ from: () => ({ where: () => Promise.resolve(rows) }) });
     const update = vi.fn();
+    let select = 0;
     mocks.db.transaction.mockImplementation(async (callback) =>
       callback({
         execute: vi.fn(),
-        select: () => ({ from: () => ({ where: () => ({ for: () => Promise.resolve(rows) }) }) }),
+        select: () => ({
+          from: () => ({
+            where: () => ({ for: () => Promise.resolve(++select === 1 ? rows : []) }),
+          }),
+        }),
         update,
       }),
     );
@@ -124,7 +145,7 @@ describe("ensemble authorization and transactional update", () => {
     expect(update).not.toHaveBeenCalled();
     expect(mocks.invalidate).not.toHaveBeenCalled();
   });
-  it("replaces only the imported portrait, keeps manual pictures, and uses private WebP", async () => {
+  it("installs one private portrait and queues unreferenced previous pictures for deletion", async () => {
     const sharp = (await import("sharp")).default;
     const bytes = await sharp({ create: { width: 2, height: 2, channels: 3, background: "white" } })
       .png()
@@ -152,10 +173,42 @@ describe("ensemble authorization and transactional update", () => {
     ];
     mocks.db.select.mockReturnValue({ from: () => ({ where: () => Promise.resolve(rows) }) });
     const files: { id: string; data: Record<string, unknown> }[] = [];
+    let select = 0;
+    const previous = [
+      {
+        id: "manual",
+        kind: "files",
+        data: {
+          recordId: "existing",
+          recordKind: "actors",
+          image: true,
+          mime: "image/webp",
+          path: "manual-private-portrait",
+        },
+      },
+      {
+        id: "old-import",
+        kind: "files",
+        data: {
+          recordId: "existing",
+          recordKind: "actors",
+          image: true,
+          mime: "image/webp",
+          path: "old-private-portrait",
+        },
+      },
+    ];
     let actorData: Record<string, unknown> = {};
     const tx = {
       execute: vi.fn(),
-      select: () => ({ from: () => ({ where: () => ({ for: () => Promise.resolve(rows) }) }) }),
+      select: () => ({
+        from: () => ({
+          where: () => ({
+            for: () => Promise.resolve(++select === 1 ? rows : [...previous, ...files]),
+            limit: () => Promise.resolve([]),
+          }),
+        }),
+      }),
       insert: () => ({
         values: (value: (typeof files)[number]) => {
           files.push(value);
@@ -163,9 +216,7 @@ describe("ensemble authorization and transactional update", () => {
         },
       }),
       delete: () => ({
-        where: () => ({
-          returning: () => Promise.resolve([{ data: { path: "old-private-portrait" } }]),
-        }),
+        where: () => Promise.resolve(),
       }),
       update: () => ({
         set: (values: { data: Record<string, unknown> }) => ({
@@ -189,7 +240,7 @@ describe("ensemble authorization and transactional update", () => {
       mime: "image/webp",
       sourceUrl: source.imageUrl,
     });
-    expect(actorData.imageIds).toEqual(["manual", files[0].id]);
+    expect(actorData.imageIds).toEqual([files[0].id]);
     expect(actorData.notes).toBe("Lena");
     expect(mocks.put).toHaveBeenCalledWith(expect.any(String), expect.any(Buffer), {
       access: "private",
@@ -198,6 +249,11 @@ describe("ensemble authorization and transactional update", () => {
     });
     expect(mocks.emit).toHaveBeenCalledWith(tx, context, "FileDeletionRequestedV1", {
       path: "old-private-portrait",
+      fileId: "old-import",
+    });
+    expect(mocks.emit).toHaveBeenCalledWith(tx, context, "FileDeletionRequestedV1", {
+      path: "manual-private-portrait",
+      fileId: "manual",
     });
     expect(mocks.del).not.toHaveBeenCalled();
   });

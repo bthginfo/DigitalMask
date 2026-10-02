@@ -10,3 +10,4 @@ drizzle
 package-lock.json
 AGENTS.md
 CLAUDE.md
+src/modules/files/assets/face-detection/model.json

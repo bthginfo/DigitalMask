@@ -131,7 +131,7 @@ function EnsembleImport({ onClose }: { onClose: () => void }) {
         <div className="ensemble-source">
           <Users size={24} />
           <div>
-            <strong>Stadttheater Ingolstadt</strong>
+            <strong>Stadttheater Ingolstadt · Haus & Gäste</strong>
             <a
               href="https://theater.ingolstadt.de/ensemble/schauspielerinnen.html"
               target="_blank"
@@ -248,8 +248,8 @@ function EnsembleImport({ onClose }: { onClose: () => void }) {
             <Download size={30} />
             <h3>Erst ansehen, dann übernehmen</h3>
             <p className="small muted">
-              Lade die aktuelle Liste mit Informationen und Porträts. Anschließend wählst du aus,
-              welche Personen übernommen werden.
+              Lade das Ensemble und die Gäste mit Informationen und Porträts. Anschließend wählst du
+              aus, welche Personen übernommen werden.
             </p>
             <Button variant="primary" disabled={loading} onClick={() => void load()}>
               {loading ? <LoaderCircle size={16} className="spin" /> : <Download size={16} />}

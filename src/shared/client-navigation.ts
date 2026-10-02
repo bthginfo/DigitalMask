@@ -51,3 +51,21 @@ export function recordHref(record: DomainRecord) {
   );
   return `/?${query}`;
 }
+
+/** Shared links update the SPA, retaining a detail entry for browser Back. */
+export function navigateRecord(
+  record: DomainRecord,
+  options: { from?: DomainRecord; beforeNavigate?: () => void } = {},
+) {
+  const current = new URL(location.href);
+  if (
+    options.from &&
+    current.searchParams.get("record") !== options.from.id &&
+    options.from.kind !== "productions"
+  ) {
+    history.replaceState({}, "", recordHref(options.from));
+  }
+  options.beforeNavigate?.();
+  history.pushState({}, "", recordHref(record));
+  window.dispatchEvent(new PopStateEvent("popstate"));
+}

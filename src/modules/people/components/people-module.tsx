@@ -1,30 +1,24 @@
 "use client";
-import { useId, useMemo, useRef, useState } from "react";
-import { ArrowUpRight, Building2, Pencil, Plus, Search, Trash2, UsersRound } from "lucide-react";
-import { Button, Empty, ErrorMessage, ExportButton, Modal, PageHeader } from "@/components/ui";
+import { useId, useMemo, useState } from "react";
+import { ArrowUpRight, Plus, Search, UsersRound } from "lucide-react";
+import { Button, Empty, ExportButton, PageHeader } from "@/components/ui";
+import { RecordLink } from "@/components/record-link";
 import { ExportDialog } from "@/components/export-dialog";
 import { useWorkspace } from "@/components/workspace-context";
-import { textValue, type DomainRecord } from "@/shared/contracts";
+import { textValue } from "@/shared/contracts";
 import { canManageRecord } from "@/shared/record-permissions";
 import { PersonEditor } from "./person-editor";
 import { PersonContactLinks } from "./person-contact-links";
 import { filterPeople, isDirectoryPerson } from "./person-data";
 import styles from "./people.module.css";
 
-type Panel =
-  | { type: "create" }
-  | { type: "export" }
-  | { type: "details" | "edit" | "delete"; person: DomainRecord }
-  | null;
+type Panel = { type: "create" | "export" } | null;
 export function PeopleModule() {
-  const { workspace, busy, online, remove, notify } = useWorkspace();
+  const { workspace, busy, online } = useWorkspace();
   const [query, setQuery] = useState(""),
     [organization, setOrganization] = useState("");
-  const [panel, setPanel] = useState<Panel>(null),
-    [error, setError] = useState(""),
-    [deleting, setDeleting] = useState(false);
-  const pending = useRef(false),
-    id = useId(),
+  const [panel, setPanel] = useState<Panel>(null);
+  const id = useId(),
     canManage = canManageRecord(workspace.user, "people");
   const people = useMemo(
     () => workspace.records.people.filter(isDirectoryPerson),
@@ -42,29 +36,10 @@ export function PeopleModule() {
     [people, query, organization],
   );
   const open = (next: Panel) => {
-    setError("");
     setPanel(next);
   };
   const close = () => {
-    if (!pending.current) open(null);
-  };
-  const deletePerson = async (person: DomainRecord) => {
-    if (pending.current || busy || !online || !canManage) return;
-    pending.current = true;
-    setDeleting(true);
-    setError("");
-    try {
-      await remove(person);
-      notify("Kontakt gelöscht.");
-      setPanel(null);
-    } catch (failure) {
-      setError(
-        failure instanceof Error ? failure.message : "Der Kontakt konnte nicht gelöscht werden.",
-      );
-    } finally {
-      pending.current = false;
-      setDeleting(false);
-    }
+    open(null);
   };
   return (
     <section className={styles.directory}>
@@ -163,13 +138,9 @@ export function PeopleModule() {
                       {initials}
                     </span>
                     <div>
-                      <button
-                        type="button"
-                        className={styles.name}
-                        onClick={() => open({ type: "details", person })}
-                      >
+                      <RecordLink record={person} className={styles.name}>
                         {name}
-                      </button>
+                      </RecordLink>
                       <span className={styles.secondary}>
                         {textValue(person.data.position) || "Funktion nicht hinterlegt"}
                       </span>
@@ -181,14 +152,14 @@ export function PeopleModule() {
                     )}
                   </div>
                   <PersonContactLinks data={person.data} />
-                  <button
-                    type="button"
+                  <RecordLink
+                    record={person}
                     className="icon-button"
+                    decoration={false}
                     aria-label={`Kontaktdetails: ${name}`}
-                    onClick={() => open({ type: "details", person })}
                   >
                     <ArrowUpRight size={18} />
-                  </button>
+                  </RecordLink>
                 </li>
               );
             })}
@@ -202,78 +173,7 @@ export function PeopleModule() {
         </p>
       )}
       {panel?.type === "create" && <PersonEditor onClose={close} />}
-      {panel?.type === "edit" && <PersonEditor record={panel.person} onClose={close} />}
       {panel?.type === "export" && <ExportDialog kind="people" onClose={close} />}
-      {panel?.type === "details" && (
-        <Modal title="Kontaktdetails" onClose={close}>
-          <article className={styles.detail}>
-            <h3 className={styles.detailTitle}>{textValue(panel.person.data.name)}</h3>
-            {textValue(panel.person.data.position) && (
-              <p className="muted">{textValue(panel.person.data.position)}</p>
-            )}
-            <dl className={styles.details}>
-              <div>
-                <dt>
-                  <Building2 size={13} /> Organisation
-                </dt>
-                <dd>{textValue(panel.person.data.organization) || "Nicht hinterlegt"}</dd>
-              </div>
-              {textValue(panel.person.data.notes) && (
-                <div>
-                  <dt>Notizen</dt>
-                  <dd>{textValue(panel.person.data.notes)}</dd>
-                </div>
-              )}
-            </dl>
-            <PersonContactLinks data={panel.person.data} />
-            <div className={styles.actions}>
-              {canManage && (
-                <>
-                  <Button
-                    onClick={() => open({ type: "edit", person: panel.person })}
-                    disabled={busy || !online}
-                  >
-                    <Pencil size={15} />
-                    Bearbeiten
-                  </Button>
-                  <Button
-                    variant="danger-ghost"
-                    onClick={() => open({ type: "delete", person: panel.person })}
-                    disabled={busy || !online}
-                  >
-                    <Trash2 size={15} />
-                    Löschen
-                  </Button>
-                </>
-              )}
-              <Button onClick={close}>Schließen</Button>
-            </div>
-          </article>
-        </Modal>
-      )}
-      {panel?.type === "delete" && (
-        <Modal title="Kontakt löschen?" onClose={close}>
-          <div className={styles.detail}>
-            <p className={styles.intro}>
-              <strong>{textValue(panel.person.data.name)}</strong> wird aus dem Verzeichnis
-              entfernt. Kontakte, die einer Produktion zugeordnet sind, bleiben geschützt.
-            </p>
-            <ErrorMessage message={error} />
-            <div className={styles.actions}>
-              <Button onClick={close} disabled={deleting}>
-                Abbrechen
-              </Button>
-              <Button
-                variant="danger-ghost"
-                onClick={() => void deletePerson(panel.person)}
-                disabled={busy || deleting || !online}
-              >
-                {deleting ? "Wird gelöscht …" : "Kontakt löschen"}
-              </Button>
-            </div>
-          </div>
-        </Modal>
-      )}
     </section>
   );
 }

@@ -3,6 +3,7 @@ import { HttpError } from "@/platform/http";
 
 export const ensembleOrigin = "https://theater.ingolstadt.de";
 export const ensembleUrl = `${ensembleOrigin}/ensemble/schauspielerinnen.html`;
+export const guestsUrl = `${ensembleUrl}?tx_ttaddress_listview%5Boverride%5D%5Bcategories%5D=7&cHash=440adf530d323af77669918e48fd34cd`;
 export interface EnsemblePerson {
   sourceId: string;
   name: string;
@@ -25,10 +26,16 @@ export function sourceAssetUrl(value: string) {
     throw new HttpError(502, "Das Theaterbild hat eine unerwartete Adresse.");
   return url.href;
 }
-export function parseEnsemble(html: string): EnsemblePerson[] {
+function portraitSourceUrl(value: string | undefined) {
+  if (!value) return "";
+  const url = sourceAssetUrl(value);
+  // The theatre also publishes generic silhouette images for guests without a portrait.
+  return /platzhalter|placeholder/i.test(new URL(url).pathname) ? "" : url;
+}
+export function parseEnsemble(html: string, defaultStatus = ""): EnsemblePerson[] {
   const $ = load(html);
   const result: EnsemblePerson[] = [];
-  $(".tt_address_list.gallery .vcard").each((_, element) => {
+  $(".tt_address_list .vcard").each((_, element) => {
     const card = $(element);
     const link = card.find("figcaption a[href]").first();
     const url = new URL(link.attr("href") || "/", ensembleOrigin);
@@ -37,7 +44,7 @@ export function parseEnsemble(html: string): EnsemblePerson[] {
     )?.[1];
     if (!id || url.origin !== ensembleOrigin) return;
     const text = clean(link.text());
-    const status = text.match(/\(([^)]+)\)\s*$/)?.[1] || "";
+    const status = text.match(/\(([^)]+)\)\s*$/)?.[1] || defaultStatus;
     const name = text.replace(/\s*\([^)]+\)\s*$/, "");
     if (!name || name.length > 200) return;
     const image = card.find("img").first().attr("src");
@@ -47,7 +54,7 @@ export function parseEnsemble(html: string): EnsemblePerson[] {
       sourceUrl: url.href,
       biography: "",
       ensembleStatus: status,
-      imageUrl: image ? sourceAssetUrl(image) : "",
+      imageUrl: portraitSourceUrl(image),
       imageCredit: "Stadttheater Ingolstadt",
       productions: [],
     });
@@ -87,7 +94,7 @@ export function parseProfile(html: string, person: EnsemblePerson): EnsemblePers
     ...person,
     biography: paragraphs.join("\n\n").slice(0, 20000),
     productions: productions.slice(0, 100),
-    imageUrl: image ? sourceAssetUrl(image) : person.imageUrl,
+    imageUrl: portraitSourceUrl(image) || person.imageUrl,
     imageCredit: credit.slice(0, 200),
   };
 }
@@ -134,7 +141,23 @@ export async function fetchTheatre(url: string, image = false) {
   }
 }
 export async function getEnsemble() {
-  return parseEnsemble((await fetchTheatre(ensembleUrl)).bytes.toString("utf8"));
+  const [house, guests] = await Promise.all([fetchTheatre(ensembleUrl), fetchTheatre(guestsUrl)]);
+  return mergeEnsembleLists(
+    parseEnsemble(house.bytes.toString("utf8")),
+    parseEnsemble(guests.bytes.toString("utf8"), "Gast"),
+  );
+}
+export function mergeEnsembleLists(house: EnsemblePerson[], guests: EnsemblePerson[]) {
+  const result = new Map(house.map((person) => [person.sourceId, person]));
+  for (const guest of guests) {
+    const existing = result.get(guest.sourceId);
+    result.set(
+      guest.sourceId,
+      existing ? { ...existing, imageUrl: existing.imageUrl || guest.imageUrl } : guest,
+    );
+  }
+  if (result.size > 100) throw new HttpError(502, "Die Ensemble-Liste ist unerwartet groß.");
+  return [...result.values()];
 }
 export async function getProfile(person: EnsemblePerson) {
   return parseProfile((await fetchTheatre(person.sourceUrl)).bytes.toString("utf8"), person);

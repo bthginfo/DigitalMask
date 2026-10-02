@@ -21,6 +21,7 @@ import { ResourceEditor } from "../resource-editor";
 import { RecordDetail } from "../resource-view";
 import { canManageRecord } from "@/shared/record-permissions";
 import { ExportDialog } from "../export-dialog";
+import { RecordLink } from "../record-link";
 const columns = [
   ["backlog", "Backlog"],
   ["todo", "Offen"],
@@ -47,6 +48,7 @@ function TaskCard({
     ? (task.data.checklist as { done: boolean }[])
     : [];
   const subtasks = workspace.records.tasks.filter((x) => x.data.parentId === task.id);
+  const production = workspace.records.productions.find((row) => row.id === task.data.productionId);
   return (
     <article
       className={`task-card ${isDragging ? "dragging" : ""}`}
@@ -55,8 +57,11 @@ function TaskCard({
     >
       <div className="task-top">
         <span className="small muted">
-          {(workspace.records.productions.find((x) => x.id === task.data.productionId)?.data
-            .title as string) || "Teamboard"}
+          {production ? (
+            <RecordLink record={production}>{value(production.data, "title")}</RecordLink>
+          ) : (
+            "Teamboard"
+          )}
         </span>
         <button
           className="drag-handle"
