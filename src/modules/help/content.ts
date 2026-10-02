@@ -97,11 +97,28 @@ export const helpArticles: HelpArticle[] = [
     ],
   },
   {
+    id: "shared-documents",
+    title: "Dokumente gemeinsam bearbeiten",
+    module: "productions",
+    intro:
+      "Ihr arbeitet im selben gemeinsamen Dokument. Änderungen werden automatisch zusammengeführt; beim Herunterladen erhältst du den aktuellen Stand.",
+    steps: [
+      "Öffne in einer Produktion Dokumente. Über Dokument anlegen startest du ein Textdokument oder eine Tabelle. Über Hochladen ergänzt du Word (.docx), Excel (.xlsx), CSV oder PDF. Bilder werden weiterhin als Bilder geöffnet.",
+      "Im Chat kannst du eine Datei hochladen oder über Gemeinsames Dokument direkt eines anlegen. Alle Personen mit Zugriff auf diesen Chat oder die Produktion können dasselbe Dokument öffnen und bearbeiten, auch gleichzeitig. Dateien in privaten Chats bleiben für deren Teilnehmende zugänglich.",
+      "Textdokumente unterstützen Überschriften, Listen, Links, Bilder aus der Word-Datei und einfache Tabellen. In Excel bearbeitest du die Zellen, wechselst zwischen vorhandenen Tabellenblättern und verwendest Formeln. Wähle eine Zelle und ändere den Wert im Feld darüber. Du kannst auch einen Tabellenbereich aus Excel kopieren und einfügen.",
+      "Nach Änderungen zeigt Wird gespeichert den ausstehenden Stand. Gespeichert bedeutet, dass eure Änderungen übertragen wurden. Ohne Verbindung werden Änderungen bei verfügbarem Gerätespeicher lokal behalten und später synchronisiert. Schließe das Dokument möglichst erst nach der Speicherung.",
+      "Über Herunterladen erhältst du euren aktuellen gemeinsamen Stand als Word-, Excel- oder PDF-Datei. Weitere Formate findest du direkt daneben. Speichern sichert den Stand zusätzlich; mit Original lädst du die ursprünglich hochgeladene Datei herunter.",
+      "Bei PDF bleibt der Originalinhalt erhalten. Unter Gemeinsame Notizen ergänzt ihr Hinweise zu einer Seite. Alle berechtigten Personen können die Notizen bearbeiten. Der PDF-Download enthält das Original und eure Notizen auf zusätzlichen Seiten.",
+    ],
+    note: "Komplexe Word-Seitenlayouts und erweiterte Excel-Funktionen können im Browser abweichen. Hinweise zur übernommenen Datei stehen im geöffneten Dokument. Prüfe einen Ausdruck vor der Verwendung. Die ursprüngliche Datei bleibt immer erhalten.",
+  },
+  {
     id: "calendar",
     title: "Kalender, Freiwünsche & Ausdrucke",
     module: "calendar",
     intro: "Die persönliche Ansicht und die Teamplanung verwenden dieselben freigegebenen Termine.",
     steps: [
+      "Die Uhrzeit in der Tages- und Wochenansicht beginnt um 06:00 und endet um 01:00 am folgenden Tag. So bleiben auch späte Vorstellungen sichtbar. Monat, Agenda und Teamübersicht zeigen weiterhin alle Termine.",
       "Wähle Monat, Woche, Tag, Agenda oder Team. Unter Team kannst du Teamwoche oder Teammonat wählen. Am Smartphone siehst du ein Kalenderfeld für jeden Tag, ohne breite Namensspalte. Die Zahlen und Farbpunkte zeigen Termine an. Tippe einen Tag an: darunter stehen die vollständigen Namen, Zeiten und Angaben. Auf größeren Bildschirmen bleibt die Teamtabelle verfügbar.",
       "Am Smartphone sind die Filter zunächst eingeklappt. Tippe oberhalb des Kalenders auf die Kalenderauswahl, um Personen, Produktion, Kategorie, Jahr und Spielzeit zu ändern. Alle zeigt das ganze Team, Nur ich deinen eigenen Kalender. Im persönlichen Monatskalender zeigt ein Tipp auf einen Tag dessen Termine; mit Termin an diesem Tag legst du einen neuen Eintrag an.",
       "Zu Beginn siehst du nur deinen Kalender. Hake weitere Personen an, um ihre Termine dazuzuschalten. Alle anzeigen zeigt den gesamten Teamkalender. Die Teamansicht startet mit allen Personen; danach kannst du sie einschränken. Zurück in der persönlichen Ansicht gilt wieder deine vorige Auswahl. Ohne angehakte Personen bleibt der Kalender leer. Der Superadmin wählt zuerst Personen oder Alle anzeigen.",
@@ -220,6 +237,18 @@ export const helpArticles: HelpArticle[] = [
   },
 ];
 export const helpFaq = [
+  [
+    "Kann ich mit anderen an derselben Word- oder Excel-Datei arbeiten?",
+    "Ja. Öffnet denselben Dateianhang oder dasselbe Dokument in einer Produktion. Ihr bearbeitet einen gemeinsamen Stand, der automatisch zusammengeführt wird. Herunterladen enthält die aktuellen Änderungen als Word oder Excel. Das Original bleibt zusätzlich verfügbar; komplexe Office-Funktionen können im Browser eingeschränkt sein.",
+  ],
+  [
+    "Was passiert, wenn zwei Personen gleichzeitig etwas ändern?",
+    "Textänderungen werden zusammengeführt. In Tabellen bleiben Änderungen an verschiedenen Zellen erhalten. Wenn beide genau dieselbe Zelle bearbeiten, setzt sich ein Wert durch. Sprecht euch bei längeren Änderungen an derselben Tabellenstelle kurz ab.",
+  ],
+  [
+    "Kann ich ein PDF zusammen mit dem Team ändern?",
+    "Ihr ergänzt und bearbeitet gemeinsame Notizen zu einzelnen Seiten. Der PDF-Inhalt bleibt unverändert. Beim Herunterladen werden die Notizen als zusätzliche Seiten angefügt.",
+  ],
   [
     "Warum klappt die Anmeldung nicht?",
     "Verwende deinen bei der Registrierung gewählten Benutzernamen, nicht deinen Anzeigenamen. Prüfe Tippfehler und die Groß- und Kleinschreibung im Passwort. Neue Zugänge müssen zuerst von einem Admin freigegeben werden. Bei einem vergessenen Passwort hilft dir ein Admin mit einem Wiederherstellungscode.",

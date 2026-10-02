@@ -14,6 +14,8 @@ export async function GET(_request: Request, { params }: Props) {
         "Content-Disposition": `inline; filename*=UTF-8''${encodeURIComponent(name)}`,
         "Cache-Control": "private, no-store",
         "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "SAMEORIGIN",
+        "Content-Security-Policy": "frame-ancestors 'self'",
       },
     });
   });

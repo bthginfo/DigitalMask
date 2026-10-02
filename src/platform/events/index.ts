@@ -77,6 +77,14 @@ export async function processEvents() {
         if (!reference) {
           const { del } = await import("@vercel/blob");
           await del(String(event.payload.path));
+          if (
+            event.payload.fileId &&
+            /\.(?:docx|xlsx|csv|pdf)$/i.test(String(event.payload.path))
+          ) {
+            const { clearDocumentCache } = await import("@/modules/documents/storage");
+            const { liveConfigured } = await import("@/platform/realtime");
+            if (liveConfigured()) await clearDocumentCache(String(event.payload.fileId));
+          }
         }
       }
       await db.transaction(async (tx) => {

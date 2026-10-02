@@ -10,6 +10,7 @@ import { assertRead, assertWrite } from "@/modules/records/service";
 import { invalidateWorkspace } from "@/modules/records/workspace";
 import { emit, scheduleEvents, auditChange } from "@/platform/events";
 import { listValue, type RecordKind } from "@/shared/contracts";
+import { officeUpload } from "@/modules/documents/file-policy";
 export async function uploadFile(
   context: Context,
   file: File,
@@ -41,8 +42,16 @@ export async function uploadFile(
     } catch {
       throw new HttpError(400, "Dieses Bild konnte nicht gelesen werden.");
     }
-  } else if (mime !== "application/pdf" || bytes.subarray(0, 5).toString() !== "%PDF-")
-    throw new HttpError(400, "Erlaubt sind JPG, PNG, WebP und PDF.");
+  } else if (mime !== "application/pdf" || bytes.subarray(0, 5).toString() !== "%PDF-") {
+    const office = officeUpload(bytes, file.name, mime);
+    if (!office)
+      throw new HttpError(
+        400,
+        "Erlaubt sind JPG, PNG, WebP, PDF, Word (DOCX), Excel (XLSX) und CSV.",
+      );
+    mime = office.mime;
+    extension = office.extension;
+  }
   const id = crypto.randomUUID();
   const path = `${context.organizationId}/${context.departmentId}/${recordKind}/${recordId}/${id}.${extension}`;
   await put(path, bytes, { access: "private", contentType: mime, addRandomSuffix: false });
@@ -59,7 +68,7 @@ export async function uploadFile(
           organizationId: context.organizationId,
           departmentId: context.departmentId,
           createdBy: context.user.id,
-          productionId: current.productionId,
+          productionId: recordKind === "productions" ? recordId : current.productionId,
           data: {
             name: file.name.slice(0, 200),
             mime,
@@ -115,7 +124,7 @@ export async function deleteFile(context: Context, id: string) {
         updatedAt: new Date(),
       })
       .where(eq(records.id, linked.id));
-    await emit(tx, context, "FileDeletionRequestedV1", { path: row.data.path });
+    await emit(tx, context, "FileDeletionRequestedV1", { path: row.data.path, fileId: row.id });
     await auditChange(tx, context, "file.deleted", id);
   });
   invalidateWorkspace(context.departmentId);

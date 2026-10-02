@@ -1,6 +1,16 @@
 ﻿"use client";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Hash, MessageCircle, Paperclip, Pencil, Send, Trash2, Users, X } from "lucide-react";
+import {
+  FilePlus2,
+  Hash,
+  MessageCircle,
+  Paperclip,
+  Pencil,
+  Send,
+  Trash2,
+  Users,
+  X,
+} from "lucide-react";
 import type { DomainRecord } from "@/shared/contracts";
 import { api, dateLabel, initials, post, value } from "@/shared/client-api";
 import { prepareUpload } from "@/shared/client-files";
@@ -9,6 +19,13 @@ import { LiveStatus } from "@/components/live-status";
 import { Badge, Button, Empty, ErrorMessage, ExportButton, Modal } from "@/components/ui";
 import { ExportDialog } from "@/components/export-dialog";
 import { useChatRead } from "@/modules/notifications/use-chat-read";
+import dynamic from "next/dynamic";
+import { DocumentAttachment } from "@/modules/documents/components/document-attachment";
+import { NewDocumentDialog } from "@/modules/documents/components/new-document-dialog";
+import { documentAccept } from "@/modules/documents/components/record-documents";
+const DocumentEditor = dynamic(() => import("@/modules/documents/components/document-editor"), {
+  ssr: false,
+});
 
 export function ChatChannel({
   productionId = "",
@@ -32,7 +49,9 @@ export function ChatChannel({
     [error, setError] = useState(""),
     [editing, setEditing] = useState<DomainRecord | null>(null),
     [editingText, setEditingText] = useState(""),
-    [exporting, setExporting] = useState(false);
+    [exporting, setExporting] = useState(false),
+    [creatingDocument, setCreatingDocument] = useState(false),
+    [openedDocument, setOpenedDocument] = useState<DomainRecord | null>(null);
   const bottom = useRef<HTMLDivElement>(null),
     nearBottom = useRef(true),
     lastMessage = useRef("");
@@ -161,16 +180,7 @@ export function ChatChannel({
                   </header>
                   <p>{value(message.data, "text")}</p>
                   {attached.map((file) => (
-                    <a
-                      key={file.id}
-                      href={`/api/files/${file.id}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="message-attachment"
-                    >
-                      <Paperclip size={14} />
-                      {value(file.data, "name")}
-                    </a>
+                    <DocumentAttachment key={file.id} file={file} compact />
                   ))}
                   {attachmentIds
                     .filter((id) => !attached.some((file) => file.id === id))
@@ -271,11 +281,22 @@ export function ChatChannel({
               <input
                 className="visually-hidden"
                 type="file"
+                accept={documentAccept}
                 multiple
                 disabled={sending}
                 onChange={(event) => setFiles([...files, ...Array.from(event.target.files || [])])}
               />
             </label>
+            <Button
+              title="Gemeinsames Dokument anlegen"
+              disabled={sending}
+              onClick={() => setCreatingDocument(true)}
+            >
+              <FilePlus2 size={16} />{" "}
+              <span>
+                <span className="chat-document-prefix">Gemeinsames </span>Dokument
+              </span>
+            </Button>
             <span className="small muted">
               {conversation && conversation.data.mode !== "team"
                 ? "Nur die Teilnehmenden haben Zugriff."
@@ -321,6 +342,42 @@ export function ChatChannel({
             </footer>
           </form>
         </Modal>
+      )}
+      {creatingDocument && (
+        <NewDocumentDialog
+          onClose={() => setCreatingDocument(false)}
+          onCreate={async (name, format) => {
+            const result = await post<DomainRecord | { record: DomainRecord }>(
+              "/api/records/messages",
+              {
+                data: {
+                  text: name,
+                  ...(conversationId ? { conversationId } : { productionId }),
+                  attachmentIds: [],
+                },
+              },
+            );
+            const message = "record" in result ? result.record : result;
+            let file: DomainRecord;
+            try {
+              file = await post<DomainRecord>("/api/documents", {
+                recordKind: "messages",
+                recordId: message.id,
+                name,
+                format,
+              });
+            } catch (exception) {
+              await remove(message).catch(() => {});
+              throw exception;
+            }
+            await refresh();
+            setCreatingDocument(false);
+            setOpenedDocument(file);
+          }}
+        />
+      )}
+      {openedDocument && (
+        <DocumentEditor file={openedDocument} onClose={() => setOpenedDocument(null)} />
       )}
       {exporting && (
         <ExportDialog

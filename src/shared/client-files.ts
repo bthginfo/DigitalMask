@@ -1,4 +1,4 @@
-const MAX_UPLOAD = 4 * 1024 * 1024;
+const MAX_UPLOAD = 4_000_000;
 export async function prepareUpload(file: File): Promise<File> {
   if (
     !file.type.startsWith("image/") ||

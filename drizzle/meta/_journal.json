@@ -71,6 +71,13 @@
       "when": 1790936315244,
       "tag": "0009_open_fixer",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790943843656,
+      "tag": "0010_striped_aaron_stack",
+      "breakpoints": true
     }
   ]
 }

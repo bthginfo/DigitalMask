@@ -19,12 +19,14 @@ import { TasksModule } from "./tasks";
 import { CalendarModule } from "./calendar";
 import { TimeModule } from "./time";
 import { statusLabels } from "../resource-fields";
+import { RecordDocuments } from "@/modules/documents/components/record-documents";
 const productionTabs = [
   "overview",
   "team",
   "casting",
   "tasks",
   "looks",
+  "documents",
   "calendar",
   "time",
   "chat",
@@ -143,6 +145,7 @@ export function ProductionsModule({
             ["casting", "Besetzung"],
             ["tasks", "Aufgaben & Sprints"],
             ["looks", "Aufschriebe"],
+            ["documents", "Dokumente"],
             ["calendar", "Kalender"],
             ["time", "Zeiten"],
             ["chat", "Projektchat"],
@@ -252,6 +255,8 @@ export function ProductionsModule({
           <TimeModule key={production.id} productionId={production.id} />
         ) : tab === "casting" ? (
           <CastingModule key={production.id} productionId={production.id} />
+        ) : tab === "documents" ? (
+          <RecordDocuments key={production.id} record={production} />
         ) : (
           <ResourceView
             key={`${production.id}:${tab}`}

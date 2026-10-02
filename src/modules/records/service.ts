@@ -599,7 +599,7 @@ export async function deleteRecord(context: Context, kind: RecordKind, id: strin
         ),
       );
     for (const file of attachments)
-      await emit(tx, context, "FileDeletionRequestedV1", { path: file.data.path });
+      await emit(tx, context, "FileDeletionRequestedV1", { path: file.data.path, fileId: file.id });
     eventQueued = attachments.length > 0;
     if (kind === "productions")
       await tx

@@ -2,6 +2,7 @@ import { Redis } from "@upstash/redis";
 import { Realtime } from "@upstash/realtime";
 import { z } from "zod";
 import { after } from "next/server";
+import { liveRedis, permissionEpochKey } from "./redis";
 
 export const liveConfigured = () => {
   const url = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL || "";
@@ -29,6 +30,8 @@ export function scheduleLiveChange(departmentId: string) {
     const revision = crypto.randomUUID();
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
+        // Document capabilities must be renewed after access or parent records change.
+        await liveRedis().set(permissionEpochKey(departmentId), revision);
         await realtime
           .channel(`dm:changes:${departmentId}`)
           .emit("workspace.changed", { revision });

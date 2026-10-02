@@ -2,7 +2,10 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   serverExternalPackages: ["postgres", "sharp"],
   poweredByHeader: false,
-  outputFileTracingIncludes: { "/api/export": ["./src/modules/exports/assets/**/*"] },
+  outputFileTracingIncludes: {
+    "/api/export": ["./src/modules/exports/assets/**/*"],
+    "/api/documents/*/export": ["./src/modules/exports/assets/**/*"],
+  },
   async headers() {
     return [
       {

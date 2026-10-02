@@ -57,7 +57,7 @@ Font.register({
 });
 Font.registerHyphenationCallback((word) => [word]);
 let fontsReady: Promise<void> | undefined;
-function prepareFonts() {
+export function prepareFonts() {
   // Fontkit caches component glyphs with empty codePoints while subsetting. If a
   // later PDF first uses that glyph as text, its ToUnicode map would be empty.
   // Seed the Unicode glyphs once before any layout/subset work; preserve the

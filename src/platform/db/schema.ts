@@ -12,6 +12,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import type { AccentPalette, RecordData, RecordKind, Role } from "@/shared/contracts";
+import type { DocumentFormat, DocumentMetadata } from "@/modules/documents/contracts";
 export const user = pgTable("app_user", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
@@ -278,3 +279,17 @@ export const recordHistory = pgTable(
   },
   (t) => [uniqueIndex("record_history_version_idx").on(t.recordId, t.version)],
 );
+/** Document bodies are excluded from workspace lists and their shared cache. */
+export const collaborativeDocuments = pgTable("collaborative_documents", {
+  fileId: text("file_id")
+    .primaryKey()
+    .references(() => records.id, { onDelete: "cascade" }),
+  format: text("format").$type<DocumentFormat>().notNull(),
+  metadata: jsonb("metadata").$type<DocumentMetadata>().notNull(),
+  state: text("state").notNull(),
+  checkpointRevision: integer("checkpoint_revision").notNull().default(0),
+  updatedBy: text("updated_by")
+    .notNull()
+    .references(() => user.id),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});

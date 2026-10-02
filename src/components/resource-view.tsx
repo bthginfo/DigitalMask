@@ -1,15 +1,7 @@
 "use client";
 import { useState } from "react";
 import Image from "next/image";
-import {
-  FileText,
-  Image as ImageIcon,
-  MoreHorizontal,
-  Pencil,
-  Plus,
-  Trash2,
-  Upload,
-} from "lucide-react";
+import { Image as ImageIcon, MoreHorizontal, Pencil, Plus, Trash2, Upload } from "lucide-react";
 import type { DomainRecord, RecordData, RecordKind, Workspace } from "@/shared/contracts";
 import { api, dateLabel, hours, ids, localDate, num, value } from "@/shared/client-api";
 import { prepareUpload } from "@/shared/client-files";
@@ -25,6 +17,8 @@ import { categoryName } from "@/shared/domain-categories";
 import { EventDetail } from "@/modules/calendar/components/event-detail";
 import { canManageRecord } from "@/shared/record-permissions";
 import { ExportDialog, ImportDialog } from "./export-dialog";
+import { DocumentAttachment } from "@/modules/documents/components/document-attachment";
+import { documentAccept, RecordDocuments } from "@/modules/documents/components/record-documents";
 
 function recordTitle(record: DomainRecord, workspace: Workspace) {
   if (record.kind === "looks") return lookTitle(record.data, workspace.records.actors);
@@ -329,6 +323,7 @@ function GenericRecordDetail({ record, onClose }: { record: DomainRecord; onClos
                         : "Hochladen"}
                     <input
                       type="file"
+                      accept={current.kind === "casting" ? ".jpg,.jpeg,.png,.webp" : documentAccept}
                       multiple
                       className="visually-hidden"
                       disabled={uploading}
@@ -353,15 +348,7 @@ function GenericRecordDetail({ record, onClose }: { record: DomainRecord; onClos
                           />
                         </a>
                       ) : (
-                        <a
-                          className="file-tile"
-                          href={`/api/files/${file.id}`}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          <FileText size={24} />
-                          <span>{value(file.data, "name")}</span>
-                        </a>
+                        <DocumentAttachment file={file} />
                       )}
                       <div className="gallery-caption">
                         <span>{value(file.data, "name")}</span>
@@ -416,8 +403,8 @@ function GenericRecordDetail({ record, onClose }: { record: DomainRecord; onClos
                   <div className="gallery">
                     {figureFiles.map((file) => (
                       <div className="gallery-item" key={file.id}>
-                        <a href={`/api/files/${file.id}`} target="_blank" rel="noreferrer">
-                          {value(file.data, "mime").startsWith("image/") ? (
+                        {value(file.data, "mime").startsWith("image/") ? (
+                          <a href={`/api/files/${file.id}`} target="_blank" rel="noreferrer">
                             <Image
                               unoptimized
                               width={1800}
@@ -426,13 +413,10 @@ function GenericRecordDetail({ record, onClose }: { record: DomainRecord; onClos
                               alt={value(file.data, "name")}
                               loading="lazy"
                             />
-                          ) : (
-                            <span className="file-tile">
-                              <FileText size={24} />
-                              {value(file.data, "name")}
-                            </span>
-                          )}
-                        </a>
+                          </a>
+                        ) : (
+                          <DocumentAttachment file={file} />
+                        )}
                         <div className="gallery-caption">
                           <span>{value(file.data, "name")}</span>
                         </div>
@@ -443,6 +427,7 @@ function GenericRecordDetail({ record, onClose }: { record: DomainRecord; onClos
               )}
             </section>
           )}
+          {["tasks", "templates"].includes(current.kind) && <RecordDocuments record={current} />}
           {current.kind === "materials" && (
             <section className="qr-section">
               <Image
