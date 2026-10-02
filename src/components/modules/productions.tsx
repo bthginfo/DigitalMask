@@ -2,9 +2,10 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowUpRight, CalendarDays, Plus, Users } from "lucide-react";
 import { PeriodPicker, periodExportFilters } from "@/components/period-picker";
-import { recordMatchesPeriod, type PeriodFilter } from "@/shared/period-filter";
+import { recordMatchesPeriod, seasonForDate, type PeriodFilter } from "@/shared/period-filter";
 import { contactsValue } from "@/shared/contracts";
 import { productionContactName } from "@/shared/production-contacts";
+import { productionCastingCounts } from "@/modules/productions/counts";
 import type { Workspace } from "@/shared/contracts";
 import { dateLabel, hours, ids, localDate, num, value } from "@/shared/client-api";
 import { useWorkspace } from "../workspace-context";
@@ -42,7 +43,9 @@ export function ProductionsModule({
   const tab = productionTabs.includes(activeTab) ? activeTab : "overview";
   const setSelected = (id: string) => onNavigate(id, "overview");
   const setTab = (next: string) => onNavigate(selected, next);
-  const [period, setPeriod] = useState<PeriodFilter>({});
+  const [period, setPeriod] = useState<PeriodFilter>(() => ({
+    season: seasonForDate(workspace.records.productions),
+  }));
   const [status, setStatus] = useState("current");
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState("premiere");
@@ -79,6 +82,11 @@ export function ProductionsModule({
     }
   }, [selected, tab]);
   const production = workspace.records.productions.find((x) => x.id === selected);
+  const castingCounts = productionCastingCounts(
+    selected,
+    workspace.records.characters,
+    workspace.records.casting,
+  );
   const records = workspace.records.productions.filter(
     (x) =>
       (status === "all" || status === "archived"
@@ -132,7 +140,7 @@ export function ProductionsModule({
           {[
             ["overview", "Überblick"],
             ["team", "Team & Kontakte"],
-            ["casting", "Figuren & Besetzung"],
+            ["casting", "Besetzung"],
             ["tasks", "Aufgaben & Sprints"],
             ["looks", "Aufschriebe"],
             ["calendar", "Kalender"],
@@ -215,12 +223,8 @@ export function ProductionsModule({
                     (x) => x.data.productionId === production.id && x.data.status !== "done",
                   ).length,
                 ],
-                [
-                  "casting",
-                  "Figuren & Besetzungen",
-                  workspace.records.characters.filter((x) => x.data.productionId === production.id)
-                    .length,
-                ],
+                ["casting", "Figuren", castingCounts.characters],
+                ["casting", "Besetzungen", castingCounts.casting],
                 [
                   "looks",
                   "Aufschriebe",
@@ -228,7 +232,7 @@ export function ProductionsModule({
                     .length,
                 ],
               ].map(([key, label, count]) => (
-                <button key={key} onClick={() => setTab(String(key))}>
+                <button key={label} onClick={() => setTab(String(key))}>
                   <span>{label}</span>
                   <strong>{count}</strong>
                   <ArrowUpRight size={18} />
@@ -386,7 +390,13 @@ export function ProductionsModule({
           onAction={() => setEditor(true)}
         />
       )}
-      {editor && <ResourceEditor kind="productions" onClose={() => setEditor(false)} />}
+      {editor && (
+        <ResourceEditor
+          kind="productions"
+          defaults={{ season: period.season || seasonForDate(workspace.records.productions) }}
+          onClose={() => setEditor(false)}
+        />
+      )}
       {exporting && (
         <ExportDialog
           kind="productions"
@@ -399,32 +409,13 @@ export function ProductionsModule({
   );
 }
 export function CastingModule({ productionId = "" }: { productionId?: string }) {
-  const [tab, setTab] = useState("casting");
   return (
-    <>
-      <div className="tabs compact-tabs">
-        <button className={tab === "casting" ? "active" : ""} onClick={() => setTab("casting")}>
-          Besetzung
-        </button>
-        <button
-          className={tab === "characters" ? "active" : ""}
-          onClick={() => setTab("characters")}
-        >
-          Figuren & Bilder
-        </button>
-      </div>
-      <ResourceView
-        key={tab}
-        kind={tab === "casting" ? "casting" : "characters"}
-        lockedProductionId={productionId}
-        defaults={{ productionId }}
-        filter={productionId ? (record) => record.data.productionId === productionId : undefined}
-        description={
-          tab === "casting"
-            ? "Figuren, Schauspieler und alternierende Besetzungen zuverlässig zuordnen."
-            : "Figurenbeschreibungen und Bildgalerien für eure Stücke."
-        }
-      />
-    </>
+    <ResourceView
+      kind="casting"
+      title="Besetzung"
+      lockedProductionId={productionId}
+      defaults={{ productionId }}
+      filter={productionId ? (record) => record.data.productionId === productionId : undefined}
+    />
   );
 }

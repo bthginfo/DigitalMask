@@ -70,8 +70,16 @@ export function recordMatchesPeriod(
       : productions.find((row) => row.id === record.data.productionId);
   // General team documents remain available alongside season-specific productions.
   const dated = ["time", "attendance", "events", "leave"].includes(record.kind);
-  if (filter.season && production && !dated && textValue(production.data.season) !== filter.season)
-    return false;
+  if (filter.season && production && !dated) {
+    const assignedSeason = textValue(production.data.season);
+    const selectedBounds = seasonBounds(filter.season);
+    const assignedBounds = seasonBounds(assignedSeason);
+    if (
+      assignedSeason !== filter.season &&
+      !(selectedBounds && assignedBounds && selectedBounds.from === assignedBounds.from)
+    )
+      return false;
+  }
   if (dated && filter.season && seasonBounds(filter.season)) {
     const bounds = seasonBounds(filter.season)!;
     if (["time", "attendance"].includes(record.kind) && Array.isArray(record.data.dayAllocations)) {

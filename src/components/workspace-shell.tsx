@@ -48,6 +48,7 @@ import { OnboardingTour } from "@/modules/profile/components/onboarding-tour";
 import { HelpModule } from "@/modules/help/components/help-module";
 import { DocumentationModule } from "@/modules/documentation/components/documentation-module";
 import { PeopleModule } from "@/modules/people/components";
+import { ActorsModule } from "@/modules/ensemble/components/actors-module";
 import { isDirectoryPerson } from "@/modules/people/components/person-data";
 import { ExportDialog } from "./export-dialog";
 const nav: { id: string; label: string; icon: LucideIcon; group: string }[] = [
@@ -276,10 +277,7 @@ export function WorkspaceShell() {
     ) : activeModule === "people" ? (
       <PeopleModule />
     ) : activeModule === "actors" ? (
-      <ResourceView
-        kind="actors"
-        description="Kontakte, Perückenmaße, Hinweise und Fotos. Das Wissen über eure Schauspieler an einem Ort."
-      />
+      <ActorsModule />
     ) : activeModule === "documentation" ? (
       <DocumentationModule />
     ) : activeModule === "inventory" ? (

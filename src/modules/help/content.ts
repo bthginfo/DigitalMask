@@ -14,6 +14,7 @@ export const helpArticles: HelpArticle[] = [
     intro:
       "Auf den Produktionskarten siehst du bereits die Maskenbetreuung. Standardmäßig stehen die nächsten Premieren zuerst; über Sortieren nach wechselst du zu Namen oder zuletzt geänderten Stücken.",
     steps: [
+      "Die Übersicht startet mit der aktuellen Spielzeit von August bis Juli. Über Spielzeit kannst du ältere Stücke oder Alle Spielzeiten anzeigen. Neue Produktionen übernehmen die gewählte Spielzeit als Vorschlag; du kannst sie beim Anlegen ändern.",
       "Öffne Produktionen und wähle ein Stück. Alle freigegebenen Teammitglieder können Produktionen anlegen und zugängliche Produktionen bearbeiten, archivieren oder löschen. Wenn du ein Produktionsteam auswählst, bleibst du als Ersteller automatisch dabei.",
       "Unter Team & Kontakte lassen sich Rollen frei benennen, etwa Regie, Kostüm oder Maskenbetreuung. Wähle externe Kontakte aus Ansprechpersonen, damit ihre Kontaktdaten wiederverwendet werden.",
       "Fehlt eine Person, kannst du sie direkt im Kontaktformular anlegen oder ihren Namen frei eintragen. Beim Speichern der Produktion wird ein neuer freier Kontakt im Verzeichnis hinterlegt. Es entsteht kein Benutzerkonto.",
@@ -58,8 +59,8 @@ export const helpArticles: HelpArticle[] = [
     module: "productions",
     intro: "Figuren und Schauspieler werden innerhalb einer Produktion zugeordnet.",
     steps: [
-      "Öffne im Stück Figuren & Besetzung. Unter Figuren & Bilder kannst du eine Figur mit Beschreibung anlegen.",
-      "Speichere den Eintrag zuerst. Die Detailansicht öffnet sich anschließend mit Bilder & Dateien. Dort können mehrere Bilder zugleich hochgeladen werden.",
+      "Öffne im Stück Besetzung. Hier ordnest du Figuren und Schauspielpersonen zu und pflegst ihre Bilder.",
+      "Speichere eine Besetzung zuerst. In der Detailansicht kannst du unter Bilder dieser Besetzung mehrere Bilder zugleich hinzufügen. Bereits vorhandene Bilder einer verknüpften Figur sind darunter weiter sichtbar; über Figur öffnen erreichst du deren Angaben.",
       "Wähle unter Besetzung die Figur und Schauspielperson aus den vorhandenen Einträgen. Fehlende Einträge kannst du direkt dort anlegen; danach sind sie ausgewählt und die übrigen Formulareingaben bleiben erhalten.",
       "Über Namen frei eintragen kannst du Figur und Schauspielperson auch ohne Katalogeintrag angeben. Markiere bei Bedarf eine alternierende Besetzung. Auch Besetzungen haben eine eigene Galerie.",
       "Beim Bearbeiten einer Besetzung zeigt die Übersicht zum Besetzungswechsel direkt zugeordnete Aufschriebe sowie allgemeine Aufgaben und Dienste der Produktion.",
@@ -75,6 +76,9 @@ export const helpArticles: HelpArticle[] = [
       "Alle freigegebenen Teammitglieder legen Schauspieler an und pflegen Name, Kontakt, Haare, Perückenmaß und wichtige Hinweise.",
       "Öffne einen Katalogeintrag, um mehrere Fotos und Dateien hochzuladen oder vorhandene Bilder anzusehen.",
       "Produktionsbesetzungen verwenden die Schauspieler aus diesem Katalog. So müssen Stammdaten nicht für jedes Stück neu erfasst werden.",
+      "Admins können über Ensemble laden die offizielle Liste des Stadttheaters ansehen. Die Vorschau zeigt, welche Personen neu sind, aktualisiert werden oder nicht eindeutig zugeordnet werden können. Wähle die gewünschten Personen und klicke Importieren.",
+      "Der Import übernimmt öffentliche Biografien, aktuelle Produktionen und Porträts. Vorhandene Schauspieler behalten ihre Produktionszuordnungen, eigenen Fotos und Maskenhinweise. Zusätzliche Schauspieler bleiben im Katalog. Unklare doppelte Einträge werden ausgelassen.",
+      "Die Angaben werden nur bei einem Import geladen. Ein erneuter Import ergänzt fehlende Fotos und aktualisiert geänderte Angaben; identische Datensätze werden nicht erneut gespeichert.",
     ],
   },
   {

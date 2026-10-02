@@ -134,9 +134,10 @@ Die Bereitstellung erfolgt nach den Releaseprüfungen über GitHub und die beste
 
 ## Weitere Produktionsänderungen
 
-- [ ] Ensemble-Import für Admins aus der Schauspielerübersicht des Stadttheaters Ingolstadt; eindeutige vorhandene Schauspieler aktualisieren, zusätzliche Einträge erhalten und Bilder übernehmen.
-- [ ] Figuren- und Besetzungs-KPIs in Produktionsübersichten anhand „Abschiedsdinner“ korrigieren.
-- [ ] Produktionsreiter „Figuren & Bilder“ entfernen; Besetzung als zentralen Bereich mit Bild-Uploads je Besetzung nutzen und bestehende Daten erhalten.
+- [x] Ensemble-Import für Admins aus der Schauspielerübersicht des Stadttheaters Ingolstadt; eindeutige vorhandene Schauspieler aktualisieren, zusätzliche Einträge erhalten und Bilder übernehmen.
+- [x] Figuren- und Besetzungs-KPIs in Produktionsübersichten anhand „Abschiedsdinner“ korrigieren; auch Freitext-Figuren und Alternativbesetzungen berücksichtigen.
+- [x] Produktionsreiter „Figuren & Bilder“ entfernen; Besetzung als zentralen Bereich mit Bild-Uploads je Besetzung nutzen und bestehende Daten erhalten.
+- [x] Produktionsübersicht standardmäßig mit aktueller Spielzeit öffnen; andere Spielzeiten auswählbar halten und beim Anlegen vorbelegen.
 
 ## QA-Nachbereitung
 

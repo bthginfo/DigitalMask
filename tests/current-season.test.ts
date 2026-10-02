@@ -62,6 +62,16 @@ describe("current theatre season", () => {
       ),
     ).toBe(false);
   });
+  it("keeps equivalent production season labels together and allows all seasons", () => {
+    for (const season of ["2026/27", "2026 / 2027", "2026–2027"])
+      expect(recordMatchesPeriod(row("productions", { season }), { season: "2026/2027" })).toBe(
+        true,
+      );
+    expect(
+      recordMatchesPeriod(row("productions", { season: "2025/26" }), { season: "2026/27" }),
+    ).toBe(false);
+    expect(recordMatchesPeriod(row("productions", { season: "2025/26" }), {})).toBe(true);
+  });
   it("clips exported overnight attendance to the chosen season", async () => {
     const record = row("attendance", {
       userId: "fixture",

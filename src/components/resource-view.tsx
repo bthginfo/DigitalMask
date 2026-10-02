@@ -45,11 +45,21 @@ function GenericRecordDetail({ record, onClose }: { record: DomainRecord; onClos
   const [subtask, setSubtask] = useState(false);
   const [timeBooking, setTimeBooking] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [figureOpen, setFigureOpen] = useState(false);
   const current = workspace.records[record.kind].find((x) => x.id === record.id) || record;
   const canEdit = canManageRecord(workspace.user, current.kind, current);
   const linkedFiles = workspace.records.files.filter(
     (x) => x.data.recordKind === current.kind && x.data.recordId === current.id,
   );
+  const linkedFigure =
+    current.kind === "casting"
+      ? workspace.records.characters.find((row) => row.id === current.data.characterId)
+      : undefined;
+  const figureFiles = linkedFigure
+    ? workspace.records.files.filter(
+        (row) => row.data.recordKind === "characters" && row.data.recordId === linkedFigure.id,
+      )
+    : [];
   const title = recordTitle(current, workspace);
   const attempt = async (fn: () => Promise<unknown>) => {
     setError("");
@@ -180,6 +190,40 @@ function GenericRecordDetail({ record, onClose }: { record: DomainRecord; onClos
                 );
               })}
           </dl>
+          {current.kind === "actors" &&
+            (value(current.data, "biography") || value(current.data, "sourceUrl")) && (
+              <section className="detail-section actor-ensemble-detail">
+                <header className="panel-heading">
+                  <h3>Aus dem Ensemble</h3>
+                  {value(current.data, "ensembleStatus") && (
+                    <Badge>{value(current.data, "ensembleStatus")}</Badge>
+                  )}
+                </header>
+                {value(current.data, "biography") && (
+                  <p className="actor-biography">{value(current.data, "biography")}</p>
+                )}
+                {ids(current.data, "ensembleProductions").length > 0 && (
+                  <>
+                    <h4>Aktuelle Produktionen</h4>
+                    <ul>
+                      {ids(current.data, "ensembleProductions").map((name, index) => (
+                        <li key={`${name}-${index}`}>{name}</li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+                {/^https:\/\/theater\.ingolstadt\.de\//.test(value(current.data, "sourceUrl")) && (
+                  <a
+                    className="text-button"
+                    href={value(current.data, "sourceUrl")}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Profil beim Stadttheater Ingolstadt öffnen ↗
+                  </a>
+                )}
+              </section>
+            )}
           {["looks", "handovers", "templates"].includes(current.kind) && (
             <DocumentContent record={current} />
           )}
@@ -272,11 +316,17 @@ function GenericRecordDetail({ record, onClose }: { record: DomainRecord; onClos
           ].includes(current.kind) && (
             <section className="detail-section">
               <header className="panel-heading">
-                <h3>Bilder & Dateien</h3>
+                <h3>
+                  {current.kind === "casting" ? "Bilder dieser Besetzung" : "Bilder & Dateien"}
+                </h3>
                 {canEdit && (
                   <label className="button secondary">
                     <Upload size={15} />
-                    {uploading ? "Wird hochgeladen …" : "Hochladen"}
+                    {uploading
+                      ? "Wird hochgeladen …"
+                      : current.kind === "casting"
+                        ? "Bilder hinzufügen"
+                        : "Hochladen"}
                     <input
                       type="file"
                       multiple
@@ -340,6 +390,56 @@ function GenericRecordDetail({ record, onClose }: { record: DomainRecord; onClos
                   <ImageIcon size={15} /> Noch keine Bilder oder Anhänge. Lade Fotos direkt vom
                   Smartphone hoch.
                 </p>
+              )}
+              {current.kind === "actors" && value(current.data, "portraitCredit") && (
+                <p className="small muted">
+                  Ensemble-Porträt: {value(current.data, "portraitCredit")}
+                </p>
+              )}
+            </section>
+          )}
+          {linkedFigure && (
+            <section className="detail-section">
+              <header className="panel-heading">
+                <h3>Figur: {value(linkedFigure.data, "name")}</h3>
+                <Button onClick={() => setFigureOpen(true)}>
+                  <Pencil size={15} />
+                  Figur öffnen
+                </Button>
+              </header>
+              {value(linkedFigure.data, "description") && (
+                <p>{value(linkedFigure.data, "description")}</p>
+              )}
+              {figureFiles.length > 0 && (
+                <>
+                  <p className="small muted">Vorhandene Bilder der Figur</p>
+                  <div className="gallery">
+                    {figureFiles.map((file) => (
+                      <div className="gallery-item" key={file.id}>
+                        <a href={`/api/files/${file.id}`} target="_blank" rel="noreferrer">
+                          {value(file.data, "mime").startsWith("image/") ? (
+                            <Image
+                              unoptimized
+                              width={1800}
+                              height={1800}
+                              src={`/api/files/${file.id}`}
+                              alt={value(file.data, "name")}
+                              loading="lazy"
+                            />
+                          ) : (
+                            <span className="file-tile">
+                              <FileText size={24} />
+                              {value(file.data, "name")}
+                            </span>
+                          )}
+                        </a>
+                        <div className="gallery-caption">
+                          <span>{value(file.data, "name")}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
               )}
             </section>
           )}
@@ -412,6 +512,9 @@ function GenericRecordDetail({ record, onClose }: { record: DomainRecord; onClos
           </footer>
         </Modal>
       )}
+      {figureOpen && linkedFigure && (
+        <RecordDetail record={linkedFigure} onClose={() => setFigureOpen(false)} />
+      )}
       {timeBooking && (
         <ResourceEditor
           kind="time"
@@ -462,6 +565,7 @@ export function ResourceView({
   defaults = {},
   filter,
   children,
+  headerActions,
   canCreate,
   initialRecord,
   lockedProductionId,
@@ -472,6 +576,7 @@ export function ResourceView({
   defaults?: RecordData;
   filter?: (record: DomainRecord) => boolean;
   children?: React.ReactNode;
+  headerActions?: React.ReactNode;
   canCreate?: boolean;
   initialRecord?: string;
   lockedProductionId?: string;
@@ -513,6 +618,7 @@ export function ResourceView({
         description={description}
       >
         <>
+          {headerActions}
           {(kind === "materials" || kind === "handovers") && admin && (
             <Button onClick={() => setCategoriesOpen(true)}>Kategorien verwalten</Button>
           )}
@@ -553,10 +659,35 @@ export function ResourceView({
           <div className="editorial-grid">
             {rows.map((row) => {
               const displayName = recordTitle(row, workspace);
-              const photo = workspace.records.files.find(
-                (file) =>
-                  file.data.recordId === row.id && value(file.data, "mime").startsWith("image/"),
-              );
+              const photo =
+                (kind === "actors"
+                  ? workspace.records.files.find(
+                      (file) =>
+                        file.id === row.data.portraitFileId &&
+                        file.data.recordId === row.id &&
+                        value(file.data, "mime").startsWith("image/"),
+                    )
+                  : undefined) ||
+                workspace.records.files.find(
+                  (file) =>
+                    file.data.recordId === row.id && value(file.data, "mime").startsWith("image/"),
+                ) ||
+                (kind === "casting"
+                  ? workspace.records.files.find(
+                      (file) =>
+                        file.data.recordKind === "characters" &&
+                        file.data.recordId === row.data.characterId &&
+                        value(file.data, "mime").startsWith("image/"),
+                    )
+                  : undefined);
+              const imageCount =
+                kind === "casting"
+                  ? workspace.records.files.filter(
+                      (file) =>
+                        file.data.recordId === row.id &&
+                        value(file.data, "mime").startsWith("image/"),
+                    ).length
+                  : 0;
               return (
                 <button
                   key={row.id}
@@ -588,7 +719,9 @@ export function ResourceView({
                     <p className="small muted">
                       {value(row.data, "preparation") ||
                         value(row.data, "notes") ||
-                        "Details, Bilder und Hinweise öffnen"}
+                        (kind === "casting"
+                          ? "Bilder hinzufügen und Besetzung öffnen"
+                          : "Details, Bilder und Hinweise öffnen")}
                     </p>
                     <Badge tone={row.data.status === "published" ? "green" : "neutral"}>
                       {kind === "casting"
@@ -599,6 +732,14 @@ export function ResourceView({
                           value(row.data, "wigSize") ||
                           "Katalog"}
                     </Badge>
+                    {kind === "casting" && (
+                      <span className="casting-image-hint">
+                        <ImageIcon size={14} />
+                        {imageCount
+                          ? `${imageCount} ${imageCount === 1 ? "Bild" : "Bilder"}`
+                          : "Bilder hinzufügen"}
+                      </span>
+                    )}
                   </div>
                 </button>
               );

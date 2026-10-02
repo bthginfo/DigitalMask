@@ -109,3 +109,13 @@ Sechs gezielte Chromium-Browserfälle decken 320, 375, 390, 768 und 1440 Pixel s
 Die Migration für Gerätesubscriptions und Vercel-VAPID-Konfiguration sind eingerichtet. Tests verwenden synthetische API-Antworten und simulierte Geräte; sie versenden keine Mitteilungen an reale Kolleginnen und legen keine produktiven QA-Daten an. Der tatsächliche Empfang auf einem Handy setzt die Installation bzw. Browserunterstützung und ausdrücklich erteilte Systemerlaubnis voraus.
 
 Drei gezielte WebKit-Nachprüfungen bestätigen Desktop-/Smartphone-Kanalzähler, die Lesequittung nur bei sichtbarem Verlaufsende und Aktivierung/Deaktivierung auf dem Smartphone. Der finale Produktionsbuild mit TypeScript, ESLint und Formatierung ist bestanden.
+
+## Besetzung, Ensemble-Import und Produktionsspielzeit
+
+Zwölf gezielte Unitprüfungen bestätigen die auf Haus-Ensemble-Karten begrenzte Quelle, Biografien und aktuelle Rollen ohne Navigation/Historie, sichere Bildadressen, eindeutige Namens-/Quellzuordnung, Konflikterkennung, stabile Actor-IDs, erhaltene Maskenangaben, unveränderte Wiederholungsimporte, Adminrechte sowie private WebP-Porträts und Blob-Kompensation bei Transaktionsfehlern. Zehn Spielzeit-/Dokumentprüfungen bestätigen zusätzlich äquivalente Spielzeit-Schreibweisen und historische Auswahl. Die tatsächliche öffentliche Übersicht mit 28 Personen, ihre Profile und ein dekodierbares Porträt wurden lesend geprüft.
+
+Sechs gezielte Browserfälle bei 1440, 768, 375 und 390 Pixeln prüfen Importvorschau, Auswahl und Konflikte, erreichbare Dialogaktionen, Schauspieler-Quellenangaben, den zentralen Besetzungsbereich, vorhandene Figurenbilder und zwei Uploads pro Besetzung. Der vollständige Import von 27 eindeutigen synthetischen Personen verwendet sieben Pakete von höchstens vier Personen und nur einen abschließenden Workspace-Abruf. Die Produktionsübersicht startet in der aktuellen Spielzeit; andere Spielzeiten und Alle bleiben ohne Zusatzabrufe auswählbar. Die unabhängige Designprüfung ergab nach Korrektur eines Tablet-Überlaufs PASS.
+
+„Das Abschiedsdinner“ wurde ausschließlich lesend geprüft: drei Besetzungen enthalten drei Freitext-Figuren, die der bisherige Zähler übersehen hatte. Die neue Zählung berücksichtigt sie und dedupliziert Alternativbesetzungen. Alle Schreib-/Uploadprüfungen verwenden synthetische Antworten bzw. gemockte Blob-/Datenbankdienste; es wurden keine produktiven QA-Einträge angelegt.
+
+Der abschließende Produktionsbuild mit TypeScript, gezieltes ESLint und Formatierung sind bestanden. Temporäre QA-Berichte, Screenshots und Prüfdateien werden vor dem Push entfernt; die automatischen Testdefinitionen bleiben erhalten.
