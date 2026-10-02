@@ -1,5 +1,5 @@
 ﻿"use client";
-import { useId, useRef, useState, useSyncExternalStore } from "react";
+import { useId, useRef, useState } from "react";
 import {
   ChevronDown,
   ChevronRight,
@@ -22,25 +22,8 @@ import { ChatChannel } from "@/modules/chat/components/chat-channel";
 import { ConversationEditor } from "@/modules/chat/components/conversation-editor";
 import { chatUnreadCounts } from "@/modules/notifications/unread";
 import { chatChoiceKey, unreadFirstChoices, type ChatChoice } from "@/modules/chat/channel-order";
-
-const sidebarFallback = new Map<string, boolean>();
-const sidebarChange = "digitalmask:chat-sidebar";
-function subscribeSidebar(onChange: () => void) {
-  window.addEventListener("storage", onChange);
-  window.addEventListener(sidebarChange, onChange);
-  return () => {
-    window.removeEventListener("storage", onChange);
-    window.removeEventListener(sidebarChange, onChange);
-  };
-}
-function sidebarCollapsed(key: string) {
-  try {
-    const stored = localStorage.getItem(key);
-    return stored === null ? sidebarFallback.get(key) === true : stored === "collapsed";
-  } catch {
-    return sidebarFallback.get(key) === true;
-  }
-}
+import { ChannelGroup } from "@/modules/chat/components/channel-group";
+import { useCollapsedPreference } from "@/shared/use-collapsed-preference";
 
 function ChannelChoice({
   title,
@@ -115,20 +98,8 @@ export function ChatModule({
   const unread = chatUnreadCounts(workspace.records.notifications, workspace.user.id);
   const sidebarId = useId();
   const sidebarKey = `digitalmask:chat-sidebar:${workspace.user.id}`;
-  const collapsed = useSyncExternalStore(
-    subscribeSidebar,
-    () => sidebarCollapsed(sidebarKey),
-    () => false,
-  );
-  const toggleSidebar = () => {
-    sidebarFallback.set(sidebarKey, !collapsed);
-    try {
-      localStorage.setItem(sidebarKey, collapsed ? "expanded" : "collapsed");
-    } catch {
-      // The in-memory preference still works when device storage is unavailable.
-    }
-    window.dispatchEvent(new Event(sidebarChange));
-  };
+  const [collapsed, setCollapsed] = useCollapsedPreference(sidebarKey);
+  const toggleSidebar = () => setCollapsed(!collapsed);
   const [selection, setSelection] = useState({ conversationId, productionId });
   const channelToggle = useRef<HTMLButtonElement>(null);
   const [channelsOpen, setChannelsOpen] = useState(false),
@@ -374,12 +345,14 @@ export function ChatModule({
               </div>
               <nav aria-label="Kommunikationskanäle">
                 {ordered.unread.length > 0 && (
-                  <div className="chat-channel-group">
-                    <h3>
-                      Ungelesen <span>{ordered.unread.length}</span>
-                    </h3>
+                  <ChannelGroup
+                    label="Ungelesen"
+                    count={ordered.unread.length}
+                    storageKey={`digitalmask:chat-group:${workspace.user.id}:unread`}
+                    query={query}
+                  >
                     {ordered.unread.map(renderChoice)}
-                  </div>
+                  </ChannelGroup>
                 )}
                 {(
                   [
@@ -392,13 +365,16 @@ export function ChatModule({
                   const group = ordered.ordinary.filter((choice) => choice.kind === kind);
                   if (!group.length) return null;
                   return (
-                    <div className="chat-channel-group" key={kind}>
-                      <h3>
-                        {label}
-                        <span>{group.length}</span>
-                      </h3>
+                    <ChannelGroup
+                      key={kind}
+                      label={label}
+                      count={group.length}
+                      storageKey={`digitalmask:chat-group:${workspace.user.id}:${kind}`}
+                      defaultCollapsed={kind === "production"}
+                      query={query}
+                    >
                       {group.map(renderChoice)}
-                    </div>
+                    </ChannelGroup>
                   );
                 })}
               </nav>

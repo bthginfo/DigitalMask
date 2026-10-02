@@ -25,6 +25,7 @@ async function mock(page: Page, mode = "supported", dark = false) {
   });
   workspace.records.productions.push(
     record("productions", "play", { title: "Sommernacht", season: "2026/27", status: "active" }),
+    record("productions", "play-read", { title: "Gym", season: "2026/27", status: "active" }),
   );
   workspace.records.conversations.push(
     record("conversations", "private", {
@@ -33,6 +34,16 @@ async function mock(page: Page, mode = "supported", dark = false) {
       participantIds: [workspace.user.id, "other"],
     }),
     record("conversations", "team", { title: "Werkstatt", mode: "team", participantIds: [] }),
+    record("conversations", "team-read", {
+      title: "Bestellungen",
+      mode: "team",
+      participantIds: [],
+    }),
+    record("conversations", "group-read", {
+      title: "Festvorbereitung",
+      mode: "group",
+      participantIds: [workspace.user.id, "other"],
+    }),
   );
   for (const [index, conversationId, productionId] of [
     [0, "", ""],
@@ -165,6 +176,55 @@ async function mock(page: Page, mode = "supported", dark = false) {
   return { reads: () => reads, actions };
 }
 for (const width of [1440, 390]) {
+  test(`channel groups persist, reveal search and keep unread accessible ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 1000 });
+    const state = await mock(page, "supported", width === 390);
+    await page.goto("/?module=chat&conversationId=private");
+    await expect
+      .poll(() => state.actions.filter((action) => action === "chat-notifications-read").length)
+      .toBe(1);
+    if (width === 390) await page.locator(".chat-channel-toggle").click();
+    const navigation = page.getByRole("navigation", { name: "Kommunikationskanäle" });
+    const productions = navigation.getByRole("button", { name: "Produktionen", exact: true });
+    await expect(productions).toHaveAttribute("aria-expanded", "false");
+    await expect(navigation.getByRole("button", { name: /^Gym/ })).not.toBeVisible();
+    await expect(
+      navigation.getByRole("button", { name: "Ungelesen", exact: true }),
+    ).toHaveAttribute("aria-expanded", "true");
+    await expect(navigation.getByRole("button", { name: /^Sommernacht/ })).toBeVisible();
+    const reads = state.reads();
+    await productions.focus();
+    await productions.press("Enter");
+    await expect(productions).toHaveAttribute("aria-expanded", "true");
+    await expect(navigation.getByRole("button", { name: /^Gym/ })).toBeVisible();
+    await productions.press("Enter");
+    for (const label of ["Team", "Direktnachrichten", "Gruppen"]) {
+      const toggle = navigation.getByRole("button", { name: label, exact: true });
+      await expect(toggle).toHaveAttribute("aria-expanded", "true");
+      await toggle.click();
+      await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    }
+    await expect(navigation.getByRole("button", { name: /^Bestellungen/ })).not.toBeVisible();
+    await expect(navigation.getByRole("button", { name: /^Festvorbereitung/ })).not.toBeVisible();
+    await page.getByRole("searchbox", { name: "Kanäle und Personen suchen" }).fill("Gym");
+    await expect(productions).toHaveAttribute("aria-expanded", "true");
+    await expect(navigation.getByRole("button", { name: /^Gym/ })).toBeVisible();
+    await page.getByRole("searchbox", { name: "Kanäle und Personen suchen" }).fill("");
+    await expect(productions).toHaveAttribute("aria-expanded", "false");
+    expect(state.reads()).toBe(reads);
+    await page.reload();
+    if (width === 390) await page.locator(".chat-channel-toggle").click();
+    for (const label of ["Team", "Produktionen", "Direktnachrichten", "Gruppen"])
+      await expect(navigation.getByRole("button", { name: label, exact: true })).toHaveAttribute(
+        "aria-expanded",
+        "false",
+      );
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
+    ).toBeLessThanOrEqual(1);
+  });
   test(`chat unread routing and collapse ${width}px`, async ({ page }, info) => {
     await page.setViewportSize({ width, height: 1000 });
     const state = await mock(page, "supported", width === 390);
@@ -263,6 +323,66 @@ for (const width of [1440, 390]) {
     ).toBeLessThanOrEqual(1);
   });
 }
+test("iOS install button opens guidance, restores focus and stays hidden in installed apps", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mock(page, "ios", true);
+  await page.goto("/?module=chat");
+  const install = page.getByRole("button", { name: "App installieren", exact: true });
+  await expect(install).toBeVisible();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await install.click();
+  const dialog = page.getByRole("dialog", { name: "DigitalMask auf dem iPhone oder iPad" });
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText("Zum Home-Bildschirm");
+  await expect(dialog).toContainText("Als Web-App öffnen");
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
+  ).toBeLessThanOrEqual(1);
+  await dialog.getByRole("button", { name: "Verstanden", exact: true }).click();
+  await expect(install).toBeFocused();
+  await page.addInitScript(() =>
+    Object.defineProperty(navigator, "standalone", { configurable: true, value: true }),
+  );
+  await page.reload();
+  await expect(install).toHaveCount(0);
+});
+
+test("native install prompt runs only after a click and disappears after use", async ({ page }) => {
+  await mock(page);
+  await page.goto("/?module=chat");
+  await expect(page.locator(".workspace-footer")).toBeVisible();
+  await page.evaluate(() => {
+    const metrics = { prompts: 0 };
+    Object.defineProperty(window, "dmInstallMetrics", { value: metrics });
+    const event = new Event("beforeinstallprompt", { cancelable: true });
+    Object.assign(event, {
+      prompt: async () => {
+        metrics.prompts++;
+      },
+      userChoice: Promise.resolve({ outcome: "accepted" }),
+    });
+    window.dispatchEvent(event);
+  });
+  const install = page.getByRole("button", { name: "App installieren", exact: true });
+  await expect(install).toBeVisible();
+  expect(
+    await page.evaluate(
+      () =>
+        (window as unknown as { dmInstallMetrics: { prompts: number } }).dmInstallMetrics.prompts,
+    ),
+  ).toBe(0);
+  await install.click();
+  await expect(install).toHaveCount(0);
+  expect(
+    await page.evaluate(
+      () =>
+        (window as unknown as { dmInstallMetrics: { prompts: number } }).dmInstallMetrics.prompts,
+    ),
+  ).toBe(1);
+});
+
 test("iPhone installation guidance and blocked permission are explicit", async ({ page }, info) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await mock(page, "ios");

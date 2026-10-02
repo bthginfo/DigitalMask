@@ -210,8 +210,8 @@ for (const width of [1440, 768, 375]) {
       .click();
     await expect(
       page.getByRole("heading", { name: "Angaben des Stadttheaters", exact: true }),
-    ).toBeVisible();
-    await expect(page.getByText("Abschiedsdinner – Pierre", { exact: true })).toBeVisible();
+    ).toHaveCount(0);
+    await expect(page.getByText("Abschiedsdinner – Pierre", { exact: true })).toHaveCount(0);
     await expect(page.getByText("Testfotografin", { exact: false })).toBeVisible();
     await capture(page, `actor-${width}`);
   });

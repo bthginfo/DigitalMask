@@ -36,6 +36,7 @@ import {
 } from "@/shared/client-api";
 import { isActiveStaff } from "@/shared/client-members";
 import { calendarEventSelected } from "@/shared/calendar-selection";
+import { calendarEventPaint } from "@/shared/calendar-paint";
 import { useWorkspace } from "../workspace-context";
 import { Badge, Button, ErrorMessage, ExportButton, PageHeader } from "../ui";
 import { ResourceEditor } from "../resource-editor";
@@ -73,8 +74,7 @@ export function expandEvents(
       categoryName: presentation.categoryName,
       start: instance.start.toISOString(),
       end: instance.end.toISOString(),
-      backgroundColor: presentation.color,
-      borderColor: "transparent",
+      ...calendarEventPaint(presentation.color, presentation.allDay),
       editable:
         !record.data.leaveId &&
         (!record.data.recurrence || record.data.recurrence === "none") &&
@@ -576,6 +576,7 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
                 editable={true}
                 eventStartEditable={true}
                 events={expanded}
+                eventDisplay="block"
                 datesSet={(info) => {
                   setTitle(info.view.title);
                   const firstDay = localDate(info.view.currentStart);

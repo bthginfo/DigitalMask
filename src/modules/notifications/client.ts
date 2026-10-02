@@ -1,5 +1,6 @@
 "use client";
 import { api, post } from "@/shared/client-api";
+import { appDeviceState } from "@/shared/app-device";
 
 export type PushDeviceState = {
   supported: boolean;
@@ -10,12 +11,7 @@ export type PushDeviceState = {
 };
 const ownerKey = "digitalmask-push-owner";
 function capabilities() {
-  const ios =
-    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-  const standalone =
-    window.matchMedia("(display-mode: standalone)").matches ||
-    (navigator as Navigator & { standalone?: boolean }).standalone === true;
+  const { ios, standalone } = appDeviceState();
   return {
     supported:
       "serviceWorker" in navigator &&

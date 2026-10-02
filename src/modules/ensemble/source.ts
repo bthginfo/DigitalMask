@@ -4,6 +4,7 @@ import { HttpError } from "@/platform/http";
 export const ensembleOrigin = "https://theater.ingolstadt.de";
 export const ensembleUrl = `${ensembleOrigin}/ensemble/schauspielerinnen.html`;
 export const guestsUrl = `${ensembleUrl}?tx_ttaddress_listview%5Boverride%5D%5Bcategories%5D=7&cHash=440adf530d323af77669918e48fd34cd`;
+export const youngTheatreUrl = `${ensembleOrigin}/junges-theater/ensemble-jt.html`;
 export interface EnsemblePerson {
   sourceId: string;
   name: string;
@@ -40,7 +41,7 @@ export function parseEnsemble(html: string, defaultStatus = ""): EnsemblePerson[
     const link = card.find("figcaption a[href]").first();
     const url = new URL(link.attr("href") || "/", ensembleOrigin);
     const id = url.pathname.match(
-      /^\/ensemble\/schauspielerinnen\/schauspielerinnen-detailseite\/(\d+)\.html$/,
+      /^\/(?:ensemble\/schauspielerinnen\/schauspielerinnen-detailseite|junges-theater\/ensemble-jt\/ensemble-jt-detailseite)\/(\d+)\.html$/,
     )?.[1];
     if (!id || url.origin !== ensembleOrigin) return;
     const text = clean(link.text());
@@ -141,20 +142,27 @@ export async function fetchTheatre(url: string, image = false) {
   }
 }
 export async function getEnsemble() {
-  const [house, guests] = await Promise.all([fetchTheatre(ensembleUrl), fetchTheatre(guestsUrl)]);
+  const [house, guests, youngTheatre] = await Promise.all([
+    fetchTheatre(ensembleUrl),
+    fetchTheatre(guestsUrl),
+    fetchTheatre(youngTheatreUrl),
+  ]);
   return mergeEnsembleLists(
     parseEnsemble(house.bytes.toString("utf8")),
     parseEnsemble(guests.bytes.toString("utf8"), "Gast"),
+    parseEnsemble(youngTheatre.bytes.toString("utf8")),
   );
 }
-export function mergeEnsembleLists(house: EnsemblePerson[], guests: EnsemblePerson[]) {
-  const result = new Map(house.map((person) => [person.sourceId, person]));
-  for (const guest of guests) {
-    const existing = result.get(guest.sourceId);
-    result.set(
-      guest.sourceId,
-      existing ? { ...existing, imageUrl: existing.imageUrl || guest.imageUrl } : guest,
-    );
+export function mergeEnsembleLists(...lists: EnsemblePerson[][]) {
+  const result = new Map<string, EnsemblePerson>();
+  for (const people of lists) {
+    for (const person of people) {
+      const existing = result.get(person.sourceId);
+      result.set(
+        person.sourceId,
+        existing ? { ...existing, imageUrl: existing.imageUrl || person.imageUrl } : person,
+      );
+    }
   }
   if (result.size > 100) throw new HttpError(502, "Die Ensemble-Liste ist unerwartet groß.");
   return [...result.values()];

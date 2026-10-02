@@ -47,8 +47,12 @@ export function MobileDayAgenda({
           return (
             <button
               key={event.id}
-              className="team-mobile-service"
-              style={{ borderLeftColor: event.backgroundColor }}
+              className="team-mobile-service calendar-colored-event"
+              style={{
+                borderLeftColor: event.borderColor,
+                backgroundColor: event.backgroundColor,
+                color: event.textColor,
+              }}
               onClick={() => onOpen(event.extendedProps.record)}
             >
               <span className="small muted">{names.join(", ") || "Ohne Zuordnung"}</span>

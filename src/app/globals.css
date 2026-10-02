@@ -885,6 +885,30 @@ kbd {
 .workspace-footer .text-button {
   font-size: 9px;
 }
+.workspace-footer .text-button.app-install-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  font-size: 12px;
+}
+.app-install-dialog {
+  font-size: 14px;
+}
+.app-install-steps {
+  margin: 20px 0;
+  padding-left: 22px;
+}
+.app-install-steps li {
+  padding-left: 4px;
+  margin-bottom: 14px;
+  line-height: 1.6;
+}
+.app-install-steps svg {
+  display: inline;
+  vertical-align: text-bottom;
+  color: var(--accent);
+}
 .mobile-menu-button,
 .mobile-close,
 .search-mobile,
@@ -1958,18 +1982,6 @@ tfoot td {
     transform: rotate(360deg);
   }
 }
-.actor-biography {
-  white-space: pre-line;
-  line-height: 1.75;
-  font-size: 14px;
-  margin: 12px 0 18px;
-}
-.actor-ensemble-detail ul {
-  padding-left: 20px;
-  margin: 10px 0 18px;
-  line-height: 1.7;
-  font-size: 13px;
-}
 .casting-image-hint {
   display: flex;
   align-items: center;
@@ -2479,9 +2491,6 @@ tfoot td {
   padding: 2px 4px;
   font-size: 9px;
 }
-.fc .fc-daygrid-dot-event {
-  background: var(--surface-soft);
-}
 .fc .fc-timegrid-event .fc-event-main {
   padding: 4px;
   font-size: 9px;
@@ -2549,6 +2558,10 @@ tfoot td {
 .team-event span {
   font-size: 8px;
   color: var(--muted);
+}
+.calendar-module .calendar-colored-event :is(span, strong),
+.calendar-module .calendar-colored-event .muted {
+  color: inherit;
 }
 .team-add {
   width: 100%;
@@ -5895,10 +5908,47 @@ td .text-button,
   color: var(--muted);
   margin: 0 4px 3px;
 }
-.chat-channel-group h3 span {
+.chat-channel-group-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  padding: 6px 4px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 650;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+.chat-channel-group-toggle:hover {
+  background: var(--surface);
+  color: var(--text);
+}
+.chat-channel-group-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.chat-channel-group-toggle > svg {
+  flex: none;
+}
+.chat-channel-group-count {
+  margin-left: auto;
   letter-spacing: 0;
   font-variant-numeric: tabular-nums;
   font-size: 10px;
+}
+.chat-channel-group-items {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.chat-channel-group-items[hidden] {
+  display: none;
 }
 .chat-channel-lists > .check-label {
   font-size: 11px;

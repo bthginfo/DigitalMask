@@ -50,6 +50,7 @@ import { DocumentationModule } from "@/modules/documentation/components/document
 import { PeopleModule } from "@/modules/people/components";
 import { ActorsModule } from "@/modules/ensemble/components/actors-module";
 import { isDirectoryPerson } from "@/modules/people/components/person-data";
+import { AppInstall } from "@/modules/pwa/components/app-install";
 import { ExportDialog } from "./export-dialog";
 const nav: { id: string; label: string; icon: LucideIcon; group: string }[] = [
   { id: "today", label: "Heute", icon: Home, group: "ARBEITSRAUM" },
@@ -67,10 +68,6 @@ const nav: { id: string; label: string; icon: LucideIcon; group: string }[] = [
   { id: "help", label: "Hilfe & Feedback", icon: CircleHelp, group: "VERWALTUNG" },
   { id: "settings", label: "Einstellungen", icon: Settings2, group: "VERWALTUNG" },
 ];
-interface InstallEvent extends Event {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: string }>;
-}
 export function WorkspaceShell() {
   const { workspace, notice, notify, online, action } = useWorkspace();
   const query = useSyncExternalStore(
@@ -94,7 +91,6 @@ export function WorkspaceShell() {
   const needsTour =
     workspace.user.preferences !== undefined &&
     workspace.user.preferences.onboardingVersion < onboardingVersion;
-  const [install, setInstall] = useState<InstallEvent | null>(null);
   const main = useRef<HTMLElement>(null);
   const sidebar = useRef<HTMLElement>(null);
   const menuOpener = useRef<HTMLElement | null>(null);
@@ -110,15 +106,9 @@ export function WorkspaceShell() {
         setSearchOpen(true);
       }
     };
-    const installer = (event: Event) => {
-      event.preventDefault();
-      setInstall(event as InstallEvent);
-    };
     window.addEventListener("keydown", key);
-    window.addEventListener("beforeinstallprompt", installer);
     return () => {
       window.removeEventListener("keydown", key);
-      window.removeEventListener("beforeinstallprompt", installer);
     };
   }, []);
   const openMenu = () => {
@@ -452,18 +442,7 @@ export function WorkspaceShell() {
         <footer className="workspace-footer">
           <span>DigitalMask · Gemeinsam hinter der Bühne.</span>
           <LiveStatus recovery />
-          {install && (
-            <button
-              className="text-button"
-              onClick={async () => {
-                await install.prompt();
-                await install.userChoice;
-                setInstall(null);
-              }}
-            >
-              App installieren
-            </button>
-          )}
+          <AppInstall />
         </footer>
       </div>
       <nav className="bottom-nav" inert={isMobile && mobileMenu} aria-label="Mobile Navigation">

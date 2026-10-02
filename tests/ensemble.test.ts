@@ -1,9 +1,13 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   parseEnsemble,
   parseProfile,
   sourceAssetUrl,
   mergeEnsembleLists,
+  getEnsemble,
+  ensembleUrl,
+  guestsUrl,
+  youngTheatreUrl,
   type EnsemblePerson,
 } from "../src/modules/ensemble/source";
 import { importedActorData, matchActor } from "../src/modules/ensemble/matching";
@@ -23,6 +27,7 @@ const person: EnsemblePerson = {
   productions: ["Ein Stück (Rolle)"],
 };
 describe("Ensemble source and safe catalog matching", () => {
+  afterEach(() => vi.unstubAllGlobals());
   it("reads only house cards, decodes names and all-day parenthetic status, ignores guest navigation", () => {
     const rows = parseEnsemble(
       `<nav><a href="/ensemble/schauspielerinnen.html?guest=1">Gäste</a></nav><ul class="tt_address_list gallery"><li class="vcard"><img src="/fileadmin/portrait.jpg"><figcaption><a href="/ensemble/schauspielerinnen/schauspielerinnen-detailseite/2331.html">Michael Amelung</a></figcaption></li><li class="vcard"><figcaption><a href="/ensemble/schauspielerinnen/schauspielerinnen-detailseite/3052.html">Paula Gendrisch (in Elternzeit)</a></figcaption></li></ul>`,
@@ -40,6 +45,52 @@ describe("Ensemble source and safe catalog matching", () => {
     );
     expect(profile.biography).toBe("Ausbildung & Ensemble\n\nZweite Angabe");
     expect(profile.productions).toEqual(["Neues Stück (Rolle)"]);
+  });
+  it("includes young theatre guests and shares identity across both theatre profile paths", () => {
+    const people = parseEnsemble(
+      `<ul class="tt_address_list gallery"><li class="vcard"><img src="/fileadmin/young.jpg"><figcaption><a href="/junges-theater/ensemble-jt/ensemble-jt-detailseite/2331.html">Michael Amelung</a></figcaption></li><li class="vcard"><img src="/fileadmin/okan.jpg"><figcaption><a href="/junges-theater/ensemble-jt/ensemble-jt-detailseite/4416.html">Okan Cömert (Gast)</a></figcaption></li><li class="vcard"><figcaption><a href="https://other.example/junges-theater/ensemble-jt/ensemble-jt-detailseite/11.html">Foreign profile</a></figcaption></li></ul>`,
+    );
+    expect(people.map((item) => [item.sourceId, item.name, item.ensembleStatus])).toEqual([
+      ["2331", "Michael Amelung", ""],
+      ["4416", "Okan Cömert", "Gast"],
+    ]);
+    const merged = mergeEnsembleLists([person], [], people);
+    expect(merged).toHaveLength(2);
+    expect(merged[0]).toMatchObject({
+      sourceId: person.sourceId,
+      sourceUrl: person.sourceUrl,
+      imageUrl: "https://theater.ingolstadt.de/fileadmin/young.jpg",
+    });
+    expect(matchActor(people[0], [{ id: "existing", data: { sourceId: "2331" } }])).toMatchObject({
+      action: "update",
+      actor: { id: "existing" },
+    });
+  });
+  it("loads the combined house, guest and young theatre preview from cached fixed sources", async () => {
+    const card = (id: string, name: string, young = false) =>
+      `<ul class="tt_address_list"><li class="vcard"><figcaption><a href="${young ? "/junges-theater/ensemble-jt/ensemble-jt-detailseite" : "/ensemble/schauspielerinnen/schauspielerinnen-detailseite"}/${id}.html">${name}</a></figcaption></li></ul>`;
+    const pages = new Map([
+      [ensembleUrl, card("2331", "Michael Amelung")],
+      [guestsUrl, card("3227", "Miriam Haltmeier")],
+      [youngTheatreUrl, card("4416", "Okan Cömert (Gast)", true)],
+    ]);
+    const fetch = vi.fn(async (url: string) => {
+      const html = pages.get(url);
+      if (!html) throw new Error("Unexpected source");
+      return new Response(html, { headers: { "content-type": "text/html" } });
+    });
+    vi.stubGlobal("fetch", fetch);
+    expect((await getEnsemble()).map((item) => [item.sourceId, item.ensembleStatus])).toEqual([
+      ["2331", ""],
+      ["3227", "Gast"],
+      ["4416", "Gast"],
+    ]);
+    expect(fetch).toHaveBeenCalledTimes(3);
+    for (const url of pages.keys())
+      expect(fetch).toHaveBeenCalledWith(
+        url,
+        expect.objectContaining({ redirect: "error", next: { revalidate: 3600 } }),
+      );
   });
   it("imports guest cards with real portraits and ignores the theatre's placeholder image", () => {
     const guests = parseEnsemble(
@@ -104,6 +155,8 @@ describe("Ensemble source and safe catalog matching", () => {
         wigSize: "57",
         imageIds: ["own-photo"],
         contact: "Agentur",
+        biography: "Alte Theaterbiografie",
+        ensembleProductions: ["Alte Theaterproduktion"],
       }),
     );
     expect(data).toMatchObject({
@@ -114,7 +167,8 @@ describe("Ensemble source and safe catalog matching", () => {
       imageIds: ["own-photo"],
       contact: "Agentur",
       sourceId: "2331",
-      ensembleProductions: person.productions,
+      biography: "",
+      ensembleProductions: [],
     });
     const actors = [{ id: "extra", data: { name: "Gast Schauspieler" } }];
     expect(matchActor(person, actors)).toEqual({ action: "create" });

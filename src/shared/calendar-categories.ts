@@ -36,10 +36,20 @@ export function calendarPresentation(
   const fallback = defaultCalendarCategories.find((row) => row.key === key);
   const name = textValue(category?.name, fallback?.name || key);
   const production = productions.find((row) => row.id === event.data.productionId);
+  const productionTitle = textValue(production?.data.title).trim();
+  const customTitle = textValue(event.data.title).trim();
+  const combinedTitle = productionTitle ? `${productionTitle} – ${name}` : "";
+  const title = combinedTitle
+    ? customTitle && customTitle !== productionTitle && customTitle !== combinedTitle
+      ? `${combinedTitle} · ${customTitle}`
+      : combinedTitle
+    : customTitle || name;
   return {
-    title: textValue(event.data.title).trim() || textValue(production?.data.title).trim() || name,
+    title,
     categoryName: name,
-    color: textValue(category?.color, fallback?.color || "#77818e"),
+    color:
+      textValue(production?.data.color).trim() ||
+      textValue(category?.color, fallback?.color || "#77818e"),
     allDay:
       event.data.allDay === true ||
       category?.allDay === true ||

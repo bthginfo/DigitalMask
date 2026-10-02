@@ -153,6 +153,82 @@ test("mobile day details preserve own-calendar planning and personal selection",
   expect(state.reads()).toBe(1);
 });
 
+for (const width of [390, 1440]) {
+  test(`calendar colors, all-day fading and production labels ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: width === 390 ? 812 : 1000 });
+    const state = await mock(page, "admin", width === 390);
+    state.workspace.records.productions[0].data.color = "#c79bdb";
+    const own = state.workspace.records.events[0];
+    own.data.title = "";
+    own.data.category = "ama";
+    state.workspace.records.calendarCategories.push(
+      {
+        ...own,
+        id: "ama-kind",
+        kind: "calendarCategories",
+        data: { key: "ama", name: "AMA", color: "#336699", allDay: false },
+      },
+      {
+        ...own,
+        id: "vacation-kind",
+        kind: "calendarCategories",
+        data: { key: "vacation", name: "Urlaub", color: "#88aa44", allDay: true },
+      },
+    );
+    state.workspace.records.events.push({
+      ...own,
+      id: "colored-production",
+      data: {
+        ...own.data,
+        productionId: "play",
+        start: "2026-10-02T09:00:00+02:00",
+        end: "2026-10-02T15:00:00+02:00",
+      },
+    });
+    const vacation = state.workspace.records.events.find((row) => row.id === "vacation")!;
+    Object.assign(vacation.data, {
+      participantIds: [state.workspace.user.id],
+      start: "2026-10-03T00:00:00+02:00",
+      end: "2026-10-04T00:00:00+02:00",
+    });
+    await page.goto("/?module=calendar");
+    const category = page
+      .locator(".fc-daygrid-event")
+      .filter({ has: page.locator(".fc-event-title").filter({ hasText: /^AMA$/ }) });
+    const production = page.locator(".fc-daygrid-event").filter({ hasText: "Sommernacht – AMA" });
+    const allDay = page.locator(".fc-daygrid-event").filter({ hasText: "Urlaub" });
+    await expect(category).toHaveCSS("background-color", "rgb(51, 102, 153)");
+    await expect(production).toHaveCSS("background-color", "rgb(199, 155, 219)");
+    await expect(production.locator(".fc-event-main")).toHaveCSS("color", "rgb(0, 0, 0)");
+    await expect(allDay).toHaveCSS("background-color", "rgba(136, 170, 68, 0.5)");
+    await expect(allDay).toHaveCSS("opacity", "1");
+    const reads = state.reads();
+    await page.getByRole("button", { name: "Team", exact: true }).click();
+    await page.getByRole("button", { name: "Teammonat", exact: true }).click();
+    if (width === 390) {
+      await page.locator('.team-mobile-calendar [data-date="2026-10-02"]').click();
+      await expect(
+        page
+          .locator(".team-mobile-services .team-mobile-service")
+          .filter({ hasText: "Sommernacht – AMA" }),
+      ).toHaveCSS("background-color", "rgb(199, 155, 219)");
+      await page.locator('.team-mobile-calendar [data-date="2026-10-03"]').click();
+      await expect(
+        page.locator(".team-mobile-services .team-mobile-service").filter({ hasText: "Urlaub" }),
+      ).toHaveCSS("background-color", "rgba(136, 170, 68, 0.5)");
+      await expectMonthFits(page, ".team-mobile-dates");
+    } else {
+      await expect(
+        page.locator(".team-calendar .team-event").filter({ hasText: "Sommernacht – AMA" }),
+      ).toHaveCSS("background-color", "rgb(199, 155, 219)");
+      await expect(
+        page.locator(".team-calendar .team-event").filter({ hasText: "Urlaub" }),
+      ).toHaveCSS("background-color", "rgba(136, 170, 68, 0.5)");
+    }
+    expect(state.reads()).toBe(reads);
+  });
+}
+
 for (const width of [320, 375, 390, 768, 1440]) {
   test(`calendar ${width}px ${width === 390 ? "dark" : "light"}`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: width < 760 ? 812 : 1000 });

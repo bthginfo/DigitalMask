@@ -254,43 +254,6 @@ function GenericRecordDetail({
           {current.kind === "sprints" && (
             <SprintRelationships record={current} onNavigate={onNavigate} />
           )}
-          {current.kind === "actors" &&
-            (value(current.data, "biography") || value(current.data, "sourceUrl")) && (
-              <section className="detail-section actor-ensemble-detail">
-                <header className="panel-heading">
-                  <h3>Angaben des Stadttheaters</h3>
-                  {value(current.data, "ensembleStatus") && (
-                    <Badge>{value(current.data, "ensembleStatus")}</Badge>
-                  )}
-                </header>
-                {value(current.data, "biography") && (
-                  <p className="actor-biography">{value(current.data, "biography")}</p>
-                )}
-                {ids(current.data, "ensembleProductions").length > 0 && (
-                  <>
-                    <h4>Produktionen auf der Theaterwebsite</h4>
-                    <p className="small muted">
-                      Diese Theaterangaben sind unabhängig von euren oben verknüpften Besetzungen.
-                    </p>
-                    <ul>
-                      {ids(current.data, "ensembleProductions").map((name, index) => (
-                        <li key={`${name}-${index}`}>{name}</li>
-                      ))}
-                    </ul>
-                  </>
-                )}
-                {/^https:\/\/theater\.ingolstadt\.de\//.test(value(current.data, "sourceUrl")) && (
-                  <a
-                    className="text-button"
-                    href={value(current.data, "sourceUrl")}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Profil beim Stadttheater Ingolstadt öffnen ↗
-                  </a>
-                )}
-              </section>
-            )}
           {["looks", "handovers", "templates"].includes(current.kind) && (
             <DocumentContent record={current} />
           )}

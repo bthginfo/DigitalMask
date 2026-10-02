@@ -28,9 +28,9 @@ export function importedActorData(person: EnsemblePerson, existing: RecordData =
   return {
     ...existing,
     name: person.name,
-    biography: person.biography,
+    biography: "",
     ensembleStatus: person.ensembleStatus,
-    ensembleProductions: person.productions,
+    ensembleProductions: [],
     sourceId: person.sourceId,
     sourceUrl: person.sourceUrl,
   };

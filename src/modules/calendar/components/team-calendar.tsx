@@ -12,6 +12,8 @@ export type CalendarInstance = {
   start: string;
   end: string;
   backgroundColor: string;
+  borderColor: string;
+  textColor: string;
   allDay: boolean;
   categoryName: string;
   extendedProps: { record: DomainRecord };
@@ -171,8 +173,12 @@ export function TeamCalendar({
                     {matches(person.id, date).map((event) => (
                       <button
                         key={event.id}
-                        className="team-event"
-                        style={{ borderLeftColor: event.backgroundColor }}
+                        className="team-event calendar-colored-event"
+                        style={{
+                          borderLeftColor: event.borderColor,
+                          backgroundColor: event.backgroundColor,
+                          color: event.textColor,
+                        }}
                         aria-label={`${event.title} · ${event.categoryName} · ${event.allDay ? "ganztägig" : `${clock(event.start)} bis ${clock(event.end)}`} · ${person.name}`}
                         onClick={() => {
                           setSelectedDay(date);
@@ -260,7 +266,12 @@ export function TeamCalendar({
             {selected.map(({ person, event }) => (
               <button
                 key={`${person.id}:${event.id}`}
-                style={{ borderLeftColor: event.backgroundColor }}
+                className="calendar-colored-event"
+                style={{
+                  borderLeftColor: event.borderColor,
+                  backgroundColor: event.backgroundColor,
+                  color: event.textColor,
+                }}
                 onClick={() => onOpen(event.extendedProps.record)}
               >
                 <span className="small muted">

@@ -131,20 +131,27 @@ function EnsembleImport({ onClose }: { onClose: () => void }) {
         <div className="ensemble-source">
           <Users size={24} />
           <div>
-            <strong>Stadttheater Ingolstadt · Haus & Gäste</strong>
+            <strong>Stadttheater Ingolstadt · Ensemble & Gäste</strong>
             <a
               href="https://theater.ingolstadt.de/ensemble/schauspielerinnen.html"
               target="_blank"
               rel="noreferrer"
             >
-              Offizielle Ensemble-Seite <ExternalLink size={13} />
+              Schauspiel <ExternalLink size={13} />
+            </a>
+            <a
+              href="https://theater.ingolstadt.de/junges-theater/ensemble-jt.html"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Junges Theater <ExternalLink size={13} />
             </a>
           </div>
         </div>
         <p className="small muted">
-          Neue Schauspieler werden ergänzt. Vorhandene Personen werden bei eindeutiger Zuordnung
-          aktualisiert. Eure zusätzlichen Schauspieler, Maskenhinweise und Produktionszuordnungen
-          bleiben erhalten.
+          Ensemble und Gäste aus Schauspiel und Jungem Theater werden gemeinsam geladen. Neue
+          Schauspieler werden ergänzt, vorhandene bei eindeutiger Zuordnung aktualisiert. Eure
+          zusätzlichen Schauspieler, Maskenhinweise und Produktionszuordnungen bleiben erhalten.
         </p>
         <ErrorMessage message={error} />
         {result ? (
