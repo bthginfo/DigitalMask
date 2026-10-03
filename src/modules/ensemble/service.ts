@@ -7,17 +7,19 @@ import { type Context, requireAdmin } from "@/platform/context";
 import { auditChange, scheduleEvents } from "@/platform/events";
 import { HttpError } from "@/platform/http";
 import { listValue } from "@/shared/contracts";
-import { validateRecord } from "@/modules/records/schemas";
+import { validateRecord, seasonSchema } from "@/modules/records/schemas";
 import { invalidateWorkspace } from "@/modules/records/workspace";
 import { getEnsemble, getProfile, fetchTheatre, type EnsemblePerson } from "./source";
 import { importedActorData, matchActor } from "./matching";
 import { analyzePortrait, type PortraitMetadata } from "@/modules/files/portrait-analysis";
 import { normalizeActorPortrait } from "@/modules/files/actor-portraits";
+import { seasonForDate } from "@/shared/period-filter";
 
 const actorScope = (context: Context) =>
   and(eq(records.departmentId, context.departmentId), eq(records.kind, "actors"));
-export async function ensemblePreview(context: Context) {
+export async function ensemblePreview(context: Context, targetSeason = seasonForDate()) {
   requireAdmin(context);
+  const season = seasonSchema.parse(targetSeason);
   const [items, actors] = await Promise.all([
     getEnsemble(),
     db.select().from(records).where(actorScope(context)),
@@ -35,6 +37,7 @@ export async function ensemblePreview(context: Context) {
     items,
     entries,
     fetchedAt: new Date().toISOString(),
+    season,
     summary: {
       create: entries.filter((x) => x.action === "create").length,
       update: entries.filter((x) => x.action === "update").length,
@@ -63,8 +66,13 @@ async function stagePortrait(context: Context, person: EnsemblePerson): Promise<
   await put(path, bytes, { access: "private", contentType: "image/webp", addRandomSuffix: false });
   return { id, path, size: bytes.length, metadata };
 }
-export async function importEnsemble(context: Context, sourceIds: string[]) {
+export async function importEnsemble(
+  context: Context,
+  sourceIds: string[],
+  targetSeason = seasonForDate(),
+) {
   requireAdmin(context);
+  const season = seasonSchema.parse(targetSeason);
   const list = await getEnsemble();
   const selected = list.filter((person) => sourceIds.includes(person.sourceId));
   if (selected.length !== new Set(sourceIds).size)
@@ -137,7 +145,7 @@ export async function importEnsemble(context: Context, sourceIds: string[]) {
           }
           const actor = match.actor,
             id = actor?.id || crypto.randomUUID();
-          const data = importedActorData(person, actor?.data);
+          const data = importedActorData(person, actor?.data, season);
           // A simultaneous import may already have installed this photo while we were fetching.
           const usePortrait =
             portrait &&
@@ -217,5 +225,5 @@ export async function importEnsemble(context: Context, sourceIds: string[]) {
   }
   if (created || updated) invalidateWorkspace(context.departmentId);
   if (deletionQueued) scheduleEvents();
-  return { created, updated, unchanged, images, errors };
+  return { created, updated, unchanged, images, errors, season };
 }

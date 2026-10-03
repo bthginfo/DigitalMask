@@ -53,7 +53,7 @@ export async function getWorkspace(context: Context): Promise<Workspace> {
   const [rows, members] = await Promise.all([
     unstable_cache(
       () => readScope(context.departmentId),
-      ["department-data-v3", context.departmentId],
+      ["department-data-v4", context.departmentId],
       { revalidate: 300, tags: [scopeTag(context.departmentId)] },
     )(),
     readTeam(context.departmentId),

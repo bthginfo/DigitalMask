@@ -26,6 +26,26 @@ const person: EnsemblePerson = {
   imageCredit: "",
   productions: ["Ein Stück (Rolle)"],
 };
+describe("season membership on ensemble refresh", () => {
+  it("adds the target roster once and preserves previous membership and mask data", () => {
+    const previous = {
+      name: "Michael Amelung",
+      ensembleSeasons: ["2022/2023"],
+      hair: "braun",
+      wigSize: "57",
+      notes: "Lena",
+      imageIds: ["photo"],
+    };
+    const next = importedActorData(person, previous, "2026 / 27");
+    expect(next).toMatchObject({ ...previous, ensembleSeasons: ["2026/2027", "2022/2023"] });
+    expect(importedActorData(person, next, "2026/2027")).toEqual(next);
+    expect(importedActorData(person, {}, "2022/23").ensembleSeasons).toEqual(["2022/2023"]);
+    expect(
+      importedActorData(person, { name: person.name, ensembleSeasons: [] }, "2026/27")
+        .ensembleSeasons,
+    ).toEqual(["2026/2027"]);
+  });
+});
 describe("Ensemble source and safe catalog matching", () => {
   afterEach(() => vi.unstubAllGlobals());
   it("reads only house cards, decodes names and all-day parenthetic status, ignores guest navigation", () => {

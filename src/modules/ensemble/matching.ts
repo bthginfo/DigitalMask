@@ -1,5 +1,6 @@
 import { type RecordData, textValue } from "@/shared/contracts";
 import type { EnsemblePerson } from "./source";
+import { seasonForDate, withEnsembleSeason } from "@/shared/period-filter";
 export const actorNameKey = (value: unknown) =>
   textValue(value)
     .normalize("NFKD")
@@ -24,7 +25,11 @@ export function matchActor<T extends { id: string; data: RecordData }>(
       ? { action: "update" as const, actor: matches[0] }
       : { action: "create" as const };
 }
-export function importedActorData(person: EnsemblePerson, existing: RecordData = {}): RecordData {
+export function importedActorData(
+  person: EnsemblePerson,
+  existing: RecordData = {},
+  season = seasonForDate(),
+): RecordData {
   return {
     ...existing,
     name: person.name,
@@ -33,5 +38,6 @@ export function importedActorData(person: EnsemblePerson, existing: RecordData =
     ensembleProductions: [],
     sourceId: person.sourceId,
     sourceUrl: person.sourceUrl,
+    ensembleSeasons: withEnsembleSeason(existing, season),
   };
 }

@@ -4,6 +4,7 @@ import { productionContactsText } from "./contacts";
 import { eventDisplay } from "./calendar-presentation";
 import { categoryName } from "../../shared/domain-categories";
 import { sectionName } from "../../shared/document-sections";
+import { actorSeasons } from "../../shared/period-filter";
 import {
   documentPresentation,
   documentSectionKeys,
@@ -139,6 +140,7 @@ export function columnsFor(kind: string, input?: ExportInput): Column[] {
     case "actors":
       return [
         column("title", "Name", 24),
+        column("ensembleSeasons", "Spielzeiten", 24),
         column("contact", "Kontakt", 25),
         column("hair", "Haare / Perücke", 27),
         column("description", "Arbeitsnotizen", 42),
@@ -392,6 +394,7 @@ export function exportRows(input: ExportInput): ExportRow[] {
           ),
           imageIds: readable(record.data.imageIds),
           season: readable(record.data.season),
+          ensembleSeasons: record.kind === "actors" ? actorSeasons(record.data).join(", ") : "",
           premiere: dateValue(record.data.premiere) ?? "",
           contacts: productionContactsText(record, input.members, input.references?.people),
         },

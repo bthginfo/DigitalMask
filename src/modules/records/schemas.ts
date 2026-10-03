@@ -2,11 +2,21 @@ import { z } from "zod";
 import type { RecordKind } from "@/shared/contracts";
 import { categoryScopes } from "@/shared/domain-categories";
 import { maskPlanSchema } from "@/modules/mask-plans/schema";
+import { seasonKey } from "@/shared/period-filter";
 const short = z.string().trim().max(200);
 const title = short.min(1, "Ein Titel ist erforderlich.");
 const note = z.string().max(20000).default("");
 const id = z.string().max(100).default("");
 const ids = z.array(z.string().max(100)).max(100).default([]);
+export const seasonSchema = z
+  .string()
+  .trim()
+  .max(40)
+  .refine(
+    (value) => !!seasonKey(value),
+    "Bitte eine gültige Spielzeit eintragen, zum Beispiel 2026/2027.",
+  )
+  .transform((value) => seasonKey(value)!);
 const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const dateTime = z
   .string()
@@ -189,6 +199,11 @@ export const schemas: Record<RecordKind, z.ZodType> = {
     portraitSourceUrl: z.string().max(1000).default(""),
     portraitCredit: short.default(""),
     portraitFileId: id,
+    ensembleSeasons: z
+      .array(seasonSchema)
+      .max(100)
+      .transform((values) => [...new Set(values)])
+      .optional(),
   }),
   characters: z.object({ name: title, productionId: id, description: note, imageIds: ids }),
   casting: z.object({
@@ -219,6 +234,7 @@ export const schemas: Record<RecordKind, z.ZodType> = {
     status: z.enum(["backlog", "todo", "doing", "review", "done"]).default("todo"),
     due: z.string().max(40).default(""),
     checklist,
+    season: z.union([seasonSchema, z.literal("")]).optional(),
   }),
   events: z.object({
     title: short.default(""),

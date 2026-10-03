@@ -1,4 +1,4 @@
-import { textValue, type DomainRecord } from "./contracts";
+import { textValue, type DomainRecord, type RecordData } from "./contracts";
 
 export interface PeriodFilter {
   year?: number;
@@ -29,6 +29,40 @@ export function seasonForDate(productions: DomainRecord[] = [], date = new Date(
       .map((row) => textValue(row.data.season))
       .find((season) => seasonBounds(season)?.from === `${start}-08-01`) || `${start}/${start + 1}`
   );
+}
+
+/** Keep one identity for equivalent labels such as 2026/27 and 2026 / 2027. */
+export function seasonKey(value: unknown) {
+  const bounds = seasonBounds(textValue(value).trim());
+  return bounds ? `${bounds.from.slice(0, 4)}/${bounds.to.slice(0, 4)}` : undefined;
+}
+
+/** Global views start current; an opened historical production keeps its own context. */
+export function initialPeriod(productions: DomainRecord[] = [], productionId = ""): PeriodFilter {
+  const production = productions.find((row) => row.id === productionId);
+  return { season: textValue(production?.data.season) || seasonForDate(productions) };
+}
+
+/** Missing legacy membership means today's initial catalogue, while [] is an explicit removal. */
+export function actorSeasons(data: RecordData, fallback = seasonForDate()) {
+  const values = Array.isArray(data.ensembleSeasons) ? data.ensembleSeasons : [fallback];
+  return [...new Set(values.map(seasonKey).filter((value): value is string => !!value))];
+}
+
+export function withEnsembleSeason(data: RecordData, season: string): string[] {
+  const key = seasonKey(season);
+  if (!key) throw new Error("Bitte eine gültige Spielzeit auswählen, zum Beispiel 2026/2027.");
+  return [
+    ...new Set([...actorSeasons(data, Object.hasOwn(data, "name") ? seasonForDate() : key), key]),
+  ].sort((a, b) => b.localeCompare(a));
+}
+
+export function teamTaskSeason(data: RecordData, createdAt: string) {
+  const explicit = seasonKey(data.season);
+  if (explicit) return explicit;
+  const due = new Date(textValue(data.due));
+  const date = Number.isFinite(due.getTime()) ? due : new Date(createdAt);
+  return Number.isFinite(date.getTime()) ? seasonForDate([], date) : undefined;
 }
 
 export function dateMatchesPeriod(date: string, filter: PeriodFilter) {
@@ -64,12 +98,29 @@ export function recordMatchesPeriod(
   filter: PeriodFilter,
   productions: DomainRecord[] = [],
 ) {
+  if (record.kind === "actors") {
+    const seasons = actorSeasons(record.data);
+    const selected = seasonKey(filter.season);
+    if (!filter.season && !filter.year) return true;
+    return seasons.some((season) => {
+      const bounds = seasonBounds(season)!;
+      return (
+        (!filter.season || season === selected) &&
+        (!filter.year ||
+          filter.year === Number(bounds.from.slice(0, 4)) ||
+          filter.year === Number(bounds.to.slice(0, 4)))
+      );
+    });
+  }
   const production =
     record.kind === "productions"
       ? record
       : productions.find((row) => row.id === record.data.productionId);
   // General team documents remain available alongside season-specific productions.
   const dated = ["time", "attendance", "events", "leave"].includes(record.kind);
+  if (filter.season && record.kind === "tasks" && !record.data.productionId) {
+    if (teamTaskSeason(record.data, record.createdAt) !== seasonKey(filter.season)) return false;
+  }
   if (filter.season && production && !dated) {
     const assignedSeason = textValue(production.data.season);
     const selectedBounds = seasonBounds(filter.season);
@@ -109,16 +160,32 @@ export function recordMatchesPeriod(
 }
 
 export function periodOptions(records: DomainRecord[], productions: DomainRecord[] = []) {
+  const seasonLabels = new Map<string, string>();
+  const addSeason = (label: string) => {
+    const key = seasonKey(label) || label;
+    if (key && !seasonLabels.has(key)) seasonLabels.set(key, label);
+  };
+  productions.forEach((row) => addSeason(textValue(row.data.season)));
+  records.forEach((record) => {
+    if (record.kind === "actors") actorSeasons(record.data).forEach(addSeason);
+    else if (record.kind === "tasks" && !record.data.productionId)
+      addSeason(teamTaskSeason(record.data, record.createdAt) || "");
+  });
   return {
     years: Array.from(
       new Set(
         records
-          .map((record) => recordYear(record, productions))
+          .flatMap((record) =>
+            record.kind === "actors"
+              ? actorSeasons(record.data).flatMap((season) => {
+                  const bounds = seasonBounds(season)!;
+                  return [Number(bounds.from.slice(0, 4)), Number(bounds.to.slice(0, 4))];
+                })
+              : [recordYear(record, productions)],
+          )
           .filter((year): year is number => !!year),
       ),
     ).sort((a, b) => b - a),
-    seasons: Array.from(
-      new Set(productions.map((row) => textValue(row.data.season)).filter(Boolean)),
-    ).sort((a, b) => b.localeCompare(a, "de")),
+    seasons: Array.from(seasonLabels.values()).sort((a, b) => b.localeCompare(a, "de")),
   };
 }

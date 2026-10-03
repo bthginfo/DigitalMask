@@ -3,7 +3,7 @@ import { useState } from "react";
 import { FileText, Plus } from "lucide-react";
 import type { DomainRecord } from "@/shared/contracts";
 import { documentSections, sectionName, lookTitle } from "@/shared/document-sections";
-import { recordMatchesPeriod, type PeriodFilter } from "@/shared/period-filter";
+import { initialPeriod, recordMatchesPeriod, type PeriodFilter } from "@/shared/period-filter";
 import { value } from "@/shared/client-api";
 import { useWorkspace } from "@/components/workspace-context";
 import { Button, Empty, ExportButton, PageHeader } from "@/components/ui";
@@ -17,7 +17,9 @@ export function DocumentationModule() {
   const [tab, setTab] = useState("looks"),
     [production, setProduction] = useState(""),
     [search, setSearch] = useState(""),
-    [period, setPeriod] = useState<PeriodFilter>({}),
+    [period, setPeriod] = useState<PeriodFilter>(() =>
+      initialPeriod(workspace.records.productions),
+    ),
     [editing, setEditing] = useState(false),
     [detail, setDetail] = useState<DomainRecord | null>(null),
     [exporting, setExporting] = useState(false),

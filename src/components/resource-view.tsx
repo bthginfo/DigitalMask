@@ -31,6 +31,7 @@ import relationStyles from "./record-links.module.css";
 import { actorPortrait } from "@/modules/ensemble/portrait-layout";
 import { ActorPortrait } from "@/modules/ensemble/components/actor-portrait";
 import portraitStyles from "@/modules/ensemble/components/actor-portrait.module.css";
+import { initialPeriod, teamTaskSeason } from "@/shared/period-filter";
 
 function recordTitle(record: DomainRecord, workspace: Workspace) {
   if (record.kind === "looks") return lookTitle(record.data, workspace.records.actors);
@@ -579,6 +580,12 @@ function GenericRecordDetail({
             parentId: current.id,
             productionId: current.data.productionId,
             sprintId: current.data.sprintId,
+            season:
+              value(current.data, "season") ||
+              (current.data.productionId
+                ? initialPeriod(workspace.records.productions, value(current.data, "productionId"))
+                    .season
+                : teamTaskSeason(current.data, current.createdAt)),
           }}
           onClose={() => setSubtask(false)}
         />
@@ -604,6 +611,7 @@ export function ResourceView({
   headerActions,
   canCreate,
   lockedProductionId,
+  exportFilters = {},
 }: {
   kind: RecordKind;
   title?: string;
@@ -614,6 +622,7 @@ export function ResourceView({
   headerActions?: React.ReactNode;
   canCreate?: boolean;
   lockedProductionId?: string;
+  exportFilters?: Record<string, string>;
 }) {
   const { workspace } = useWorkspace();
   const [search, setSearch] = useState("");
@@ -888,12 +897,18 @@ export function ResourceView({
         )
       ) : (
         <Empty
-          title={search ? "Keine passenden Einträge" : `Hier beginnen eure ${labels[kind][0]}.`}
+          title={
+            search || (kind === "actors" && filter)
+              ? "Keine passenden Einträge"
+              : `Hier beginnen eure ${labels[kind][0]}.`
+          }
           description={
             search
               ? "Versuche einen anderen Suchbegriff oder passe die Filter an."
-              : description ||
-                "Lege den ersten Eintrag an. Alle freigegebenen Informationen sind dann für euer Team an einem Ort erreichbar."
+              : kind === "actors" && filter
+                ? "Für diese Auswahl sind keine Einträge vorhanden. Wähle eine andere Spielzeit oder lege einen Eintrag an."
+                : description ||
+                  "Lege den ersten Eintrag an. Alle freigegebenen Informationen sind dann für euer Team an einem Ort erreichbar."
           }
           action={allowedCreate ? `${labels[kind][1]} anlegen` : undefined}
           onAction={() => setEditor(true)}
@@ -919,9 +934,12 @@ export function ResourceView({
       {exporting && (
         <ExportDialog
           kind={kind}
-          filters={
-            typeof defaults.productionId === "string" ? { productionId: defaults.productionId } : {}
-          }
+          filters={{
+            ...(typeof defaults.productionId === "string"
+              ? { productionId: defaults.productionId }
+              : {}),
+            ...exportFilters,
+          }}
           onClose={() => setExporting(false)}
         />
       )}

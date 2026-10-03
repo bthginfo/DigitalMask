@@ -1,7 +1,7 @@
 "use client";
 import { PeriodPicker, periodExportFilters } from "@/components/period-picker";
 import {
-  seasonForDate,
+  initialPeriod,
   seasonBounds,
   recordMatchesPeriod,
   type PeriodFilter,
@@ -96,9 +96,9 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
     query.addEventListener("change", update);
     return () => query.removeEventListener("change", update);
   }, []);
-  const [period, setPeriod] = useState<PeriodFilter>(() => ({
-    season: seasonForDate(workspace.records.productions),
-  }));
+  const [period, setPeriod] = useState<PeriodFilter>(() =>
+    initialPeriod(workspace.records.productions, productionId),
+  );
   const [view, setView] = useState("month");
   const [teamSpan, setTeamSpan] = useState("week");
   const [categoriesOpen, setCategoriesOpen] = useState(false);

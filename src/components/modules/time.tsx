@@ -4,6 +4,7 @@ import { Check, Pencil, Plus, UploadCloud } from "lucide-react";
 import { PeriodPicker, periodExportFilters, weekForPeriod } from "@/components/period-picker";
 import {
   dateMatchesPeriod,
+  initialPeriod,
   seasonForDate,
   recordMatchesPeriod,
   type PeriodFilter,
@@ -46,9 +47,9 @@ export function WorkTimeModule({
   embedded?: boolean;
 }) {
   const { workspace, action, refresh, online, busy } = useWorkspace();
-  const [period, setPeriod] = useState<PeriodFilter>(() => ({
-    season: seasonForDate(workspace.records.productions),
-  }));
+  const [period, setPeriod] = useState<PeriodFilter>(() =>
+    initialPeriod(workspace.records.productions, productionId),
+  );
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const categoryOptions = categoriesFor("time", workspace.records.categories);
   const [week, setWeek] = useState(weekStart());

@@ -21,6 +21,7 @@ import { RepeatableList } from "./repeatable-list";
 import { categoriesFor } from "@/shared/domain-categories";
 import { CastingImpact } from "./casting-impact";
 import { numberDraft, parseNumberDraft } from "@/shared/number-draft";
+import { actorSeasons, initialPeriod, seasonKey, teamTaskSeason } from "@/shared/period-filter";
 
 function initialData(kind: RecordKind): RecordData {
   return {
@@ -85,16 +86,42 @@ function GenericResourceEditor({
   onSaved?: (record: DomainRecord) => void;
 }) {
   const { workspace, save, busy } = useWorkspace();
-  const [data, setData] = useState<RecordData>({
-    ...initialData(kind),
-    ...(kind === "tasks"
-      ? { assigneeIds: workspace.user.role === "superadmin" ? [] : [workspace.user.id] }
-      : {}),
-    ...(kind === "materials"
-      ? { category: categoriesFor("materials", workspace.records.categories)[0]?.key || "" }
-      : {}),
-    ...defaults,
-    ...record?.data,
+  const taskSeason = (taskData: RecordData, createdAt?: string) => {
+    if (value(taskData, "season")) return value(taskData, "season");
+    if (taskData.productionId)
+      return initialPeriod(workspace.records.productions, value(taskData, "productionId")).season;
+    return (
+      teamTaskSeason(taskData, createdAt || localDate()) ||
+      initialPeriod(workspace.records.productions).season
+    );
+  };
+  const [data, setData] = useState<RecordData>(() => {
+    const merged = { ...defaults, ...record?.data };
+    const parent = workspace.records.tasks.find((task) => task.id === merged.parentId);
+    return {
+      ...initialData(kind),
+      ...(kind === "tasks"
+        ? {
+            assigneeIds: workspace.user.role === "superadmin" ? [] : [workspace.user.id],
+            season: parent
+              ? taskSeason(parent.data, parent.createdAt)
+              : taskSeason(
+                  {
+                    ...merged,
+                    ...(lockedProductionId !== undefined
+                      ? { productionId: lockedProductionId }
+                      : {}),
+                  },
+                  record?.createdAt,
+                ),
+          }
+        : {}),
+      ...(kind === "actors" ? { ensembleSeasons: actorSeasons(merged) } : {}),
+      ...(kind === "materials"
+        ? { category: categoriesFor("materials", workspace.records.categories)[0]?.key || "" }
+        : {}),
+      ...merged,
+    };
   });
   const productionContext =
     lockedProductionId ??
@@ -104,7 +131,20 @@ function GenericResourceEditor({
   const [error, setError] = useState("");
   const [numberDrafts, setNumberDrafts] = useState<Record<string, string>>({});
   const change = (key: string, next: unknown) =>
-    setData((current) => ({ ...current, [key]: next }));
+    setData((current) => {
+      const parent =
+        kind === "tasks" && key === "parentId"
+          ? workspace.records.tasks.find((task) => task.id === next)
+          : undefined;
+      return {
+        ...current,
+        [key]: next,
+        ...(parent ? { season: taskSeason(parent.data, parent.createdAt) } : {}),
+        ...(kind === "tasks" && key === "productionId"
+          ? { season: initialPeriod(workspace.records.productions, String(next || "")).season }
+          : {}),
+      };
+    });
   const configuredFields = fields[kind] || [];
   const selectedTemplate = workspace.records.templates.find(
     (template) => template.id === data.templateId,
@@ -145,6 +185,21 @@ function GenericResourceEditor({
           })! * factor;
       }
       if (kind === "tasks" && productionContext === "") result.sprintId = "";
+      if (kind === "tasks" && value(result, "season").trim()) {
+        const normalized = seasonKey(value(result, "season"));
+        if (!normalized)
+          throw new Error("Bitte gib die Spielzeit als Jahr/Jahr ein, z. B. 2026/2027.");
+        result.season = normalized;
+      }
+      if (kind === "actors") {
+        const seasons = ids(result, "ensembleSeasons")
+          .map((season) => season.trim())
+          .filter(Boolean);
+        const normalized = seasons.map((season) => seasonKey(season));
+        if (normalized.some((season) => !season))
+          throw new Error("Bitte gib jede Ensemble-Spielzeit als Jahr/Jahr ein, z. B. 2026/2027.");
+        result.ensembleSeasons = [...new Set(normalized)];
+      }
       if (Array.isArray(result.checklist))
         result.checklist = (result.checklist as { text: string; done: boolean }[]).filter((item) =>
           item.text.trim(),
@@ -227,8 +282,8 @@ function GenericResourceEditor({
                 (x) => [x.id, value(x.data, "title") || value(x.data, "name")] as [string, string],
               )
           : []);
-    if (field.type === "lines" || field.type === "checklist")
-      return (
+    if (field.type === "lines" || field.type === "checklist") {
+      const list = (
         <RepeatableList
           key={field.key}
           label={field.label.replace(/\s*\(.*\)/, "")}
@@ -245,6 +300,18 @@ function GenericResourceEditor({
           }
         />
       );
+      return field.key === "ensembleSeasons" ? (
+        <div className="field-wide" key={field.key}>
+          {list}
+          <p className="small muted">
+            Eine Spielzeit pro Eintrag, z. B. 2026/2027. Ohne Einträge erscheint die Person nur
+            unter „Alle Spielzeiten“.
+          </p>
+        </div>
+      ) : (
+        list
+      );
+    }
     if (field.type === "multi")
       return (
         <fieldset className="form-multi" key={field.key}>

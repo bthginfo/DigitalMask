@@ -12,7 +12,7 @@ import {
 } from "@dnd-kit/core";
 import { CalendarDays, CheckSquare, ChevronDown, Flag, Plus } from "lucide-react";
 import { PeriodPicker, periodExportFilters } from "@/components/period-picker";
-import { recordMatchesPeriod, type PeriodFilter } from "@/shared/period-filter";
+import { initialPeriod, recordMatchesPeriod, type PeriodFilter } from "@/shared/period-filter";
 import type { DomainRecord } from "@/shared/contracts";
 import { dateLabel, ids, initials, value } from "@/shared/client-api";
 import { useWorkspace } from "../workspace-context";
@@ -177,7 +177,9 @@ function Column({
 export function TasksModule({ productionId = "" }: { productionId?: string }) {
   const { workspace, save } = useWorkspace();
   const project = productionId;
-  const [period, setPeriod] = useState<PeriodFilter>({});
+  const [period, setPeriod] = useState<PeriodFilter>(() =>
+    initialPeriod(workspace.records.productions, productionId),
+  );
   const [sprint, setSprint] = useState("");
   const [mine, setMine] = useState(false);
   const [search, setSearch] = useState("");
@@ -329,6 +331,8 @@ export function TasksModule({ productionId = "" }: { productionId?: string }) {
           defaults={{
             productionId: project,
             sprintId: sprint,
+            season:
+              period.season || initialPeriod(workspace.records.productions, productionId).season,
             ...(editor.status ? { status: editor.status } : {}),
             ...(editor.parentId
               ? {

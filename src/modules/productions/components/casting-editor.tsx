@@ -7,6 +7,7 @@ import { useWorkspace } from "@/components/workspace-context";
 import { Button, ErrorMessage, Modal } from "@/components/ui";
 import { ResourceEditor } from "@/components/resource-editor";
 import { CastingImpact } from "@/components/casting-impact";
+import { initialPeriod } from "@/shared/period-filter";
 export function CastingEditor({
   record,
   defaults = {},
@@ -178,7 +179,15 @@ export function CastingEditor({
       {creating && (
         <ResourceEditor
           kind={creating}
-          defaults={creating === "characters" ? { productionId: production } : {}}
+          defaults={
+            creating === "characters"
+              ? { productionId: production }
+              : {
+                  ensembleSeasons: [
+                    initialPeriod(workspace.records.productions, production).season,
+                  ],
+                }
+          }
           lockedProductionId={creating === "characters" ? production : undefined}
           onClose={() => setCreating(null)}
           onSaved={(saved) => {

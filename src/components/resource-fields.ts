@@ -83,6 +83,7 @@ export const fields: Partial<Record<RecordKind, Field[]>> = {
   ],
   actors: [
     { key: "name", label: "Name", required: true },
+    { key: "ensembleSeasons", label: "Ensemble-Spielzeiten", type: "lines" },
     { key: "contact", label: "Kontakt", placeholder: "Telefon oder E-Mail" },
     { key: "hair", label: "Haare / Haarfarbe", type: "textarea" },
     { key: "wigSize", label: "Perückenmaß / Kopfumfang", placeholder: "z. B. 56 cm" },
@@ -120,6 +121,7 @@ export const fields: Partial<Record<RecordKind, Field[]>> = {
     title,
     description,
     production,
+    { key: "season", label: "Spielzeit", placeholder: "2026/2027" },
     { key: "sprintId", label: "Sprint", type: "select", source: "sprints" },
     { key: "parentId", label: "Übergeordnete Aufgabe", type: "select", source: "tasks" },
     { key: "assigneeIds", label: "Verantwortliche", type: "multi", source: "members" },

@@ -28,6 +28,7 @@ import {
   normalizeEventCategory,
 } from "@/modules/calendar/categories";
 import { validateRecord } from "./schemas";
+import { applySeasonDefaults } from "./season-defaults";
 import { findRecord, assertProject, serialize } from "./repository";
 import { invalidateWorkspace } from "./workspace";
 import {
@@ -317,7 +318,10 @@ export async function saveRecord(
     const existing = existingId ? await findRecord(context, existingId, kind, tx, true) : undefined;
     assertWrite(context, kind, existing);
     if (existing) await assertRead(context, existing, tx);
-    const data = validateRecord(kind, { ...existing?.data, ...input });
+    const data = validateRecord(
+      kind,
+      applySeasonDefaults(kind, { ...existing?.data, ...input }, existing?.createdAt.toISOString()),
+    );
     if (kind === "events" && !canSetCalendarParticipants(context.user, data))
       throw new HttpError(
         403,

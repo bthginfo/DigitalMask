@@ -67,12 +67,23 @@ describe("ensemble authorization and transactional update", () => {
     expect(mocks.getEnsemble).not.toHaveBeenCalled();
     expect(mocks.db.select).not.toHaveBeenCalled();
   });
+  it("rejects invalid target seasons before scraping or opening the database", async () => {
+    await expect(ensemblePreview(context, "2026/2028")).rejects.toThrow();
+    await expect(importEnsemble(context, ["2331"], "2026/2028")).rejects.toThrow();
+    expect(mocks.getEnsemble).not.toHaveBeenCalled();
+    expect(mocks.db.select).not.toHaveBeenCalled();
+  });
   it("updates the same actor ID and leaves unrelated actors and casting links intact", async () => {
     const rows = [
       {
         id: "existing",
         version: 2,
-        data: { name: "Michael Amelung", notes: "Lena", imageIds: ["own-photo"] },
+        data: {
+          name: "Michael Amelung",
+          notes: "Lena",
+          imageIds: ["own-photo"],
+          ensembleSeasons: ["2022/2023"],
+        },
       },
       { id: "extra", version: 1, data: { name: "Gast" } },
     ];
@@ -104,8 +115,14 @@ describe("ensemble authorization and transactional update", () => {
       }),
     };
     mocks.db.transaction.mockImplementation(async (callback) => callback(tx));
-    const result = await importEnsemble(context, ["2331"]);
-    expect(result).toMatchObject({ created: 0, updated: 1, images: 0, errors: [] });
+    const result = await importEnsemble(context, ["2331"], "2026 / 27");
+    expect(result).toMatchObject({
+      created: 0,
+      updated: 1,
+      images: 0,
+      errors: [],
+      season: "2026/2027",
+    });
     expect(updated).toEqual([
       {
         id: "existing",
@@ -114,6 +131,7 @@ describe("ensemble authorization and transactional update", () => {
           notes: "Lena",
           imageIds: ["own-photo"],
           sourceId: person.sourceId,
+          ensembleSeasons: ["2026/2027", "2022/2023"],
         }),
       },
     ]);
@@ -125,7 +143,11 @@ describe("ensemble authorization and transactional update", () => {
     const { validateRecord } = await import("../src/modules/records/schemas");
     const { importedActorData } = await import("../src/modules/ensemble/matching");
     const rows = [
-      { id: "existing", version: 2, data: validateRecord("actors", importedActorData(person)) },
+      {
+        id: "existing",
+        version: 2,
+        data: validateRecord("actors", importedActorData(person, {}, "2022/23")),
+      },
     ];
     mocks.db.select.mockReturnValue({ from: () => ({ where: () => Promise.resolve(rows) }) });
     const update = vi.fn();
@@ -141,7 +163,11 @@ describe("ensemble authorization and transactional update", () => {
         update,
       }),
     );
-    expect(await importEnsemble(context, ["2331"])).toMatchObject({ unchanged: 1, updated: 0 });
+    expect(await importEnsemble(context, ["2331"], "2022/2023")).toMatchObject({
+      unchanged: 1,
+      updated: 0,
+      season: "2022/2023",
+    });
     expect(update).not.toHaveBeenCalled();
     expect(mocks.invalidate).not.toHaveBeenCalled();
   });

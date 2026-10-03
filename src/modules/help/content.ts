@@ -68,6 +68,7 @@ export const helpArticles: HelpArticle[] = [
       "Produktionsaufgaben gehören ins Kanban des Stücks; allgemeine Aufgaben gehören ins Teamboard.",
     steps: [
       "Öffne im Stück Aufgaben & Sprints. Neue Aufgaben bleiben dieser Produktion zugeordnet. Im Teamboard wird keine Produktion zugeteilt.",
+      "Das Teamboard startet mit der aktuellen Spielzeit von August bis Juli. Über Spielzeit findest du frühere Aufgaben oder Alle Spielzeiten. Neue Teamaufgaben übernehmen die gewählte Spielzeit; im Aufgabenformular kannst du sie ändern. Unteraufgaben übernehmen die Spielzeit der Hauptaufgabe. In einem älteren Stück siehst du automatisch dessen eigene Spielzeit.",
       "Ergänze Verantwortliche, Priorität, Fälligkeitsdatum und eine Checkliste. Unteraufgaben behalten den Arbeitsraum ihrer übergeordneten Aufgabe.",
       "Verschiebe eine Aufgabe zwischen den Spalten oder ändere ihren Status im Auswahlfeld. Das funktioniert auch am Smartphone ohne Ziehen.",
       "Alle freigegebenen Teammitglieder planen Sprints innerhalb der Produktion mit frei gewähltem Start, Ende und Ziel. Die Sprintauswahl filtert das Board.",
@@ -95,11 +96,12 @@ export const helpArticles: HelpArticle[] = [
     intro: "Der zentrale Katalog sammelt Informationen unabhängig von einer einzelnen Produktion.",
     steps: [
       "Alle freigegebenen Teammitglieder legen Schauspieler an und pflegen Name, Kontakt, Haare, Perückenmaß und wichtige Hinweise.",
+      "Der Katalog zeigt zuerst das Ensemble der aktuellen Spielzeit. Wähle eine andere Spielzeit oder Alle Spielzeiten, um frühere Einträge zu sehen. Unter Bearbeiten kannst du bei einer Person Spielzeiten einzeln hinzufügen oder entfernen. Eine Person kann in mehreren Spielzeiten dabei sein; ihre Maskenangaben und Besetzungen bleiben im selben Profil.",
       "Jede Schauspielperson hat ein Porträt. Ein neues Bild ersetzt das bisherige Porträt. Der Kartenausschnitt richtet sich am erkannten Gesicht aus; weitere Dokumente kannst du zusätzlich hochladen.",
       "Klicke in einer Besetzung oder Figur auf den Schauspielnamen, um den Katalogeintrag zu öffnen. Unter Spielt mit in findest du eure verknüpften Produktionen und Rollen sowie die Aufschriebe. Standard ist die aktuelle Spielzeit; über den Filter siehst du auch frühere oder alle Spielzeiten.",
-      "Admins können über Ensemble laden die offizielle Liste des Stadttheaters ansehen. Die Vorschau zeigt, welche Personen neu sind, aktualisiert werden oder nicht eindeutig zugeordnet werden können. Wähle die gewünschten Personen und klicke Importieren.",
+      "Admins können über Ensemble laden die offizielle Liste des Stadttheaters ansehen. Die Ziel-Spielzeit ist zunächst die aktuelle, auch wenn du gerade ältere Einträge ansiehst. Die Website zeigt die derzeitige Liste; sie liefert kein historisches Archiv. Wähle vor dem Laden die passende Ziel-Spielzeit. Die Vorschau zeigt neue Personen, Aktualisierungen und unklare Zuordnungen. Wähle die gewünschten Personen und klicke Importieren.",
       "Der Import übernimmt Namen und Porträts von Ensemble und Gästen aus Schauspiel und Jungem Theater. Eure Maskenangaben und Produktionszuordnungen bleiben erhalten; pro Person wird ein Porträt verwendet. Theaterbiografien und Stücklisten von der Theaterwebsite werden nicht angezeigt. Zusätzliche Schauspieler bleiben im Katalog.",
-      "Die Angaben werden nur bei einem Import geladen. Ein erneuter Import ergänzt fehlende Fotos und aktualisiert geänderte Angaben; identische Datensätze werden nicht erneut gespeichert.",
+      "Die Angaben werden nur bei einem Import geladen. Ein erneuter Import ergänzt fehlende Fotos, aktualisiert geänderte Angaben und fügt die Ziel-Spielzeit hinzu. Frühere Spielzeiten und zusätzliche Schauspieler bleiben erhalten; identische Datensätze werden nicht erneut gespeichert. Exportieren übernimmt die gewählte Spielzeit.",
     ],
   },
   {
@@ -293,7 +295,11 @@ export const helpFaq = [
   ],
   [
     "Wo kommen allgemeine Aufgaben hin?",
-    "Ins Teamboard. Aufgaben zu einem Stück werden direkt unter dessen Aufgaben & Sprints angelegt.",
+    "Ins Teamboard der aktuellen Spielzeit. Frühere Aufgaben findest du über Spielzeit oder Alle Spielzeiten. Aufgaben zu einem Stück werden direkt unter dessen Aufgaben & Sprints angelegt und bleiben in seiner Spielzeit sichtbar.",
+  ],
+  [
+    "Wo finde ich das Ensemble und die Aufgaben aus früheren Spielzeiten?",
+    "Die Übersichten starten mit der aktuellen Spielzeit von August bis Juli. Wähle im Spielzeitfilter ein früheres Jahr oder Alle Spielzeiten. Im Schauspielerkatalog kannst du beim Bearbeiten einer Person mehrere Spielzeiten hinterlegen. Die Besetzungen und Maskenangaben bleiben in einem gemeinsamen Profil erhalten.",
   ],
   [
     "Kann eine externe Person ohne Account eingetragen werden?",

@@ -164,3 +164,12 @@ Nach den abschließenden Liveprüfungen werden die angelegten QA-Konten, Testein
 - [x] Bestehende Zeitblöcke am Desktop ziehen und am Smartphone nach längerem Halten verschieben; kurzer Tipp bearbeitet weiterhin, normales Wischen scrollt.
 - [x] Beim Verschieben Dauer und Inhalte erhalten, aufs Zeitraster runden und den Vorstellungsbeginn als Endgrenze beachten. Alle Änderungen bleiben bis Plan speichern lokal; Live-Konflikte erhalten den ursprünglichen Entwurf.
 - [x] Hilfe und Modulbeschreibung an die neuen Abläufe anpassen.
+
+## Aktuelle Spielzeit und historische Ensembles
+
+- [x] Teamboard und zentralen Aufschriebsammelordner mit aktueller Spielzeit öffnen; allgemeine Aufgaben tatsächlich nach ihrer Spielzeit filtern.
+- [x] Historische Produktionen im eigenen Zeitraum öffnen, einschließlich Aufgaben, Kalender und Produktionszeiten.
+- [x] Schauspielerkatalog mit aktueller Spielzeit öffnen, frühere und alle Ensembles anzeigen und mehrere Spielzeiten je unverändertem Profil pflegen.
+- [x] Bestehende Schauspieler der aktuellen Spielzeit und belegten historischen Besetzungen zuordnen, nach Sicherung und Abgleich der Daten und Verknüpfungen.
+- [x] Theaterimport mit eigener validierter Ziel-Spielzeit durchführen und frühere Zuordnungen sowie zusätzliche Schauspieler behalten.
+- [x] Spielzeitfilter für Schauspielerexporte übernehmen und Hilfe sowie technische Dokumentation ergänzen.

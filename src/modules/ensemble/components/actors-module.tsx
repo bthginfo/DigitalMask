@@ -1,13 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Check, Download, ExternalLink, LoaderCircle, Users } from "lucide-react";
 import { ResourceView } from "@/components/resource-view";
 import { Badge, Button, ErrorMessage, Modal } from "@/components/ui";
 import { useWorkspace } from "@/components/workspace-context";
 import { api, initials, post } from "@/shared/client-api";
+import { PeriodPicker, periodExportFilters } from "@/components/period-picker";
+import {
+  initialPeriod,
+  periodOptions,
+  recordMatchesPeriod,
+  seasonKey,
+  type PeriodFilter,
+} from "@/shared/period-filter";
 
 interface Preview {
+  season: string;
   fetchedAt: string;
   summary: { create: number; update: number; conflict: number };
   entries: {
@@ -28,10 +37,18 @@ interface ImportResult {
 export function ActorsModule() {
   const { workspace } = useWorkspace();
   const [open, setOpen] = useState(false);
+  const [period, setPeriod] = useState<PeriodFilter>(() =>
+    initialPeriod(workspace.records.productions),
+  );
   return (
     <>
       <ResourceView
         kind="actors"
+        filter={(record) => recordMatchesPeriod(record, period, workspace.records.productions)}
+        defaults={{
+          ensembleSeasons: [period.season || initialPeriod(workspace.records.productions).season],
+        }}
+        exportFilters={periodExportFilters(period)}
         headerActions={
           workspace.user.role !== "user" ? (
             <Button onClick={() => setOpen(true)}>
@@ -40,14 +57,26 @@ export function ActorsModule() {
             </Button>
           ) : undefined
         }
-      />
+      >
+        <PeriodPicker
+          compact
+          records={workspace.records.actors}
+          productions={workspace.records.productions}
+          value={period}
+          onChange={setPeriod}
+        />
+      </ResourceView>
       {open && <EnsembleImport onClose={() => setOpen(false)} />}
     </>
   );
 }
 
 function EnsembleImport({ onClose }: { onClose: () => void }) {
-  const { refresh, notify } = useWorkspace();
+  const { workspace, refresh, notify } = useWorkspace();
+  const seasonListId = useId();
+  const [targetSeason, setTargetSeason] = useState(
+    initialPeriod(workspace.records.productions).season || "",
+  );
   const [preview, setPreview] = useState<Preview | null>(null);
   const [selection, setSelection] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -59,7 +88,10 @@ function EnsembleImport({ onClose }: { onClose: () => void }) {
     setLoading(true);
     setError("");
     try {
-      const next = await api<Preview>("/api/ensemble");
+      const season = seasonKey(targetSeason);
+      if (!season)
+        throw new Error("Bitte gib die Ziel-Spielzeit als Jahr/Jahr ein, z. B. 2026/2027.");
+      const next = await api<Preview>(`/api/ensemble?${new URLSearchParams({ season })}`);
       setPreview(next);
       setSelection(
         next.entries.filter((entry) => entry.action !== "conflict").map((entry) => entry.sourceId),
@@ -73,6 +105,8 @@ function EnsembleImport({ onClose }: { onClose: () => void }) {
     }
   };
   const runImport = async () => {
+    if (!preview) return;
+    const importSeason = preview.season;
     setImporting(true);
     setProgress(0);
     setError("");
@@ -87,7 +121,10 @@ function EnsembleImport({ onClose }: { onClose: () => void }) {
       for (let offset = 0; offset < selection.length; offset += 4) {
         const batch = selection.slice(offset, offset + 4);
         try {
-          const next = await post<ImportResult>("/api/ensemble", { sourceIds: batch });
+          const next = await post<ImportResult>("/api/ensemble", {
+            sourceIds: batch,
+            season: importSeason,
+          });
           combined.created += next.created;
           combined.updated += next.updated;
           combined.unchanged += next.unchanged;
@@ -153,11 +190,38 @@ function EnsembleImport({ onClose }: { onClose: () => void }) {
           Schauspieler werden ergänzt, vorhandene bei eindeutiger Zuordnung aktualisiert. Eure
           zusätzlichen Schauspieler, Maskenhinweise und Produktionszuordnungen bleiben erhalten.
         </p>
+        <label>
+          Ziel-Spielzeit
+          <input
+            value={targetSeason}
+            list={seasonListId}
+            disabled={loading || importing || !!result}
+            placeholder="2026/2027"
+            onChange={(event) => {
+              setTargetSeason(event.target.value);
+              setPreview(null);
+              setSelection([]);
+              setError("");
+            }}
+          />
+          <datalist id={seasonListId}>
+            {periodOptions(workspace.records.actors, workspace.records.productions).seasons.map(
+              (season) => (
+                <option key={season} value={season} />
+              ),
+            )}
+          </datalist>
+        </label>
+        <p className="small muted">
+          Die Website zeigt das heutige Ensemble. Die ausgewählten Personen werden dieser Spielzeit
+          zugeordnet; frühere Spielzeiten bleiben erhalten.
+        </p>
         <ErrorMessage message={error} />
         {result ? (
           <section className="ensemble-result" aria-live="polite">
             <Check size={24} />
             <h3>Import abgeschlossen</h3>
+            <p className="small muted">Spielzeit {preview?.season}</p>
             <p>
               {result.created} neu · {result.updated} aktualisiert · {result.unchanged} unverändert
             </p>
@@ -178,6 +242,7 @@ function EnsembleImport({ onClose }: { onClose: () => void }) {
         ) : preview ? (
           <>
             <div className="ensemble-summary">
+              <Badge>Spielzeit {preview.season}</Badge>
               <Badge tone="green">{preview.summary.create} neu</Badge>
               <Badge>{preview.summary.update} aktualisieren</Badge>
               {preview.summary.conflict > 0 && (

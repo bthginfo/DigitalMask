@@ -27,6 +27,7 @@ import { RecordDetail } from "../resource-view";
 import { TimerPanel } from "./time";
 import { expandEvents } from "./calendar";
 import { statusLabels } from "../resource-fields";
+import { initialPeriod, recordMatchesPeriod } from "@/shared/period-filter";
 export function TodayModule({ navigate }: { navigate: (module: string) => void }) {
   const { workspace, action, notify } = useWorkspace();
   const showTimer = isStaff(workspace.user);
@@ -36,7 +37,14 @@ export function TodayModule({ navigate }: { navigate: (module: string) => void }
   const week = weekStart();
   const weekEnd = shiftDate(week, 6);
   const myTasks = workspace.records.tasks.filter(
-    (x) => ids(x.data, "assigneeIds").includes(workspace.user.id) && x.data.status !== "done",
+    (x) =>
+      ids(x.data, "assigneeIds").includes(workspace.user.id) &&
+      x.data.status !== "done" &&
+      recordMatchesPeriod(
+        x,
+        initialPeriod(workspace.records.productions),
+        workspace.records.productions,
+      ),
   );
   const upcomingEvents = expandEvents(
     workspace.records.events.filter((x) =>
@@ -238,7 +246,7 @@ export function TodayModule({ navigate }: { navigate: (module: string) => void }
                       <strong>{value(task.data, "title")}</strong>
                       <p className="small muted">
                         {(workspace.records.productions.find((x) => x.id === task.data.productionId)
-                          ?.data.title as string) || "Produktion"}
+                          ?.data.title as string) || "Teamboard"}
                         {task.data.due ? ` · bis ${dateLabel(value(task.data, "due"))}` : ""}
                       </p>
                     </div>
