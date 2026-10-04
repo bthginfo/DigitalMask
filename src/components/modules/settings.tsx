@@ -6,7 +6,7 @@ import { Badge, Button, ErrorMessage, Modal, PageHeader, Section } from "../ui";
 import { AppearanceCard } from "@/modules/profile/components/appearance-card";
 import { PushCard } from "@/modules/notifications/components/push-card";
 import { PasswordInput } from "../password-input";
-export function SettingsModule() {
+export function SettingsModule({ navigate }: { navigate?: (module: string) => void }) {
   const { workspace, action, busy } = useWorkspace();
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -59,7 +59,10 @@ export function SettingsModule() {
       )}
       <div className="settings-grid">
         <AppearanceCard key={workspace.user.id} />
-        <PushCard key={`push:${workspace.user.id}`} />
+        <PushCard
+          key={`push:${workspace.user.id}`}
+          onOpenHelp={navigate ? () => navigate("/?module=help&guide=push") : undefined}
+        />
         <Section title="Dein Profil">
           <div className="panel-content profile">
             <span className="avatar large-avatar">

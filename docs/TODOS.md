@@ -1,5 +1,13 @@
 # Umsetzungsstand
 
+## Ausgewählte Kurzvideos und Smartphone-Anleitung
+
+- [x] iPhone-/iPad- und Android-Installation mit Mitteilungsfreigabe als erste Hilfeanleitung und FAQ ergänzen.
+- [x] Kleine, gekennzeichnete Installationsclips sowie Mitteilungs- und Anwesenheitsclip einbinden.
+- [x] Video erst nach Benutzeraktion laden; native Bedienung, kleine Poster, Textspuren und lesbare Schritte anbieten.
+- [x] Statische Versionen über Vercel ausliefern, ohne Neon-Abfragen, Blob-Kopien oder Offline-Vorabdownload.
+- [x] Handy-/Desktopdarstellung, Videogrößen, Dekodierung und tatsächliche Ladeanfragen gezielt prüfen; Rohmaterial und Testbilder entfernen.
+
 Das Releasepaket enthält die Nutzerergänzungen vom 30. September 2026. Die Module wurden gezielt geprüft; unabhängige Designprüfungen für die neue Oberfläche und Drucklayouts sind bestanden.
 
 ## Geprüfter Produktionsumbau

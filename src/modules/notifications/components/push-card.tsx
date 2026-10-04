@@ -13,7 +13,7 @@ import {
 } from "@/modules/notifications/client";
 import styles from "./push-card.module.css";
 
-export function PushCard() {
+export function PushCard({ onOpenHelp }: { onOpenHelp?: () => void }) {
   const { workspace } = useWorkspace();
   const userId = workspace.user.id;
   const [device, setDevice] = useState<PushDeviceState | null>(null);
@@ -114,7 +114,7 @@ export function PushCard() {
         </p>
         {!device?.active && (
           <div className={styles.setup}>
-            <strong>Auf dem iPhone: Nach der Installation Mitteilungen freigeben</strong>
+            <strong>Nach der Installation Mitteilungen einschalten</strong>
             <ol>
               <li>Öffne DigitalMask über das App-Symbol auf deinem Home-Bildschirm.</li>
               <li>
@@ -122,16 +122,16 @@ export function PushCard() {
                 <strong>Einstellungen → Mitteilungen auf diesem Gerät</strong>.
               </li>
               <li>
-                Tippe auf <strong>Mitteilungen aktivieren</strong> und bei der Nachfrage von iOS auf{" "}
-                <strong>Erlauben</strong>.
+                Tippe auf <strong>Mitteilungen aktivieren</strong> und bei der Nachfrage deines
+                Handys auf <strong>Erlauben</strong> oder <strong>Zulassen</strong>.
               </li>
               <li>
                 Tippe danach auf <strong>Testmitteilung</strong>, um den Empfang zu prüfen.
               </li>
             </ol>
             <p>
-              Die Installation allein aktiviert noch keine Mitteilungen. Dafür brauchst du iOS oder
-              iPadOS 16.4 oder neuer.
+              Die Installation allein aktiviert noch keine Mitteilungen. Auf iPhone oder iPad
+              brauchst du dafür iOS beziehungsweise iPadOS 16.4 oder neuer.
             </p>
           </div>
         )}
@@ -203,6 +203,11 @@ export function PushCard() {
             deines Handys.
           </p>
         </details>
+        {onOpenHelp && (
+          <button type="button" className="text-button" onClick={onOpenHelp}>
+            Anleitung & Kurzvideo ansehen
+          </button>
+        )}
       </div>
     </Section>
   );

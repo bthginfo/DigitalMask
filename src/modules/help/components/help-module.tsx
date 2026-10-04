@@ -3,25 +3,48 @@ import { useState } from "react";
 import { ArrowUpRight, BookOpen, ChevronRight, Compass, Search } from "lucide-react";
 import { Button, Empty, PageHeader } from "@/components/ui";
 import { helpArticles, helpFaq } from "../content";
+import { helpTutorials, type HelpTutorial } from "../tutorials";
 import { FeedbackPanel } from "./feedback-panel";
+import { HelpTutorialList, HelpTutorialPlayer } from "./help-tutorials";
 
 export function HelpModule({
   navigate,
   onStartTour,
+  initialGuide,
 }: {
   navigate: (module: string) => void;
   onStartTour: () => void;
+  initialGuide?: string;
 }) {
   const [tab, setTab] = useState("guides");
   const [search, setSearch] = useState("");
-  const [selected, setSelected] = useState(helpArticles[0].id);
+  const [selected, setSelected] = useState(
+    () => helpArticles.find((article) => article.id === initialGuide)?.id ?? helpArticles[0].id,
+  );
+  const [playing, setPlaying] = useState<HelpTutorial | null>(null);
   const query = search.trim().toLowerCase();
   const articles = helpArticles.filter((article) =>
-    `${article.title} ${article.intro} ${article.steps.join(" ")}`.toLowerCase().includes(query),
+    `${article.title} ${article.intro} ${article.steps.join(" ")} ${helpTutorials
+      .filter((tutorial) => tutorial.guideId === article.id)
+      .map((tutorial) => `${tutorial.title} ${tutorial.description} ${tutorial.steps.join(" ")}`)
+      .join(" ")}`
+      .toLowerCase()
+      .includes(query),
   );
   const article = articles.find((article) => article.id === selected) || articles[0];
   const faq = helpFaq.filter(([question, answer]) =>
     `${question} ${answer}`.toLowerCase().includes(query),
+  );
+  const tutorials = helpTutorials.filter((tutorial) =>
+    `${tutorial.title} ${tutorial.description} ${tutorial.steps.join(" ")} ${
+      tutorial.platform === "ios"
+        ? "iPhone iPad iOS Apple"
+        : tutorial.platform === "android"
+          ? "Android"
+          : "alle Geräte"
+    }`
+      .toLowerCase()
+      .includes(query),
   );
   return (
     <>
@@ -45,6 +68,7 @@ export function HelpModule({
       <div className="tabs help-tabs" aria-label="Hilfebereiche">
         {[
           ["guides", "Anleitungen"],
+          ["videos", "Kurzvideos"],
           ["faq", "Häufige Fragen"],
           ["feedback", "Ideen & Fehler"],
         ].map(([id, label]) => (
@@ -55,6 +79,7 @@ export function HelpModule({
             onClick={() => {
               setTab(id);
               setSearch("");
+              setPlaying(null);
             }}
           >
             {label}
@@ -66,14 +91,19 @@ export function HelpModule({
           <Search size={18} />
           <input
             aria-label="Hilfe durchsuchen"
-            placeholder="Zum Beispiel Bilder, Freiwunsch oder Offline …"
+            placeholder="Zum Beispiel App installieren, Bilder oder Freiwunsch …"
             value={search}
-            onChange={(event) => setSearch(event.target.value)}
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setPlaying(null);
+            }}
           />
         </div>
       )}
       {tab === "feedback" ? (
         <FeedbackPanel />
+      ) : tab === "videos" ? (
+        <HelpTutorialList tutorials={tutorials} onOpen={setPlaying} />
       ) : tab === "faq" ? (
         <section className="faq-list" aria-label="Häufige Fragen">
           {faq.length ? (
@@ -101,7 +131,10 @@ export function HelpModule({
                 key={item.id}
                 className={item.id === article.id ? "active" : ""}
                 aria-current={item.id === article.id ? "page" : undefined}
-                onClick={() => setSelected(item.id)}
+                onClick={() => {
+                  setSelected(item.id);
+                  setPlaying(null);
+                }}
               >
                 {item.title}
                 <ChevronRight size={15} />
@@ -110,7 +143,13 @@ export function HelpModule({
           </nav>
           <label className="help-mobile-select">
             Anleitung auswählen
-            <select value={article.id} onChange={(event) => setSelected(event.target.value)}>
+            <select
+              value={article.id}
+              onChange={(event) => {
+                setSelected(event.target.value);
+                setPlaying(null);
+              }}
+            >
               {articles.map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.title}
@@ -124,6 +163,11 @@ export function HelpModule({
               <h2>{article.title}</h2>
               <p className="muted">{article.intro}</p>
             </header>
+            <HelpTutorialList
+              tutorials={helpTutorials.filter((tutorial) => tutorial.guideId === article.id)}
+              onOpen={setPlaying}
+              compact
+            />
             <ol>
               {article.steps.map((step) => (
                 <li key={step}>{step}</li>
@@ -135,7 +179,13 @@ export function HelpModule({
                 Bereich öffnen
                 <ArrowUpRight size={16} />
               </Button>
-              <button className="text-button" onClick={() => setTab("feedback")}>
+              <button
+                className="text-button"
+                onClick={() => {
+                  setTab("feedback");
+                  setPlaying(null);
+                }}
+              >
                 Noch Fragen oder eine Idee?
               </button>
             </footer>
@@ -146,6 +196,9 @@ export function HelpModule({
           title="Keine passende Anleitung gefunden."
           description="Versuche einen anderen Begriff. Unter Ideen & Fehler kannst du dein Anliegen beschreiben."
         />
+      )}
+      {playing && (
+        <HelpTutorialPlayer key={playing.id} tutorial={playing} onClose={() => setPlaying(null)} />
       )}
     </>
   );

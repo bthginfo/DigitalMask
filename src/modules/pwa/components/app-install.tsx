@@ -11,7 +11,7 @@ interface InstallEvent extends Event {
   userChoice: Promise<{ outcome: string }>;
 }
 
-export function AppInstall() {
+export function AppInstall({ onOpenHelp }: { onOpenHelp?: () => void }) {
   const { notify } = useWorkspace();
   const [install, setInstall] = useState<InstallEvent | null>(null);
   const [needsAppleInstall, setNeedsAppleInstall] = useState(false);
@@ -99,6 +99,16 @@ export function AppInstall() {
             diesem Gerät und tippe auf Mitteilungen aktivieren.
           </p>
           <footer className="dialog-footer">
+            {onOpenHelp && (
+              <Button
+                onClick={() => {
+                  setInstructions(false);
+                  onOpenHelp();
+                }}
+              >
+                Anleitung & Kurzvideos
+              </Button>
+            )}
             <Button variant="primary" onClick={() => setInstructions(false)}>
               Verstanden
             </Button>

@@ -283,11 +283,16 @@ export function WorkspaceShell() {
         description="Was bei der nächsten Vorstellung wichtig ist: Checklisten, offene Punkte und klare Übergaben."
       />
     ) : activeModule === "help" ? (
-      <HelpModule navigate={navigate} onStartTour={() => setTourRequested(true)} />
+      <HelpModule
+        key={params.get("guide") || "default"}
+        initialGuide={params.get("guide") || undefined}
+        navigate={navigate}
+        onStartTour={() => setTourRequested(true)}
+      />
     ) : activeModule === "exports" ? (
       <ExportsModule />
     ) : (
-      <SettingsModule />
+      <SettingsModule navigate={navigate} />
     );
   return (
     <div className="workspace">
@@ -442,7 +447,7 @@ export function WorkspaceShell() {
         <footer className="workspace-footer">
           <span>DigitalMask · Gemeinsam hinter der Bühne.</span>
           <LiveStatus recovery />
-          <AppInstall />
+          <AppInstall onOpenHelp={() => navigate("/?module=help&guide=app-install")} />
         </footer>
       </div>
       <nav className="bottom-nav" inert={isMobile && mobileMenu} aria-label="Mobile Navigation">

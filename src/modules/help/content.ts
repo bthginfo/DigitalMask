@@ -8,6 +8,23 @@ export type HelpArticle = {
 };
 export const helpArticles: HelpArticle[] = [
   {
+    id: "app-install",
+    title: "App auf dem Smartphone installieren",
+    module: "settings",
+    intro:
+      "Lege DigitalMask auf deinen Startbildschirm. Danach öffnest du sie über das App-Symbol und kannst Mitteilungen einschalten. Eine Installation aus dem App Store oder Play Store ist nicht nötig.",
+    steps: [
+      "iPhone oder iPad: Öffne digitalmask.vercel.app in Safari. Tippe auf Teilen. Je nach Safari-Ansicht findest du Teilen im Seitenmenü oder unter Mehr (…).",
+      "iPhone oder iPad: Wähle Zum Home-Bildschirm beziehungsweise Zu Home-Bildschirm hinzufügen. Fehlt der Eintrag, scrolle in der Liste zu Aktionen bearbeiten und ergänze ihn dort.",
+      "iPhone oder iPad: Lass Als Web-App öffnen eingeschaltet, falls diese Auswahl erscheint, und tippe auf Hinzufügen. Öffne DigitalMask danach über das neue Symbol. Für Mitteilungen brauchst du iOS oder iPadOS 16.4 oder neuer.",
+      "Android: Öffne digitalmask.vercel.app in Chrome. Tippe auf App installieren, falls DigitalMask den Button anbietet, und bestätige die Installation.",
+      "Android: Alternativ öffnest du das Dreipunkt-Menü von Chrome. Wähle Zum Startbildschirm hinzufügen beziehungsweise Zum Home-Bildschirm hinzufügen und dann Installieren. Die Bezeichnung kann je nach Chrome-Version abweichen. Öffne die App danach über ihr Symbol.",
+      "Melde dich in der App an. Unter Mehr → Einstellungen → Mitteilungen auf diesem Gerät tippst du auf Mitteilungen aktivieren. Erlaube die Nachfrage deines Handys. Bei Nicht erlauben oder Blockieren bleibt der Empfang ausgeschaltet.",
+      "Tippe auf Testmitteilung, um den Empfang zu prüfen. Wenn nichts ankommt, prüfe die Mitteilungen in den Handy-Einstellungen und den Fokus- beziehungsweise Nicht-stören-Modus. Die ausführliche Anleitung Mitteilungen auf dem Handy hilft dir weiter.",
+    ],
+    note: "Die Installation schaltet Mitteilungen noch nicht ein. Du entscheidest auf jedem Gerät einzeln. Die Kurzvideos zeigen die Handy-Menüs vereinfacht; Aussehen und Bezeichnungen können je nach Gerät abweichen.",
+  },
+  {
     id: "productions",
     title: "Produktionen, Team & Kontakte",
     module: "productions",
@@ -193,9 +210,10 @@ export const helpArticles: HelpArticle[] = [
     intro:
       "DigitalMask kann dich auch bei geschlossener App über neue Nachrichten, Aufgaben und Änderungen informieren.",
     steps: [
-      "Öffne Einstellungen und Mitteilungen auf diesem Gerät. Wähle Mitteilungen aktivieren und erlaube die Nachfrage deines Geräts. Für jedes Handy oder jeden Computer entscheidest du getrennt.",
+      "Öffne DigitalMask über ihr App-Symbol. Am Smartphone findest du die Einstellungen unter Mehr. Öffne Mitteilungen auf diesem Gerät, wähle Mitteilungen aktivieren und erlaube die Nachfrage deines Geräts. Für jedes Handy oder jeden Computer entscheidest du getrennt.",
       "Auf iPhone oder iPad zeigt App installieren unten auf der Seite eine kurze Anleitung. Öffne DigitalMask in Safari und füge sie über Teilen zum Home-Bildschirm hinzu. Lass Als Web-App öffnen eingeschaltet, falls die Auswahl erscheint. Die Installation allein aktiviert noch keine Mitteilungen: Öffne die App über ihr Symbol, gehe in DigitalMask zu Einstellungen → Mitteilungen auf diesem Gerät und tippe auf Mitteilungen aktivieren. Erlaube die iOS-Nachfrage und wähle anschließend Testmitteilung. Dafür brauchst du iOS oder iPadOS 16.4 oder neuer.",
       "Wenn du die Nachfrage zuvor abgelehnt hast, öffne auf dem iPhone Einstellungen → Mitteilungen → DigitalMask → Mitteilungen erlauben. Gehe danach zurück in die App und prüfe den Status erneut.",
+      "Unter Android findest du die Freigabe in den Handy-Einstellungen unter Apps → DigitalMask → Benachrichtigungen. Wenn der Empfang über Chrome läuft, prüfe auch Chrome → Einstellungen → Website-Einstellungen → Benachrichtigungen. Die Namen der Menüs können je nach Handy abweichen.",
       "Mit Testmitteilung prüfst du den Empfang. Deaktivieren schaltet Mitteilungen auf diesem Gerät aus. Beim Abmelden wird die Verbindung dieses Geräts ebenfalls beendet.",
       "Der Punkt oder Zähler am App-Symbol zeigt ungelesene Mitteilungen. Er wird beim Empfang und Öffnen der App aktualisiert; beim Lesen sinkt er. Auf anderen gerade geschlossenen Geräten kann der Zähler bis zur nächsten Mitteilung oder zum Öffnen der App abweichen.",
       "Falls Mitteilungen ausbleiben, prüfe die Geräte- oder Browser-Einstellungen, den Fokusmodus und die Verbindung. Android entscheidet je nach Launcher, ob ein Punkt oder eine Zahl angezeigt wird. Nachrichteninhalte und persönliche Planungsangaben erscheinen erst nach dem Öffnen der App.",
@@ -265,6 +283,18 @@ export const helpArticles: HelpArticle[] = [
   },
 ];
 export const helpFaq = [
+  [
+    "Wie installiere ich DigitalMask auf meinem iPhone oder Android-Handy?",
+    "Die Anleitung App auf dem Smartphone installieren zeigt beide Wege mit Kurzvideos: Auf dem iPhone öffnest du DigitalMask in Safari und fügst sie über Teilen zum Home-Bildschirm hinzu. Unter Android nutzt du App installieren oder das Chrome-Menü. Starte die App danach über ihr Symbol und melde dich an.",
+  ],
+  [
+    "Warum bekomme ich nach der Installation noch keine Handy-Mitteilungen?",
+    "Die Installation allein reicht nicht. Öffne die App über ihr Symbol und gehe unter Mehr zu Einstellungen → Mitteilungen auf diesem Gerät. Tippe auf Mitteilungen aktivieren und erlaube die Nachfrage. Prüfe den Empfang mit Testmitteilung. Auf iPhone und iPad brauchst du mindestens iOS beziehungsweise iPadOS 16.4.",
+  ],
+  [
+    "Laden die Kurzvideos automatisch und verbrauchen sie Speicher?",
+    "Ein Video wird erst geladen, wenn du es öffnest und die Wiedergabe startest. Die kurzen Clips sind ohne Ton, mit eingeblendeten Erklärungen. Du kannst dieselben Schritte auch als Text lesen. DigitalMask lädt keine komplette Videobibliothek auf dein Handy.",
+  ],
   [
     "Kann ich mit anderen an derselben Word- oder Excel-Datei arbeiten?",
     "Ja. Öffnet denselben Dateianhang oder dasselbe Dokument in einer Produktion. Ihr bearbeitet einen gemeinsamen Stand, der automatisch zusammengeführt wird. Herunterladen enthält die aktuellen Änderungen als Word oder Excel. Das Original bleibt zusätzlich verfügbar; komplexe Office-Funktionen können im Browser eingeschränkt sein.",
