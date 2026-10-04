@@ -1,0 +1,199 @@
+.viewport:global(.chat-layout) {
+  height: var(--chat-available-height, min(760px, calc(100vh - 240px)));
+  height: var(--chat-available-height, min(760px, calc(100dvh - 240px)));
+  min-height: 0;
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.viewport :global(.chat-main) {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.viewport :global(.chat-messages) {
+  flex: 1 1 0;
+  height: auto;
+  min-height: 0;
+  overscroll-behavior-y: contain;
+  scrollbar-gutter: stable;
+}
+
+.viewport :global(.chat-heading),
+.viewport :global(.chat-composer),
+.viewport :global(.chat-archived-note) {
+  flex: none;
+}
+
+.viewport :global(.chat-composer textarea) {
+  max-height: 140px;
+  max-height: min(140px, 20dvh);
+  overflow-y: auto;
+}
+
+.viewport :global(.pending-files) {
+  max-height: 72px;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+}
+
+.viewport :global(.pending-files > span) {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.viewport :global(.chat-unavailable) {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+@media (min-width: 1101px) {
+  .viewport :global(.chat-channels) {
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .viewport :global(.chat-channels-heading) {
+    flex: none;
+  }
+
+  .viewport :global(.chat-channel-lists) {
+    min-height: 0;
+    flex: 1 1 0;
+    max-height: none;
+    overscroll-behavior-y: contain;
+  }
+
+  .viewport:global(.channels-collapsed) > :global(.chat-channels) {
+    display: none;
+  }
+}
+
+@media (max-width: 1100px) {
+  .viewport:global(.chat-layout):not(:global(.single-channel)) {
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .viewport :global(.chat-channels) {
+    position: relative;
+    min-width: 0;
+    min-height: 0;
+  }
+
+  .viewport :global(.chat-channel-lists) {
+    position: absolute;
+    z-index: 10;
+    top: calc(100% - 1px);
+    left: -1px;
+    right: -1px;
+    margin: 0;
+    padding: 16px;
+    max-height: min(360px, calc(var(--chat-available-height, 70dvh) - 88px));
+    background: var(--sidebar);
+    border: 1px solid var(--border);
+    border-radius: 0 0 var(--radius) var(--radius);
+    box-shadow: 0 12px 24px #0002;
+    overscroll-behavior-y: contain;
+  }
+
+  .viewport :global(.chat-heading) {
+    padding: 10px 14px;
+    gap: 8px;
+  }
+
+  .viewport :global(.chat-heading-actions) {
+    align-items: center;
+    flex-wrap: nowrap;
+  }
+
+  .viewport :global(.chat-heading-actions .live-status) {
+    flex: 1;
+    min-width: 0;
+    gap: 0 8px;
+  }
+
+  .viewport :global(.chat-heading-actions > .button) {
+    flex: none;
+  }
+
+  .viewport :global(.chat-composer textarea) {
+    height: 60px;
+    min-height: 60px;
+  }
+}
+
+@media (max-width: 480px) {
+  .viewport :global(.composer-actions) {
+    display: grid;
+    grid-template-columns: minmax(60px, 1fr) minmax(96px, 1.35fr) minmax(44px, 1fr);
+    gap: 6px;
+  }
+
+  .viewport :global(.composer-actions > .button) {
+    min-width: 0;
+    min-height: 44px;
+    margin-left: 0;
+    padding: 10px 6px;
+    gap: 6px;
+    font-size: 11px;
+  }
+
+  .viewport :global(.composer-actions > .small) {
+    display: none;
+  }
+}
+
+.viewport[data-chat-compact="true"] :global(.chat-channels) {
+  padding: 6px 10px;
+}
+
+.viewport[data-chat-compact="true"] :global(.chat-channel-toggle) {
+  min-height: 44px;
+  padding: 6px 10px;
+}
+
+.viewport[data-chat-compact="true"] :global(.chat-channel-toggle small),
+.viewport[data-chat-compact="true"] :global(.chat-heading .small),
+.viewport[data-chat-compact="true"] :global(.chat-heading .live-status),
+.viewport[data-chat-compact="true"] :global(.composer-actions > .small) {
+  display: none;
+}
+
+.viewport[data-chat-compact="true"] :global(.chat-heading) {
+  padding: 6px 10px;
+  gap: 8px;
+}
+
+.viewport[data-chat-compact="true"] :global(.chat-heading > div:not(.chat-heading-actions)) {
+  min-width: 80px;
+}
+
+.viewport[data-chat-compact="true"] :global(.chat-heading h2) {
+  font-size: 13px;
+}
+
+.viewport[data-chat-compact="true"] :global(.chat-heading-actions) {
+  width: auto;
+  margin-left: auto;
+}
+
+.viewport[data-chat-compact="true"] :global(.chat-composer) {
+  padding: 8px 10px;
+  max-height: max(108px, calc(var(--chat-available-height, 320px) * 0.45));
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+}
+
+.viewport[data-chat-compact="true"] :global(.chat-composer textarea) {
+  height: 44px;
+  min-height: 44px;
+  max-height: 60px;
+  padding: 10px;
+}
+
+.viewport[data-chat-compact="true"] :global(.pending-files) {
+  max-height: 42px;
+  margin-bottom: 6px;
+}

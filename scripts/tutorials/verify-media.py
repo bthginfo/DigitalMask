@@ -6,13 +6,14 @@ from PIL import Image
 import imageio_ffmpeg
 
 ROOT=Path(__file__).resolve().parents[2]
-PUBLIC=ROOT/'public/tutorials/v1'
-names=('ios-install','android-install','push-enable','attendance')
+PUBLIC=ROOT/'public/tutorials'
+videos=sorted(PUBLIC.rglob('*.mp4'))
+assert videos,'No tutorial videos'
 results=[]
-for name in names:
-    video=PUBLIC/f'{name}.mp4'
-    poster=PUBLIC/f'{name}.webp'
-    captions=PUBLIC/f'{name}.vtt'
+for video in videos:
+    name=str(video.relative_to(PUBLIC))
+    poster=video.with_suffix('.webp')
+    captions=video.with_suffix('.vtt')
     assert video.stat().st_size<=1500000,f'{name}: video exceeds budget'
     assert poster.stat().st_size<=30000,f'{name}: poster exceeds budget'
     assert Image.open(poster).size==(360,640),f'{name}: poster proportions'
@@ -29,7 +30,8 @@ for name in names:
     decoded=subprocess.run([imageio_ffmpeg.get_ffmpeg_exe(),'-hide_banner','-loglevel','error','-i',str(video),'-f','null','-'],capture_output=True)
     assert decoded.returncode==0 and not decoded.stderr,(name,decoded.stderr)
     results.append({'name':name,'bytes':len(payload),'decoded':True,'faststart':True,'posterBytes':poster.stat().st_size})
-total=sum(path.stat().st_size for path in PUBLIC.iterdir())
+assets=[path for path in PUBLIC.rglob('*') if path.is_file()]
+total=sum(path.stat().st_size for path in assets)
 assert total<=6000000,'Collection exceeds budget'
-assert len(list(PUBLIC.iterdir()))==len(names)*3,'Unreferenced or missing media'
+assert len(assets)==len(videos)*3,'Unreferenced or missing media'
 print(json.dumps({'allAssetBytes':total,'videos':results}))

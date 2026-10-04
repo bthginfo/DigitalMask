@@ -1,5 +1,5 @@
 ﻿"use client";
-import { useId, useRef, useState } from "react";
+import { useId, useLayoutEffect, useRef, useState } from "react";
 import {
   ChevronDown,
   ChevronRight,
@@ -24,6 +24,7 @@ import { chatUnreadCounts } from "@/modules/notifications/unread";
 import { chatChoiceKey, unreadFirstChoices, type ChatChoice } from "@/modules/chat/channel-order";
 import { ChannelGroup } from "@/modules/chat/components/channel-group";
 import { useCollapsedPreference } from "@/shared/use-collapsed-preference";
+import styles from "@/modules/chat/components/chat-viewport.module.css";
 
 function ChannelChoice({
   title,
@@ -95,6 +96,37 @@ export function ChatModule({
   onNavigate?: (conversationId: string, productionId?: string) => void;
 }) {
   const { workspace, save, remove, busy } = useWorkspace();
+  const viewport = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const panel = viewport.current;
+    if (!panel) return;
+    const visual = window.visualViewport;
+    const resize = () => {
+      // Safari's keyboard resizes the visual viewport, independently of the page.
+      const height = visual?.height || window.innerHeight;
+      const navigation = document.querySelector<HTMLElement>(".bottom-nav");
+      const navigationHeight = navigation?.getBoundingClientRect().height || 0;
+      const bottomGap = navigationHeight ? navigationHeight + 16 : 24;
+      const top = Math.min(
+        Math.max(0, panel.getBoundingClientRect().top + window.scrollY),
+        height * 0.4,
+      );
+      const available = Math.min(
+        760,
+        Math.max(280, height - top - bottomGap),
+        Math.max(220, height - bottomGap),
+      );
+      panel.style.setProperty("--chat-available-height", `${Math.round(available)}px`);
+      panel.dataset.chatCompact = String(height < 560);
+    };
+    resize();
+    window.addEventListener("resize", resize);
+    visual?.addEventListener("resize", resize);
+    return () => {
+      window.removeEventListener("resize", resize);
+      visual?.removeEventListener("resize", resize);
+    };
+  }, []);
   const unread = chatUnreadCounts(workspace.records.notifications, workspace.user.id);
   const sidebarId = useId();
   const sidebarKey = `digitalmask:chat-sidebar:${workspace.user.id}`;
@@ -289,10 +321,11 @@ export function ChatModule({
         )}
       </PageHeader>
       <div
+        ref={viewport}
         className={
           locked
-            ? "chat-layout single-channel"
-            : `chat-layout${collapsed ? " channels-collapsed" : ""}`
+            ? `chat-layout single-channel ${styles.viewport}`
+            : `chat-layout ${styles.viewport}${collapsed ? " channels-collapsed" : ""}`
         }
       >
         {!locked && (

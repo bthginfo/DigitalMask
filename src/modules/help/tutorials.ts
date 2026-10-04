@@ -1,3 +1,5 @@
+import { workflowTutorials } from "./workflow-tutorials";
+
 export type HelpTutorial = {
   id: string;
   title: string;
@@ -95,4 +97,5 @@ export const helpTutorials: HelpTutorial[] = [
     ],
     schematic: false,
   },
+  ...workflowTutorials,
 ];

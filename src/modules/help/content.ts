@@ -199,6 +199,7 @@ export const helpArticles: HelpArticle[] = [
       "Die roten Zähler zeigen ungelesene Nachrichten. Chats mit neuen Nachrichten stehen unter Ungelesen ganz oben, egal ob Teamkanal, Produktion, Direktnachricht oder Gruppe. Der neueste steht zuerst. Nach dem Lesen wandert der Chat zurück in seinen normalen Bereich. Suche und Archivfilter gelten auch für Ungelesen.",
       "Klicke auf eine Gruppenüberschrift, um ihre Kanäle auf- oder zuzuklappen. Produktionen sind zunächst geschlossen, die anderen Gruppen geöffnet. Die App merkt sich deine Auswahl auf diesem Gerät. Eine Suche öffnet die passenden Gruppen automatisch.",
       "Am Desktop kannst du die Kanalauswahl im Chatkopf einklappen und wieder öffnen; die App merkt sich die Auswahl auf diesem Gerät. Am Smartphone öffnest du die Kanalliste über Kanal wechseln.",
+      "Der Chat bleibt gleich hoch, auch wenn viele Nachrichten hinzukommen. Scrolle im Nachrichtenverlauf nach oben, um ältere Beiträge zu lesen. Das Eingabefeld bleibt darunter; die Kanalliste lässt sich am Desktop unabhängig scrollen.",
       "Wähle Privater Chat und eine Person oder mehrere Personen für eine Gruppe. Private Verläufe und Dateien sehen nur die Teilnehmenden, auch Admins benötigen eine Teilnahme.",
       "Eigene Nachrichten kannst du bearbeiten oder löschen. Der Ersteller eines privaten Chats verwaltet Namen und Gruppenmitglieder oder archiviert ihn. Archivierte Chats bleiben lesbar und lassen sich wieder öffnen. Beim Chatwechsel werden ungesendete Texte und Anhänge verworfen.",
     ],

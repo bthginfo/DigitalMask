@@ -1,6 +1,6 @@
 # Kurze Videoanleitungen
 
-Die Hilfe enthält ausgewählte, lautlose Clips für die Smartphone-Installation (iPhone/iPad und Android), das Einschalten von Mitteilungen und das Nachtragen der Anwesenheit. Die passenden Textanleitungen und FAQs bleiben unabhängig von der Wiedergabe verfügbar.
+Die Hilfe enthält ausgewählte, lautlose Clips für die Smartphone-Installation (iPhone/iPad und Android), das Einschalten von Mitteilungen, Anwesenheit, Kalenderfilter und Teammonat, Besetzung mit Bildern, Produktionsaufgaben, Maskenplan-Zeitblöcke, Aufschrieb-Textfelder, Produktionszeit und private Chats. Die passenden Textanleitungen und FAQs bleiben unabhängig von der Wiedergabe verfügbar.
 
 Handy- und Berechtigungsmenüs werden ausdrücklich als vereinfachte Ansicht gekennzeichnet. Die App-Aufnahmen verwenden ausschließlich fiktive Daten und einen lokal simulierten Push-Empfang. Sie senden keine echten Mitteilungen und legen keine produktiven Daten an.
 
@@ -9,7 +9,7 @@ Handy- und Berechtigungsmenüs werden ausdrücklich als vereinfachte Ansicht gek
 - Kleine MP4-Dateien mit H.264, YUV420p und Faststart; keine Audiospur, kein externer Player und keine neuen Browserbibliotheken.
 - Das Videoelement wird erst nach einem Klick angelegt. `preload="none"` verhindert den Vorabdownload; erst die Wiedergabe lädt das Video. Schließen, Bereichswechsel und Suchwechsel entfernen den Player.
 - Poster sind kleine WebP-Dateien, die bei Sichtbarkeit geladen werden. WebVTT und lesbare Schritte ergänzen die eingeblendeten Erklärungen.
-- `public/tutorials/v1` wird als statischer Inhalt über Vercel ausgeliefert. Es gibt keine Tutorial-API, Neon-Abfragen, Blob-Uploads oder serverseitige Fortschrittsspeicherung.
+- `public/tutorials/v1` und `public/tutorials/v2` werden als statischer Inhalt über Vercel ausgeliefert. Es gibt keine Tutorial-API, Neon-Abfragen, Blob-Uploads oder serverseitige Fortschrittsspeicherung. Die Erweiterung verändert keine bereits veröffentlichten Mediendateien.
 - Versionierte Assetpfade werden für ein Jahr im Browser/CDN gespeichert. Änderungen an veröffentlichten Dateien brauchen eine neue Version und einen passenden Eintrag in `next.config.ts`.
 - Der Service Worker lädt nur das bestehende App-Symbol und die Offline-Seite vorab; Videos werden nicht in seinen Offline-Cache aufgenommen.
 - Budget: höchstens 1,5 MB pro Clip, 30 kB pro Poster und 6 MB für die aktive Sammlung. Neue Themen nur bei einem häufigen oder erklärungsbedürftigen Ablauf ergänzen. Unbenutzte Assets entfernen; keine Rohaufnahmen veröffentlichen.
@@ -36,4 +36,8 @@ Die Generatoren sind Entwicklungswerkzeuge und werden nicht im Backend ausgefüh
 5. Dateigrößen und Dauer in `src/modules/help/tutorials.ts` aktualisieren. Die tatsächliche Datei ist maßgeblich, nicht ein geschätzter Wert.
 6. Alle Medien vollständig dekodieren, einzelne Schritte visuell prüfen und im Browser kontrollieren, dass vor dem Abspielen keine MP4 geladen wird. Anschließend Rohmaterial und Beispielaufnahmen löschen.
 
-Geeignete spätere Themen: eigenen Kalender mit Kolleginnen einblenden; Maskenplan mit Zeitblöcken bearbeiten; Besetzung und Bilder pflegen. Dafür braucht es keine Clips für jede einfache Funktion.
+Die zusätzlichen Arbeitsabläufe werden mit `python scripts/tutorials/render-workflows.py fixture`, `node scripts/tutorials/capture-workflows.mjs` und `python scripts/tutorials/render-workflows.py` erzeugt. Der Recorder ist auf localhost beschränkt und verwendet nur erfundene Datensätze. API-Anfragen werden vor der ersten Navigation gesperrt; das einzige Bild wird aus einer lokalen Beispieldatei beantwortet. Speichern und Uploads existieren ausschließlich im simulierten Browser-Arbeitsraum. Es entstehen keine echten Datensätze, Chats oder Blob-Dateien.
+
+`scripts/tutorials/workflows.mjs` definiert je Clip den Ablauf und prüft das Ergebnis der simulierten Buchung. Der Renderer erzeugt Dauer, Dateigröße und lesbare Schritte in `src/modules/help/workflow-tutorials.ts` aus der tatsächlichen Aufnahme. Rohmaterial bleibt unter `.local/tutorial-workflows` und wird nach dem Release entfernt. Die Medienprüfung berücksichtigt beide Versionen gemeinsam; alle Katalogpfade müssen auf genau eine MP4, einen WebP-Poster und eine Textspur zeigen.
+
+Geeignete spätere Themen sind Kalenderexporte für Ausdrucke und gemeinsame Dokumente. Dafür braucht es keine Clips für jede einfache Funktion; die vorhandenen Textanleitungen bleiben vollständig.

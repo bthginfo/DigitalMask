@@ -1,5 +1,16 @@
 # Umsetzungsstand
 
+## Weitere Videoanleitungen und feste Chatansicht
+
+- [x] Sieben zusätzliche Abläufe aufnehmen: Kalenderauswahl/Teammonat, Besetzung/Bilder, Aufgaben, Maskenplan, Aufschriebe, Produktionszeit und private Chats.
+- [x] Clips direkt bei den passenden Anleitungen und in Kurzvideos ergänzen; vorhandene Medien unverändert lassen.
+- [x] Dateigrößen aus den fertigen Medien übernehmen, gemeinsame Speichergrenze prüfen und Rohaufnahmen entfernen.
+- [x] Wiedergabe, Suchbarkeit und Zuordnung gezielt prüfen und das Releasepaket für GitHub/Vercel vorbereiten.
+- [x] Chat auf eine feste, geräteabhängige Höhe begrenzen; Verlauf und Kanalliste intern scrollen und Eingabefeld sichtbar halten.
+- [x] Kurze und lange Chatverläufe auf Handy und Desktop vergleichen; private Chat-Anleitung mit der neuen Ansicht aufnehmen.
+
+Elf Clips einschließlich Poster und Textspuren benötigen zusammen 3.393.271 Bytes. Die zusätzliche Sammlung wird statisch über Vercel ausgeliefert und erzeugt keine Neon-Abfragen. Der Chat bleibt unabhängig von der Nachrichtenanzahl gleich hoch; auf schmalen Handys stehen Datei, Dokument und Senden in einer Zeile.
+
 ## Ausgewählte Kurzvideos und Smartphone-Anleitung
 
 - [x] iPhone-/iPad- und Android-Installation mit Mitteilungsfreigabe als erste Hilfeanleitung und FAQ ergänzen.
