@@ -1,0 +1,168 @@
+.timer:global(.timer-panel) {
+  display: block;
+  min-width: 0;
+  padding: 20px;
+}
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+.label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent);
+}
+.header :global(.badge) {
+  font-size: 10px;
+}
+.main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 16px 0;
+}
+.value {
+  font-size: clamp(30px, 3.5vw, 44px);
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -1.5px;
+  font-weight: 500;
+}
+.primaryActions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.primaryActions > button {
+  min-height: 44px;
+  padding: 11px;
+  white-space: nowrap;
+}
+.details {
+  display: grid;
+  gap: 12px;
+}
+.details input,
+.details select {
+  font-size: 16px;
+  min-height: 44px;
+}
+.details > p {
+  line-height: 1.6;
+}
+.selects {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+}
+.selects label {
+  min-width: 0;
+}
+.selects select {
+  padding: 10px 8px;
+}
+.runningTitle {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mobileToggle,
+.mobileLabel {
+  display: none;
+}
+@media (max-width: 760px) {
+  .timer:global(.timer-panel) {
+    padding: 12px 14px;
+  }
+  .header {
+    flex-wrap: nowrap;
+  }
+  .header > .label {
+    display: none;
+  }
+  .header :global(.badge) {
+    font-size: 10px;
+  }
+  .label {
+    font-size: 13px;
+  }
+  .main {
+    flex-wrap: nowrap;
+    margin: 8px 0 2px;
+    gap: 8px;
+  }
+  .value {
+    font-size: 25px;
+    letter-spacing: -0.7px;
+  }
+  .primaryActions {
+    gap: 6px;
+  }
+  .primaryActions > button {
+    font-size: 11px;
+    padding: 10px;
+  }
+  .runningTitle {
+    margin: 6px 0 0;
+    font-size: 11px;
+  }
+  .desktopLabel {
+    display: none;
+  }
+  .mobileLabel {
+    display: inline;
+  }
+  .mobileToggle {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    min-height: 44px;
+    width: auto;
+    padding: 6px 0;
+    color: var(--accent);
+    background: none;
+    border: 0;
+    font-size: 13px;
+    text-align: left;
+    cursor: pointer;
+    gap: 7px;
+  }
+  .mobileToggle > span {
+    display: grid;
+    gap: 2px;
+    font-weight: 600;
+  }
+  .mobileToggle small {
+    font-size: 10px;
+    font-weight: 400;
+    color: var(--muted);
+  }
+  .mobileToggle[aria-expanded="true"] > svg:last-child {
+    transform: rotate(180deg);
+  }
+  .mobileToggle:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+  .details {
+    display: none;
+    border-top: 1px solid var(--border);
+    padding-top: 12px;
+  }
+  .detailsOpen {
+    display: grid;
+  }
+  .selects {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

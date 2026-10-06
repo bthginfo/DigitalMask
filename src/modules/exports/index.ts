@@ -1,7 +1,7 @@
 import { buildCsv, buildXlsx } from "./spreadsheet";
 import { buildIcs } from "./ical";
 import { expandCalendar } from "./calendar";
-import { expandTime } from "./time";
+import { expandTime, exportTimeDayMarkers } from "./time";
 import type { ExportInput, ExportResult } from "./types";
 import { selectExportRecords } from "./selection";
 import { resolveProductionContacts } from "./contacts";
@@ -58,6 +58,9 @@ export async function buildExport(input: ExportInput): Promise<ExportResult> {
             ...(input.year ? { year: input.year } : {}),
             ...(input.season ? { season: input.season } : {}),
             records: input.records,
+            ...(["time", "attendance"].includes(input.kind)
+              ? { calendarDayLabels: exportTimeDayMarkers(input) }
+              : {}),
             ...(["looks", "handovers"].includes(input.kind)
               ? {
                   documentDirectory: input.records.map((record) =>

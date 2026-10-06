@@ -1,0 +1,135 @@
+.root:global(.period-picker) {
+  display: block;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+}
+
+.root:global(.period-picker--compact) .controls {
+  gap: 8px 12px;
+}
+
+.mobileSummary {
+  display: none;
+}
+
+@media (max-width: 760px) {
+  .root:global(.period-picker),
+  .root:global(.period-picker--compact) {
+    padding: 0;
+    margin-bottom: 12px;
+    border: 0;
+    background: transparent;
+  }
+
+  .mobileSummary {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .summaryButton {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 0;
+    min-height: 54px;
+    padding: 8px 12px;
+    text-align: left;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+  }
+
+  .summaryButton > span {
+    display: grid;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .summaryButton strong {
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.35;
+  }
+
+  .summaryButton small {
+    color: var(--muted);
+    font-size: 10px;
+    line-height: 1.4;
+  }
+
+  .summaryButton > svg {
+    flex-shrink: 0;
+    color: var(--accent);
+  }
+
+  .chevronOpen {
+    transform: rotate(180deg);
+  }
+
+  .summaryButton[aria-expanded="true"] {
+    border-color: var(--accent);
+    border-radius: 8px 8px 0 0;
+  }
+
+  .currentButton {
+    min-height: 44px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--accent);
+    background: var(--accent-soft);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .root .controls {
+    display: none;
+  }
+
+  .root .controls.expanded {
+    display: grid;
+    grid-template-columns: minmax(115px, 0.85fr) minmax(0, 1.15fr);
+    align-items: end;
+    gap: 10px;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-top: 0;
+    border-radius: 0 0 8px 8px;
+    background: var(--surface);
+  }
+
+  .root .controls label {
+    min-width: 0;
+    font-size: 12px;
+  }
+
+  .root .controls input,
+  .root .controls select {
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    margin-top: 3px;
+    font-size: 16px;
+  }
+
+  .controls :global(.text-button) {
+    grid-column: 1 / -1;
+    justify-self: start;
+    font-size: 12px;
+  }
+
+  .root .desktopCurrent {
+    display: none;
+  }
+}

@@ -1,33 +1,24 @@
 "use client";
 import { useMemo, useState } from "react";
-import { Check, Pencil, Plus, UploadCloud } from "lucide-react";
+import { Check, Plus, UploadCloud } from "lucide-react";
 import { PeriodPicker, periodExportFilters, weekForPeriod } from "@/components/period-picker";
-import {
-  dateMatchesPeriod,
-  initialPeriod,
-  seasonForDate,
-  recordMatchesPeriod,
-  type PeriodFilter,
-} from "@/shared/period-filter";
-import { categoriesFor, categoryName } from "@/shared/domain-categories";
+import { dateMatchesPeriod, initialPeriod, type PeriodFilter } from "@/shared/period-filter";
+import { categoriesFor } from "@/shared/domain-categories";
 import { CategoryManager } from "@/modules/categories/components/category-manager";
 import type { DomainRecord, RecordData } from "@/shared/contracts";
 import {
   dateLabel,
   hours,
-  instantDate,
   localDate,
-  num,
   post,
   shiftDate,
-  timeAllocations,
   value,
   weekStart,
 } from "@/shared/client-api";
 import { useStoredValue } from "@/shared/client-storage";
 import { isStaff } from "@/shared/client-members";
 import { useWorkspace } from "../workspace-context";
-import { Badge, Button, Empty, ErrorMessage, ExportButton, Modal, PageHeader } from "../ui";
+import { ActionMenu, Badge, Button, ErrorMessage, ExportButton, Modal, PageHeader } from "../ui";
 import { ResourceEditor } from "../resource-editor";
 import { RecordDetail } from "../resource-view";
 import { ExportDialog } from "../export-dialog";
@@ -35,6 +26,16 @@ import { statusLabels } from "../resource-fields";
 export { TimerPanel } from "@/modules/time-tracking/components/work-timer";
 import { TimerPanel } from "@/modules/time-tracking/components/work-timer";
 import { TimeWorkspace } from "@/modules/time-tracking/components/time-workspace";
+import { groupBookingWeeks, isoWeek, periodForWeek } from "@/modules/time-tracking/history";
+import { timeDayMarkers } from "@/modules/time-tracking/day-markers";
+import {
+  BookingList,
+  WeekNavigator,
+  WeeklyHistory,
+} from "@/modules/time-tracking/components/weekly-bookings";
+import { CalendarTimeProposals } from "@/modules/time-tracking/components/calendar-time-proposals";
+import { WeekDayOverview } from "@/modules/time-tracking/components/week-day-overview";
+import styles from "@/modules/time-tracking/components/time-history.module.css";
 type Draft = { id: string; data: RecordData; createdAt: string };
 export function TimeModule({ productionId = "" }: { productionId?: string }) {
   return productionId ? <WorkTimeModule productionId={productionId} /> : <TimeWorkspace />;
@@ -108,44 +109,85 @@ export function WorkTimeModule({
     setSyncing(false);
   };
   const until = shiftDate(week, 6);
-  const entries = workspace.records.time
-    .filter(
-      (x) =>
-        value(x.data, "userId") === person &&
-        recordMatchesPeriod(x, period, workspace.records.productions) &&
-        timeAllocations(x.data).some((day) => day.date >= week && day.date <= until) &&
-        (!project || x.data.productionId === project),
-    )
-    .sort((a, b) => value(b.data, "date").localeCompare(value(a.data, "date")));
-  const total = entries
-    .flatMap((x) => timeAllocations(x.data))
-    .filter((day) => day.date >= week && day.date <= until && dateMatchesPeriod(day.date, period))
-    .reduce((sum, day) => sum + day.seconds, 0);
+  const markers = useMemo(() => {
+    const first =
+      workspace.records.events
+        .map((event) => value(event.data, "start").slice(0, 10))
+        .filter(Boolean)
+        .sort()[0] || week;
+    return timeDayMarkers({
+      events: workspace.records.events,
+      calendarCategories: workspace.records.calendarCategories,
+      userId: person,
+      from: first,
+      to: until > shiftDate(weekStart(), 6) ? until : shiftDate(weekStart(), 6),
+      period,
+    });
+  }, [workspace.records.events, workspace.records.calendarCategories, person, week, until, period]);
+  const weeks = useMemo(
+    () =>
+      groupBookingWeeks(workspace.records.time, {
+        userId: person,
+        productionId: project,
+        period,
+        markers,
+      }),
+    [workspace.records.time, person, project, period, markers],
+  );
+  const selected = weeks.find((row) => row.start === week);
+  const entries = selected?.entries || [];
+  const total = selected?.seconds || 0;
+  const selectWeek = (next: string) => {
+    setWeek(next);
+    setPeriod(periodForWeek(period, next, workspace.records.productions));
+  };
+  const secondaryActions = (
+    <>
+      <ExportButton onClick={() => setExporting(true)} />
+      {admin && (
+        <Button onClick={() => setCategoriesOpen(true)}>Tätigkeitsbereiche verwalten</Button>
+      )}
+      {workspace.user.role !== "superadmin" && !online && (
+        <Button onClick={() => setDraftModal(true)}>Ohne Internet vormerken</Button>
+      )}
+    </>
+  );
   const sheets = workspace.records.timesheets.filter(
     (x) => admin || x.data.userId === workspace.user.id,
   );
   return (
     <>
-      <PageHeader
-        eyebrow="PRODUKTIONS- / ARBEITSZEITEN"
-        title={embedded ? "Deine Tätigkeiten" : "Produktionszeiten"}
-        description="Produktionsarbeit und allgemeine Tätigkeiten. Tages- und Wochensummen rechnen sich von selbst."
+      {embedded ? (
+        <header className={styles.moduleHeading}>
+          <h2>Produktions- / Arbeitszeiten</h2>
+          <div className={styles.moduleActions}>
+            <ActionMenu>{secondaryActions}</ActionMenu>
+            {workspace.user.role !== "superadmin" && (
+              <Button variant="primary" onClick={() => setEditor(true)}>
+                <Plus size={16} /> Nachtragen
+              </Button>
+            )}
+          </div>
+        </header>
+      ) : (
+        <PageHeader
+          eyebrow="PRODUKTIONS- / ARBEITSZEITEN"
+          title={embedded ? "Deine Tätigkeiten" : "Produktionszeiten"}
+          description="Produktionsarbeit und allgemeine Tätigkeiten. Tages- und Wochensummen rechnen sich von selbst."
+          compact
+          secondaryActions={secondaryActions}
+        >
+          {workspace.user.role !== "superadmin" && (
+            <Button variant="primary" onClick={() => setEditor(true)}>
+              <Plus size={16} />
+              Zeit nachtragen
+            </Button>
+          )}
+        </PageHeader>
+      )}
+      <div
+        className={`time-layout ${styles.workLayout} ${embedded ? "embedded-work-summary" : ""}`}
       >
-        <ExportButton onClick={() => setExporting(true)} />
-        {admin && (
-          <Button onClick={() => setCategoriesOpen(true)}>Tätigkeitsbereiche verwalten</Button>
-        )}
-        {workspace.user.role !== "superadmin" && !online && (
-          <Button onClick={() => setDraftModal(true)}>Ohne Internet vormerken</Button>
-        )}
-        {workspace.user.role !== "superadmin" && (
-          <Button variant="primary" onClick={() => setEditor(true)}>
-            <Plus size={16} />
-            Zeit nachtragen
-          </Button>
-        )}
-      </PageHeader>
-      <div className={`time-layout ${embedded ? "embedded-work-summary" : ""}`}>
         {!embedded && <TimerPanel productionId={productionId} />}
         <section className="time-summary">
           <p className="eyebrow">{productionId ? "DEINE PRODUKTIONSWOCHE" : "DEINE WOCHE"}</p>
@@ -156,7 +198,7 @@ export function WorkTimeModule({
             {Array.from({ length: 7 }, (_, i) => {
               const date = shiftDate(week, i);
               const seconds = entries
-                .flatMap((x) => timeAllocations(x.data))
+                .flatMap((entry) => entry.allocations)
                 .filter((day) => day.date === date && dateMatchesPeriod(day.date, period))
                 .reduce((sum, day) => sum + day.seconds, 0);
               return (
@@ -246,31 +288,8 @@ export function WorkTimeModule({
           setWeek(weekForPeriod(workspace.records.time, person, next, week));
         }}
       />
-      <div className="toolbar wrap">
-        <label className="inline-label">
-          Woche ab
-          <input
-            type="date"
-            value={week}
-            onChange={(e) => {
-              if (e.target.value) {
-                setWeek(weekStart(instantDate(e.target.value)));
-                setPeriod({
-                  ...period,
-                  ...(period.year ? { year: Number(e.target.value.slice(0, 4)) } : {}),
-                  ...(period.season
-                    ? {
-                        season: seasonForDate(
-                          workspace.records.productions,
-                          instantDate(e.target.value),
-                        ),
-                      }
-                    : {}),
-                });
-              }
-            }}
-          />
-        </label>
+      <div className={styles.weekToolbar}>
+        <WeekNavigator week={week} onChange={selectWeek} />
         {admin && (
           <select aria-label="Person" value={person} onChange={(e) => setPerson(e.target.value)}>
             {workspace.members.filter(isStaff).map((x) => (
@@ -296,64 +315,53 @@ export function WorkTimeModule({
       </div>
       <ErrorMessage message={error} />
       {entries.length ? (
-        <div className="table-scroll panel">
-          <table>
-            <thead>
-              <tr>
-                <th>Datum</th>
-                <th>Tätigkeit</th>
-                <th>Produktion</th>
-                <th>Dauer</th>
-                <th>Pause</th>
-                <th>Bearbeiten</th>
-              </tr>
-            </thead>
-            <tbody>
-              {entries.map((row) => (
-                <tr key={row.id}>
-                  <td>{dateLabel(value(row.data, "date"))}</td>
-                  <td>
-                    <button className="text-button strong" onClick={() => setDetail(row)}>
-                      {value(row.data, "title")}
-                    </button>
-                    <span className="small muted">
-                      {categoryName(
-                        "time",
-                        value(row.data, "category"),
-                        workspace.records.categories,
-                      )}
-                    </span>
-                  </td>
-                  <td>
-                    {(workspace.records.productions.find((x) => x.id === row.data.productionId)
-                      ?.data.title as string) || "Allgemein"}
-                  </td>
-                  <td className="strong">{hours(num(row.data, "durationSeconds"))} h</td>
-                  <td>{Math.round(num(row.data, "pauseSeconds") / 60)} min</td>
-                  <td>
-                    <Button variant="ghost" onClick={() => setEditing(row)}>
-                      <Pencil size={15} /> Bearbeiten
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr>
-                <td colSpan={3}>Wochensumme</td>
-                <td colSpan={3}>{hours(total)} h</td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
+        <section className={styles.currentWeek} aria-label="Arbeitszeit der ausgewählten Woche">
+          <header className={styles.currentHeading}>
+            <h3>
+              KW {isoWeek(week).number} · {isoWeek(week).year}
+            </h3>
+            <strong>{hours(total)} h</strong>
+          </header>
+          <BookingList entries={entries} kind="time" onEdit={setEditing} onDetail={setDetail} />
+        </section>
       ) : (
-        <Empty
-          title="Noch keine Zeit in dieser Woche."
-          description="Starte den Timer oder trage eine Tätigkeit nach. Du kannst auch ohne Produktion Büro- und Aufräumzeit buchen."
-          action={workspace.user.role !== "superadmin" ? "Zeit buchen" : undefined}
-          onAction={() => setEditor(true)}
-        />
+        <section className={styles.emptyWeek}>
+          <h3>Noch keine Arbeitszeit in dieser Woche.</h3>
+          <p>
+            Frühere Buchungen findest du im Wochenverlauf. Allgemeine Arbeit wie Besprechung oder
+            Aufräumen lässt sich ohne Produktion buchen.
+          </p>
+          {workspace.user.role !== "superadmin" && (
+            <Button onClick={() => setEditor(true)}>Zeit nachtragen</Button>
+          )}
+        </section>
       )}
+      <WeekDayOverview
+        week={week}
+        person={person}
+        entries={entries}
+        markers={selected?.markers || []}
+        onDetail={setDetail}
+      />
+      <WeeklyHistory
+        key={`${person}:${project}:${period.year || ""}:${period.season || ""}`}
+        weeks={weeks}
+        selectedWeek={week}
+        person={person}
+        kind="time"
+        filtered={!!period.year || !!period.season}
+        onAllSeasons={() => setPeriod({})}
+        onSelectWeek={selectWeek}
+        onEdit={setEditing}
+        onDetail={setDetail}
+      />
+      <CalendarTimeProposals
+        kind="time"
+        person={person}
+        week={week}
+        period={period}
+        productionId={project}
+      />
       {!productionId && (
         <section className="panel margin-top">
           <header className="panel-heading">
@@ -420,7 +428,7 @@ export function WorkTimeModule({
         <ResourceEditor
           kind="time"
           lockedProductionId={productionId || undefined}
-          defaults={{ productionId: project }}
+          defaults={{ productionId: project, date: week }}
           onClose={() => setEditor(false)}
         />
       )}

@@ -32,7 +32,9 @@ export const helpArticles: HelpArticle[] = [
       "Auf den Produktionskarten siehst du bereits die Maskenbetreuung. Standardmäßig stehen die nächsten Premieren zuerst; über Sortieren nach wechselst du zu Namen oder zuletzt geänderten Stücken.",
     steps: [
       "Die Übersicht startet mit der aktuellen Spielzeit von August bis Juli. Über Spielzeit kannst du ältere Stücke oder Alle Spielzeiten anzeigen. Neue Produktionen übernehmen die gewählte Spielzeit als Vorschlag; du kannst sie beim Anlegen ändern.",
+      "Am Smartphone öffnest du Jahr und Spielzeit über Zeitraum auswählen. Die aktuelle Auswahl bleibt als kurze Zusammenfassung sichtbar. Zusätzliche Aktionen wie Import und Export findest du unter Mehr.",
       "Öffne Produktionen und wähle ein Stück. Alle freigegebenen Teammitglieder können Produktionen anlegen und zugängliche Produktionen bearbeiten, archivieren oder löschen. Wenn du ein Produktionsteam auswählst, bleibst du als Ersteller automatisch dabei.",
+      "Im Stück wechselst du am Smartphone über Produktionsbereich zwischen Überblick, Besetzung, Maskenplan, Aufgaben und den übrigen Bereichen. Am Desktop bleiben die Reiter verfügbar.",
       "Unter Team & Kontakte lassen sich Rollen frei benennen, etwa Regie, Kostüm oder Maskenbetreuung. Wähle externe Kontakte aus Ansprechpersonen, damit ihre Kontaktdaten wiederverwendet werden.",
       "Fehlt eine Person, kannst du sie direkt im Kontaktformular anlegen oder ihren Namen frei eintragen. Beim Speichern der Produktion wird ein neuer freier Kontakt im Verzeichnis hinterlegt. Es entsteht kein Benutzerkonto.",
       "Für die Maskenbetreuung kannst du ein aktives Teammitglied, eine Person aus dem Verzeichnis oder einen freien Namen wählen. Nur ein ausgewähltes Teammitglied gehört dadurch automatisch zum Produktionsteam.",
@@ -85,6 +87,7 @@ export const helpArticles: HelpArticle[] = [
       "Produktionsaufgaben gehören ins Kanban des Stücks; allgemeine Aufgaben gehören ins Teamboard.",
     steps: [
       "Öffne im Stück Aufgaben & Sprints. Neue Aufgaben bleiben dieser Produktion zugeordnet. Im Teamboard wird keine Produktion zugeteilt.",
+      "Am Smartphone startet die Aufgabenansicht als Liste. Sie zeigt Aufgaben nach Status mit ihren Anzahlen. Über Liste und Kanban wechselst du zur Spaltenansicht und zurück. Suche, Meine Aufgaben und die Spielzeitauswahl gelten in beiden Ansichten.",
       "Das Teamboard startet mit der aktuellen Spielzeit von August bis Juli. Über Spielzeit findest du frühere Aufgaben oder Alle Spielzeiten. Neue Teamaufgaben übernehmen die gewählte Spielzeit; im Aufgabenformular kannst du sie ändern. Unteraufgaben übernehmen die Spielzeit der Hauptaufgabe. In einem älteren Stück siehst du automatisch dessen eigene Spielzeit.",
       "Ergänze Verantwortliche, Priorität, Fälligkeitsdatum und eine Checkliste. Unteraufgaben behalten den Arbeitsraum ihrer übergeordneten Aufgabe.",
       "Verschiebe eine Aufgabe zwischen den Spalten oder ändere ihren Status im Auswahlfeld. Das funktioniert auch am Smartphone ohne Ziehen.",
@@ -114,6 +117,7 @@ export const helpArticles: HelpArticle[] = [
     steps: [
       "Alle freigegebenen Teammitglieder legen Schauspieler an und pflegen Name, Kontakt, Haare, Perückenmaß und wichtige Hinweise.",
       "Der Katalog zeigt zuerst das Ensemble der aktuellen Spielzeit. Wähle eine andere Spielzeit oder Alle Spielzeiten, um frühere Einträge zu sehen. Unter Bearbeiten kannst du bei einer Person Spielzeiten einzeln hinzufügen oder entfernen. Eine Person kann in mehreren Spielzeiten dabei sein; ihre Maskenangaben und Besetzungen bleiben im selben Profil.",
+      "Am Smartphone öffnest du die Jahr- und Spielzeitauswahl über Zeitraum auswählen. Unter Mehr stehen Import und Export sowie für Admins Ensemble laden. Die Suche und Schauspieler anlegen bleiben direkt erreichbar.",
       "Jede Schauspielperson hat ein Porträt. Ein neues Bild ersetzt das bisherige Porträt. Der Kartenausschnitt richtet sich am erkannten Gesicht aus; weitere Dokumente kannst du zusätzlich hochladen.",
       "Klicke in einer Besetzung oder Figur auf den Schauspielnamen, um den Katalogeintrag zu öffnen. Unter Spielt mit in findest du eure verknüpften Produktionen und Rollen sowie die Aufschriebe. Standard ist die aktuelle Spielzeit; über den Filter siehst du auch frühere oder alle Spielzeiten.",
       "Admins können über Ensemble laden die offizielle Liste des Stadttheaters ansehen. Die Ziel-Spielzeit ist zunächst die aktuelle, auch wenn du gerade ältere Einträge ansiehst. Die Website zeigt die derzeitige Liste; sie liefert kein historisches Archiv. Wähle vor dem Laden die passende Ziel-Spielzeit. Die Vorschau zeigt neue Personen, Aktualisierungen und unklare Zuordnungen. Wähle die gewünschten Personen und klicke Importieren.",
@@ -160,7 +164,7 @@ export const helpArticles: HelpArticle[] = [
     intro: "Die persönliche Ansicht und die Teamplanung verwenden dieselben freigegebenen Termine.",
     steps: [
       "Die Uhrzeit in der Tages- und Wochenansicht beginnt um 06:00 und endet um 01:00 am folgenden Tag. So bleiben auch späte Vorstellungen sichtbar. Monat, Agenda und Teamübersicht zeigen weiterhin alle Termine.",
-      "Wähle Monat, Woche, Tag, Agenda oder Team. Unter Team kannst du Teamwoche oder Teammonat wählen. Am Smartphone siehst du ein Kalenderfeld für jeden Tag, ohne breite Namensspalte. Die Zahlen und Farbpunkte zeigen Termine an. Tippe einen Tag an: darunter stehen die vollständigen Namen, Zeiten und Angaben. Auf größeren Bildschirmen bleibt die Teamtabelle verfügbar.",
+      "Wähle Monat, Woche, Tag, Agenda oder Team. Unter Team kannst du Teamwoche oder Teammonat wählen. Am Smartphone siehst du ein Kalenderfeld für jeden Tag, ohne breite Namensspalte. Die Zahlen und Farbpunkte zeigen Termine an. Tippe einen Tag an: Die Tagesliste öffnet sich mit vollständigen Namen, Zeiten und Angaben. Auf größeren Bildschirmen bleibt die Teamtabelle verfügbar.",
       "Am Smartphone sind die Filter zunächst eingeklappt. Tippe oberhalb des Kalenders auf die Kalenderauswahl, um Personen, Produktion, Kategorie, Jahr und Spielzeit zu ändern. Alle zeigt das ganze Team, Nur ich deinen eigenen Kalender. Im persönlichen Monatskalender zeigt ein Tipp auf einen Tag dessen Termine; mit Termin an diesem Tag legst du einen neuen Eintrag an.",
       "Zu Beginn siehst du nur deinen Kalender. Hake weitere Personen an, um ihre Termine dazuzuschalten. Alle anzeigen zeigt den gesamten Teamkalender. Die Teamansicht startet mit allen Personen; danach kannst du sie einschränken. Zurück in der persönlichen Ansicht gilt wieder deine vorige Auswahl. Ohne angehakte Personen bleibt der Kalender leer. Der Superadmin wählt zuerst Personen oder Alle anzeigen.",
       "Als Teammitglied kannst du Termine und Dienste in deinem eigenen Kalender anlegen, bearbeiten, verschieben und löschen. Admins können auch Einträge für andere Personen und mehrere Personen zugleich planen. Wähle Zeitraum und eine vorhandene Kalenderart. Der Titel darf leer bleiben: dann wird das Stück oder die Kalenderart angezeigt. Ganztägige Arten brauchen nur Von- und Bis-Tage, keine Uhrzeiten.",
@@ -179,8 +183,15 @@ export const helpArticles: HelpArticle[] = [
       "Anwesenheit zeigt deine Zeit im Theater. Arbeitszeiten zeigen deine Tätigkeiten, mit oder ohne Produktion. Beide bleiben getrennt.",
     steps: [
       "Anwesenheits- und Arbeitstimer dürfen gleichzeitig laufen. Unter Anwesenheit trägst du Beginn, Ende und Pause nach. Unter Produktions- / Arbeitszeiten buchst du eine Tätigkeit mit Dauer oder Zeitraum.",
+      "Am Smartphone bleiben beide Timer kompakt sichtbar. Öffne die Angaben, wenn du die Tätigkeit, Produktion oder Kategorie ändern möchtest. Ein laufender Timer bleibt auch bei geschlossenen Angaben erkennbar.",
       "Pausiere den Timer bei Bedarf. Stoppen & buchen legt die Zeitbuchung an. Timer verwerfen entfernt einen ungebuchten Lauf nach Bestätigung.",
       "Wähle bei einer Buchung Bearbeiten, um Datum, Dauer, Beginn, Ende oder Pause zu korrigieren. Alle Rollen können eigene Zeiten ändern; Admins auch Zeiten anderer Teammitglieder. Korrigierte Produktionswochen werden bei Bedarf erneut zur Prüfung geöffnet.",
+      "Unter Wochenverlauf stehen frühere Wochen mit Kalenderwoche, Datum und Stundensumme. Klappe eine Woche auf, um die einzelnen Buchungen zu lesen oder zu bearbeiten. Anwesenheit und Produktionsarbeit haben jeweils ihren eigenen Verlauf.",
+      "Mit der Wochenauswahl wechselst du auch zu leeren oder älteren Wochen. Für Einträge aus früheren Spielzeiten öffnest du Zeitraum auswählen und wählst die passende oder Alle Spielzeiten. Die Filter für Person und Produktion gelten auch im Verlauf.",
+      "Kalenderzeiten prüfen zeigt ungeprüfte Vorschläge aus deinen bereits beendeten Kalenderterminen. Öffne einen Vorschlag, vergleiche ihn mit deiner tatsächlichen Arbeit und korrigiere Beginn, Ende, Pause oder Tätigkeit. Erst dein ausdrückliches Speichern bucht die Zeit. Kalendertermine allein sind keine gebuchten Stunden.",
+      "Ganztägige freie Tage und Abwesenheiten werden nicht als Arbeitszeit vorgeschlagen. Bereits gebuchte Zeiträume werden berücksichtigt. Prüfe die Vorschläge spätestens beim Rückblick auf die vergangene Woche; Anwesenheit und Tätigkeiten bestätigst du getrennt.",
+      "Die Wochenübersicht zeigt auch ABF, Ruhetag, Urlaub und andere ganztägige Kennzeichnungen aus deinem Kalender. Über Tag kennzeichnen kannst du eine vorhandene Kalenderart für deinen Tag wählen. Diese Kennzeichnungen erzeugen keine Arbeitsstunden. Besprechung, Aufräumen und andere Tätigkeiten lassen sich weiterhin ohne Produktion buchen.",
+      "Beim PDF-Export stehen Kalenderkennzeichen in einer zusätzlichen Wochenübersicht. Im Excel-Export findest du sie auf dem Blatt Kalenderkennzeichen. Die Stundensummen enthalten weiterhin nur tatsächlich gebuchte Zeit.",
       "Die Tages- und Wochensummen berücksichtigen Mitternacht. Der Wochenvergleich zeigt Anwesenheit und Tätigkeiten nebeneinander. In einer Produktion stehen nur ihre Arbeitszeiten.",
       "Reiche die vollständige Woche unter Produktions- / Arbeitszeiten zur Freigabe ein. Anwesenheit wird getrennt exportiert und gehört nicht zu dieser Freigabe.",
       "Offlineentwürfe liegen auf dem Gerät. Übernehme unzugeordnete Geräteentwürfe ausdrücklich in deinen Account und synchronisiere sie anschließend. Auf gemeinsam genutzten Geräten zuerst die Tätigkeit prüfen.",
@@ -360,6 +371,18 @@ export const helpFaq = [
   [
     "Kann ich Zeiten nach der Wochenfreigabe korrigieren?",
     "Ja. Wähle Bearbeiten bei der Buchung. Die betroffene Produktionswoche wird automatisch wieder zur Prüfung geöffnet. Reiche sie danach erneut ein. Anwesenheitszeiten lassen sich unabhängig davon korrigieren.",
+  ],
+  [
+    "Wo finde ich meine Stunden aus früheren Wochen?",
+    "Öffne Zeit und den gewünschten Bereich: Anwesenheit oder Produktions- / Arbeitszeiten. Im Wochenverlauf findest du Kalenderwochen mit ihren Summen. Klappe eine Woche auf, um Einträge zu lesen und zu bearbeiten. Für frühere Spielzeiten passe den Zeitraum an oder wähle Alle Spielzeiten.",
+  ],
+  [
+    "Werden Kalendertermine automatisch als Arbeitszeit gebucht?",
+    "Nein. Kalenderzeiten prüfen zeigt nur geplante Vorschläge. Prüfe deine tatsächlichen Zeiten und Pausen und speichere die Buchung ausdrücklich. Anwesenheit und Produktionsarbeit bleiben getrennt. Freie Tage und bereits gebuchte Zeiträume werden berücksichtigt.",
+  ],
+  [
+    "Wie trage ich ABF oder Ruhetag auf meiner Wochenübersicht ein?",
+    "Nutze Tag kennzeichnen und wähle eine vorhandene ganztägige Kalenderart für deinen Tag. Ein bereits im Kalender markierter Tag erscheint ebenfalls in der Wochenübersicht. Solche Kennzeichnungen erhöhen deine gebuchten Stunden nicht; tatsächliche Arbeit buchst du separat.",
   ],
   [
     "Sind Offlineentwürfe schon im Theater gespeichert?",

@@ -23,17 +23,18 @@ import { RecordDocuments } from "@/modules/documents/components/record-documents
 import { MaskPlansModule } from "@/modules/mask-plans/components/mask-plans-module";
 import { RecordLink } from "../record-link";
 import relationStyles from "../record-links.module.css";
-const productionTabs = [
-  "overview",
-  "team",
-  "casting",
-  "mask-plan",
-  "tasks",
-  "looks",
-  "documents",
-  "calendar",
-  "time",
-  "chat",
+import styles from "../workspace-browse.module.css";
+const productionSections = [
+  ["overview", "Überblick"],
+  ["team", "Team & Kontakte"],
+  ["casting", "Besetzung"],
+  ["mask-plan", "Maskenplan"],
+  ["tasks", "Aufgaben & Sprints"],
+  ["looks", "Aufschriebe"],
+  ["documents", "Dokumente"],
+  ["calendar", "Kalender"],
+  ["time", "Zeiten"],
+  ["chat", "Projektchat"],
 ];
 export function ProductionsModule({
   productionId = "",
@@ -46,7 +47,7 @@ export function ProductionsModule({
 }) {
   const { workspace } = useWorkspace();
   const selected = productionId;
-  const tab = productionTabs.includes(activeTab) ? activeTab : "overview";
+  const tab = productionSections.some(([key]) => key === activeTab) ? activeTab : "overview";
   const setSelected = (id: string) => onNavigate(id, "overview");
   const setTab = (next: string) => onNavigate(selected, next);
   const [period, setPeriod] = useState<PeriodFilter>(() => ({
@@ -122,7 +123,7 @@ export function ProductionsModule({
     .projectHours;
   if (production)
     return (
-      <>
+      <section className={styles.productionDetail}>
         <div className="production-breadcrumb">
           <Button
             variant="ghost"
@@ -142,19 +143,22 @@ export function ProductionsModule({
           </div>
           <Button onClick={() => setDetails(true)}>Produktion verwalten</Button>
         </header>
+        <label className={styles.productionSection}>
+          Produktionsbereich
+          <select
+            aria-label="Produktionsbereich"
+            value={tab}
+            onChange={(event) => setTab(event.target.value)}
+          >
+            {productionSections.map(([key, label]) => (
+              <option key={key} value={key}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </label>
         <div ref={tabs} className="tabs production-tabs" aria-label="Produktionsbereiche">
-          {[
-            ["overview", "Überblick"],
-            ["team", "Team & Kontakte"],
-            ["casting", "Besetzung"],
-            ["mask-plan", "Maskenplan"],
-            ["tasks", "Aufgaben & Sprints"],
-            ["looks", "Aufschriebe"],
-            ["documents", "Dokumente"],
-            ["calendar", "Kalender"],
-            ["time", "Zeiten"],
-            ["chat", "Projektchat"],
-          ].map(([key, label]) => (
+          {productionSections.map(([key, label]) => (
             <button
               key={key}
               aria-current={tab === key ? "page" : undefined}
@@ -307,19 +311,24 @@ export function ProductionsModule({
           />
         )}
         {details && <RecordDetail record={production} onClose={() => setDetails(false)} />}
-      </>
+      </section>
     );
   return (
-    <>
+    <section className={styles.productionBrowse}>
       <PageHeader
+        compact
         eyebrow="JEDES STÜCK HAT SEINE GESCHICHTE"
         title="Produktionen"
         description="Euer gemeinsamer Überblick von der Vorbereitung bis zur Wiederaufnahme."
+        secondaryActions={
+          <>
+            <ExportButton onClick={() => setExporting(true)} />
+            {workspace.user.role !== "user" && (
+              <Button onClick={() => setImporting(true)}>Importieren</Button>
+            )}
+          </>
+        }
       >
-        <ExportButton onClick={() => setExporting(true)} />
-        {workspace.user.role !== "user" && (
-          <Button onClick={() => setImporting(true)}>Importieren</Button>
-        )}
         <Button variant="primary" onClick={() => setEditor(true)}>
           <Plus size={16} />
           Produktion anlegen
@@ -331,7 +340,7 @@ export function ProductionsModule({
         value={period}
         onChange={setPeriod}
       />
-      <div className="toolbar">
+      <div className={`toolbar ${styles.productionToolbar}`}>
         <div className="segmented">
           {[
             ["current", "Aktuell"],
@@ -348,22 +357,22 @@ export function ProductionsModule({
           ))}
         </div>
         <input
-          className="search-input"
+          className={`search-input ${styles.productionSearch}`}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Produktion suchen …"
           aria-label="Produktion suchen"
         />
+        <label className={`production-sort ${styles.productionSort}`}>
+          <span>Sortieren nach</span>
+          <select value={sort} onChange={(event) => setSort(event.target.value)}>
+            <option value="premiere">Premiere</option>
+            <option value="name">Name A–Z</option>
+            <option value="name-desc">Name Z–A</option>
+            <option value="updated">Zuletzt geändert</option>
+          </select>
+        </label>
       </div>
-      <label className="production-sort">
-        Sortieren nach
-        <select value={sort} onChange={(event) => setSort(event.target.value)}>
-          <option value="premiere">Premiere</option>
-          <option value="name">Name A–Z</option>
-          <option value="name-desc">Name Z–A</option>
-          <option value="updated">Zuletzt geändert</option>
-        </select>
-      </label>
       {records.length ? (
         <div className="production-grid">
           {records.map((project, i) => {
@@ -445,7 +454,7 @@ export function ProductionsModule({
         />
       )}
       {importing && <ImportDialog kind="productions" onClose={() => setImporting(false)} />}
-    </>
+    </section>
   );
 }
 export function CastingModule({ productionId = "" }: { productionId?: string }) {

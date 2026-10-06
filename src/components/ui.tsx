@@ -1,6 +1,8 @@
 "use client";
-import { useEffect, useId, useRef, type ReactNode } from "react";
-import { ArrowUpRight, Download, Plus, X } from "lucide-react";
+import { useEffect, useId, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { ArrowUpRight, Download, MoreHorizontal, Plus, X } from "lucide-react";
+import { subscribeMobile } from "@/shared/client-storage";
+import styles from "./ui.module.css";
 
 export function Button({
   children,
@@ -60,20 +62,82 @@ export function PageHeader({
   eyebrow,
   title,
   children,
+  secondaryActions,
+  compact = false,
 }: {
   eyebrow?: string;
   title: string;
   description?: string;
   children?: ReactNode;
+  secondaryActions?: ReactNode;
+  compact?: boolean;
 }) {
   return (
-    <header className="page-heading">
+    <header className={`page-heading ${compact ? styles.compactHeader : ""}`}>
       <div>
         {eyebrow && <p className="eyebrow">{eyebrow}</p>}
         <h1>{title}</h1>
       </div>
-      <div className="heading-actions">{children}</div>
+      <div className="heading-actions">
+        {secondaryActions && <ActionMenu>{secondaryActions}</ActionMenu>}
+        {children}
+      </div>
     </header>
+  );
+}
+export function ActionMenu({ children }: { children: ReactNode }) {
+  const ref = useRef<HTMLDetailsElement>(null);
+  const [expanded, setExpanded] = useState(false);
+  const mobile = useSyncExternalStore(
+    subscribeMobile,
+    () => window.matchMedia("(max-width: 760px)").matches,
+    () => false,
+  );
+  useEffect(() => {
+    const dismiss = (event: PointerEvent) => {
+      if (mobile && event.target instanceof Node && !ref.current?.contains(event.target)) {
+        if (ref.current) ref.current.open = false;
+        setExpanded(false);
+      }
+    };
+    document.addEventListener("pointerdown", dismiss);
+    return () => document.removeEventListener("pointerdown", dismiss);
+  }, [mobile]);
+  return (
+    <details
+      ref={ref}
+      className={styles.actionMenu}
+      open={!mobile || expanded}
+      data-expanded={expanded}
+      onToggle={(event) => {
+        if (mobile) setExpanded(event.currentTarget.open);
+      }}
+      onKeyDown={(event) => {
+        if (mobile && event.key === "Escape" && ref.current?.open) {
+          event.preventDefault();
+          ref.current.open = false;
+          setExpanded(false);
+          ref.current.querySelector("summary")?.focus();
+        }
+      }}
+    >
+      <summary className="button secondary" aria-label="Weitere Aktionen">
+        <MoreHorizontal size={17} />
+        Mehr
+      </summary>
+      <div
+        className={styles.actionMenuItems}
+        onClickCapture={(event) => {
+          if (mobile && event.target instanceof Element && event.target.closest("button")) {
+            if (ref.current) ref.current.open = false;
+            setExpanded(false);
+            ref.current?.querySelector("summary")?.focus();
+          }
+        }}
+      >
+        {children}
+      </div>
+    </details>
   );
 }
 export function Badge({ children, tone = "neutral" }: { children: ReactNode; tone?: string }) {
@@ -134,11 +198,26 @@ export function Modal({
       if (previousFocus instanceof HTMLElement && previousFocus.isConnected) previousFocus.focus();
     };
   }, []);
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    const update = () => {
+      ref.current?.style.setProperty("--dialog-viewport-height", `${viewport.height}px`);
+      ref.current?.style.setProperty("--dialog-viewport-top", `${viewport.offsetTop}px`);
+    };
+    update();
+    viewport.addEventListener("resize", update);
+    viewport.addEventListener("scroll", update);
+    return () => {
+      viewport.removeEventListener("resize", update);
+      viewport.removeEventListener("scroll", update);
+    };
+  }, []);
   return (
     <dialog
       ref={ref}
       aria-labelledby={titleId}
-      className={`dialog ${wide ? "wide" : ""} ${className}`}
+      className={`dialog ${styles.modal} ${wide ? "wide" : ""} ${className}`}
       onCancel={(event) => {
         event.preventDefault();
         onClose();
@@ -168,8 +247,15 @@ export function Modal({
   );
 }
 export function ErrorMessage({ message }: { message: string }) {
+  const ref = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    if (message && ref.current?.closest("dialog[open]")) {
+      ref.current.focus({ preventScroll: true });
+      ref.current.scrollIntoView({ block: "nearest" });
+    }
+  }, [message]);
   return message ? (
-    <p role="alert" className="error-message">
+    <p ref={ref} role="alert" tabIndex={-1} className="error-message">
       {message}
     </p>
   ) : null;

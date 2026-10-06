@@ -155,7 +155,7 @@
       const kind = match[1];
       if (!workspace.records[kind]) throw new Error("Unknown fictional record kind");
       let data = JSON.parse(init.body).data;
-      if (kind === "time")
+      if (kind === "time" || kind === "attendance")
         data = {
           ...data,
           userId: workspace.user.id,

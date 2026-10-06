@@ -124,6 +124,6 @@ if __name__ == '__main__':
             assert not any((OUT / f'{name}.{suffix}').exists() for suffix in ('mp4', 'webp', 'vtt')), f'{name}: choose a fresh version; published assets are immutable'
             entries[name] = render(directory)
         # Preserve explicit recording order in the help library.
-        order = ['calendar-people', 'casting-photos', 'production-tasks', 'mask-plan-blocks', 'look-sections', 'production-time', 'private-chat']
+        order = ['calendar-people', 'casting-photos', 'production-tasks', 'mask-plan-blocks', 'look-sections', 'production-time', 'time-history', 'private-chat']
         ordered_entries = sorted(entries.values(), key=lambda entry: order.index(entry['id']))
         catalogue.write_text('import type { HelpTutorial } from "./tutorials";\n\nexport const workflowTutorials: HelpTutorial[] = ' + json.dumps(ordered_entries, ensure_ascii=False, indent=2) + ';\n', encoding='utf-8', newline='\n')

@@ -6,7 +6,7 @@ import {
   recordMatchesPeriod,
   type PeriodFilter,
 } from "@/shared/period-filter";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
@@ -50,7 +50,9 @@ import {
 } from "@/modules/calendar/components/client-calendar";
 import { CalendarCategoriesDialog } from "@/modules/calendar/components/categories-dialog";
 import { TeamCalendar } from "@/modules/calendar/components/team-calendar";
-import { MobileDayAgenda } from "@/modules/calendar/components/mobile-day-agenda";
+import { MobileDaySheet } from "@/modules/calendar/components/mobile-day-sheet";
+import { calendarDayIndex, calendarDayLabel } from "@/modules/calendar/components/day-details";
+import calendarStyles from "@/modules/calendar/components/mobile-calendar.module.css";
 import { statusLabels } from "../resource-fields";
 export function expandEvents(
   records: DomainRecord[],
@@ -87,6 +89,7 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
   const { workspace, save, action, busy } = useWorkspace();
   const admin = workspace.user.role !== "user";
   const calendar = useRef<FullCalendar>(null);
+  const calendarRoot = useRef<HTMLDivElement>(null);
   const actionsMenu = useRef<HTMLDetailsElement>(null);
   const [mobile, setMobile] = useState(false);
   useEffect(() => {
@@ -104,6 +107,7 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [mobileDay, setMobileDay] = useState(localDate());
+  const [mobileDaySheetOpen, setMobileDaySheetOpen] = useState(false);
   const filtersId = useId();
   const categoryOptions = calendarCategories(workspace);
   const [people, setPeople] = useState<string[]>(
@@ -111,10 +115,14 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
   );
   const [showAll, setShowAll] = useState(false);
   const personalSelection = useRef<{ people: string[]; showAll: boolean } | null>(null);
-  const staff = workspace.members.filter(isActiveStaff);
-  const visiblePeople = showAll
-    ? staff.map((member) => member.id)
-    : people.filter((id) => staff.some((member) => member.id === id));
+  const staff = useMemo(() => workspace.members.filter(isActiveStaff), [workspace.members]);
+  const visiblePeople = useMemo(
+    () =>
+      showAll
+        ? staff.map((member) => member.id)
+        : people.filter((id) => staff.some((member) => member.id === id)),
+    [showAll, people, staff],
+  );
   const [category, setCategory] = useState("");
   const [leaveCategories, setLeaveCategories] = useState<Record<string, string>>({});
   const absenceCategories = categoryOptions.filter((option) => option.allDay);
@@ -133,34 +141,75 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
   const [editor, setEditor] = useState<{
     kind: "events" | "leave";
     defaults?: Record<string, unknown>;
+    record?: DomainRecord;
   } | null>(null);
   const [detail, setDetail] = useState<DomainRecord | null>(null);
   const [error, setError] = useState("");
   const [exporting, setExporting] = useState(false);
   const teamStart = teamSpan === "month" ? monthStart(teamDate) : weekStart(instantDate(teamDate));
   const teamEnd = teamSpan === "month" ? shiftMonth(teamStart, 1) : shiftDate(teamStart, 7);
-  const filtered = workspace.records.events.filter(
-    (x) =>
-      (!project || x.data.productionId === project) &&
-      recordMatchesPeriod(x, { season: period.season }, workspace.records.productions) &&
-      (!category || x.data.category === category) &&
-      calendarEventSelected(x.data, visiblePeople, showAll),
+  const filtered = useMemo(
+    () =>
+      workspace.records.events.filter(
+        (x) =>
+          (!project || x.data.productionId === project) &&
+          recordMatchesPeriod(x, { season: period.season }, workspace.records.productions) &&
+          (!category || x.data.category === category) &&
+          calendarEventSelected(x.data, visiblePeople, showAll),
+      ),
+    [
+      workspace.records.events,
+      workspace.records.productions,
+      project,
+      period.season,
+      category,
+      visiblePeople,
+      showAll,
+    ],
   );
-  const expanded = expandEvents(
-    filtered,
-    view === "team" ? teamStart : range.start,
-    view === "team" ? teamEnd : range.end,
-    workspace.records.productions,
-    workspace.records.calendarCategories,
-    workspace.user,
-  ).filter((event) => {
-    const bounds = seasonBounds(period.season);
-    return (
-      !bounds ||
-      (new Date(event.end).getTime() > instantDate(bounds.from).getTime() &&
-        new Date(event.start).getTime() < instantDate(bounds.to).getTime())
-    );
-  });
+  const expansionStart = view === "team" ? teamStart : range.start;
+  const expansionEnd = view === "team" ? teamEnd : range.end;
+  const expanded = useMemo(
+    () =>
+      expandEvents(
+        filtered,
+        expansionStart,
+        expansionEnd,
+        workspace.records.productions,
+        workspace.records.calendarCategories,
+        workspace.user,
+      ).filter((event) => {
+        const bounds = seasonBounds(period.season);
+        return (
+          !bounds ||
+          (new Date(event.end).getTime() > instantDate(bounds.from).getTime() &&
+            new Date(event.start).getTime() < instantDate(bounds.to).getTime())
+        );
+      }),
+    [
+      filtered,
+      expansionStart,
+      expansionEnd,
+      workspace.records.productions,
+      workspace.records.calendarCategories,
+      workspace.user,
+      period.season,
+    ],
+  );
+  const dayEntries = useMemo(
+    () =>
+      calendarDayIndex(
+        expanded,
+        localDate(instantDate(range.start)),
+        shiftDate(localDate(instantDate(range.end)), -1),
+      ),
+    [expanded, range.start, range.end],
+  );
+  const selectedDayCount = dayEntries.get(mobileDay)?.length || 0;
+  const openMobileDay = (day: string) => {
+    setMobileDay(day);
+    setMobileDaySheetOpen(true);
+  };
   const overlaps = expanded.filter((event, i) =>
     expanded
       .slice(i + 1)
@@ -191,6 +240,7 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
     .filter((x) => admin || x.data.userId === workspace.user.id)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const changeView = (next: string) => {
+    setMobileDaySheetOpen(false);
     if (next === "team" && view !== "team") {
       personalSelection.current = { people, showAll };
       setShowAll(true);
@@ -231,7 +281,7 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
     (_, i) => shiftDate(teamStart, i),
   );
   return (
-    <div className="calendar-module">
+    <div ref={calendarRoot} className={`calendar-module ${calendarStyles.calendar}`}>
       <PageHeader
         eyebrow="DEIN DIENSTPLAN. GEMEINSAM GEPLANT."
         title="Kalender"
@@ -533,9 +583,13 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
               people={visiblePeople}
               days={teamDays}
               month={teamSpan === "month"}
+              mobile={mobile}
               canPlan={(person) => admin || person === workspace.user.id}
               productions={workspace.records.productions}
+              suspended={!!detail || !!editor}
+              canEdit={(record) => canManageRecord(workspace.user, "events", record)}
               onOpen={setDetail}
+              onEdit={(record) => setEditor({ kind: "events", record })}
               onCreate={(defaults) => setEditor({ kind: "events", defaults })}
             />
           ) : (
@@ -572,6 +626,37 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
                 dayCellClassNames={(info) =>
                   localDate(info.date) === mobileDay ? ["mobile-selected-day"] : []
                 }
+                dayCellContent={(info) => {
+                  if (!mobile || view !== "month") return info.dayNumberText;
+                  const day = localDate(info.date);
+                  const count = dayEntries.get(day)?.length || 0;
+                  return (
+                    <button
+                      type="button"
+                      className={calendarStyles.dayButton}
+                      data-calendar-day={day}
+                      aria-haspopup="dialog"
+                      aria-pressed={day === mobileDay}
+                      aria-label={`${calendarDayLabel(day)}: ${count} ${count === 1 ? "Termin" : "Termine"}. Details anzeigen`}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        openMobileDay(day);
+                      }}
+                    >
+                      {count > 1 && (
+                        <span className={calendarStyles.busyCount} aria-hidden="true">
+                          {count}
+                        </span>
+                      )}
+                      <span>{info.dayNumberText}</span>
+                    </button>
+                  );
+                }}
+                moreLinkClick={(info) => {
+                  if (!mobile || view !== "month") return "popover";
+                  openMobileDay(localDate(info.date));
+                  return "dayGridMonth";
+                }}
                 selectable={true}
                 editable={true}
                 eventStartEditable={true}
@@ -601,13 +686,17 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
                   );
                 }}
                 eventClick={(info) => setDetail(info.event.extendedProps.record as DomainRecord)}
-                dateClick={(info) => setMobileDay(localDate(info.date))}
+                dateClick={(info) => {
+                  const day = localDate(info.date);
+                  if (mobile && view === "month") openMobileDay(day);
+                  else setMobileDay(day);
+                }}
                 select={(info) => {
                   if (
                     info.view.type === "dayGridMonth" &&
                     window.matchMedia("(max-width: 760px)").matches
                   ) {
-                    setMobileDay(localDate(info.start));
+                    openMobileDay(localDate(info.start));
                     calendar.current?.getApi().unselect();
                     return;
                   }
@@ -649,39 +738,57 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
                 }}
               />
               {view === "month" && (
-                <section className="personal-mobile-day-detail">
-                  <h3>
-                    {new Intl.DateTimeFormat("de-DE", {
-                      timeZone: "Europe/Berlin",
-                      weekday: "long",
-                      day: "numeric",
-                      month: "long",
-                    }).format(instantDate(mobileDay))}
-                  </h3>
-                  <MobileDayAgenda
-                    events={expanded}
-                    day={mobileDay}
-                    members={workspace.members}
-                    productions={workspace.records.productions}
-                    onOpen={setDetail}
-                  />
+                <section className={`personal-mobile-day-detail ${calendarStyles.daySummary}`}>
                   <button
-                    className="text-button"
-                    onClick={() =>
-                      setEditor({
-                        kind: "events",
-                        defaults: {
-                          start: `${mobileDay}T09:00`,
-                          end: `${mobileDay}T17:00`,
-                          participantIds: visiblePeople,
-                        },
-                      })
-                    }
+                    type="button"
+                    aria-haspopup="dialog"
+                    onClick={() => openMobileDay(mobileDay)}
                   >
-                    <Plus size={15} />
-                    Termin an diesem Tag
+                    <span>
+                      <strong className={calendarStyles.summaryTitle}>
+                        {calendarDayLabel(mobileDay)}
+                      </strong>
+                      <span>
+                        {selectedDayCount} {selectedDayCount === 1 ? "Termin" : "Termine"} ·
+                        Tagesdetails anzeigen
+                      </span>
+                    </span>
+                    <ChevronRight size={18} aria-hidden="true" />
                   </button>
                 </section>
+              )}
+              {mobile && view === "month" && mobileDaySheetOpen && !detail && !editor && (
+                <MobileDaySheet
+                  events={expanded}
+                  day={mobileDay}
+                  members={workspace.members}
+                  productions={workspace.records.productions}
+                  contextLabel={
+                    showAll
+                      ? "Gesamtes Team"
+                      : `${visiblePeople.length} ${visiblePeople.length === 1 ? "Kalender" : "Kalender ausgewählt"}`
+                  }
+                  minDay={localDate(instantDate(range.start))}
+                  maxDay={shiftDate(localDate(instantDate(range.end)), -1)}
+                  createOptions={[
+                    {
+                      id: "selected-calendars",
+                      label: "Termin an diesem Tag",
+                      participantIds: admin ? visiblePeople : [workspace.user.id],
+                    },
+                  ]}
+                  canEdit={(record) => canManageRecord(workspace.user, "events", record)}
+                  onSelect={setMobileDay}
+                  onClose={() => setMobileDaySheetOpen(false)}
+                  onRestoreFocus={() =>
+                    calendarRoot.current
+                      ?.querySelector<HTMLButtonElement>(`[data-calendar-day="${mobileDay}"]`)
+                      ?.focus({ preventScroll: true })
+                  }
+                  onOpen={setDetail}
+                  onEdit={(record) => setEditor({ kind: "events", record })}
+                  onCreate={(defaults) => setEditor({ kind: "events", defaults })}
+                />
               )}
             </>
           )}
@@ -784,6 +891,7 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
       {editor && (
         <ResourceEditor
           kind={editor.kind}
+          record={editor.record}
           lockedProductionId={editor.kind === "events" && productionId ? productionId : undefined}
           defaults={{ productionId: project, ...editor.defaults }}
           onClose={() => setEditor(null)}

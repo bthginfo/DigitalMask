@@ -42,6 +42,7 @@ import { addPageNumbers } from "./page-numbers";
 import { TeamCalendarPdf, CalendarLegendPdf } from "./team-calendar-pdf";
 import { eventTimeLabel } from "./team-calendar";
 import { durationSummary } from "./duration-summary";
+import { TimeWeeklyPdf } from "./time-weekly-pdf";
 
 Font.register({
   family: "Noto",
@@ -648,6 +649,9 @@ export async function buildPdf(input: ExportInput): Promise<Uint8Array> {
           {["characters", "casting"].includes(input.kind) && <GalleryPages input={input} />}
           {calendar && <CalendarLegendPdf input={input} Page={BasePage} />}
           {input.kind === "attendance" && <AttendanceSummary input={input} rows={rows} />}
+          {["time", "attendance"].includes(input.kind) && (
+            <TimeWeeklyPdf input={input} Page={BasePage} />
+          )}
           {input.kind === "time" && (
             <BasePage input={input} label="Arbeitszeit · Zusammenfassung">
               <View style={styles.summary}>

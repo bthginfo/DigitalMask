@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState, useSyncExternalStore } from "react";
 import {
   DndContext,
   PointerSensor,
@@ -10,7 +10,16 @@ import {
   useDroppable,
   type DragEndEvent,
 } from "@dnd-kit/core";
-import { CalendarDays, CheckSquare, ChevronDown, Flag, Plus } from "lucide-react";
+import {
+  CalendarDays,
+  CheckSquare,
+  ChevronDown,
+  ChevronRight,
+  Columns3,
+  Flag,
+  List,
+  Plus,
+} from "lucide-react";
 import { PeriodPicker, periodExportFilters } from "@/components/period-picker";
 import { initialPeriod, recordMatchesPeriod, type PeriodFilter } from "@/shared/period-filter";
 import type { DomainRecord } from "@/shared/contracts";
@@ -22,6 +31,8 @@ import { RecordDetail } from "../resource-view";
 import { canManageRecord } from "@/shared/record-permissions";
 import { ExportDialog } from "../export-dialog";
 import { RecordLink } from "../record-link";
+import { subscribeMobile, useStoredValue } from "@/shared/client-storage";
+import styles from "./task-board.module.css";
 const columns = [
   ["backlog", "Backlog"],
   ["todo", "Offen"],
@@ -29,6 +40,73 @@ const columns = [
   ["review", "Prüfung"],
   ["done", "Erledigt"],
 ];
+const listColumns = [columns[1], columns[2], columns[3], columns[0], columns[4]];
+function TaskListRow({
+  task,
+  onOpen,
+  onMove,
+}: {
+  task: DomainRecord;
+  onOpen: () => void;
+  onMove: (status: string) => void;
+}) {
+  const { workspace } = useWorkspace();
+  const canEdit = canManageRecord(workspace.user, "tasks", task);
+  const checklist = Array.isArray(task.data.checklist)
+    ? (task.data.checklist as { done: boolean }[])
+    : [];
+  const assignees = ids(task.data, "assigneeIds")
+    .map((id) => workspace.members.find((person) => person.id === id)?.name)
+    .filter(Boolean);
+  return (
+    <article className={styles.taskRow}>
+      <button className={styles.openTask} onClick={onOpen}>
+        <span className={styles.rowContent}>
+          <strong>{value(task.data, "title")}</strong>
+          {!!value(task.data, "description") && (
+            <span className={styles.description}>{value(task.data, "description")}</span>
+          )}
+          <span className={styles.rowMeta}>
+            {task.data.priority === "high" && (
+              <span className={styles.highPriority}>
+                <Flag size={12} /> Hoch
+              </span>
+            )}
+            {!!task.data.due && (
+              <span>
+                <CalendarDays size={13} /> {dateLabel(value(task.data, "due"))}
+              </span>
+            )}
+            {!!checklist.length && (
+              <span>
+                <CheckSquare size={13} /> {checklist.filter((item) => item.done).length}/
+                {checklist.length}
+              </span>
+            )}
+          </span>
+        </span>
+        <ChevronRight size={18} />
+      </button>
+      <footer className={styles.rowFooter}>
+        <span className={styles.assignees}>{assignees.join(", ") || "Noch nicht zugeteilt"}</span>
+        <label className={styles.rowStatus}>
+          <span className="visually-hidden">Status von {value(task.data, "title")}</span>
+          <select
+            disabled={!canEdit}
+            value={value(task.data, "status")}
+            onChange={(event) => onMove(event.target.value)}
+          >
+            {columns.map(([id, label]) => (
+              <option key={id} value={id}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </label>
+      </footer>
+    </article>
+  );
+}
 function TaskCard({
   task,
   onOpen,
@@ -183,6 +261,17 @@ export function TasksModule({ productionId = "" }: { productionId?: string }) {
   const [sprint, setSprint] = useState("");
   const [mine, setMine] = useState(false);
   const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("");
+  const isMobile = useSyncExternalStore(
+    subscribeMobile,
+    () => window.matchMedia("(max-width: 760px)").matches,
+    () => false,
+  );
+  const [preferredView, setView] = useStoredValue(
+    `digitalmask-task-view:${workspace.user.id}:${isMobile ? "mobile" : "desktop"}`,
+    isMobile ? "list" : "board",
+  );
+  const listView = preferredView === "list";
   const [editor, setEditor] = useState<{
     kind: "tasks" | "sprints";
     status?: string;
@@ -196,14 +285,30 @@ export function TasksModule({ productionId = "" }: { productionId?: string }) {
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor),
   );
-  const tasks = workspace.records.tasks.filter(
-    (x) =>
-      value(x.data, "productionId") === project &&
-      recordMatchesPeriod(x, period, workspace.records.productions) &&
-      (!sprint || x.data.sprintId === sprint) &&
-      (!mine || ids(x.data, "assigneeIds").includes(workspace.user.id)) &&
-      (!search || value(x.data, "title").toLowerCase().includes(search.toLowerCase())),
+  const filteredTasks = useMemo(
+    () =>
+      workspace.records.tasks.filter(
+        (x) =>
+          value(x.data, "productionId") === project &&
+          recordMatchesPeriod(x, period, workspace.records.productions) &&
+          (!sprint || x.data.sprintId === sprint) &&
+          (!mine || ids(x.data, "assigneeIds").includes(workspace.user.id)) &&
+          (!search || value(x.data, "title").toLowerCase().includes(search.toLowerCase())),
+      ),
+    [
+      workspace.records.tasks,
+      workspace.records.productions,
+      workspace.user.id,
+      project,
+      period,
+      sprint,
+      mine,
+      search,
+    ],
   );
+  const tasks = status
+    ? filteredTasks.filter((task) => task.data.status === status)
+    : filteredTasks;
   const move = async (task: DomainRecord, status: string) => {
     if (task.data.status === status) return;
     setError("");
@@ -220,8 +325,9 @@ export function TasksModule({ productionId = "" }: { productionId?: string }) {
   };
   const selectedSprint = workspace.records.sprints.find((x) => x.id === sprint);
   return (
-    <>
+    <section className={styles.taskWorkspace}>
       <PageHeader
+        compact
         eyebrow="GEMEINSAM VORAN"
         title={project ? "Aufgaben & Sprints" : "Teamboard"}
         description={
@@ -229,9 +335,15 @@ export function TasksModule({ productionId = "" }: { productionId?: string }) {
             ? "Das Kanban und die Sprints dieser Produktion."
             : "Gemeinsame Aufgaben der Maske, unabhängig von einer Produktion."
         }
+        secondaryActions={
+          <>
+            <ExportButton onClick={() => setExporting(true)} />
+            {project && (
+              <Button onClick={() => setEditor({ kind: "sprints" })}>Sprint planen</Button>
+            )}
+          </>
+        }
       >
-        <ExportButton onClick={() => setExporting(true)} />
-        {project && <Button onClick={() => setEditor({ kind: "sprints" })}>Sprint planen</Button>}
         <Button variant="primary" onClick={() => setEditor({ kind: "tasks" })}>
           <Plus size={16} />
           Aufgabe
@@ -246,7 +358,7 @@ export function TasksModule({ productionId = "" }: { productionId?: string }) {
         value={period}
         onChange={setPeriod}
       />
-      <div className="toolbar wrap">
+      <div className={`toolbar wrap ${styles.filters}`}>
         {project && (
           <select aria-label="Sprint" value={sprint} onChange={(e) => setSprint(e.target.value)}>
             <option value="">Alle Sprints</option>
@@ -260,6 +372,7 @@ export function TasksModule({ productionId = "" }: { productionId?: string }) {
           </select>
         )}
         <input
+          className={styles.search}
           placeholder="Aufgaben suchen …"
           aria-label="Aufgaben suchen"
           value={search}
@@ -269,6 +382,36 @@ export function TasksModule({ productionId = "" }: { productionId?: string }) {
           <input type="checkbox" checked={mine} onChange={(e) => setMine(e.target.checked)} />
           Meine Aufgaben
         </label>
+      </div>
+      <div className={styles.viewToolbar}>
+        <select
+          aria-label="Aufgabenstatus filtern"
+          value={status}
+          onChange={(event) => setStatus(event.target.value)}
+        >
+          <option value="">Alle Status ({filteredTasks.length})</option>
+          {columns.map(([id, label]) => (
+            <option key={id} value={id}>
+              {label} ({filteredTasks.filter((task) => task.data.status === id).length})
+            </option>
+          ))}
+        </select>
+        <div className={`segmented ${styles.viewSwitch}`} role="group" aria-label="Aufgabenansicht">
+          <button
+            className={listView ? "active" : ""}
+            aria-pressed={listView}
+            onClick={() => setView("list")}
+          >
+            <List size={15} /> Liste
+          </button>
+          <button
+            className={!listView ? "active" : ""}
+            aria-pressed={!listView}
+            onClick={() => setView("board")}
+          >
+            <Columns3 size={15} /> Kanban
+          </button>
+        </div>
       </div>
       {selectedSprint && (
         <div className="sprint-banner">
@@ -285,44 +428,116 @@ export function TasksModule({ productionId = "" }: { productionId?: string }) {
         </div>
       )}
       <ErrorMessage message={error} />
-      <div className="mobile-board-nav">
-        <span className="small muted">Alle Spalten: horizontal wischen oder auswählen</span>
-        <select
-          aria-label="Kanban-Spalte anzeigen"
-          defaultValue="backlog"
-          onChange={(event) =>
-            board.current
-              ?.querySelector(`[data-column="${event.target.value}"]`)
-              ?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "start" })
-          }
-        >
-          {columns.map(([id, label]) => (
-            <option key={id} value={id}>
-              {label}
-            </option>
-          ))}
-        </select>
-      </div>
-      <DndContext sensors={sensors} onDragEnd={dragEnd}>
-        <div
-          className="kanban"
-          ref={(element) => {
-            board.current = element;
-          }}
-        >
-          {columns.map(([id, label]) => (
-            <Column
-              key={id}
-              id={id}
-              label={label}
-              tasks={tasks.filter((x) => x.data.status === id)}
-              onOpen={setDetail}
-              onMove={(task, status) => void move(task, status)}
-              onAdd={() => setEditor({ kind: "tasks", status: id })}
-            />
-          ))}
+      {listView ? (
+        <div className={styles.taskGroups}>
+          {listColumns
+            .filter(([id]) => tasks.some((task) => task.data.status === id))
+            .map(([id, label]) => {
+              const group = tasks.filter((task) => task.data.status === id);
+              return (
+                <section
+                  key={id}
+                  className={styles.taskGroup}
+                  aria-label={`${label}: ${group.length} Aufgaben`}
+                >
+                  <header>
+                    <h2>
+                      <span className={`status-dot ${id}`} />
+                      {label}
+                      <span className="count">{group.length}</span>
+                    </h2>
+                    <button
+                      className="icon-button"
+                      aria-label={`Aufgabe in ${label} anlegen`}
+                      onClick={() => setEditor({ kind: "tasks", status: id })}
+                    >
+                      <Plus size={17} />
+                    </button>
+                  </header>
+                  {group.map((task) => (
+                    <TaskListRow
+                      key={task.id}
+                      task={task}
+                      onOpen={() => setDetail(task)}
+                      onMove={(next) => void move(task, next)}
+                    />
+                  ))}
+                </section>
+              );
+            })}
+          {!tasks.length && (
+            <div className={styles.noTasks} role="status">
+              <h3>
+                {search || mine || sprint || status
+                  ? "Keine passenden Aufgaben"
+                  : "Alles im Blick. Noch keine Aufgaben."}
+              </h3>
+              <p className="small muted">
+                {search || mine || sprint || status
+                  ? "Passe die Filter an oder lege eine neue Aufgabe an."
+                  : "Mit einer Aufgabe beginnt euer nächster gemeinsamer Schritt."}
+              </p>
+              {(search || mine || sprint || status) && (
+                <Button
+                  onClick={() => {
+                    setSearch("");
+                    setMine(false);
+                    setSprint("");
+                    setStatus("");
+                  }}
+                >
+                  Aufgabenfilter zurücksetzen
+                </Button>
+              )}
+            </div>
+          )}
         </div>
-      </DndContext>
+      ) : (
+        <>
+          {!status && (
+            <div className="mobile-board-nav">
+              <span className="small muted">Alle Spalten: horizontal wischen oder auswählen</span>
+              <select
+                aria-label="Kanban-Spalte anzeigen"
+                defaultValue="backlog"
+                onChange={(event) =>
+                  board.current
+                    ?.querySelector(`[data-column="${event.target.value}"]`)
+                    ?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "start" })
+                }
+              >
+                {columns.map(([id, label]) => (
+                  <option key={id} value={id}>
+                    {label} ({tasks.filter((task) => task.data.status === id).length})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          <DndContext sensors={sensors} onDragEnd={dragEnd}>
+            <div
+              className={`kanban ${styles.board}`}
+              ref={(element) => {
+                board.current = element;
+              }}
+            >
+              {columns
+                .filter(([id]) => !status || id === status)
+                .map(([id, label]) => (
+                  <Column
+                    key={id}
+                    id={id}
+                    label={label}
+                    tasks={tasks.filter((x) => x.data.status === id)}
+                    onOpen={setDetail}
+                    onMove={(task, status) => void move(task, status)}
+                    onAdd={() => setEditor({ kind: "tasks", status: id })}
+                  />
+                ))}
+            </div>
+          </DndContext>
+        </>
+      )}
       {detail && <RecordDetail record={detail} onClose={() => setDetail(null)} />}
       {editor && (
         <ResourceEditor
@@ -355,6 +570,6 @@ export function TasksModule({ productionId = "" }: { productionId?: string }) {
           onClose={() => setExporting(false)}
         />
       )}
-    </>
+    </section>
   );
 }

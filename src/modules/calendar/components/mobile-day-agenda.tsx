@@ -1,82 +1,89 @@
 "use client";
+import { useMemo } from "react";
+import { ChevronRight, Pencil } from "lucide-react";
 import type { DomainRecord, Member } from "@/shared/contracts";
-import { dateLabel, ids, localDate, value } from "@/shared/client-api";
+import { ids, value } from "@/shared/client-api";
+import { calendarDayEntries, calendarInstanceTime } from "./day-details";
 import type { CalendarInstance } from "./team-calendar";
+import styles from "./mobile-day-sheet.module.css";
 
 export function MobileDayAgenda({
   events,
   day,
   members,
   productions,
+  canEdit,
   onOpen,
+  onEdit,
 }: {
   events: CalendarInstance[];
   day: string;
   members: Pick<Member, "id" | "name">[];
   productions: DomainRecord[];
+  canEdit?: (record: DomainRecord) => boolean;
   onOpen: (record: DomainRecord) => void;
+  onEdit?: (record: DomainRecord) => void;
 }) {
-  const selected = events.filter(
-    (event) =>
-      localDate(new Date(new Date(event.end).getTime() - 1)) >= day &&
-      localDate(new Date(event.start)) <= day,
-  );
+  const selected = useMemo(() => calendarDayEntries(events, day), [events, day]);
   return (
-    <div className="calendar-mobile-day-agenda" aria-live="polite">
+    <ol className={`calendar-mobile-day-agenda ${styles.agenda}`} aria-live="polite">
       {selected.length ? (
         selected.map((event) => {
-          const names = members
-            .filter((person) =>
-              ids(event.extendedProps.record.data, "participantIds").includes(person.id),
-            )
-            .map((person) => person.name);
-          const sameDay =
-            localDate(new Date(event.start)) ===
-            localDate(new Date(new Date(event.end).getTime() - 1));
-          const clock = (date: string) =>
-            new Intl.DateTimeFormat("de-DE", {
-              timeZone: "Europe/Berlin",
-              hour: "2-digit",
-              minute: "2-digit",
-            }).format(new Date(date));
-          const time = event.allDay
-            ? "Ganztägig"
-            : sameDay
-              ? `${clock(event.start)}–${clock(event.end)}`
-              : `${dateLabel(event.start, true)} – ${dateLabel(event.end, true)}`;
+          const record = event.extendedProps.record;
+          const names = ids(record.data, "participantIds").map(
+            (id) => members.find((person) => person.id === id)?.name || "Ehemaliges Teammitglied",
+          );
+          const series = record.data.recurrence && record.data.recurrence !== "none";
           return (
-            <button
-              key={event.id}
-              className="team-mobile-service calendar-colored-event"
-              style={{
-                borderLeftColor: event.borderColor,
-                backgroundColor: event.backgroundColor,
-                color: event.textColor,
-              }}
-              onClick={() => onOpen(event.extendedProps.record)}
-            >
-              <span className="small muted">{names.join(", ") || "Ohne Zuordnung"}</span>
-              <strong>{event.title}</strong>
-              <span>
-                {time} · {event.categoryName}
-              </span>
-              <span className="small muted">
-                {value(event.extendedProps.record.data, "location") || "Ort noch offen"} ·{" "}
-                {value(
-                  productions.find(
-                    (production) => production.id === event.extendedProps.record.data.productionId,
-                  )?.data || {},
-                  "title",
-                ) || "Ohne Produktion"}
-              </span>
-            </button>
+            <li key={event.id} className={styles.event}>
+              <button
+                type="button"
+                className={`team-mobile-service calendar-colored-event ${styles.service}`}
+                style={{
+                  borderLeftColor: event.borderColor,
+                  backgroundColor: event.backgroundColor,
+                  color: event.textColor,
+                }}
+                onClick={() => onOpen(record)}
+              >
+                <span className={styles.people}>{names.join(", ") || "Ohne Zuordnung"}</span>
+                <strong>{event.title}</strong>
+                <span>
+                  {calendarInstanceTime(event)} · {event.categoryName}
+                </span>
+                <span className={styles.location}>
+                  {value(record.data, "location") || "Ort noch offen"} ·{" "}
+                  {value(
+                    productions.find((production) => production.id === record.data.productionId)
+                      ?.data || {},
+                    "title",
+                  ) || "Ohne Produktion"}
+                </span>
+                <span className={styles.detailsCue}>
+                  Details ansehen{series ? " · Terminserie" : ""}
+                  <ChevronRight size={16} aria-hidden="true" />
+                </span>
+              </button>
+              {onEdit && canEdit?.(record) && (
+                <button
+                  type="button"
+                  className={`text-button ${styles.editAction}`}
+                  aria-label={`${series ? "Terminserie" : "Termin"} ${event.title} bearbeiten`}
+                  onClick={() => onEdit(record)}
+                >
+                  <Pencil size={14} aria-hidden="true" />
+                  {series ? "Serie bearbeiten" : "Bearbeiten"}
+                </button>
+              )}
+            </li>
           );
         })
       ) : (
-        <p className="team-mobile-empty">
-          Keine Termine an diesem Tag. Wähle oben einen anderen Tag.
-        </p>
+        <li className={`team-mobile-empty ${styles.empty}`}>
+          <strong>Keine Termine an diesem Tag.</strong>
+          Wähle einen anderen Tag oder blende weitere Kalender ein.
+        </li>
       )}
-    </div>
+    </ol>
   );
 }

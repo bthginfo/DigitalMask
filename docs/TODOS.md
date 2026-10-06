@@ -1,5 +1,23 @@
 # Umsetzungsstand
 
+## Mobile Bedienung und nachvollziehbare Zeitbuchungen
+
+- [x] Anwesenheit und Produktionsarbeit mit aufklappbarem Wochenverlauf, ISO-Kalenderwochen, Summen und direktem Bearbeiten älterer Buchungen anzeigen.
+- [x] Frühere/nächste Wochen leicht auswählen; widersprüchliche Jahr-/Spielzeitfilter beim Wochenwechsel vermeiden und frühere Spielzeiten erreichbar halten.
+- [x] Geplante Kalenderzeiten als ungeprüfte Vorschläge anbieten, vor dem Buchen anpassbar und ausdrücklich zu bestätigen; freie/ganztägige Termine, Zukunft und Doppelbuchungen berücksichtigen.
+- [x] ABF, Ruhetag und weitere ganztägige Kennzeichnungen in Wochenübersicht und Verlauf aufnehmen; eigene Tage leicht kennzeichnen und sinnvolle Wochenexporte ergänzen, ohne Arbeitsstunden zu erfinden.
+- [x] Beide unabhängigen Timer am Smartphone kompakt und mit sichtbarem Laufzustand darstellen; manuelles Nachtragen und Einträge leichter erreichbar machen.
+- [x] Mobile Überschriften, Nebenaktionen und Jahr-/Spielzeitfilter verdichten; Produktionskarten und Desktopansichten erhalten.
+- [x] Alle Produktionsbereiche über eine eindeutig beschriftete mobile Auswahl erreichbar halten.
+- [x] Teamaufgaben mobil als nach Status gegliederte Liste anbieten; Kanban als Alternative erhalten.
+- [x] Vollständige Tagesdetails im mobilen Monatskalender zugänglich machen, einschließlich Teamansicht und bestehender Schreibrechte.
+- [x] Lange Formulare mit erreichbaren Speichern-/Abbrechen-Aktionen und sinnvoller Nutzung der Tastaturhöhe verbessern.
+- [x] Anleitungen, FAQ und betroffene Kurzvideos anpassen; Datumsfälle und Handy-/Desktopdarstellung gezielt prüfen, Releasepaket für GitHub/Vercel fertigstellen und temporäre Prüfdateien entfernen.
+
+Die historischen Zeitdaten sind bereits Teil des freigegebenen, zwischengespeicherten Arbeitsraums. Wochenverlauf und Kalender-Vorschläge werden ausschließlich daraus berechnet. Geplante Kalenderzeiten sind keine bestätigten Arbeitszeiten und werden erst durch ausdrückliches Speichern zur Buchung. Die Erweiterung benötigt keine zusätzlichen Abfragen, Polls, Cronjobs oder Datenbanktabellen.
+
+Die unabhängige Designprüfung ist bestanden. 48 gezielte Zeit-, Kalender- und Exporttests sowie Handyansichten bei 375/390/432 px, Desktop, Tastaturhöhe und Fokusabläufe sind geprüft. Die zwölf aktiven Hilfeclips einschließlich Poster und Textspuren benötigen 3,78 MB; sie laden erst nach Benutzeraktion und nutzen statische Vercel-Dateien.
+
 ## Mehr Platz für den mobilen Chat
 
 - [x] Große mobile Überschrift und doppelte Kanalbenennung durch eine kompakte Kopfzeile mit Kanalwechsel ersetzen.

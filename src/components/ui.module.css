@@ -1,0 +1,151 @@
+.actionMenu {
+  display: contents;
+}
+
+.actionMenu > summary {
+  display: none;
+}
+
+.actionMenuItems {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@media (max-width: 760px) {
+  .compactHeader:global(.page-heading) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .compactHeader:global(.page-heading) h1 {
+    font-size: 27px;
+    line-height: 1.18;
+    margin-bottom: 0;
+  }
+
+  .compactHeader:global(.page-heading) :global(.eyebrow) {
+    margin-bottom: 5px;
+  }
+
+  .compactHeader :global(.heading-actions) {
+    width: 100%;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    gap: 8px;
+  }
+
+  .compactHeader :global(.heading-actions) > :global(.button) {
+    flex: 1;
+    font-size: 12px;
+    min-height: 44px;
+  }
+
+  .actionMenu {
+    display: block;
+    position: relative;
+    order: 1;
+    flex: 0 0 auto;
+    margin-left: auto;
+  }
+
+  .actionMenu > summary {
+    display: flex;
+    list-style: none;
+    min-height: 44px;
+    padding: 10px 12px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  .actionMenu > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .actionMenu[open] > summary {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+  }
+
+  .actionMenuItems {
+    position: absolute;
+    z-index: 15;
+    top: calc(100% + 6px);
+    right: 0;
+    min-width: 220px;
+    width: max-content;
+    max-width: calc(100vw - 36px);
+    display: grid;
+    gap: 5px;
+    padding: 7px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: 0 12px 30px #0002;
+  }
+
+  .actionMenu:not([open]) .actionMenuItems,
+  .actionMenu[data-expanded="false"] .actionMenuItems {
+    display: none;
+  }
+
+  .actionMenuItems :global(.button) {
+    width: 100%;
+    justify-content: flex-start;
+    min-height: 44px;
+    font-size: 13px;
+    padding: 10px 12px;
+  }
+
+  .modal:global(.dialog)[open]:has(> form :global(.dialog-footer)) {
+    display: flex;
+    flex-direction: column;
+    width: calc(100% - 16px);
+    max-height: calc(var(--dialog-viewport-height, 100dvh) - 16px);
+    inset: calc(var(--dialog-viewport-top, 0px) + 8px) 0 auto;
+    margin: 0 auto;
+    padding: 0 16px;
+    overflow: hidden;
+    border-radius: 13px;
+  }
+
+  .modal:has(> form :global(.dialog-footer)) > :global(.dialog-heading) {
+    flex-shrink: 0;
+    margin: 0 -16px;
+    padding: 10px 10px 10px 16px;
+    min-height: 60px;
+  }
+
+  .modal:has(> form :global(.dialog-footer)) > form {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    padding: 16px 0 0;
+    scroll-padding-block: 16px 90px;
+  }
+
+  .modal > form :global(.dialog-footer) {
+    position: sticky;
+    z-index: 3;
+    bottom: 0;
+    background: var(--surface);
+    margin-top: 20px;
+    padding: 12px 0 max(12px, env(safe-area-inset-bottom));
+    gap: 8px;
+    box-shadow: 0 -10px 14px -14px #0004;
+  }
+
+  .modal > form :global(.dialog-footer) > :global(.button) {
+    flex: 1;
+    min-height: 44px;
+    font-size: 13px;
+  }
+
+  .modal > form :global(.error-message) {
+    scroll-margin-block: 16px 90px;
+  }
+}

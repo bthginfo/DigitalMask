@@ -1,3 +1,9 @@
+async function productionSection(page, click, fill, label, value) {
+  const selector = page.getByRole("combobox", { name: "Produktionsbereich", exact: true });
+  if (await selector.isVisible()) await fill(selector, value);
+  else await click(page.getByRole("button", { name: label, exact: true }));
+}
+
 export const workflows = [
   {
     id: "calendar-people",
@@ -8,6 +14,13 @@ export const workflows = [
     async run({ page, click, stage, hold }) {
       stage("Dein Kalender", "Zu Beginn siehst du deinen Kalender in der aktuellen Spielzeit.");
       await hold(2300);
+      stage(
+        "Tagesdetails öffnen",
+        "Tippe einen Tag an. Die Tagesliste zeigt Namen und Zeiten vollständig.",
+      );
+      await click(page.locator('[data-calendar-day="2026-10-04"]'));
+      await hold(1800);
+      await click(page.getByRole("button", { name: "Tagesdetails schließen", exact: true }));
       stage("Personen auswählen", "Öffne die Kalenderauswahl und blende eine Kollegin ein.");
       await click(page.getByRole("button", { name: "1 Kalender", exact: true }));
       await click(page.getByRole("checkbox", { name: "Nora Muster", exact: true }));
@@ -45,7 +58,7 @@ export const workflows = [
     async run({ page, click, fill, stage, hold, image }) {
       stage("Besetzung im Stück", "Öffne die Produktion und wähle Besetzung.");
       await hold(1500);
-      await click(page.getByRole("button", { name: "Besetzung", exact: true }));
+      await productionSection(page, click, fill, "Besetzung", "casting");
       await click(page.getByRole("button", { name: "Besetzung anlegen", exact: true }).first());
       stage(
         "Figur und Person wählen",
@@ -276,11 +289,78 @@ export const workflows = [
         "Später korrigieren",
         "Über Bearbeiten kannst du Fehler ändern. Anwesenheit erfasst du separat unter Zeit.",
       );
-      await click(page.getByRole("button", { name: "Bearbeiten", exact: true }));
+      await click(page.getByRole("button", { name: "Bearbeiten", exact: true }).first());
       await hold(2500);
       const row = await page.evaluate(() => window.__DM_DEMO.workspace.records.time[0]);
       if (row?.data.productionId !== "demo-production" || row.data.durationSeconds !== 5400)
         throw new Error("Incomplete fictional time booking");
+    },
+  },
+  {
+    id: "time-history",
+    title: "Frühere Wochen und Kalenderzeiten prüfen",
+    guideId: "time",
+    module: "time",
+    timeHistory: true,
+    description: "Alte Stunden korrigieren, freie Tage sehen und geplante Zeiten bewusst buchen.",
+    async run({ page, click, fill, stage, hold }) {
+      const history = page.getByRole("region", { name: "Anwesenheit: Wochenverlauf", exact: true });
+      stage(
+        "Frühere Wochen finden",
+        "Öffne Zeit. Im Wochenverlauf siehst du frühere Wochen mit ihren Summen.",
+      );
+      await hold(1800);
+      await click(history.locator("summary").filter({ hasText: "KW 39 · 2026" }));
+      stage(
+        "Die ganze Woche sehen",
+        "ABF und Ruhetag sind Tageskennzeichnungen. Sie erzeugen keine Arbeitsstunden.",
+      );
+      await hold(2300);
+      await click(history.getByRole("button", { name: "Bearbeiten", exact: true }).first());
+      stage(
+        "Eine alte Buchung ändern",
+        "Korrigiere Beginn, Ende oder Pause. Im Beispiel ergänzen wir 30 Minuten Pause.",
+      );
+      const dialog = page.getByRole("dialog");
+      await fill(dialog.getByLabel("Pause in Minuten", { exact: true }), "30");
+      await hold(1700);
+      await click(dialog.getByRole("button", { name: "Speichern", exact: true }));
+      await hold(1400);
+      stage(
+        "Vergangene Woche auswählen",
+        "Die Summe ist aktualisiert. Wähle diese Woche, um ihre Kalenderzeiten zu prüfen.",
+      );
+      await click(history.getByRole("button", { name: "Diese Woche auswählen", exact: true }));
+      const proposals = page.locator("details:visible").filter({
+        has: page.locator("summary").filter({ hasText: "Kalenderzeiten prüfen" }),
+      });
+      await click(proposals.locator("summary"));
+      stage(
+        "Geplante Zeit prüfen",
+        "Ein Kalendertermin ist noch keine Buchung. Öffne den Vorschlag und prüfe die Zeiten.",
+      );
+      await click(proposals.getByRole("button", { name: "Prüfen", exact: true }).first());
+      await hold(1700);
+      stage(
+        "Tatsächliche Zeit bestätigen",
+        "Ergänze deine echte Pause. Erst Geprüfte Zeit buchen speichert die Buchung.",
+      );
+      await fill(page.getByRole("dialog").getByLabel("Pause in Minuten", { exact: true }), "15");
+      await hold(1800);
+      await click(
+        page.getByRole("dialog").getByRole("button", { name: "Geprüfte Zeit buchen", exact: true }),
+      );
+      stage(
+        "Zeiten bleiben getrennt",
+        "Anwesenheit und Produktionsarbeit haben eigene Verläufe und werden getrennt gebucht.",
+      );
+      await hold(2400);
+      const rows = await page.evaluate(() => window.__DM_DEMO.workspace.records.attendance);
+      if (
+        rows.length !== 2 ||
+        rows.reduce((sum, row) => sum + row.data.durationSeconds, 0) !== 22500
+      )
+        throw new Error("Incomplete fictional historical correction and reviewed calendar booking");
     },
   },
   {

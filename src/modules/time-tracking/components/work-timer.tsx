@@ -1,11 +1,12 @@
-﻿"use client";
-import { useEffect, useState } from "react";
-import { Clock3, DoorOpen, Pause, Play, Square } from "lucide-react";
+"use client";
+import { useEffect, useId, useRef, useState } from "react";
+import { ChevronDown, Clock3, DoorOpen, Pause, Play, Square } from "lucide-react";
 import { categoriesFor } from "@/shared/domain-categories";
 import type { DomainRecord } from "@/shared/contracts";
 import { dateLabel, num, value } from "@/shared/client-api";
 import { useWorkspace } from "@/components/workspace-context";
 import { Badge, Button, ErrorMessage } from "@/components/ui";
+import styles from "./work-timer.module.css";
 
 export function TimerPanel({
   compact = false,
@@ -23,6 +24,9 @@ export function TimerPanel({
   const [error, setError] = useState("");
   const [title, setTitle] = useState("");
   const [project, setProject] = useState(productionId);
+  const [fieldsOpen, setFieldsOpen] = useState(false);
+  const fieldsId = useId();
+  const titleInput = useRef<HTMLInputElement>(null);
   const categoryOptions = categoriesFor("time", workspace.records.categories);
   const [category, setCategory] = useState(categoryOptions[0]?.key || "");
   const selectedCategory = categoryOptions.some((option) => option.key === category)
@@ -49,6 +53,11 @@ export function TimerPanel({
   const display = `${String(Math.floor(seconds / 3600)).padStart(2, "0")}:${String(Math.floor(seconds / 60) % 60).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
   const run = async (operation: string) => {
     setError("");
+    if (operation === "start" && !attendance && !title.trim()) {
+      setFieldsOpen(true);
+      requestAnimationFrame(() => titleInput.current?.focus());
+      return;
+    }
     try {
       const result = await action(
         `${attendance ? "attendance-" : ""}timer-${operation}`,
@@ -60,6 +69,7 @@ export function TimerPanel({
           : {},
       );
       setNow(Date.now());
+      if (operation === "start") setFieldsOpen(false);
       if (operation === "stop" && result && typeof result === "object" && "kind" in result)
         onBooked?.(result as DomainRecord);
     } catch (exception) {
@@ -72,43 +82,92 @@ export function TimerPanel({
     : undefined;
   return (
     <section
-      className={`timer-panel ${compact ? "compact" : ""} ${attendance ? "attendance-timer" : ""}`}
+      className={`timer-panel ${styles.timer} ${compact ? "compact" : ""} ${attendance ? "attendance-timer" : ""}`}
       aria-label={attendance ? "Anwesenheitstimer" : "Arbeitstimer"}
     >
-      <header>
-        <span className="eyebrow">
-          <Icon size={15} />
-          {attendance ? "ANWESENHEIT IM THEATER" : "PRODUKTIONS- / ARBEITSZEIT"}
+      <header className={styles.header}>
+        <button
+          className={styles.mobileToggle}
+          aria-label={
+            timer
+              ? `${attendance ? "Anwesenheit" : "Arbeit"}: Details und weitere Aktionen`
+              : attendance
+                ? "Bezeichnung ändern"
+                : "Tätigkeit & Zuordnung"
+          }
+          aria-expanded={fieldsOpen}
+          aria-controls={fieldsId}
+          onClick={() => setFieldsOpen((open) => !open)}
+        >
+          <Icon size={16} />
+          <span>
+            {attendance ? "Anwesenheit" : "Arbeit"}
+            <small>
+              {timer ? "Details" : attendance ? "Bezeichnung" : "Tätigkeit & Zuordnung"}
+            </small>
+          </span>
+          <ChevronDown size={15} />
+        </button>
+        <span className={styles.label}>
+          <Icon size={16} />
+          {attendance ? "Anwesenheit" : "Arbeit"}
         </span>
-        {timer && (
-          <Badge tone={timer.data.pausedAt ? "neutral" : "green"}>
-            {timer.data.pausedAt ? "Pausiert" : "Timer läuft"}
-          </Badge>
-        )}
+        <Badge tone={timer && !timer.data.pausedAt ? "green" : "neutral"}>
+          {timer ? (timer.data.pausedAt ? "Pausiert" : "Timer läuft") : "Bereit"}
+        </Badge>
       </header>
-      <p className="timer-value" aria-live="off">
-        {display}
-      </p>
-      {timer ? (
-        <>
-          <p className="timer-caption">{value(timer.data, "title")}</p>
-          <p className="small muted timer-context">
-            {attendance
-              ? "Deine Anwesenheit, unabhängig von einzelnen Tätigkeiten."
-              : `${timerProject ? value(timerProject.data, "title") : "Allgemeine Arbeit"} · Beginn ${dateLabel(String(timer.data.startedAt), true)}`}
-          </p>
-          <div className="timer-controls">
+      {timer && <p className={styles.runningTitle}>{value(timer.data, "title")}</p>}
+      <div className={styles.main}>
+        <p className={styles.value} aria-live="off">
+          {display}
+        </p>
+        <div className={styles.primaryActions}>
+          {timer ? (
+            <>
+              <Button
+                disabled={busy}
+                onClick={() => void run(timer.data.pausedAt ? "resume" : "pause")}
+              >
+                {timer.data.pausedAt ? <Play size={15} /> : <Pause size={15} />}
+                {timer.data.pausedAt ? "Weiter" : "Pause"}
+              </Button>
+              <Button
+                variant="primary"
+                disabled={busy}
+                onClick={() => void run("stop")}
+                title="Timer stoppen und Zeit buchen"
+              >
+                <Square size={13} />
+                <span className={styles.desktopLabel}>Stoppen & buchen</span>
+                <span className={styles.mobileLabel}>Stoppen</span>
+              </Button>
+            </>
+          ) : (
             <Button
-              disabled={busy}
-              onClick={() => void run(timer.data.pausedAt ? "resume" : "pause")}
+              variant="primary"
+              disabled={busy || (!attendance && !selectedCategory)}
+              onClick={() => void run("start")}
             >
-              {timer.data.pausedAt ? <Play size={15} /> : <Pause size={15} />}
-              {timer.data.pausedAt ? "Fortsetzen" : "Pause"}
+              <Play size={15} />
+              <span className={styles.desktopLabel}>
+                {attendance ? "Anwesenheit starten" : "Arbeitstimer starten"}
+              </span>
+              <span className={styles.mobileLabel}>Starten</span>
             </Button>
-            <Button variant="primary" disabled={busy} onClick={() => void run("stop")}>
-              <Square size={13} />
-              Stoppen & buchen
-            </Button>
+          )}
+        </div>
+      </div>
+      <div id={fieldsId} className={`${styles.details} ${fieldsOpen ? styles.detailsOpen : ""}`}>
+        {timer ? (
+          <>
+            <p className="small muted">
+              {attendance
+                ? "Deine Anwesenheit läuft unabhängig von einzelnen Tätigkeiten."
+                : timerProject
+                  ? value(timerProject.data, "title")
+                  : "Allgemeine Arbeit"}
+              {` · Beginn ${dateLabel(String(timer.data.startedAt), true)}`}
+            </p>
             <Button
               variant="danger-ghost"
               disabled={busy}
@@ -121,68 +180,64 @@ export function TimerPanel({
             >
               Timer verwerfen
             </Button>
-          </div>
-        </>
-      ) : (
-        <>
-          <label>
-            <span className="visually-hidden">
-              {attendance ? "Bezeichnung für Anwesenheit" : "Tätigkeit"}
-            </span>
-            <input
-              maxLength={200}
-              placeholder={attendance ? "Anwesenheit (optional ändern)" : "Woran arbeitest du?"}
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-            />
-          </label>
-          {!attendance && (
-            <div className="timer-selects">
-              <select
-                value={project}
-                disabled={!!productionId}
-                aria-label="Produktion für Timer"
-                onChange={(event) => setProject(event.target.value)}
-              >
-                <option value="">Allgemeine Arbeit</option>
-                {workspace.records.productions
-                  .filter((row) => row.data.status !== "archived")
-                  .map((row) => (
-                    <option key={row.id} value={row.id}>
-                      {value(row.data, "title")}
-                    </option>
-                  ))}
-              </select>
-              <select
-                value={selectedCategory}
-                aria-label="Tätigkeitsbereich für Timer"
-                onChange={(event) => setCategory(event.target.value)}
-              >
-                {!categoryOptions.length && <option value="">Keine Kategorien vorhanden</option>}
-                {categoryOptions.map((option) => (
-                  <option key={option.key} value={option.key}>
-                    {option.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-          {attendance && (
-            <p className="small muted timer-context">
-              Im Theater beginnen. Pausen getrennt erfassen. Der Arbeitstimer kann gleichzeitig
-              laufen.
+          </>
+        ) : (
+          <>
+            <label>
+              {attendance ? "Bezeichnung (optional)" : "Tätigkeit"}
+              <input
+                ref={titleInput}
+                maxLength={200}
+                placeholder={attendance ? "Anwesenheit" : "Woran arbeitest du?"}
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+              />
+            </label>
+            {!attendance && (
+              <div className={styles.selects}>
+                <label>
+                  Produktion
+                  <select
+                    value={project}
+                    disabled={!!productionId}
+                    onChange={(event) => setProject(event.target.value)}
+                  >
+                    <option value="">Allgemeine Arbeit</option>
+                    {workspace.records.productions
+                      .filter((row) => row.data.status !== "archived")
+                      .map((row) => (
+                        <option key={row.id} value={row.id}>
+                          {value(row.data, "title")}
+                        </option>
+                      ))}
+                  </select>
+                </label>
+                <label>
+                  Tätigkeitsbereich
+                  <select
+                    value={selectedCategory}
+                    onChange={(event) => setCategory(event.target.value)}
+                  >
+                    {!categoryOptions.length && (
+                      <option value="">Keine Kategorien vorhanden</option>
+                    )}
+                    {categoryOptions.map((option) => (
+                      <option key={option.key} value={option.key}>
+                        {option.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            )}
+            <p className="small muted">
+              {attendance
+                ? "Im Theater beginnen. Der Arbeitstimer kann gleichzeitig laufen."
+                : "Allgemeine Tätigkeiten kannst du auch ohne Produktion buchen."}
             </p>
-          )}
-          <Button
-            variant="primary"
-            disabled={busy || (!attendance && (!title.trim() || !selectedCategory))}
-            onClick={() => void run("start")}
-          >
-            <Play size={15} />
-            {attendance ? "Anwesenheit starten" : "Arbeitstimer starten"}
-          </Button>
-        </>
-      )}
+          </>
+        )}
+      </div>
       <ErrorMessage message={error} />
     </section>
   );

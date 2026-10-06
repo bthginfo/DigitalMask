@@ -1,0 +1,156 @@
+.productionSection {
+  display: none;
+}
+
+.productionToolbar {
+  flex-wrap: wrap;
+}
+
+.productionToolbar .productionSort {
+  margin: 0;
+}
+
+.productionToolbar .productionSearch {
+  flex: 1;
+  min-width: 180px;
+}
+
+@media (max-width: 760px) {
+  .productionBrowse .productionToolbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(110px, 0.8fr);
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .productionToolbar .productionSearch {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    width: 100%;
+    margin: 0;
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  .productionToolbar :global(.segmented) {
+    display: flex;
+    margin: 0;
+    width: 100%;
+  }
+
+  .productionToolbar :global(.segmented) button {
+    flex: 1;
+    min-width: 0;
+    padding-inline: 7px;
+    font-size: 11px;
+    min-height: 44px;
+  }
+
+  .productionToolbar .productionSort {
+    min-width: 0;
+    display: block;
+  }
+
+  .productionSort > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .productionSort select {
+    min-width: 0;
+    width: 100%;
+    margin: 0;
+    min-height: 44px;
+    padding-inline: 8px;
+    font-size: 16px;
+  }
+
+  .resourceBrowse > :global(.toolbar) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .resourceBrowse > :global(.toolbar) :global(.search-input) {
+    width: 100%;
+    margin: 0;
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  .resourceBrowse > :global(.empty),
+  .productionBrowse > :global(.empty) {
+    padding: 30px 20px;
+  }
+
+  .productionDetail > :global(.production-breadcrumb) {
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .productionDetail > :global(.production-heading) {
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .productionDetail > :global(.production-heading) h1 {
+    font-size: 27px;
+    line-height: 1.18;
+    margin-bottom: 0;
+  }
+
+  .productionDetail > :global(.production-heading) :global(.eyebrow) {
+    margin-bottom: 5px;
+  }
+
+  .productionDetail > :global(.production-heading) :global(.button) {
+    font-size: 12px;
+    padding: 10px 12px;
+    min-height: 44px;
+  }
+
+  .productionSection {
+    display: grid;
+    gap: 5px;
+    margin-bottom: 18px;
+    color: var(--muted);
+    font-size: 11px;
+  }
+
+  .productionSection select {
+    margin: 0;
+    min-height: 48px;
+    padding: 10px 12px;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+    border-color: var(--accent);
+    background: var(--surface);
+  }
+
+  .productionDetail > :global(.production-tabs) {
+    display: none;
+  }
+
+  .productionDetail > :global(.production-makeup-contact) {
+    display: grid;
+    grid-template-columns: 22px minmax(0, 1fr);
+    align-items: start;
+    gap: 10px 12px;
+    padding: 16px;
+  }
+
+  .productionDetail > :global(.production-makeup-contact) > :global(.button) {
+    grid-column: 2;
+    justify-self: start;
+    margin: 0;
+    min-height: 44px;
+  }
+}

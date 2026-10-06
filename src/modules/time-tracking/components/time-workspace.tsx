@@ -1,5 +1,5 @@
 ﻿"use client";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ArrowRight, Clock3, DoorOpen } from "lucide-react";
 import type { DomainRecord } from "@/shared/contracts";
 import { hours, shiftDate, timeAllocations, weekStart } from "@/shared/client-api";
@@ -9,6 +9,7 @@ import { WorkTimeModule } from "@/components/modules/time";
 import { AttendanceModule } from "./attendance-module";
 import { TimerPanel } from "./work-timer";
 import { TimeBookingEditor } from "./time-booking-editor";
+import styles from "./time-workspace.module.css";
 
 export function TimeWorkspace() {
   const { workspace } = useWorkspace();
@@ -17,28 +18,36 @@ export function TimeWorkspace() {
   const selfBooking = workspace.user.role !== "superadmin";
   const week = weekStart(),
     until = shiftDate(week, 6);
-  const sum = (kind: "time" | "attendance") =>
-    (workspace.records[kind] || [])
-      .filter((row) => row.data.userId === workspace.user.id)
-      .flatMap((row) => timeAllocations(row.data))
-      .filter((day) => day.date >= week && day.date <= until)
-      .reduce((total, day) => total + day.seconds, 0);
-  const attendance = sum("attendance"),
-    work = sum("time");
+  const totals = useMemo(() => {
+    const sum = (records: DomainRecord[]) =>
+      records
+        .filter((row) => row.data.userId === workspace.user.id)
+        .flatMap((row) => timeAllocations(row.data))
+        .filter((day) => day.date >= week && day.date <= until)
+        .reduce((total, day) => total + day.seconds, 0);
+    return {
+      attendance: sum(workspace.records.attendance || []),
+      work: sum(workspace.records.time),
+    };
+  }, [workspace.records.time, workspace.records.attendance, workspace.user.id, week, until]);
   return (
-    <>
+    <div className={styles.workspace}>
       <PageHeader
         eyebrow="ZEIT IM THEATER"
         title="Zeit buchen"
         description="Anwesenheit und Tätigkeiten getrennt erfassen. Beide Timer können gleichzeitig laufen."
+        compact
       />
       {selfBooking && (
         <>
-          <div className="dual-timers">
+          <div className={`dual-timers ${styles.timers}`}>
             <TimerPanel kind="attendance" onBooked={setBooked} />
             <TimerPanel onBooked={setBooked} />
           </div>
-          <section className="time-comparison" aria-label="Vergleich deiner aktuellen Woche">
+          <section
+            className={`time-comparison ${styles.comparison}`}
+            aria-label="Vergleich deiner aktuellen Woche"
+          >
             <div>
               <span className="eyebrow">DEINE AKTUELLE WOCHE</span>
               <p className="small muted">
@@ -48,13 +57,13 @@ export function TimeWorkspace() {
             <div>
               <DoorOpen size={19} />
               <span>
-                Anwesenheit<strong>{hours(attendance)} h</strong>
+                Anwesenheit<strong>{hours(totals.attendance)} h</strong>
               </span>
             </div>
             <div>
               <Clock3 size={19} />
               <span>
-                Tätigkeiten<strong>{hours(work)} h</strong>
+                Tätigkeiten<strong>{hours(totals.work)} h</strong>
               </span>
             </div>
             <div className="time-comparison-note">
@@ -71,7 +80,8 @@ export function TimeWorkspace() {
           onClick={() => setTab("attendance")}
         >
           <DoorOpen size={16} />
-          Anwesenheit im Theater
+          <span className={styles.desktopLabel}>Anwesenheit im Theater</span>
+          <span className={styles.mobileLabel}>Anwesenheit</span>
         </button>
         <button
           className={tab === "work" ? "active" : ""}
@@ -79,10 +89,16 @@ export function TimeWorkspace() {
           onClick={() => setTab("work")}
         >
           <Clock3 size={16} />
-          Produktions- / Arbeitszeiten
+          <span className={styles.desktopLabel}>Produktions- / Arbeitszeiten</span>
+          <span className={styles.mobileLabel}>Arbeitszeiten</span>
         </button>
       </div>
-      {tab === "attendance" ? <AttendanceModule /> : <WorkTimeModule embedded />}
+      <div hidden={tab !== "attendance"}>
+        <AttendanceModule embedded />
+      </div>
+      <div hidden={tab !== "work"}>
+        <WorkTimeModule embedded />
+      </div>
       {booked && (
         <TimeBookingEditor
           kind={booked.kind === "attendance" ? "attendance" : "time"}
@@ -90,6 +106,6 @@ export function TimeWorkspace() {
           onClose={() => setBooked(null)}
         />
       )}
-    </>
+    </div>
   );
 }

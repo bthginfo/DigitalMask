@@ -6,6 +6,7 @@ import { hours, instantDate, localDate, localDateTime, num, value } from "@/shar
 import { useWorkspace } from "@/components/workspace-context";
 import { Button, ErrorMessage, Modal } from "@/components/ui";
 import { numberDraft, parseNumberDraft, previewNumberDraft } from "@/shared/number-draft";
+import styles from "./time-history.module.css";
 
 export function TimeBookingEditor({
   kind = "time",
@@ -15,6 +16,7 @@ export function TimeBookingEditor({
   onClose,
   onSaved,
   onDraft,
+  proposal,
 }: {
   kind?: "time" | "attendance";
   record?: DomainRecord;
@@ -23,6 +25,7 @@ export function TimeBookingEditor({
   onClose: () => void;
   onSaved?: (record: DomainRecord) => void;
   onDraft?: (data: RecordData) => void;
+  proposal?: string;
 }) {
   const { workspace, save, busy } = useWorkspace();
   const attendance = kind === "attendance";
@@ -77,7 +80,11 @@ export function TimeBookingEditor({
   );
   return (
     <Modal
-      title={`${attendance ? "Anwesenheit" : "Zeitbuchung"} ${record ? "bearbeiten" : onDraft ? "offline vormerken" : "anlegen"}`}
+      title={
+        proposal
+          ? "Geplante Zeit prüfen"
+          : `${attendance ? "Anwesenheit" : "Zeitbuchung"} ${record ? "bearbeiten" : onDraft ? "offline vormerken" : "anlegen"}`
+      }
       onClose={onClose}
       wide
     >
@@ -141,6 +148,17 @@ export function TimeBookingEditor({
           }
         }}
       >
+        {proposal && (
+          <div className={styles.proposalIntro}>
+            <strong>Noch nicht gebucht · {attendance ? "Anwesenheit" : "Arbeitszeit"}</strong>
+            <span>Kalenderplanung: {proposal}</span>
+            <p>
+              Prüfe Beginn, Ende, tatsächlich geleistete Zeit und Pausen
+              {attendance ? "." : " sowie Tätigkeit und Produktion."} Erst dein ausdrückliches
+              Buchen speichert Stunden.
+            </p>
+          </div>
+        )}
         <p className="muted booking-intro">
           {attendance
             ? "Wann warst du im Theater? Die Anwesenheit bleibt getrennt von der Arbeit an einzelnen Produktionen."
@@ -336,7 +354,13 @@ export function TimeBookingEditor({
         <footer className="dialog-footer">
           <Button onClick={onClose}>Abbrechen</Button>
           <Button type="submit" variant="primary" disabled={busy}>
-            {onDraft ? "Lokal speichern" : busy ? "Wird gespeichert …" : "Speichern"}
+            {onDraft
+              ? "Lokal speichern"
+              : busy
+                ? "Wird gespeichert …"
+                : proposal
+                  ? "Geprüfte Zeit buchen"
+                  : "Speichern"}
           </Button>
         </footer>
       </form>

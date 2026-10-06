@@ -9,6 +9,7 @@ import { HistoryPanel } from "./history-panel";
 import { fields, labels, statusLabels } from "./resource-fields";
 import { useWorkspace } from "./workspace-context";
 import { Badge, Button, Empty, ErrorMessage, ExportButton, Modal, PageHeader } from "./ui";
+import browseStyles from "./workspace-browse.module.css";
 import { ResourceEditor } from "./resource-editor";
 import { DocumentContent } from "@/modules/documentation/components/document-content";
 import { lookTitle } from "@/shared/document-sections";
@@ -651,31 +652,41 @@ export function ResourceView({
     "handovers",
   ].includes(kind);
   return (
-    <>
+    <section className={browseStyles.resourceBrowse}>
       <PageHeader
+        compact
         eyebrow="DEIN GEMEINSAMER ARBEITSRAUM"
         title={title || labels[kind][0]}
         description={description}
+        secondaryActions={
+          (headerActions ||
+            exportable ||
+            (admin &&
+              (lockedProductionId === undefined ||
+                kind === "materials" ||
+                kind === "handovers"))) && (
+            <>
+              {headerActions}
+              {(kind === "materials" || kind === "handovers") && admin && (
+                <Button onClick={() => setCategoriesOpen(true)}>Kategorien verwalten</Button>
+              )}
+              {exportable && <ExportButton onClick={() => setExporting(true)} />}
+              {admin && lockedProductionId === undefined && (
+                <Button onClick={() => setImporting(true)}>
+                  <Upload size={16} />
+                  Importieren
+                </Button>
+              )}
+            </>
+          )
+        }
       >
-        <>
-          {headerActions}
-          {(kind === "materials" || kind === "handovers") && admin && (
-            <Button onClick={() => setCategoriesOpen(true)}>Kategorien verwalten</Button>
-          )}
-          {exportable && <ExportButton onClick={() => setExporting(true)} />}
-          {admin && lockedProductionId === undefined && (
-            <Button onClick={() => setImporting(true)}>
-              <Upload size={16} />
-              Importieren
-            </Button>
-          )}
-          {allowedCreate && (
-            <Button variant="primary" onClick={() => setEditor(true)}>
-              <Plus size={16} />
-              {labels[kind][1]} anlegen
-            </Button>
-          )}
-        </>
+        {allowedCreate && (
+          <Button variant="primary" onClick={() => setEditor(true)}>
+            <Plus size={16} />
+            {labels[kind][1]} anlegen
+          </Button>
+        )}
       </PageHeader>
       {children}
       <div className="toolbar">
@@ -944,6 +955,6 @@ export function ResourceView({
         />
       )}
       {importing && <ImportDialog kind={kind} onClose={() => setImporting(false)} />}
-    </>
+    </section>
   );
 }

@@ -9,6 +9,7 @@ import {
 } from "./data";
 import type { ExportInput } from "./types";
 import { durationSummary } from "./duration-summary";
+import { exportTimeDayMarkers } from "./time";
 import {
   calendarLegend,
   eventCalendarLabel,
@@ -131,6 +132,49 @@ export async function buildXlsx(input: ExportInput): Promise<Uint8Array> {
             ? "dd.mm.yyyy hh:mm"
             : "dd.mm.yyyy";
     });
+  }
+  if (["time", "attendance"].includes(input.kind)) {
+    const markers = exportTimeDayMarkers(input);
+    if (markers.length) {
+      const labels = workbook.addWorksheet("Kalenderkennzeichen", {
+        views: [{ state: "frozen", ySplit: 3 }],
+        pageSetup: {
+          paperSize: 9,
+          orientation: "landscape",
+          fitToPage: true,
+          fitToWidth: 1,
+          fitToHeight: 0,
+          printTitlesRow: "1:3",
+        },
+      });
+      labels.columns = [
+        { key: "person", width: 30 },
+        { key: "date", width: 16 },
+        { key: "week", width: 20 },
+        { key: "label", width: 30 },
+        { key: "title", width: 45 },
+      ];
+      labels.mergeCells("A1:E1");
+      labels.getCell("A1").value = "Kalenderkennzeichen · keine Zeitbuchungen oder Stunden";
+      labels.getRow(1).font = { bold: true, size: 14 };
+      labels.mergeCells("A2:E2");
+      labels.getCell("A2").value =
+        "ABF, Ruhetag und Abwesenheiten ergänzen den Nachweis. Die Stundensummen enthalten ausschließlich gebuchte Zeiten.";
+      labels.getRow(2).height = 34;
+      labels.getRow(2).alignment = { wrapText: true, vertical: "top" };
+      labels.addRow(["Person", "Datum", "Kalenderwoche", "Kalenderkennzeichen", "Titel / Hinweis"]);
+      labels.getRow(3).font = { bold: true };
+      for (const marker of markers)
+        labels.addRow(
+          [marker.person, marker.date, marker.week, marker.label, marker.title].map(
+            safeSpreadsheetText,
+          ),
+        );
+      labels.eachRow((row, index) => {
+        if (index > 2) row.alignment = { wrapText: true, vertical: "top" };
+      });
+      labels.headerFooter.oddFooter = "&LDigitalMask · Kalenderkennzeichen ohne Stunden&C&P / &N";
+    }
   }
   if (input.kind === "time") {
     const summary = workbook.addWorksheet("Summen", { views: [{ state: "frozen", ySplit: 1 }] });

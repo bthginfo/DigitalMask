@@ -1,11 +1,13 @@
 "use client";
-import { useState } from "react";
-import { Plus } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import { ChevronRight, Plus } from "lucide-react";
 import type { DomainRecord, Member, RecordData } from "@/shared/contracts";
 import { ids, instantDate, localDate, shiftDate, value, weekStart } from "@/shared/client-api";
 import { isActiveStaff } from "@/shared/client-members";
 import { Empty } from "@/components/ui";
-import { MobileDayAgenda } from "./mobile-day-agenda";
+import { calendarDayIndex } from "./day-details";
+import { MobileDaySheet } from "./mobile-day-sheet";
+import styles from "./mobile-calendar.module.css";
 export type CalendarInstance = {
   id: string;
   title: string;
@@ -37,9 +39,13 @@ export function TeamCalendar({
   people,
   days,
   month,
+  mobile,
   canPlan,
+  canEdit,
+  suspended,
   productions,
   onOpen,
+  onEdit,
   onCreate,
 }: {
   events: CalendarInstance[];
@@ -47,38 +53,43 @@ export function TeamCalendar({
   people: string[];
   days: string[];
   month: boolean;
+  mobile: boolean;
   canPlan: (person: string) => boolean;
+  canEdit: (record: DomainRecord) => boolean;
+  suspended: boolean;
   productions: DomainRecord[];
   onOpen: (record: DomainRecord) => void;
+  onEdit: (record: DomainRecord) => void;
   onCreate: (data: RecordData) => void;
 }) {
   const [selectedDay, setSelectedDay] = useState(
     days.includes(localDate()) ? localDate() : days[0],
   );
+  const [daySheetOpen, setDaySheetOpen] = useState(false);
+  const mobileCalendar = useRef<HTMLElement>(null);
   const day = days.includes(selectedDay) ? selectedDay : days[0];
-  const team: Pick<Member, "id" | "name">[] = members.filter(
-    (member) => isActiveStaff(member) && people.includes(member.id),
+  const team = useMemo(() => {
+    const selected: Pick<Member, "id" | "name">[] = members.filter(
+      (member) => isActiveStaff(member) && people.includes(member.id),
+    );
+    if (events.some((event) => !ids(event.extendedProps.record.data, "participantIds").length))
+      selected.push({ id: "", name: "Ohne Zuordnung" });
+    return selected;
+  }, [members, people, events]);
+  const entriesByDay = useMemo(
+    () => calendarDayIndex(events, days[0], days[days.length - 1]),
+    [events, days],
   );
-  if (events.some((event) => !ids(event.extendedProps.record.data, "participantIds").length))
-    team.push({ id: "", name: "Ohne Zuordnung" });
   const matches = (person: string, date: string) =>
-    events.filter(
-      (event) =>
-        (person
-          ? ids(event.extendedProps.record.data, "participantIds").includes(person)
-          : !ids(event.extendedProps.record.data, "participantIds").length) &&
-        localDate(new Date(new Date(event.end).getTime() - 1)) >= date &&
-        localDate(new Date(event.start)) <= date,
+    (entriesByDay.get(date) || []).filter((event) =>
+      person
+        ? ids(event.extendedProps.record.data, "participantIds").includes(person)
+        : !ids(event.extendedProps.record.data, "participantIds").length,
     );
   const selected = team.flatMap((person) =>
     matches(person.id, day).map((event) => ({ person, event })),
   );
-  const entriesForDay = (date: string) =>
-    events.filter(
-      (event) =>
-        localDate(new Date(new Date(event.end).getTime() - 1)) >= date &&
-        localDate(new Date(event.start)) <= date,
-    );
+  const selectedCount = entriesByDay.get(day)?.length || 0;
   const gridStart = weekStart(instantDate(days[0]));
   const offset = Math.round(
     (instantDate(days[0]).getTime() - instantDate(gridStart).getTime()) / 86400000,
@@ -90,6 +101,7 @@ export function TeamCalendar({
   return (
     <>
       <section
+        ref={mobileCalendar}
         className="team-mobile-calendar"
         aria-label={month ? "Mobiler Teammonatskalender" : "Mobiler Teamwochenkalender"}
       >
@@ -101,7 +113,7 @@ export function TeamCalendar({
         <div className={`team-mobile-dates${gridDays.length > 35 ? " is-six-weeks" : ""}`}>
           {gridDays.map((date) => {
             const inPeriod = days.includes(date);
-            const entries = inPeriod ? entriesForDay(date) : [];
+            const entries = inPeriod ? entriesByDay.get(date) || [] : [];
             const colors = [...new Set(entries.map((event) => event.backgroundColor))].slice(0, 3);
             return inPeriod ? (
               <button
@@ -109,8 +121,12 @@ export function TeamCalendar({
                 data-date={date}
                 className={`team-mobile-date${day === date ? " is-selected" : ""}${date === localDate() ? " is-today" : ""}`}
                 aria-pressed={day === date}
+                aria-haspopup="dialog"
                 aria-label={`${fullDay(date)}: ${entries.length} ${entries.length === 1 ? "Termin" : "Termine"}. Details anzeigen`}
-                onClick={() => setSelectedDay(date)}
+                onClick={() => {
+                  setSelectedDay(date);
+                  setDaySheetOpen(true);
+                }}
               >
                 <span className="team-mobile-date-number">{Number(date.slice(-2))}</span>
                 <span className="team-mobile-date-markers" aria-hidden="true">
@@ -213,7 +229,48 @@ export function TeamCalendar({
           </tbody>
         </table>
       </div>
-      <section className="team-day-detail">
+      <section className={styles.daySummary}>
+        <button type="button" aria-haspopup="dialog" onClick={() => setDaySheetOpen(true)}>
+          <span>
+            <strong className={styles.summaryTitle}>{fullDay(day)}</strong>
+            <span>
+              {selectedCount} {selectedCount === 1 ? "Termin" : "Termine"} · Tagesdetails anzeigen
+            </span>
+          </span>
+          <ChevronRight size={18} aria-hidden="true" />
+        </button>
+      </section>
+      {mobile && daySheetOpen && !suspended && (
+        <MobileDaySheet
+          events={events}
+          day={day}
+          members={members}
+          productions={productions}
+          contextLabel={`${team.filter((person) => person.id).length} Teamkalender`}
+          minDay={days[0]}
+          maxDay={days[days.length - 1]}
+          createOptions={team
+            .filter((person) => canPlan(person.id))
+            .map((person) => ({
+              id: person.id,
+              label: `Termin für ${person.name}`,
+              personName: person.name,
+              participantIds: person.id ? [person.id] : [],
+            }))}
+          canEdit={canEdit}
+          onSelect={setSelectedDay}
+          onClose={() => setDaySheetOpen(false)}
+          onRestoreFocus={() =>
+            mobileCalendar.current
+              ?.querySelector<HTMLButtonElement>(`[data-date="${day}"]`)
+              ?.focus({ preventScroll: true })
+          }
+          onOpen={onOpen}
+          onEdit={onEdit}
+          onCreate={onCreate}
+        />
+      )}
+      <section className={`team-day-detail ${styles.desktopDayDetail}`}>
         <header>
           <div>
             <p className="eyebrow">AUSGEWÄHLTE DIENSTE</p>
@@ -230,37 +287,6 @@ export function TeamCalendar({
             />
           </label>
         </header>
-        <div className="team-mobile-services" aria-live="polite">
-          <MobileDayAgenda
-            events={events}
-            day={day}
-            members={team}
-            productions={productions}
-            onOpen={onOpen}
-          />
-          {team.some((person) => canPlan(person.id)) && (
-            <div className="team-mobile-create">
-              {team
-                .filter((person) => canPlan(person.id))
-                .map((person) => (
-                  <button
-                    key={person.id}
-                    className="text-button"
-                    onClick={() =>
-                      onCreate({
-                        start: `${day}T09:00`,
-                        end: `${day}T17:00`,
-                        participantIds: person.id ? [person.id] : [],
-                      })
-                    }
-                  >
-                    <Plus size={15} />
-                    Termin für {person.name}
-                  </button>
-                ))}
-            </div>
-          )}
-        </div>
         {selected.length ? (
           <div className="team-day-services team-desktop-services">
             {selected.map(({ person, event }) => (

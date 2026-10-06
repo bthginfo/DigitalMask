@@ -1,0 +1,472 @@
+.moduleHeading,
+.sectionHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+.moduleHeading h2,
+.sectionHeading h2 {
+  font-size: 19px;
+  letter-spacing: -0.4px;
+}
+.moduleActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+.sectionHeading p {
+  margin-top: 5px;
+}
+.weekToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin: 12px 0 16px;
+}
+.weekToolbar select {
+  width: auto;
+  min-width: 150px;
+  margin: 0;
+}
+.weekNavigator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.weekNavigator > button {
+  flex: none;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 10px;
+}
+.weekNavigator label {
+  display: grid;
+  gap: 3px;
+  font-size: 11px;
+  color: var(--muted);
+  margin: 0;
+}
+.weekNavigator input {
+  width: 158px;
+  font-size: 16px;
+  min-height: 44px;
+  margin: 0;
+  padding: 8px;
+}
+.currentWeek,
+.history {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin: 16px 0 24px;
+  overflow: hidden;
+}
+.currentHeading {
+  padding: 16px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.currentHeading h3 {
+  font-size: 15px;
+}
+.currentHeading > strong {
+  font-size: 21px;
+  letter-spacing: -0.5px;
+  white-space: nowrap;
+}
+.bookingList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.bookingRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 18px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+}
+.bookingRow:last-child {
+  border-bottom: 0;
+}
+.bookingContent {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.bookingContent > span {
+  overflow-wrap: anywhere;
+}
+.bookingDate {
+  font-size: 11px;
+  color: var(--muted);
+}
+.detailLink {
+  text-align: left;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  min-height: 32px;
+  background: none;
+  padding: 0;
+  border: 0;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.detailLink:hover {
+  color: var(--accent);
+}
+.bookingInterval {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.bookingHours {
+  white-space: nowrap;
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+}
+.history {
+  padding: 18px;
+}
+.historyWeeks {
+  display: grid;
+  gap: 8px;
+}
+.historyWeek {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.historyWeek summary,
+.proposals > summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  min-height: 64px;
+  cursor: pointer;
+  list-style: none;
+}
+.historyWeek summary::-webkit-details-marker,
+.proposals > summary::-webkit-details-marker {
+  display: none;
+}
+.historyWeek summary > span,
+.proposals > summary > span {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+.historyWeek summary strong,
+.proposals > summary strong {
+  font-size: 14px;
+}
+.historyWeek summary small,
+.proposals > summary small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+.historyWeek summary > svg,
+.proposals > summary > svg {
+  flex: none;
+  color: var(--accent);
+}
+.historyWeek[open] summary > svg,
+.proposals[open] > summary > svg:last-child {
+  transform: rotate(180deg);
+}
+.historyWeek[open] summary {
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-soft);
+}
+.historyTotal {
+  white-space: nowrap;
+}
+.historyFooter {
+  padding: 10px 14px 14px;
+}
+.emptyInline {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
+  padding: 12px 0;
+}
+.emptyWeek {
+  margin: 16px 0;
+  padding: 20px;
+  background: var(--surface);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+}
+.emptyWeek h3 {
+  font-size: 15px;
+  margin-bottom: 8px;
+}
+.emptyWeek p {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 14px;
+  line-height: 1.6;
+}
+.proposals {
+  background: var(--accent-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin: 18px 0;
+}
+.proposalBody {
+  padding: 0 16px 16px;
+}
+.proposalBody > p {
+  line-height: 1.7;
+}
+.proposalNotice {
+  font-size: 12px;
+  color: var(--text);
+  margin-top: 12px;
+  padding-left: 10px;
+  border-left: 3px solid var(--coral);
+}
+.proposalList {
+  list-style: none;
+  padding: 0;
+  margin: 14px 0 0;
+}
+.proposalList li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 0;
+  border-top: 1px solid var(--border);
+}
+.proposalList li > div {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+.proposalList li strong {
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.plannedLabel {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--accent);
+}
+.dayOverview {
+  margin: 18px 0;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.historyWeek .dayOverview {
+  margin: 12px;
+  border-radius: 8px;
+}
+.dayGrid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+}
+.overviewDay {
+  padding: 10px;
+  background: var(--surface-soft);
+  border-radius: 6px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.overviewDay > span {
+  display: grid;
+  gap: 4px;
+  font-size: 10px;
+  color: var(--muted);
+}
+.overviewDay > span strong {
+  font-size: 12px;
+  color: var(--text);
+}
+.dayHours {
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+.dayMarker {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border: 1px solid var(--border);
+  padding: 7px 6px;
+  text-align: left;
+  font-size: 11px;
+  line-height: 1.4;
+  border-radius: 4px;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.dayMarker:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.proposalIntro {
+  padding: 12px 14px;
+  background: var(--accent-soft);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: grid;
+  gap: 6px;
+  margin-bottom: 18px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.proposalIntro > span {
+  color: var(--muted);
+}
+.detailLink:focus-visible,
+.historyWeek summary:focus-visible,
+.proposals > summary:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+@media (max-width: 760px) {
+  .dayOverview {
+    padding: 14px;
+  }
+  .dayGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .overviewDay {
+    padding: 8px 6px;
+  }
+  .dayMarker {
+    min-height: 44px;
+  }
+  .moduleHeading {
+    margin: 14px 0 10px;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .moduleHeading h2 {
+    display: none;
+  }
+  .weekToolbar {
+    gap: 10px;
+  }
+  .weekNavigator {
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) 44px;
+  }
+  .weekNavigator label input {
+    width: 100%;
+  }
+  .weekNavigator > button:last-child:nth-child(4) {
+    grid-column: 1 / -1;
+    min-height: 44px;
+  }
+  .weekToolbar select {
+    flex: 1;
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    font-size: 16px;
+  }
+  .bookingRow {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px 14px;
+    padding: 12px 14px;
+    align-items: start;
+  }
+  .bookingRow > button {
+    grid-column: 1 / -1;
+    justify-self: start;
+    min-height: 44px;
+    padding: 8px 0;
+  }
+  .bookingContent {
+    gap: 4px;
+  }
+  .detailLink {
+    min-height: 44px;
+    line-height: 1.4;
+  }
+  .bookingHours {
+    font-size: 17px;
+    padding-top: 21px;
+  }
+  .history {
+    padding: 14px;
+    margin-bottom: 18px;
+  }
+  .sectionHeading {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .sectionHeading h2 {
+    font-size: 17px;
+  }
+  .sectionHeading button {
+    min-height: 44px;
+  }
+  .historyWeek summary {
+    padding: 12px;
+    gap: 10px;
+  }
+  .historyWeek summary > span {
+    gap: 4px;
+  }
+  .currentHeading {
+    padding: 12px 14px;
+  }
+  .emptyWeek {
+    padding: 16px;
+  }
+  .proposalList li {
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .proposalList li > button {
+    flex: none;
+    min-height: 44px;
+  }
+  .workLayout:global(.time-layout) {
+    margin-bottom: 14px;
+    gap: 12px;
+  }
+  .workLayout :global(.time-summary) {
+    padding: 14px;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px 14px;
+  }
+  .workLayout :global(.time-summary) > p {
+    margin: 0;
+  }
+  .workLayout :global(.time-summary) > strong {
+    font-size: 26px;
+    margin: 0;
+    margin-left: auto;
+  }
+  .workLayout :global(.time-summary) > button {
+    flex-basis: 100%;
+    min-height: 44px;
+  }
+  .workLayout :global(.week-bars) {
+    display: none;
+  }
+}

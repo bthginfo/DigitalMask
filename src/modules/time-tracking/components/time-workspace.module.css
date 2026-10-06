@@ -1,0 +1,55 @@
+.workspace {
+  min-width: 0;
+}
+.mobileLabel {
+  display: none;
+}
+@media (max-width: 760px) {
+  .timers:global(.dual-timers) {
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .comparison:global(.time-comparison) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 14px;
+    padding: 12px 14px;
+    margin-bottom: 16px;
+  }
+  .comparison:global(.time-comparison) > div:first-child {
+    grid-column: 1 / -1;
+  }
+  .comparison > div:first-child > p,
+  .comparison > :global(.time-comparison-note) {
+    display: none;
+  }
+  .comparison > div:nth-child(2),
+  .comparison > div:nth-child(3) {
+    font-size: 11px;
+    gap: 8px;
+  }
+  .comparison strong {
+    font-size: 20px;
+    margin-top: 3px;
+    letter-spacing: -0.4px;
+  }
+  .workspace :global(.time-workspace-tabs) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 0;
+    margin-bottom: 12px;
+  }
+  .workspace :global(.time-workspace-tabs) > button {
+    font-size: 12px;
+    min-height: 44px;
+    justify-content: center;
+    padding: 9px 6px;
+    gap: 6px;
+  }
+  .desktopLabel {
+    display: none;
+  }
+  .mobileLabel {
+    display: inline;
+  }
+}

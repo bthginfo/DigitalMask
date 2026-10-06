@@ -31,7 +31,11 @@ try {
     });
     await context.addInitScript({
       content:
-        init + (flow.emptyCasting ? "\nwindow.__DM_DEMO.workspace.records.casting = [];" : ""),
+        init +
+        (flow.emptyCasting ? "\nwindow.__DM_DEMO.workspace.records.casting = [];" : "") +
+        (flow.timeHistory
+          ? "\n" + readFileSync(join(root, "scripts", "tutorials", "time-history-demo.js"), "utf8")
+          : ""),
     });
     await context.route("**/api/**", (route) => {
       if (
