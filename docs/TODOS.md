@@ -1,5 +1,28 @@
 # Umsetzungsstand
 
+## Maskenplan: Speicher-Hotfix und kompakte Tabelle
+
+- [x] Speichern vorhandener Pläne mit unveränderten früheren Personal- oder Besetzungszuordnungen ermöglichen; neue Zuordnungen, Produktionsrechte und Versionskonflikte weiterhin prüfen.
+- [x] Neuanlage, direkt anschließendes Bearbeiten und mobile Speichern-Aktionen gezielt prüfen; Hotfix vorrangig veröffentlichen.
+- [x] Anschließend die zusätzliche Listenansicht entfernen und gespeicherte Pläne als kompakte Tabelle darstellen, mit deutlich erreichbarer Bearbeitung.
+- [x] Anleitung und betroffenen Kurzclip anpassen, gezielt prüfen und die Darstellungsänderung veröffentlichen.
+
+Der Speicher-Hotfix ist separat als abfde53 veröffentlicht. 17 gezielte Fach-/Speichertests, ein Browserregressionstest, Typprüfung, Lint und die unabhängige UI-Prüfung sind bestanden. Die Vercel-Logs zeigen erfolgreiche Neuanlagen, aber keinen konkreten fehlgeschlagenen Speicherversuch von Lena; die behobenen Referenz- und Bedienfehler wurden mit fiktiven Daten reproduziert.
+
+Die kompakte Tabelle und die Bearbeitung haben die unabhängige Designprüfung bestanden. Elf gezielte Browserfälle decken Handy-/Desktopansichten, Speichern, Serverfehler und Versionskonflikte, Kataloglinks, lange Namen sowie Drag und langes Halten ab. Der aktualisierte Hilfeclip dauert 25 Sekunden und benötigt 278.995 Bytes; Bild und Texte sind an der tatsächlichen Videodauer ausgerichtet. Ansichtswechsel benötigen keine zusätzlichen Datenbankabfragen.
+
+## Lenas Kalenderfeedback
+
+- [x] Teamkalender in der bestätigten Reihenfolge Laura, Katharina, Janine, Julia Gottlöber, Julia John, Magdalena und Gäste/Aushilfen anzeigen; weitere aktive Personen vor der Gästespalte einordnen.
+- [x] Breite Teamtabellen oben und unten synchron seitlich scrollen lassen; die mobile Monatsansicht erhalten.
+- [x] Tagesdienste als ruhigen Hintergrund darstellen und Termine darin ermöglichen, einschließlich serverseitiger Konfliktprüfung.
+- [x] Halbe freie Tage als nicht sperrende Hinweise behandeln; echte Abwesenheiten und Terminkonflikte weiterhin prüfen.
+- [x] Gäste/Aushilfen dauerhaft in der Teamplanung anbieten; Adminrechte, Personenauswahl und passende Exporte erhalten.
+- [x] Produktionsauswahl im Kalender nach Premiere sortieren und Kalender-Vorschläge ohne doppelte Stunden aus überlagerten Diensten berechnen.
+- [x] Hilfe aktualisieren, gezielt auf Smartphone und Desktop prüfen, anschließend pushen und veröffentlichen; temporäre Prüfdaten entfernen.
+
+46 gezielte Kalender-, Rechte-, Vorschlags- und Exporttests sowie die unabhängige Designprüfung sind bestanden. Die aktuelle Hilfe und die kompakte Maskenplantabelle werden zusammen mit den Kalenderänderungen veröffentlicht. Temporäre Browserdaten und Rohaufnahmen werden nach der Prüfung der veröffentlichten Version entfernt; Produktionsdatensätze wurden für diese Prüfungen nicht angelegt.
+
 ## Mobile Bedienung und nachvollziehbare Zeitbuchungen
 
 - [x] Anwesenheit und Produktionsarbeit mit aufklappbarem Wochenverlauf, ISO-Kalenderwochen, Summen und direktem Bearbeiten älterer Buchungen anzeigen.

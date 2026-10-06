@@ -284,7 +284,7 @@ for (const width of [320, 375, 390, 768, 1440]) {
       );
       await expect(page.locator(".team-mobile-services")).toContainText("Lena Muster");
       await expect(page.locator(".team-mobile-services")).toContainText("Magdalena Beispiel");
-      await expect(page.locator(".team-mobile-services")).toContainText("Ohne Zuordnung");
+      await expect(page.locator(".team-mobile-services")).toContainText("Gäste/Aushilfen");
       await expect(page.locator(".team-mobile-services")).toContainText("Ganztägig");
       await expect(page.locator(".team-mobile-services .team-mobile-service")).toHaveCount(4);
       await expect(region.locator('[data-date="2026-10-15"]')).toHaveAttribute(

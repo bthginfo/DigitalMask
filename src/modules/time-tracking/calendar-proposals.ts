@@ -22,6 +22,8 @@ type PlannedInterval = Interval & {
   label: string;
   activity: string;
   productionId: string;
+  background: boolean;
+  adjusted?: boolean;
 };
 const absenceKeys = new Set(["absence", "sick", "abf", "rest", "half-day-off", "vacation"]);
 
@@ -92,6 +94,7 @@ export function calendarTimeProposals({
   const from = startOfLocalDay(week);
   const to = startOfLocalDay(shiftDate(week, 7));
   const planned: PlannedInterval[] = [];
+  const foregroundOccupancy: Interval[] = [];
   const blockedDays: Interval[] = [];
   const seen = new Set<string>();
   for (const event of events) {
@@ -103,13 +106,16 @@ export function calendarTimeProposals({
     )
       continue;
     const presentation = calendarPresentation(event, productions, calendarCategories);
-    if (presentation.allDay || absenceKeys.has(value(event.data, "category"))) {
+    if (
+      presentation.allDay ||
+      presentation.background === "hint" ||
+      absenceKeys.has(value(event.data, "category"))
+    ) {
       if (calendarCategoryBlocksTime(value(event.data, "category"), calendarCategories))
         for (const occurrence of occurrences(event, from, to))
           blockedDays.push({ start: occurrence.start.getTime(), end: occurrence.end.getTime() });
       continue;
     }
-    if (productionId && event.data.productionId !== productionId) continue;
     for (const occurrence of occurrences(event, from, to)) {
       // A still-running or future service is not evidence of worked hours.
       if (occurrence.end > now || occurrence.end <= occurrence.start) continue;
@@ -117,6 +123,8 @@ export function calendarTimeProposals({
         start: Math.max(from.getTime(), occurrence.start.getTime()),
         end: Math.min(to.getTime(), occurrence.end.getTime()),
       };
+      if (!presentation.background) foregroundOccupancy.push(range);
+      if (productionId && event.data.productionId !== productionId) continue;
       const activity = value(event.data, "title").trim() || presentation.categoryName;
       for (const part of periodParts(range, period)) {
         const identity = `${part.start}:${part.end}:${value(event.data, "productionId")}:${activity}:${value(event.data, "category")}`;
@@ -128,6 +136,7 @@ export function calendarTimeProposals({
           label: presentation.title,
           activity,
           productionId: value(event.data, "productionId"),
+          background: presentation.background === "service",
         });
       }
     }
@@ -163,18 +172,37 @@ export function calendarTimeProposals({
       occupied.push({ start, end });
   }
   const collisions: Interval[] = [];
+  const foreground = planned.filter((range) => !range.background);
   if (kind === "time")
-    for (let i = 0; i < planned.length; i++)
-      for (let j = i + 1; j < planned.length; j++) {
-        const a = planned[i],
-          b = planned[j];
+    for (let i = 0; i < foreground.length; i++)
+      for (let j = i + 1; j < foreground.length; j++) {
+        const a = foreground[i],
+          b = foreground[j];
         if (overlaps(a, b))
           collisions.push({ start: Math.max(a.start, b.start), end: Math.min(a.end, b.end) });
       }
-  const sourceRanges = kind === "attendance" ? union(planned) : planned;
+  // Actual appointments own their intervals; Dienst fills only the remaining working time.
+  // Overlapping services also share one interval, with a deterministic source for its label.
+  const timeRanges = [...foreground];
+  const coveredServices: Interval[] = [];
+  for (const service of planned
+    .filter((range) => range.background)
+    .sort((a, b) => a.start - b.start || a.end - b.end || a.event.id.localeCompare(b.event.id))) {
+    for (const part of subtract(service, [...foregroundOccupancy, ...coveredServices]))
+      timeRanges.push({
+        ...service,
+        ...part,
+        adjusted: part.start !== service.start || part.end !== service.end,
+      });
+    coveredServices.push(service);
+  }
+  const sourceRanges = kind === "attendance" ? union(planned) : timeRanges;
   const proposals: CalendarTimeProposal[] = [];
   for (const source of sourceRanges) {
-    const sources = planned.filter((range) => overlaps(source, range));
+    const sources =
+      kind === "attendance"
+        ? planned.filter((range) => overlaps(source, range))
+        : [source as PlannedInterval];
     for (const range of subtract(source, [...occupied, ...collisions])) {
       const relevant = sources.filter((row) => overlaps(row, range));
       const first = relevant[0];
@@ -196,7 +224,10 @@ export function calendarTimeProposals({
         end,
         seconds,
         sourceLabels: [...new Set(relevant.map((row) => row.label))],
-        adjusted: range.start !== source.start || range.end !== source.end,
+        adjusted:
+          !!(source as PlannedInterval).adjusted ||
+          range.start !== source.start ||
+          range.end !== source.end,
         data: {
           title: kind === "attendance" ? "Anwesenheit" : first.activity,
           date: localDay(start),

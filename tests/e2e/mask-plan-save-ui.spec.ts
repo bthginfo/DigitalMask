@@ -1,7 +1,7 @@
-import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 import { maskPlanSchema } from "../../src/modules/mask-plans/schema";
 import { maskPlanFixture } from "./mask-plans-fixture";
+import { installMaskPlanBrowserSafety } from "./mask-plan-safety";
 
 test.use({ serviceWorkers: "block" });
 
@@ -35,15 +35,7 @@ test("new plan after an existing plan stays saveable on phones and immediately s
     }
     return route.abort();
   });
-  // Install the required fictional demo safeguards in order, then let the routed fixture answer fetches.
-  await page.addInitScript({
-    content: [
-      "window.__MASK_TEST_FETCH = window.fetch;",
-      readFileSync("scripts/tutorials/demo-init.js", "utf8"),
-      readFileSync("scripts/tutorials/workflow-demo.js", "utf8"),
-      "window.fetch = window.__MASK_TEST_FETCH; window.EventSource = class { close() {} addEventListener() {} removeEventListener() {} };",
-    ].join("\n"),
-  });
+  await installMaskPlanBrowserSafety(page);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/?module=productions&productionId=bear&tab=mask-plan&record=main-plan");
   await page.getByRole("button", { name: "Neuer Plan", exact: true }).click();
@@ -83,7 +75,8 @@ test("new plan after an existing plan stays saveable on phones and immediately s
     expect(geometry.overflow).toBe(false);
   }
   await save.click();
-  await expect(save).toBeDisabled();
+  await expect(save).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Plan bearbeiten", exact: true })).toBeVisible();
   expect(writes).toEqual([{ method: "POST", version: undefined }]);
   await page.getByRole("button", { name: /Irina K\..*bearbeiten/ }).click();
   await page.getByLabel("Dauer in Minuten").fill("20");
@@ -95,7 +88,8 @@ test("new plan after an existing plan stays saveable on phones and immediately s
   await expect(desktopSave).toBeVisible();
   expect((await desktopSave.boundingBox())!.y).toBeLessThan(900);
   await desktopSave.click();
-  await expect(save).toBeDisabled();
+  await expect(save).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Plan bearbeiten", exact: true })).toBeVisible();
   expect(writes).toEqual([
     { method: "POST", version: undefined },
     { method: "PATCH", version: 1 },

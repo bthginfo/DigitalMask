@@ -6,6 +6,7 @@ import { recordMatchesPeriod, seasonForDate, type PeriodFilter } from "@/shared/
 import { contactsValue } from "@/shared/contracts";
 import { productionContactName } from "@/shared/production-contacts";
 import { productionCastingCounts } from "@/modules/productions/counts";
+import { sortProductionsByPremiere } from "@/shared/production-order";
 import type { Workspace } from "@/shared/contracts";
 import { dateLabel, hours, ids, localDate, num, value } from "@/shared/client-api";
 import { useWorkspace } from "../workspace-context";
@@ -94,7 +95,7 @@ export function ProductionsModule({
     workspace.records.characters,
     workspace.records.casting,
   );
-  const records = workspace.records.productions.filter(
+  const filteredRecords = workspace.records.productions.filter(
     (x) =>
       (status === "all" || status === "archived"
         ? status === "all" || x.data.status === "archived"
@@ -102,23 +103,18 @@ export function ProductionsModule({
       recordMatchesPeriod(x, period, workspace.records.productions) &&
       value(x.data, "title").toLowerCase().includes(search.toLowerCase()),
   );
-  records.sort((a, b) => {
-    if (sort === "name" || sort === "name-desc")
-      return (
-        value(a.data, "title").localeCompare(value(b.data, "title"), "de") *
-        (sort === "name-desc" ? -1 : 1)
-      );
-    if (sort === "updated") return b.updatedAt.localeCompare(a.updatedAt);
-    const left = value(a.data, "premiere"),
-      right = value(b.data, "premiere"),
-      today = localDate();
-    const rank = (date: string) => (!date ? 2 : date >= today ? 0 : 1);
-    return (
-      rank(left) - rank(right) ||
-      (rank(left) === 1 ? right.localeCompare(left) : left.localeCompare(right)) ||
-      value(a.data, "title").localeCompare(value(b.data, "title"), "de")
-    );
-  });
+  const records =
+    sort === "premiere"
+      ? sortProductionsByPremiere(filteredRecords, localDate())
+      : filteredRecords.sort((a, b) => {
+          if (sort === "name" || sort === "name-desc")
+            return (
+              value(a.data, "title").localeCompare(value(b.data, "title"), "de") *
+              (sort === "name-desc" ? -1 : 1)
+            );
+          if (sort === "updated") return b.updatedAt.localeCompare(a.updatedAt);
+          return 0;
+        });
   const projectHours = (workspace as Workspace & { projectHours?: Record<string, number> })
     .projectHours;
   if (production)

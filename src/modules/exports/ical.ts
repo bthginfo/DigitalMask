@@ -97,6 +97,7 @@ export function buildIcs(input: ExportInput): Uint8Array {
     if (description) lines.push(`DESCRIPTION:${escapeIcs(description)}`);
     if (record.data.location) lines.push(`LOCATION:${escapeIcs(readable(record.data.location))}`);
     lines.push(`CATEGORIES:${escapeIcs(display.categoryName)}`);
+    lines.push(`TRANSP:${display.blocksTime ? "OPAQUE" : "TRANSPARENT"}`);
     if (recurring) {
       const until =
         typeof record.data.until === "string" && /^\d{4}-\d{2}-\d{2}$/.test(record.data.until)

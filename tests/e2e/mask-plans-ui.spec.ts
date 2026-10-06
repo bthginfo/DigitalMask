@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import type { DomainRecord, RecordData } from "../../src/shared/contracts";
 import { maskPlanFixture } from "./mask-plans-fixture";
+import { installMaskPlanBrowserSafety } from "./mask-plan-safety";
 
 test.use({ serviceWorkers: "block" });
 const artifacts = process.env.E2E_ARTIFACTS_DIR;
@@ -12,6 +13,7 @@ async function mock(page: Page, dark = false, empty = false) {
   if (empty) workspace.records.maskPlans = [];
   const writes: { method: string; id: string; version?: number; data: RecordData }[] = [];
   let reads = 0;
+  let failure = 0;
   await page.route("**/api/**", async (route) => {
     const url = new URL(route.request().url()),
       method = route.request().method();
@@ -23,6 +25,8 @@ async function mock(page: Page, dark = false, empty = false) {
       const id = url.pathname.split("/")[4] || `new-${writes.length}`;
       const payload = method === "DELETE" ? {} : route.request().postDataJSON();
       writes.push({ method, id, ...payload });
+      if (failure)
+        return route.fulfill({ status: failure, json: { error: "Fiktiver Speicherfehler." } });
       const previous = workspace.records.maskPlans.find((record) => record.id === id);
       if (method === "DELETE") {
         workspace.records.maskPlans = workspace.records.maskPlans.filter(
@@ -47,20 +51,26 @@ async function mock(page: Page, dark = false, empty = false) {
     }
     return route.fulfill({ json: { ok: true } });
   });
-  await page.addInitScript(
-    (dark) => localStorage.setItem("digitalmask-theme", dark ? "dark" : "light"),
-    dark,
-  );
-  return { workspace, writes, reads: () => reads };
+  await installMaskPlanBrowserSafety(page, dark);
+  return {
+    workspace,
+    writes,
+    reads: () => reads,
+    fail: (status: number) => {
+      failure = status;
+    },
+  };
 }
 
 for (const state of [
   { width: 1440, dark: false },
   { width: 1440, dark: true },
   { width: 375, dark: false },
+  { width: 375, dark: true },
+  { width: 390, dark: false },
   { width: 390, dark: true },
 ]) {
-  test(`mask timetable and agenda ${state.width}px ${state.dark ? "dark" : "light"}`, async ({
+  test(`compact saved timetable ${state.width}px ${state.dark ? "dark" : "light"}`, async ({
     page,
   }) => {
     await page.setViewportSize({ width: state.width, height: state.width < 500 ? 844 : 1080 });
@@ -68,6 +78,12 @@ for (const state of [
     await page.goto("/?module=productions&productionId=bear&tab=mask-plan&record=main-plan");
     await expect(page.getByRole("heading", { name: "Maskenplan", exact: true })).toBeVisible();
     await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Plan bearbeiten", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Liste", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Tabelle", exact: true })).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: "Zeitblock platzieren", exact: true }),
+    ).toHaveCount(0);
     await expect(
       page.getByRole("button", { name: "Personalspalte bearbeiten: Jules / Janine" }),
     ).toBeVisible();
@@ -75,7 +91,15 @@ for (const state of [
     const board = page.getByRole("region", {
       name: "Maskenplan-Zeittabelle, horizontal und vertikal scrollbar",
     });
+    await expect(board).toHaveAttribute("data-compact", "true");
     await expect(board.getByText("18:30", { exact: true }).first()).toBeVisible();
+    expect(
+      await board
+        .locator("[data-mask-block]")
+        .evaluateAll((blocks) =>
+          blocks.every((block) => block.scrollHeight <= block.clientHeight + 1),
+        ),
+    ).toBe(true);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(
       true,
     );
@@ -90,10 +114,8 @@ for (const state of [
     });
     await capture(page, `mask-table-${state.width}-${state.dark ? "dark" : "light"}`);
     const reads = fixture.reads();
-    await page.getByRole("button", { name: "Liste", exact: true }).click();
     await expect(page.getByRole("link", { name: "Irina K." })).toBeVisible();
-    await expect(page.getByText("0 · Vorstellungsbeginn", { exact: true })).toBeVisible();
-    await capture(page, `mask-agenda-${state.width}-${state.dark ? "dark" : "light"}`);
+    await expect(board.locator("[data-mask-zero]")).toContainText("0");
     await page.getByRole("button", { name: "Exportieren", exact: true }).click();
     await expect(page.getByRole("link", { name: "PDF · drucken" })).toHaveAttribute(
       "href",
@@ -134,7 +156,8 @@ test("new plan uses shared staff, cast actors and one explicit write", async ({ 
   expect(fixture.writes).toHaveLength(0);
   await expect(page.getByRole("button", { name: "Exportieren", exact: true })).toBeDisabled();
   await page.getByRole("button", { name: "Plan speichern", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Plan speichern", exact: true })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Plan speichern", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Plan bearbeiten", exact: true })).toBeVisible();
   expect(fixture.writes).toHaveLength(1);
   expect(fixture.writes[0].method).toBe("POST");
   const saved = fixture.workspace.records.maskPlans[0].data;
@@ -146,12 +169,90 @@ test("new plan uses shared staff, cast actors and one explicit write", async ({ 
   await capture(page, "mask-created-mobile-dark");
 });
 
+test("failed save and a version conflict keep the full editable draft until a successful separate save", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  const fixture = await mock(page);
+  await page.goto("/?module=productions&productionId=bear&tab=mask-plan&record=main-plan");
+  const board = page.getByRole("region", {
+    name: "Maskenplan-Zeittabelle, horizontal und vertikal scrollbar",
+  });
+  await page.getByRole("button", { name: "Plan bearbeiten", exact: true }).click();
+  await page.getByRole("button", { name: /Irina K\..*bearbeiten/ }).click();
+  await page.getByLabel("Hinweise (optional)").fill("Mein vollständiger fiktiver Entwurf.");
+  await page.getByRole("button", { name: "Übernehmen", exact: true }).click();
+  fixture.fail(500);
+  const save = page.getByRole("button", { name: "Plan speichern", exact: true });
+  await save.click();
+  await expect(
+    page.getByRole("alert").filter({ hasText: "Fiktiver Speicherfehler" }),
+  ).toBeVisible();
+  await expect(board).toHaveAttribute("data-compact", "false");
+  await expect(save).toBeEnabled();
+  expect(fixture.workspace.records.maskPlans[0].data.blocks).not.toEqual(
+    fixture.writes[0].data.blocks,
+  );
+  fixture.fail(0);
+  fixture.workspace.records.maskPlans[0].version = 2;
+  await save.click();
+  await expect(page.getByRole("alert").filter({ hasText: "inzwischen geändert" })).toBeVisible();
+  await expect(board).toHaveAttribute("data-compact", "false");
+  await expect(save).toBeDisabled();
+  await page.getByRole("button", { name: "Als neuen Plan behalten", exact: true }).click();
+  await save.click();
+  await expect(board).toHaveAttribute("data-compact", "true");
+  await expect(save).toHaveCount(0);
+  const copy = fixture.workspace.records.maskPlans.find((record) => record.id.startsWith("new-"))!;
+  expect((copy.data.blocks as { notes: string }[])[0].notes).toBe(
+    "Mein vollständiger fiktiver Entwurf.",
+  );
+  expect(
+    fixture.workspace.records.maskPlans.find((record) => record.id === "main-plan")?.version,
+  ).toBe(2);
+});
+
+test("compact table keeps long names, notes, links and horizontal rails accessible without mode reads", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const fixture = await mock(page, true);
+  const longName = "Fiktive Darstellerin mit einem besonders langen Doppelnamen";
+  fixture.workspace.records.actors[0].data.name = longName;
+  const plan = fixture.workspace.records.maskPlans[0]
+    .data as unknown as import("../../src/modules/mask-plans/model").MaskPlanData;
+  plan.lanes[0].staffNames.push("Fiktive Aushilfe mit einem langen vollständigen Namen");
+  plan.blocks[0].notes =
+    "Lange fiktive Hinweise: " + "Perücke und Haarnadeln sorgfältig bereitlegen. ".repeat(15);
+  await page.goto("/?module=productions&productionId=bear&tab=mask-plan&record=main-plan");
+  const board = page.getByRole("region", {
+    name: "Maskenplan-Zeittabelle, horizontal und vertikal scrollbar",
+  });
+  await expect(page.getByRole("link", { name: longName, exact: true })).toBeVisible();
+  await expect(board).toHaveAttribute("data-compact", "true");
+  const reads = fixture.reads();
+  await page.getByRole("button", { name: "Plan bearbeiten", exact: true }).click();
+  await expect(board).toHaveAttribute("data-compact", "false");
+  await page.getByRole("button", { name: "Bearbeiten beenden", exact: true }).click();
+  await expect(board).toHaveAttribute("data-compact", "true");
+  await page.getByRole("button", { name: new RegExp(`${longName}.*bearbeiten`) }).click();
+  await expect(page.getByLabel("Hinweise (optional)")).toHaveValue(plan.blocks[0].notes);
+  await page.getByRole("button", { name: "Abbrechen", exact: true }).click();
+  await page.getByRole("button", { name: "Bearbeiten beenden", exact: true }).click();
+  await page.getByLabel("Vorstellungsbeginn (optional)").fill("19:30");
+  expect(fixture.reads()).toBe(reads);
+  expect(fixture.writes).toHaveLength(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(
+    true,
+  );
+});
+
 test("dirty edits survive refresh and stale version offers a separate plan", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   const fixture = await mock(page);
   await page.goto("/?module=productions&productionId=bear&tab=mask-plan&record=main-plan");
-  await page.getByText("Planoptionen", { exact: true }).click();
-  await page.getByRole("button", { name: "Plan bearbeiten", exact: true }).click();
+  await page.getByLabel("Planoptionen", { exact: true }).click();
+  await page.getByRole("button", { name: "Name & Vorlauf", exact: true }).click();
   await page.getByLabel("Planname", { exact: true }).fill("Mein lokaler Plan");
   await page.getByRole("button", { name: "Übernehmen", exact: true }).click();
   const dialog = page.waitForEvent("dialog");
@@ -170,7 +271,7 @@ test("dirty edits survive refresh and stale version offers a separate plan", asy
   await capture(page, "mask-conflict-desktop-light");
   await page.getByRole("button", { name: "Als neuen Plan behalten", exact: true }).click();
   await page.getByRole("button", { name: "Plan speichern", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Plan speichern", exact: true })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Plan speichern", exact: true })).toHaveCount(0);
   expect(fixture.writes).toHaveLength(1);
   expect(fixture.writes[0].method).toBe("POST");
   expect(
@@ -186,8 +287,8 @@ test("dirty edits survive refresh and stale version offers a separate plan", asy
 test("refresh during an open form keeps its original version", async ({ page }) => {
   const fixture = await mock(page);
   await page.goto("/?module=productions&productionId=bear&tab=mask-plan&record=main-plan");
-  await page.getByText("Planoptionen", { exact: true }).click();
-  await page.getByRole("button", { name: "Plan bearbeiten", exact: true }).click();
+  await page.getByLabel("Planoptionen", { exact: true }).click();
+  await page.getByRole("button", { name: "Name & Vorlauf", exact: true }).click();
   await page.getByLabel("Planname", { exact: true }).fill("Mein erster Entwurf");
   fixture.workspace.records.maskPlans[0].version = 2;
   fixture.workspace.records.maskPlans[0].data.title = "Neuer Stand der Kollegin";

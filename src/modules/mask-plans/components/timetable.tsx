@@ -41,6 +41,7 @@ function colorStyle(block: MaskPlanBlock, productionColor: string) {
 
 type Props = {
   plan: MaskPlanData;
+  compact?: boolean;
   members: Member[];
   actors: DomainRecord[];
   performanceTime: string;
@@ -104,6 +105,8 @@ function DraggableBlock({
   performanceTime,
   onClick,
   onPress,
+  compact,
+  actors,
 }: {
   block: MaskPlanBlock;
   label: string;
@@ -111,11 +114,60 @@ function DraggableBlock({
   performanceTime: string;
   onClick: () => void;
   onPress: () => void;
+  compact: boolean;
+  actors: DomainRecord[];
 }) {
   const { setNodeRef, attributes, listeners, isDragging } = useDraggable({
     id: block.id,
     data: { block },
+    disabled: compact,
   });
+  if (compact)
+    return (
+      <div
+        ref={setNodeRef}
+        className={`${styles.block} ${styles.savedBlock}`}
+        data-mask-block={block.id}
+        style={style}
+      >
+        <span className={styles.blockTime}>
+          {block.startMinutes} · {block.durationMinutes} Min.
+          {performanceTime && <span> · {maskPlanClock(block.startMinutes, performanceTime)}</span>}
+        </span>
+        <div className={styles.savedBlockNames}>
+          {block.actorIds.map((id) => {
+            const actor = actors.find((candidate) => candidate.id === id);
+            return actor ? (
+              <RecordLink
+                key={id}
+                record={actor}
+                decoration={false}
+                title={value(actor.data, "name")}
+              >
+                {value(actor.data, "name")}
+              </RecordLink>
+            ) : (
+              <span key={id}>Frühere Schauspielperson</span>
+            );
+          })}
+          {block.actorNames.map((name, index) => (
+            <span key={`${index}:${name}`} title={name}>
+              {name}
+            </span>
+          ))}
+        </div>
+        {block.title && <strong title={block.title}>{block.title}</strong>}
+        <button
+          type="button"
+          className={styles.savedBlockEdit}
+          onClick={onClick}
+          aria-label={`${label}, ${block.startMinutes} Minuten vor Beginn, ${block.durationMinutes} Minuten, bearbeiten`}
+          title={`${label}\n${block.startMinutes} bis ${block.startMinutes + block.durationMinutes} Min.\n${block.notes}`}
+        >
+          <Pencil size={13} />
+        </button>
+      </div>
+    );
   return (
     <button
       type="button"
@@ -148,6 +200,7 @@ function DraggableBlock({
 
 export function Timetable({
   plan,
+  compact = false,
   members,
   actors,
   performanceTime,
@@ -171,7 +224,19 @@ export function Timetable({
     displayPlan.stepMinutes,
     ...displayPlan.blocks.map((block) => block.durationMinutes),
   );
-  const minuteHeight = 44 / Math.max(1, smallest);
+  const minuteHeight = compact
+    ? Math.max(
+        44 / 15,
+        ...displayPlan.blocks.map(
+          (block) =>
+            (block.title && (block.actorIds.length || block.actorNames.length) ? 64 : 44) /
+            block.durationMinutes,
+        ),
+      )
+    : 44 / Math.max(1, smallest);
+  const tickStride = compact
+    ? Math.max(1, Math.ceil((performanceTime ? 32 : 22) / (displayPlan.stepMinutes * minuteHeight)))
+    : 1;
   const height = -window.start * minuteHeight;
   const laneTracks = new Map(
     displayPlan.lanes.map((lane) => [
@@ -335,20 +400,22 @@ export function Timetable({
         },
       }}
     >
-      <div className={styles.placementBar}>
-        <PlaceControl
-          active={placing}
-          onPress={beginPress}
-          onClick={() => {
-            if (mayClick(NEW_BLOCK)) setPlacing(!placing);
-          }}
-        />
-        <p className={styles.scrollHint}>
-          {placing
-            ? "Tippe auf eine freie Stelle für den neuen Zeitblock."
-            : "Blöcke ziehen · auf dem Handy kurz halten und verschieben. Antippen öffnet die Einstellungen."}
-        </p>
-      </div>
+      {!compact && (
+        <div className={styles.placementBar}>
+          <PlaceControl
+            active={placing}
+            onPress={beginPress}
+            onClick={() => {
+              if (mayClick(NEW_BLOCK)) setPlacing(!placing);
+            }}
+          />
+          <p className={styles.scrollHint}>
+            {placing
+              ? "Tippe auf eine freie Stelle für den neuen Zeitblock."
+              : "Blöcke ziehen · auf dem Handy kurz halten und verschieben. Antippen öffnet die Einstellungen."}
+          </p>
+        </div>
+      )}
       <span className={styles.dragAnnouncement} role="status" aria-live="polite">
         {target
           ? `${target.startMinutes} Minuten · ${laneTitle(displayPlan.lanes[targetLane], members, targetLane)}`
@@ -358,7 +425,8 @@ export function Timetable({
       </span>
       <div
         ref={board}
-        className={`${styles.timelineScroll} ${placing ? styles.placing : ""} ${drag ? styles.dragActive : ""}`}
+        className={`${styles.timelineScroll} ${compact ? styles.compactTable : ""} ${placing ? styles.placing : ""} ${drag ? styles.dragActive : ""}`}
+        data-compact={compact}
         tabIndex={0}
         role="region"
         aria-label="Maskenplan-Zeittabelle, horizontal und vertikal scrollbar"
@@ -387,20 +455,22 @@ export function Timetable({
                 <strong>{laneTitle(lane, members, index)}</strong>
                 <Pencil size={14} />
               </button>
-              <button
-                type="button"
-                onClick={() => onAddBlock(lane.id)}
-                className={styles.laneAdd}
-                aria-label={`Zeitblock hinzufügen bei ${laneTitle(lane, members, index)}`}
-              >
-                <Plus size={15} />
-                Zeitblock
-              </button>
+              {!compact && (
+                <button
+                  type="button"
+                  onClick={() => onAddBlock(lane.id)}
+                  className={styles.laneAdd}
+                  aria-label={`Zeitblock hinzufügen bei ${laneTitle(lane, members, index)}`}
+                >
+                  <Plus size={15} />
+                  Zeitblock
+                </button>
+              )}
             </header>
           ))}
           <div className={styles.timeRail} style={{ height }} data-mask-rail>
             {window.ticks
-              .filter((tick) => tick !== 0)
+              .filter((tick, index) => tick !== 0 && index % tickStride === 0)
               .map((tick) => (
                 <div
                   key={tick}
@@ -441,7 +511,7 @@ export function Timetable({
                 } as React.CSSProperties
               }
             >
-              {!displayPlan.blocks.some((block) => block.laneId === lane.id) && (
+              {!compact && !displayPlan.blocks.some((block) => block.laneId === lane.id) && (
                 <button
                   type="button"
                   className={styles.emptyLane}
@@ -477,6 +547,8 @@ export function Timetable({
                       block={block}
                       label={label}
                       performanceTime={performanceTime}
+                      compact={compact}
+                      actors={actors}
                       onClick={() => {
                         if (mayClick(block.id)) onEditBlock(block);
                       }}

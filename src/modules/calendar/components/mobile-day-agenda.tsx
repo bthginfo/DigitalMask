@@ -46,10 +46,15 @@ export function MobileDayAgenda({
                 }}
                 onClick={() => onOpen(record)}
               >
-                <span className={styles.people}>{names.join(", ") || "Ohne Zuordnung"}</span>
+                <span className={styles.people}>{names.join(", ") || "Gäste/Aushilfen"}</span>
                 <strong>{event.title}</strong>
                 <span>
                   {calendarInstanceTime(event)} · {event.categoryName}
+                  {event.background
+                    ? event.background === "service"
+                      ? " · Arbeitszeit"
+                      : " · Hinweis"
+                    : ""}
                 </span>
                 <span className={styles.location}>
                   {value(record.data, "location") || "Ort noch offen"} ·{" "}

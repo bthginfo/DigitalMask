@@ -118,8 +118,14 @@ describe("unconfirmed calendar time suggestions", () => {
     const result = propose({
       kind: "time",
       events: [
-        event("Perückenprobe", "2026-09-30T08:00Z", "2026-09-30T11:00Z", { productionId: "p" }),
-        event("Vorstellung", "2026-09-30T10:00Z", "2026-09-30T12:00Z", { productionId: "q" }),
+        event("Perückenprobe", "2026-09-30T08:00Z", "2026-09-30T11:00Z", {
+          productionId: "p",
+          category: "rehearsal",
+        }),
+        event("Vorstellung", "2026-09-30T10:00Z", "2026-09-30T12:00Z", {
+          productionId: "q",
+          category: "performance",
+        }),
       ],
     });
     expect(result.overlappingEvents).toBe(true);
@@ -130,6 +136,48 @@ describe("unconfirmed calendar time suggestions", () => {
     expect(result.proposals.map((row) => row.data)).toMatchObject([
       { title: "Perückenprobe", productionId: "p", category: "production", pauseSeconds: 0 },
       { title: "Vorstellung", productionId: "q", category: "production", pauseSeconds: 0 },
+    ]);
+  });
+  it("lets foreground work take precedence within Dienst without counting its hours twice", () => {
+    const events = [
+      event("Tagesdienst", "2026-09-30T08:00Z", "2026-09-30T14:00Z"),
+      event("Probe", "2026-09-30T10:00Z", "2026-09-30T12:00Z", {
+        category: "rehearsal",
+        productionId: "p",
+      }),
+      event("Zusätzlicher TD", "2026-09-30T09:00Z", "2026-09-30T13:00Z"),
+    ];
+    const work = propose({ kind: "time", events });
+    expect(work.overlappingEvents).toBe(false);
+    expect(clocks(work)).toEqual([
+      ["2026-09-30T08:00:00.000Z", "2026-09-30T10:00:00.000Z"],
+      ["2026-09-30T10:00:00.000Z", "2026-09-30T12:00:00.000Z"],
+      ["2026-09-30T12:00:00.000Z", "2026-09-30T14:00:00.000Z"],
+    ]);
+    expect(work.proposals[1].data).toMatchObject({ title: "Probe", productionId: "p" });
+    expect(work.proposals.reduce((sum, row) => sum + row.seconds, 0)).toBe(6 * 3600);
+    expect(clocks(propose({ events }))).toEqual([
+      ["2026-09-30T08:00:00.000Z", "2026-09-30T14:00:00.000Z"],
+    ]);
+  });
+  it("does not fill a true foreground collision with background service or filtered-out work", () => {
+    const events = [
+      event("Dienst", "2026-09-30T08:00Z", "2026-09-30T14:00Z", { productionId: "p" }),
+      event("Probe", "2026-09-30T10:00Z", "2026-09-30T12:00Z", {
+        category: "rehearsal",
+        productionId: "q",
+      }),
+      event("Vorstellung", "2026-09-30T11:00Z", "2026-09-30T13:00Z", {
+        category: "performance",
+        productionId: "q",
+      }),
+    ];
+    const work = propose({ kind: "time", events });
+    expect(work.overlappingEvents).toBe(true);
+    expect(work.proposals.reduce((sum, row) => sum + row.seconds, 0)).toBe(5 * 3600);
+    expect(clocks(propose({ kind: "time", events, productionId: "p" }))).toEqual([
+      ["2026-09-30T08:00:00.000Z", "2026-09-30T10:00:00.000Z"],
+      ["2026-09-30T13:00:00.000Z", "2026-09-30T14:00:00.000Z"],
     ]);
   });
   it("does not suggest new clock ranges on a day with existing duration-only work", () => {

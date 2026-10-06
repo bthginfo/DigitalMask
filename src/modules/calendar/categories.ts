@@ -5,6 +5,7 @@ import type { Context } from "@/platform/context";
 import type { RecordData } from "@/shared/contracts";
 import { HttpError } from "@/platform/http";
 import { localDay, startOfLocalDay } from "@/modules/time-tracking/rules";
+import { calendarCategoryBehavior } from "@/shared/calendar-categories";
 
 export async function validateCalendarCategory(
   context: Context,
@@ -30,12 +31,11 @@ export async function validateCalendarCategory(
     )
     .limit(1);
   if (duplicate) throw new HttpError(409, "Dieser Kategoriencode ist bereits vergeben.");
-  const oldBlocking =
-    typeof existing?.data.blocksTime === "boolean"
-      ? existing.data.blocksTime
-      : existing?.data.key !== "half-day-off";
-  const newBlocking =
-    typeof data.blocksTime === "boolean" ? data.blocksTime : data.key !== "half-day-off";
+  const oldBlocking = calendarCategoryBehavior(
+    String(existing?.data.key),
+    existing?.data,
+  ).blocksTime;
+  const newBlocking = calendarCategoryBehavior(String(data.key), data).blocksTime;
   if (existing && (existing.data.allDay !== data.allDay || oldBlocking !== newBlocking))
     await assertUnusedCategory(context, String(data.key), tx);
 }

@@ -7,11 +7,10 @@ import {
   Copy,
   MoreHorizontal,
   Download,
-  List,
+  Pencil,
   Plus,
   Save,
   Settings2,
-  Table2,
   Trash2,
   Undo2,
 } from "lucide-react";
@@ -32,7 +31,7 @@ import {
   type MaskPlanLane,
 } from "../model";
 import { BlockEditor, LaneEditor, PlanOptions } from "./plan-editors";
-import { PlanAgenda, Timetable } from "./timetable";
+import { Timetable } from "./timetable";
 import styles from "./mask-plans.module.css";
 
 type Draft = { data: MaskPlanData; base?: DomainRecord };
@@ -64,7 +63,7 @@ export function MaskPlansModule({ production }: { production: DomainRecord }) {
   });
   const [draft, setDraft] = useState<Draft | null>(null);
   const [editor, setEditor] = useState<Editor>(null);
-  const [view, setView] = useState<"table" | "agenda">("table");
+  const [editing, setEditing] = useState(false);
   const [performanceTime, setPerformanceTime] = useState("");
   const [error, setError] = useState("");
   const [conflict, setConflict] = useState(false);
@@ -77,6 +76,7 @@ export function MaskPlansModule({ production }: { production: DomainRecord }) {
     !!draft &&
     (!draft.base || JSON.stringify(draft.data) !== JSON.stringify(maskPlanValue(draft.base.data)));
   const plan = dirty ? draft!.data : selected ? maskPlanValue(selected.data) : null;
+  const compact = !!plan && !editing && !dirty;
   const remoteChanged =
     dirty &&
     !!draft?.base &&
@@ -112,6 +112,7 @@ export function MaskPlansModule({ production }: { production: DomainRecord }) {
       latest.current = { ...current, selectedId: id, dirty: false };
       setSelectedId(id);
       setDraft(null);
+      setEditing(false);
       setConflict(false);
       setError("");
       setEditor(null);
@@ -132,6 +133,7 @@ export function MaskPlansModule({ production }: { production: DomainRecord }) {
   const guard = () => !dirty || confirm("Deine ungespeicherten Änderungen verwerfen?");
   const reset = () => {
     setDraft(null);
+    setEditing(false);
     setConflict(false);
     setError("");
   };
@@ -147,12 +149,14 @@ export function MaskPlansModule({ production }: { production: DomainRecord }) {
     setDraft({ data, base: dirty ? draft?.base : base || selected });
     setError("");
   };
-  const openEditor = (next: Exclude<Editor, null>, origin?: Draft) =>
+  const openEditor = (next: Exclude<Editor, null>, origin?: Draft) => {
+    if (!(next.type === "options" && next.creating)) setEditing(true);
     setEditor({
       ...next,
       base: origin ? origin.base : dirty ? draft?.base : selected,
       snapshot: origin?.data || plan || undefined,
     });
+  };
   const beginNew = () => {
     if (!guard()) return;
     openEditor({ type: "options", creating: true, plan: newMaskPlan(production.id) });
@@ -282,6 +286,7 @@ export function MaskPlansModule({ production }: { production: DomainRecord }) {
   };
   const timetableProps = {
     plan: plan!,
+    compact,
     members: workspace.members,
     actors: workspace.records.actors,
     performanceTime,
@@ -298,14 +303,21 @@ export function MaskPlansModule({ production }: { production: DomainRecord }) {
     <section
       className={styles.module}
       data-dirty={dirty}
+      data-compact={compact}
       aria-label="Maskenpläne dieser Produktion"
     >
       <header className={styles.heading}>
         <div>
           <h2>Maskenplan</h2>
-          <span className={styles.planCount}>
-            {plans.length} {plans.length === 1 ? "gespeicherter Plan" : "gespeicherte Pläne"}
-          </span>
+          {compact ? (
+            <span className={styles.savedIndicator} role="status">
+              <Check size={13} /> Gespeichert
+            </span>
+          ) : (
+            <span className={styles.planCount}>
+              {plans.length} {plans.length === 1 ? "gespeicherter Plan" : "gespeicherte Pläne"}
+            </span>
+          )}
         </div>
         <Button onClick={beginNew} disabled={busy || pending}>
           <Plus size={16} />
@@ -331,6 +343,12 @@ export function MaskPlansModule({ production }: { production: DomainRecord }) {
               </select>
             </label>
             <div className={styles.planActions}>
+              {compact && (
+                <Button variant="primary" onClick={() => setEditing(true)} disabled={pending}>
+                  <Pencil size={16} />
+                  Plan bearbeiten
+                </Button>
+              )}
               {dirty && (
                 <div className={styles.desktopSave}>
                   <Button
@@ -344,9 +362,9 @@ export function MaskPlansModule({ production }: { production: DomainRecord }) {
                 </div>
               )}
               <details className={styles.moreActions}>
-                <summary className="button">
+                <summary className="button" aria-label="Planoptionen">
                   <MoreHorizontal size={17} />
-                  Planoptionen
+                  <span className={styles.moreLabel}>Planoptionen</span>
                 </summary>
                 <div className={styles.moreMenu}>
                   <Button
@@ -354,7 +372,7 @@ export function MaskPlansModule({ production }: { production: DomainRecord }) {
                     disabled={pending}
                   >
                     <Settings2 size={16} />
-                    Plan bearbeiten
+                    Name &amp; Vorlauf
                   </Button>
                   <Button
                     onClick={() => {
@@ -463,19 +481,21 @@ export function MaskPlansModule({ production }: { production: DomainRecord }) {
           )}
           <ErrorMessage message={error} />
           <div className={styles.toolbar}>
-            <div className={styles.addActions}>
-              <Button onClick={addLane} disabled={pending || plan.lanes.length >= 24}>
-                <Plus size={16} />
-                Personalspalte
-              </Button>
-              <Button
-                onClick={() => addBlock()}
-                disabled={pending || !plan.lanes.length || plan.blocks.length >= 250}
-              >
-                <Plus size={16} />
-                Zeitblock
-              </Button>
-            </div>
+            {!compact && (
+              <div className={styles.addActions}>
+                <Button onClick={addLane} disabled={pending || plan.lanes.length >= 24}>
+                  <Plus size={16} />
+                  Personalspalte
+                </Button>
+                <Button
+                  onClick={() => addBlock()}
+                  disabled={pending || !plan.lanes.length || plan.blocks.length >= 250}
+                >
+                  <Plus size={16} />
+                  Zeitblock
+                </Button>
+              </div>
+            )}
             <div className={styles.viewControls}>
               <label>
                 Beginn (optional)
@@ -486,24 +506,6 @@ export function MaskPlansModule({ production }: { production: DomainRecord }) {
                   onChange={(event) => setPerformanceTime(event.target.value)}
                 />
               </label>
-              <div className={styles.viewSwitch} role="group" aria-label="Maskenplan-Ansicht">
-                <button
-                  type="button"
-                  aria-pressed={view === "table"}
-                  onClick={() => setView("table")}
-                >
-                  <Table2 size={16} />
-                  Tabelle
-                </button>
-                <button
-                  type="button"
-                  aria-pressed={view === "agenda"}
-                  onClick={() => setView("agenda")}
-                >
-                  <List size={16} />
-                  Liste
-                </button>
-              </div>
             </div>
           </div>
           <div
@@ -525,11 +527,7 @@ export function MaskPlansModule({ production }: { production: DomainRecord }) {
             }}
           >
             {plan.lanes.length ? (
-              view === "table" ? (
-                <Timetable {...timetableProps} />
-              ) : (
-                <PlanAgenda {...timetableProps} />
-              )
+              <Timetable key={compact ? "saved" : "editing"} {...timetableProps} />
             ) : (
               <div className={styles.empty}>
                 <Empty
@@ -598,50 +596,57 @@ export function MaskPlansModule({ production }: { production: DomainRecord }) {
               )}
             </details>
           )}
-          <footer className={styles.saveBar} data-dirty={dirty}>
-            <span className={styles.saveStatus} role="status">
-              {dirty ? (
-                <>
-                  <span className={styles.dirtyDot} />
-                  Ungespeicherte Änderungen
-                </>
-              ) : (
-                <>
-                  <Check size={16} />
-                  Gespeichert
-                </>
+          {!compact && (
+            <footer className={styles.saveBar} data-dirty={dirty}>
+              <span className={styles.saveStatus} role="status">
+                {dirty ? (
+                  <>
+                    <span className={styles.dirtyDot} />
+                    Ungespeicherte Änderungen
+                  </>
+                ) : (
+                  <>
+                    <Check size={16} />
+                    Keine ungespeicherten Änderungen
+                  </>
+                )}
+                {dirty && <small>Export nach dem Speichern</small>}
+              </span>
+              <div>
+                {!dirty && (
+                  <Button onClick={() => setEditing(false)} disabled={pending}>
+                    Bearbeiten beenden
+                  </Button>
+                )}
+                <Button
+                  onClick={() => {
+                    if (guard()) {
+                      reset();
+                      if (!selected) setSelectedId(plans[0]?.id || "");
+                    }
+                  }}
+                  disabled={!dirty || pending}
+                >
+                  <Undo2 size={16} />
+                  Verwerfen
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={() => void savePlan()}
+                  disabled={!dirty || busy || pending || conflictVisible || !online}
+                >
+                  <Save size={16} />
+                  {pending ? "Wird gespeichert …" : "Plan speichern"}
+                </Button>
+              </div>
+              {!online && (
+                <p className={styles.offline}>
+                  Ohne Verbindung bleibt der Entwurf in dieser Ansicht. Speichere, sobald du wieder
+                  online bist.
+                </p>
               )}
-              {dirty && <small>Export nach dem Speichern</small>}
-            </span>
-            <div>
-              <Button
-                onClick={() => {
-                  if (guard()) {
-                    reset();
-                    if (!selected) setSelectedId(plans[0]?.id || "");
-                  }
-                }}
-                disabled={!dirty || pending}
-              >
-                <Undo2 size={16} />
-                Verwerfen
-              </Button>
-              <Button
-                variant="primary"
-                onClick={() => void savePlan()}
-                disabled={!dirty || busy || pending || conflictVisible || !online}
-              >
-                <Save size={16} />
-                {pending ? "Wird gespeichert …" : "Plan speichern"}
-              </Button>
-            </div>
-            {!online && (
-              <p className={styles.offline}>
-                Ohne Verbindung bleibt der Entwurf in dieser Ansicht. Speichere, sobald du wieder
-                online bist.
-              </p>
-            )}
-          </footer>
+            </footer>
+          )}
         </>
       ) : (
         <div className={styles.empty}>
@@ -661,6 +666,7 @@ export function MaskPlansModule({ production }: { production: DomainRecord }) {
           onApply={(next) => {
             if (editor.creating) {
               setDraft({ data: next });
+              setEditing(true);
               setSelectedId("");
               setConflict(false);
               setError("");

@@ -1,5 +1,5 @@
 /** Fade only the background of all-day entries so their text stays readable. */
-export function calendarEventPaint(value: string, allDay: boolean) {
+export function calendarEventPaint(value: string, allDay: boolean, background = false) {
   const color = /^#[0-9a-f]{6}$/i.test(value) ? value : "#77818e";
   const channels = [1, 3, 5].map((index) => parseInt(color.slice(index, index + 2), 16));
   const luminance = channels
@@ -8,10 +8,14 @@ export function calendarEventPaint(value: string, allDay: boolean) {
       return component <= 0.04045 ? component / 12.92 : ((component + 0.055) / 1.055) ** 2.4;
     })
     .reduce((sum, component, index) => sum + component * [0.2126, 0.7152, 0.0722][index], 0);
-  const backgroundColor = allDay ? `rgba(${channels.join(", ")}, 0.5)` : color;
+  const backgroundColor = background
+    ? `rgba(${channels.join(", ")}, 0.12)`
+    : allDay
+      ? `rgba(${channels.join(", ")}, 0.5)`
+      : color;
   return {
     backgroundColor,
-    borderColor: backgroundColor,
-    textColor: allDay ? "var(--text)" : luminance > 0.179 ? "#000000" : "#ffffff",
+    borderColor: background ? color : backgroundColor,
+    textColor: allDay || background ? "var(--text)" : luminance > 0.179 ? "#000000" : "#ffffff",
   };
 }

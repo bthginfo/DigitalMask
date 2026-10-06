@@ -37,6 +37,8 @@ import {
 import { isActiveStaff } from "@/shared/client-members";
 import { calendarEventSelected } from "@/shared/calendar-selection";
 import { calendarEventPaint } from "@/shared/calendar-paint";
+import { sortCalendarStaff } from "@/shared/calendar-team";
+import { sortProductionsByPremiere } from "@/shared/production-order";
 import { useWorkspace } from "../workspace-context";
 import { Badge, Button, ErrorMessage, ExportButton, PageHeader } from "../ui";
 import { ResourceEditor } from "../resource-editor";
@@ -74,11 +76,14 @@ export function expandEvents(
       title: presentation.title,
       allDay: presentation.allDay,
       categoryName: presentation.categoryName,
+      background: presentation.background,
+      blocksTime: presentation.blocksTime,
       start: instance.start.toISOString(),
       end: instance.end.toISOString(),
-      ...calendarEventPaint(presentation.color, presentation.allDay),
+      ...calendarEventPaint(presentation.color, presentation.allDay, !!presentation.background),
       editable:
         !record.data.leaveId &&
+        !presentation.background &&
         (!record.data.recurrence || record.data.recurrence === "none") &&
         (!member || canManageRecord(member, "events", record)),
       extendedProps: { record },
@@ -115,7 +120,14 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
   );
   const [showAll, setShowAll] = useState(false);
   const personalSelection = useRef<{ people: string[]; showAll: boolean } | null>(null);
-  const staff = useMemo(() => workspace.members.filter(isActiveStaff), [workspace.members]);
+  const staff = useMemo(
+    () => sortCalendarStaff(workspace.members.filter(isActiveStaff)),
+    [workspace.members],
+  );
+  const productions = useMemo(
+    () => sortProductionsByPremiere(workspace.records.productions, localDate()),
+    [workspace.records.productions],
+  );
   const visiblePeople = useMemo(
     () =>
       showAll
@@ -206,6 +218,18 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
     [expanded, range.start, range.end],
   );
   const selectedDayCount = dayEntries.get(mobileDay)?.length || 0;
+  const calendarEvents = useMemo(
+    () =>
+      expanded.map((event) => ({
+        ...event,
+        display:
+          event.background && !event.allDay && (view === "week" || view === "day")
+            ? "background"
+            : "block",
+        classNames: event.background ? [calendarStyles.backgroundEvent] : [],
+      })),
+    [expanded, view],
+  );
   const openMobileDay = (day: string) => {
     setMobileDay(day);
     setMobileDaySheetOpen(true);
@@ -215,19 +239,13 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
       .slice(i + 1)
       .some(
         (other) =>
-          !(
-            event.allDay &&
-            !calendarCategoryBlocksTime(
-              value(event.extendedProps.record.data, "category"),
-              workspace.records.calendarCategories,
-            )
+          calendarCategoryBlocksTime(
+            value(event.extendedProps.record.data, "category"),
+            workspace.records.calendarCategories,
           ) &&
-          !(
-            other.allDay &&
-            !calendarCategoryBlocksTime(
-              value(other.extendedProps.record.data, "category"),
-              workspace.records.calendarCategories,
-            )
+          calendarCategoryBlocksTime(
+            value(other.extendedProps.record.data, "category"),
+            workspace.records.calendarCategories,
           ) &&
           event.start < other.end &&
           event.end > other.start &&
@@ -416,7 +434,7 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
           ))}
           <p className="small muted" aria-live="polite">
             {showAll
-              ? "Gesamtes Team · inklusive Terminen ohne Personenzuordnung"
+              ? "Gesamtes Team · inklusive Gäste/Aushilfen"
               : visiblePeople.length
                 ? `${visiblePeople.length} Kalender ausgewählt`
                 : "Kein Kalender ausgewählt. Wähle eine Person oder Alle anzeigen."}
@@ -429,7 +447,7 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
               onChange={(e) => setProject(e.target.value)}
             >
               <option value="">Alle Produktionen</option>
-              {workspace.records.productions.map((x) => (
+              {productions.map((x) => (
                 <option key={x.id} value={x.id}>
                   {value(x.data, "title")}
                 </option>
@@ -660,8 +678,27 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
                 selectable={true}
                 editable={true}
                 eventStartEditable={true}
-                events={expanded}
+                events={calendarEvents}
                 eventDisplay="block"
+                selectOverlap={true}
+                eventContent={(info) => {
+                  if (info.event.display !== "background") return true;
+                  return (
+                    <button
+                      type="button"
+                      className={calendarStyles.backgroundLabel}
+                      aria-label={`${info.event.title} · Details anzeigen`}
+                      onMouseDown={(event) => event.stopPropagation()}
+                      onTouchStart={(event) => event.stopPropagation()}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setDetail(info.event.extendedProps.record as DomainRecord);
+                      }}
+                    >
+                      {info.event.title}
+                    </button>
+                  );
+                }}
                 datesSet={(info) => {
                   setTitle(info.view.title);
                   const firstDay = localDate(info.view.currentStart);

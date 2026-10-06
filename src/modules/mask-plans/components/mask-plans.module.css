@@ -27,6 +27,53 @@
   font-size: 12px;
   color: var(--muted);
 }
+.savedIndicator {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 4px;
+  color: var(--accent);
+  font-size: 11px;
+}
+.module[data-compact="true"] {
+  --time-rail: 64px;
+  --lane-width: 220px;
+  gap: 12px;
+}
+.module[data-compact="true"] .heading h2 {
+  font-size: 20px;
+}
+.module[data-compact="true"] .planBar {
+  padding-bottom: 0;
+  border: 0;
+}
+.module[data-compact="true"] .planTitle,
+.module[data-compact="true"] .moreLabel {
+  display: none;
+}
+.module[data-compact="true"] .moreActions {
+  order: 3;
+}
+.module[data-compact="true"] .moreActions summary {
+  width: 44px;
+  padding-inline: 12px;
+}
+.module[data-compact="true"] .moreMenu {
+  left: auto;
+  right: 0;
+}
+.module[data-compact="true"] .viewControls {
+  width: auto;
+}
+.module[data-compact="true"] .viewControls label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+}
+.module[data-compact="true"] .viewControls input {
+  width: 132px;
+}
 .planBar {
   align-items: end;
   padding-bottom: 18px;
@@ -262,6 +309,85 @@
   background: var(--surface);
   scrollbar-gutter: stable;
   overscroll-behavior: contain;
+}
+.timelineScroll.compactTable {
+  max-height: 52dvh;
+  scrollbar-gutter: auto;
+}
+.compactTable .corner,
+.compactTable .laneHeader {
+  min-height: 60px;
+}
+.compactTable .laneHeader {
+  padding: 5px 7px;
+}
+.compactTable .laneTitle {
+  padding: 3px 4px;
+  font-size: 13px;
+}
+.compactTable .tick {
+  min-height: 22px;
+  padding-block: 2px;
+  font-size: 12px;
+}
+.compactTable .zeroRail,
+.compactTable .begin {
+  min-height: 40px;
+  padding-block: 7px;
+}
+.block.savedBlock {
+  gap: 1px;
+  padding: 3px 29px 3px 6px;
+  font-size: 12px;
+}
+.savedBlock .blockTime {
+  font-size: 10px;
+  line-height: 12px;
+}
+.savedBlockNames {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0 7px;
+  font-weight: 650;
+  line-height: 1.3;
+}
+.savedBlockNames:empty {
+  display: none;
+}
+.savedBlockNames a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  max-width: 100%;
+  font-size: 12px;
+}
+.savedBlockNames > * {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.savedBlock > strong {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.savedBlockEdit {
+  position: absolute;
+  right: 2px;
+  top: 2px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--text);
+}
+.savedBlockEdit:hover {
+  background: color-mix(in srgb, var(--surface) 65%, transparent);
 }
 .sheet {
   display: grid;
@@ -832,6 +958,12 @@
     --time-rail: 60px;
     --lane-width: 218px;
     gap: 12px;
+  }
+  .module[data-compact="true"] {
+    --time-rail: 54px;
+  }
+  .module[data-compact="true"] .planActions {
+    grid-template-columns: 1fr 1fr 44px;
   }
   .module[data-dirty="true"] {
     padding-bottom: 112px;

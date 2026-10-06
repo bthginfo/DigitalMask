@@ -151,7 +151,8 @@ export const workflows = [
         "Der Plan zählt rückwärts",
         "Hier ist eine Personalspalte vorbereitet. −30 heißt: 30 Minuten vor Beginn.",
       );
-      await hold(2700);
+      await hold(2200);
+      await click(page.getByRole("button", { name: "Plan bearbeiten", exact: true }));
       await click(page.getByRole("button", { name: "Zeitblock", exact: true }));
       stage("Zeit und Dauer festlegen", "Trage 30 Minuten vor Beginn und 20 Minuten Dauer ein.");
       const dialog = page.getByRole("dialog");
@@ -175,13 +176,8 @@ export const workflows = [
       await click(page.getByRole("button", { name: "Plan speichern", exact: true }));
       await hold(1800);
       stage(
-        "Am Handy als Liste",
-        "Liste zeigt die Namen und Zeiten auch auf kleinen Bildschirmen gut lesbar.",
-      );
-      await click(
-        page
-          .getByRole("group", { name: "Maskenplan-Ansicht" })
-          .getByRole("button", { name: "Liste", exact: true }),
+        "Gespeichert und kompakt",
+        "Nach dem Speichern wird die Tabelle kleiner. Plan bearbeiten öffnet sie wieder größer.",
       );
       await hold(2700);
       const blocks = await page.evaluate(

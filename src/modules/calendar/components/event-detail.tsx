@@ -119,10 +119,17 @@ export function EventDetail({
                       workspace.members.find((member) => member.id === id)?.name ||
                       "Ehemaliges Teammitglied",
                   )
-                  .join(", ") || "Keine Personen zugeteilt"}
+                  .join(", ") || "Gäste/Aushilfen"}
               </dd>
             </div>
           </dl>
+          {presentation.background && (
+            <p className="help-note">
+              {presentation.background === "service"
+                ? "Arbeitszeit im Hintergrund. Weitere Termine können innerhalb dieses Dienstes liegen. Zum Ändern nutze Bearbeiten."
+                : "Hinweis auf einen halben freien Tag. Weitere Termine bleiben möglich."}
+            </p>
+          )}
           {!!current.data.recurrence && current.data.recurrence !== "none" && (
             <p className="help-note">
               Terminserie · {current.data.recurrence === "weekly" ? "wöchentlich" : "täglich"} bis{" "}

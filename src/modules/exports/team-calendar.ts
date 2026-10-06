@@ -2,23 +2,14 @@ import { addDays, format, parseISO, startOfWeek } from "date-fns";
 import { de } from "date-fns/locale";
 import { formatInTimeZone } from "date-fns-tz";
 import { defaultCalendarCategories } from "../../shared/calendar-categories";
+import { calendarTeamLanes } from "../../shared/calendar-team";
 import { listValue, type DomainRecord } from "../../shared/contracts";
 import { calendarRange, localDay } from "./calendar";
 import { eventDisplay } from "./calendar-presentation";
 import type { ExportInput } from "./types";
 
 export function teamCalendarMembers(input: ExportInput): { id: string; name: string }[] {
-  const members = input.members.filter(
-    (member) =>
-      member.status === "active" &&
-      member.role !== "superadmin" &&
-      (input.userIds === undefined || input.userIds.includes(member.id)),
-  );
-  return input.records.some(
-    (record) => record.kind === "events" && !listValue(record.data.participantIds).length,
-  )
-    ? [...members, { id: "", name: "Ohne Zuordnung" }]
-    : members;
+  return calendarTeamLanes(input.members, input.userIds, input.userIds === undefined);
 }
 export function teamCalendarWeeks(input: ExportInput) {
   const range = calendarRange(input),
@@ -37,7 +28,7 @@ export function teamCalendarWeeks(input: ExportInput) {
 }
 export function memberDayEvents(input: ExportInput, day: string, memberId: string) {
   const range = calendarRange(input);
-  if (day < range.from || day > range.to) return [];
+  if (day < range.from || day > range.to || (!memberId && input.userIds !== undefined)) return [];
   return input.records.filter((record) => {
     if (record.kind !== "events") return false;
     const participants = listValue(record.data.participantIds);

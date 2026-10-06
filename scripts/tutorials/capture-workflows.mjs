@@ -97,7 +97,7 @@ try {
       if (!(await page.evaluate(() => Boolean(window.__DM_DEMO))))
         throw new Error("Missing fictional workspace");
       started = performance.now();
-      const recordingOffset = (started - recordingStart) / 1000;
+      const startupWallSeconds = (started - recordingStart) / 1000;
       await flow.run({ page, click, fill, stage, hold, image: join(work, "reference.png") });
       await page.evaluate(() => {
         const cursor = document.getElementById("dm-demo-cursor");
@@ -111,7 +111,7 @@ try {
           {
             ...Object.fromEntries(Object.entries(flow).filter(([key]) => key !== "run")),
             duration,
-            recordingOffset,
+            startupWallSeconds,
             stages,
           },
           null,

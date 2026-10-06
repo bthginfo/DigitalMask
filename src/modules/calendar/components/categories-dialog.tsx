@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import type { DomainRecord } from "@/shared/contracts";
 import { value } from "@/shared/client-api";
+import { calendarCategoryBehavior } from "@/shared/calendar-categories";
 import { useWorkspace } from "@/components/workspace-context";
 import { Badge, Button, Empty, ErrorMessage, Modal } from "@/components/ui";
 function CategoryEditor({ record, onClose }: { record?: DomainRecord; onClose: () => void }) {
@@ -58,7 +59,7 @@ function CategoryEditor({ record, onClose }: { record?: DomainRecord; onClose: (
         </label>
         <p className="small muted">
           Bei bereits verwendeten Arten bleiben der Zeitmodus und bestehende Termine erhalten. Name
-          und Farbe lassen sich ändern.
+          und Farbe lassen sich ändern, solange die Bedeutung erhalten bleibt.
         </p>
         <ErrorMessage message={error} />
         <footer className="dialog-footer">
@@ -101,7 +102,16 @@ export function CalendarCategoriesDialog({ onClose }: { onClose: () => void }) {
                   />
                   <div>
                     <strong>{value(record.data, "name")}</strong>
-                    <Badge>{record.data.allDay ? "Ganztägig" : "Mit Uhrzeiten"}</Badge>
+                    <Badge>
+                      {record.data.allDay ? "Ganztägig" : "Mit Uhrzeiten"}
+                      {calendarCategoryBehavior(value(record.data, "key"), record.data)
+                        .background === "service"
+                        ? " · Arbeitszeit"
+                        : calendarCategoryBehavior(value(record.data, "key"), record.data)
+                              .background === "hint"
+                          ? " · Hinweis"
+                          : ""}
+                    </Badge>
                   </div>
                   <button
                     className="icon-button"

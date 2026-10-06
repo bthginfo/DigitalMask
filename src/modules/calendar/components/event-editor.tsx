@@ -4,6 +4,9 @@ import type { DomainRecord, RecordData } from "@/shared/contracts";
 import { ids, instantDate, localDate, localDateTime, shiftDate, value } from "@/shared/client-api";
 import { isActiveStaff } from "@/shared/client-members";
 import { calendarPresentation } from "@/shared/calendar-categories";
+import { calendarCategoryBehavior } from "@/shared/calendar-categories";
+import { sortCalendarStaff } from "@/shared/calendar-team";
+import { sortProductionsByPremiere } from "@/shared/production-order";
 import { useWorkspace } from "@/components/workspace-context";
 import { Button, ErrorMessage, Modal } from "@/components/ui";
 import { calendarCategories } from "./client-calendar";
@@ -64,11 +67,15 @@ export function EventEditor({
     ) ||
     selected?.name ||
     "Termin";
-  const members = workspace.members.filter(
-    (member) =>
-      (admin || member.id === workspace.user.id) &&
-      (isActiveStaff(member) || people.includes(member.id)),
+  const members = sortCalendarStaff(
+    workspace.members.filter(
+      (member) =>
+        (admin || member.id === workspace.user.id) &&
+        (isActiveStaff(member) || people.includes(member.id)),
+    ),
   );
+  const productions = sortProductionsByPremiere(workspace.records.productions, today);
+  const behavior = calendarCategoryBehavior(category, selected);
   return (
     <Modal title={`Termin ${record ? "bearbeiten" : "anlegen"}`} onClose={onClose} wide>
       <form
@@ -181,7 +188,7 @@ export function EventEditor({
               onChange={(event) => setProduction(event.target.value)}
             >
               <option value="">Ohne Produktion</option>
-              {workspace.records.productions.map((row) => (
+              {productions.map((row) => (
                 <option key={row.id} value={row.id}>
                   {value(row.data, "title")}
                 </option>
@@ -189,6 +196,13 @@ export function EventEditor({
             </select>
           </label>
         </div>
+        {behavior.background && (
+          <p className="help-note">
+            {behavior.background === "service"
+              ? "Arbeitszeit im Hintergrund · weitere Termine können innerhalb dieses Dienstes liegen."
+              : "Freier halber Tag als Hinweis · weitere Termine bleiben möglich."}
+          </p>
+        )}
         {allDay && (
           <p className="event-all-day-note">
             <span style={{ background: selected?.color }} />
@@ -270,6 +284,11 @@ export function EventEditor({
           {!admin && (
             <p className="small muted">
               Du planst deinen eigenen Kalender. Einträge für andere Personen übernehmen Admins.
+            </p>
+          )}
+          {admin && (
+            <p className="small muted">
+              Ohne ausgewählte Person erscheint der Termin unter Gäste/Aushilfen.
             </p>
           )}
         </fieldset>

@@ -42,7 +42,7 @@ export function PlanOptions({
     );
   return (
     <Modal
-      title={creating ? "Maskenplan anlegen" : "Plan bearbeiten"}
+      title={creating ? "Maskenplan anlegen" : "Name & Vorlauf"}
       onClose={close}
       className={styles.modal}
     >

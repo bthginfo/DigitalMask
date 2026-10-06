@@ -3,10 +3,12 @@ import { useMemo, useRef, useState } from "react";
 import { ChevronRight, Plus } from "lucide-react";
 import type { DomainRecord, Member, RecordData } from "@/shared/contracts";
 import { ids, instantDate, localDate, shiftDate, value, weekStart } from "@/shared/client-api";
-import { isActiveStaff } from "@/shared/client-members";
+import { calendarTeamLanes } from "@/shared/calendar-team";
+import type { CalendarBackground } from "@/shared/calendar-categories";
 import { Empty } from "@/components/ui";
 import { calendarDayIndex } from "./day-details";
 import { MobileDaySheet } from "./mobile-day-sheet";
+import { TeamCalendarScroll } from "./team-calendar-scroll";
 import styles from "./mobile-calendar.module.css";
 export type CalendarInstance = {
   id: string;
@@ -18,6 +20,8 @@ export type CalendarInstance = {
   textColor: string;
   allDay: boolean;
   categoryName: string;
+  background?: CalendarBackground;
+  blocksTime?: boolean;
   extendedProps: { record: DomainRecord };
 };
 const clock = (date: string) =>
@@ -68,14 +72,7 @@ export function TeamCalendar({
   const [daySheetOpen, setDaySheetOpen] = useState(false);
   const mobileCalendar = useRef<HTMLElement>(null);
   const day = days.includes(selectedDay) ? selectedDay : days[0];
-  const team = useMemo(() => {
-    const selected: Pick<Member, "id" | "name">[] = members.filter(
-      (member) => isActiveStaff(member) && people.includes(member.id),
-    );
-    if (events.some((event) => !ids(event.extendedProps.record.data, "participantIds").length))
-      selected.push({ id: "", name: "Ohne Zuordnung" });
-    return selected;
-  }, [members, people, events]);
+  const team = useMemo(() => calendarTeamLanes(members, people), [members, people]);
   const entriesByDay = useMemo(
     () => calendarDayIndex(events, days[0], days[days.length - 1]),
     [events, days],
@@ -148,16 +145,7 @@ export function TeamCalendar({
           })}
         </div>
       </section>
-      <p className="team-scroll-hint small muted">
-        Weitere Tage findest du durch seitliches Wischen oder mit den Pfeiltasten. Ein Tag lässt
-        sich darunter einzeln ansehen.
-      </p>
-      <div
-        className={`table-scroll team-calendar ${month ? "team-month-calendar" : ""}`}
-        role="region"
-        aria-label={month ? "Teammonatskalender" : "Teamwochenkalender"}
-        tabIndex={0}
-      >
+      <TeamCalendarScroll month={month}>
         <table>
           <thead>
             <tr>
@@ -189,7 +177,7 @@ export function TeamCalendar({
                     {matches(person.id, date).map((event) => (
                       <button
                         key={event.id}
-                        className="team-event calendar-colored-event"
+                        className={`team-event calendar-colored-event${event.background ? ` ${styles.quietEvent}` : ""}`}
                         style={{
                           borderLeftColor: event.borderColor,
                           backgroundColor: event.backgroundColor,
@@ -204,6 +192,11 @@ export function TeamCalendar({
                         <strong>{event.title}</strong>
                         <span>
                           {event.allDay ? "Ganztägig" : `${clock(event.start)}–${clock(event.end)}`}
+                          {event.background
+                            ? event.background === "service"
+                              ? " · Arbeitszeit"
+                              : " · Hinweis"
+                            : ""}
                         </span>
                       </button>
                     ))}
@@ -228,7 +221,7 @@ export function TeamCalendar({
             ))}
           </tbody>
         </table>
-      </div>
+      </TeamCalendarScroll>
       <section className={styles.daySummary}>
         <button type="button" aria-haspopup="dialog" onClick={() => setDaySheetOpen(true)}>
           <span>

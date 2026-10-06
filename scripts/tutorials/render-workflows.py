@@ -60,8 +60,16 @@ def render(directory):
     name = timeline['id']
     duration, stages = timeline['duration'], timeline['stages']
     ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
+    metadata = subprocess.run([ffmpeg, '-hide_banner', '-i', str(directory / 'raw.webm')], capture_output=True, text=True, encoding='utf-8', errors='replace')
+    clock = re.search(r'Duration: (\d+):(\d+):(\d+\.\d+)', metadata.stderr)
+    assert clock, f'{name}: recording duration unavailable'
+    raw_duration = int(clock[1]) * 3600 + int(clock[2]) * 60 + float(clock[3])
+    assert raw_duration >= duration - .25, f'{name}: incomplete recording'
+    # Video begins with the first captured frame, not with newPage/navigation.
+    # Align the end of the recorded flow instead of trimming its startup wall time.
+    recording_offset = max(0, raw_duration - duration)
     command = [ffmpeg, '-y', '-hide_banner', '-loglevel', 'error', '-i', str(directory / 'raw.webm')]
-    filters = [f"[0:v]trim=start={timeline['recordingOffset']:.3f}:duration={duration:.3f},setpts=PTS-STARTPTS,fps=15,scale=720:1012:flags=lanczos,setsar=1,pad=720:1280:0:72:color=0xf5f8f4[base]"]
+    filters = [f"[0:v]trim=start={recording_offset:.3f}:duration={duration:.3f},setpts=PTS-STARTPTS,fps=15,scale=720:1012:flags=lanczos,setsar=1,pad=720:1280:0:72:color=0xf5f8f4[base]"]
     previous, cues = 'base', ['WEBVTT', '']
     for index, stage in enumerate(stages):
         panel = Image.new('RGBA', (720, 1280), (0, 0, 0, 0))

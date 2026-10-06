@@ -3,6 +3,7 @@ import type { DomainRecord, RecordData, RecordKind } from "../../src/shared/cont
 import type { MaskPlanData } from "../../src/modules/mask-plans/model";
 import { blockIds, laneIds } from "./mask-plans-fixture";
 import { numericMaskFixture } from "./numeric-mask-fixture";
+import { installMaskPlanBrowserSafety } from "./mask-plan-safety";
 
 test.use({
   serviceWorkers: "block",
@@ -47,10 +48,7 @@ async function mock(page: Page, extended = false, dark = false) {
     }
     return route.fulfill({ json: { ok: true } });
   });
-  await page.addInitScript(
-    (dark) => localStorage.setItem("digitalmask-theme", dark ? "dark" : "light"),
-    dark,
-  );
+  await installMaskPlanBrowserSafety(page, dark);
   return { workspace, writes, reads: () => reads };
 }
 
@@ -59,13 +57,13 @@ test("minute drafts clear, reject blanks, keep discard guards and apply real num
 }) => {
   const fixture = await mock(page);
   await page.goto(maskUrl);
-  await page.getByText("Planoptionen", { exact: true }).click();
-  await page.getByRole("button", { name: "Plan bearbeiten", exact: true }).click();
+  await page.getByLabel("Planoptionen", { exact: true }).click();
+  await page.getByRole("button", { name: "Name & Vorlauf", exact: true }).click();
   const lead = page.getByLabel("Vorlauf in Minuten");
   await lead.fill("");
   await expect(lead).toHaveValue("");
   await page.getByRole("button", { name: "Übernehmen", exact: true }).click();
-  await expect(page.getByRole("dialog", { name: "Plan bearbeiten" })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Name & Vorlauf" })).toBeVisible();
   expect(fixture.writes).toHaveLength(0);
   await lead.fill("60");
   await lead.press("End");
@@ -94,7 +92,7 @@ test("minute drafts clear, reject blanks, keep discard guards and apply real num
   await page.getByRole("button", { name: "Übernehmen", exact: true }).click();
   expect(fixture.writes).toHaveLength(0);
   await page.getByRole("button", { name: "Plan speichern", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Plan speichern", exact: true })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Plan speichern", exact: true })).toHaveCount(0);
   expect(fixture.writes).toHaveLength(1);
   const saved = fixture.writes[0].data as MaskPlanData;
   expect(saved.windowMinutes).toBe(90);
@@ -187,6 +185,7 @@ test("new block drops at a scrolled later lane, moving preserves content and sta
   await page.setViewportSize({ width: 1000, height: 1050 });
   const fixture = await mock(page, true);
   await page.goto(maskUrl);
+  await page.getByRole("button", { name: "Plan bearbeiten", exact: true }).click();
   const board = page.getByRole("region", { name: boardName });
   await board.scrollIntoViewIfNeeded();
   await board.evaluate((element) => {
@@ -228,7 +227,7 @@ test("new block drops at a scrolled later lane, moving preserves content and sta
   expect(fixture.writes).toHaveLength(0);
   await capture(page, "dragged-desktop-light");
   await page.getByRole("button", { name: "Plan speichern", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Plan speichern", exact: true })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Plan speichern", exact: true })).toHaveCount(0);
   expect(fixture.writes).toHaveLength(1);
   const original = fixture.writes[0].data as MaskPlanData;
   expect(original.blocks.find((block) => block.id === blockIds[1])).toMatchObject({
@@ -247,6 +246,7 @@ test("a workspace update during a drag keeps the original version and reports a 
   await page.setViewportSize({ width: 1440, height: 1000 });
   const fixture = await mock(page, true);
   await page.goto(maskUrl);
+  await page.getByRole("button", { name: "Plan bearbeiten", exact: true }).click();
   const board = page.getByRole("region", { name: boardName });
   await board.scrollIntoViewIfNeeded();
   await board.evaluate((element) => {
@@ -296,6 +296,7 @@ test("mobile short tap edits; long hold moves, clamps at zero, and scrolling or 
   const page = await context.newPage();
   const fixture = await mock(page, true, true);
   await page.goto(maskUrl);
+  await page.getByRole("button", { name: "Plan bearbeiten", exact: true }).click();
   const board = page.getByRole("region", { name: boardName });
   await board.scrollIntoViewIfNeeded();
   await board.evaluate((element) => {
