@@ -89,9 +89,6 @@ try {
         : `module=productions&productionId=demo-production&tab=${flow.tab}`;
       await page.goto(`${url}/?${query}`, { waitUntil: "domcontentloaded", timeout: 45000 });
       await page.locator(".workspace").waitFor();
-      // The offline example has no live transport; do not show its recovery prompt in the chat lesson.
-      if (flow.id === "private-chat")
-        await page.addStyleTag({ content: ".chat-heading .live-status{display:none}" });
       await hold(800);
       if (!(await page.evaluate(() => Boolean(window.__DM_DEMO))))
         throw new Error("Missing fictional workspace");

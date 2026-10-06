@@ -41,6 +41,7 @@ import { TasksModule } from "./modules/tasks";
 import { CalendarModule } from "./modules/calendar";
 import { TimeModule } from "./modules/time";
 import { ChatModule } from "./modules/chat";
+import chatStyles from "@/modules/chat/components/chat-viewport.module.css";
 import { SettingsModule } from "./modules/settings";
 import { labels } from "./resource-fields";
 import { ProfileAccent } from "@/modules/profile/components/accent-picker";
@@ -396,7 +397,10 @@ export function WorkspaceShell() {
           </button>
         </footer>
       </aside>
-      <div className="workspace-content" inert={isMobile && mobileMenu}>
+      <div
+        className={`workspace-content${activeModule === "chat" ? ` ${chatStyles.mobileShell}` : ""}`}
+        inert={isMobile && mobileMenu}
+      >
         <header className="topbar">
           <div className="breadcrumbs">
             <button

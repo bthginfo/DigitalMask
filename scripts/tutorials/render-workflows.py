@@ -1,5 +1,7 @@
 """Render short recordings and generate their catalogue from actual output files."""
 import json
+import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -8,7 +10,9 @@ import imageio_ffmpeg
 
 ROOT = Path(__file__).resolve().parents[2]
 WORK = ROOT / '.local/tutorial-workflows'
-OUT = ROOT / 'public/tutorials/v2'
+VERSION = os.environ.get('TUTORIAL_MEDIA_VERSION', 'v3')
+assert re.fullmatch(r'v[1-9][0-9]*', VERSION), 'Invalid media version'
+OUT = ROOT / 'public/tutorials' / VERSION
 FONT_PATH = 'C:/Windows/Fonts/'
 
 def font(size, bold=False):
@@ -48,7 +52,7 @@ def fixture():
 def catalogue_entry(timeline):
     name = timeline['id']
     result = {key: timeline[key] for key in ('id', 'title', 'description', 'guideId')}
-    result.update(platform='all', durationSeconds=round(timeline['duration']), bytes=(OUT / f'{name}.mp4').stat().st_size, video=f'/tutorials/v2/{name}.mp4', poster=f'/tutorials/v2/{name}.webp', captions=f'/tutorials/v2/{name}.vtt', steps=[stage['text'] for stage in timeline['stages']], schematic=False)
+    result.update(platform='all', durationSeconds=round(timeline['duration']), bytes=(OUT / f'{name}.mp4').stat().st_size, video=f'/tutorials/{VERSION}/{name}.mp4', poster=f'/tutorials/{VERSION}/{name}.webp', captions=f'/tutorials/{VERSION}/{name}.vtt', steps=[stage['text'] for stage in timeline['stages']], schematic=False)
     return result
 
 def render(directory):
@@ -107,17 +111,19 @@ if __name__ == '__main__':
     else:
         choices = set(sys.argv[1:])
         directories = sorted(directory for directory in WORK.iterdir() if directory.is_dir() and (directory / 'timeline.json').exists() and (not choices or directory.name in choices))
+        assert directories, 'No recordings found'
+        catalogue = ROOT / 'src/modules/help/workflow-tutorials.ts'
+        entries = {}
+        if catalogue.exists():
+            # A single re-recording must retain clips whose raw takes were already cleaned up.
+            existing = subprocess.run(['node', '--import', 'tsx', '--input-type=module', '-e', 'import { workflowTutorials } from "./src/modules/help/workflow-tutorials.ts"; process.stdout.write(JSON.stringify(workflowTutorials));'], cwd=ROOT, capture_output=True, text=True, encoding='utf-8', check=True)
+            entries = {entry['id']: entry for entry in json.loads(existing.stdout)}
         for directory in directories:
-            render(directory)
-        entries = []
-        for directory in WORK.iterdir():
-            if not directory.is_dir() or not (directory / 'timeline.json').exists():
-                continue
             timeline = json.loads((directory / 'timeline.json').read_text(encoding='utf-8'))
-            if all((OUT / f"{timeline['id']}.{suffix}").exists() for suffix in ('mp4', 'webp', 'vtt')):
-                entries.append(catalogue_entry(timeline))
+            name = timeline['id']
+            assert not any((OUT / f'{name}.{suffix}').exists() for suffix in ('mp4', 'webp', 'vtt')), f'{name}: choose a fresh version; published assets are immutable'
+            entries[name] = render(directory)
         # Preserve explicit recording order in the help library.
         order = ['calendar-people', 'casting-photos', 'production-tasks', 'mask-plan-blocks', 'look-sections', 'production-time', 'private-chat']
-        entries.sort(key=lambda entry: order.index(entry['id']))
-        catalogue = ROOT / 'src/modules/help/workflow-tutorials.ts'
-        catalogue.write_text('import type { HelpTutorial } from "./tutorials";\n\nexport const workflowTutorials: HelpTutorial[] = ' + json.dumps(entries, ensure_ascii=False, indent=2) + ';\n', encoding='utf-8', newline='\n')
+        ordered_entries = sorted(entries.values(), key=lambda entry: order.index(entry['id']))
+        catalogue.write_text('import type { HelpTutorial } from "./tutorials";\n\nexport const workflowTutorials: HelpTutorial[] = ' + json.dumps(ordered_entries, ensure_ascii=False, indent=2) + ';\n', encoding='utf-8', newline='\n')

@@ -1,11 +1,14 @@
 ﻿"use client";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   FilePlus2,
+  Download,
   Hash,
   MessageCircle,
+  MoreHorizontal,
   Paperclip,
   Pencil,
+  Plus,
   Send,
   Trash2,
   Users,
@@ -20,9 +23,11 @@ import { Badge, Button, Empty, ErrorMessage, ExportButton, Modal } from "@/compo
 import { ExportDialog } from "@/components/export-dialog";
 import { useChatRead } from "@/modules/notifications/use-chat-read";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { DocumentAttachment } from "@/modules/documents/components/document-attachment";
 import { NewDocumentDialog } from "@/modules/documents/components/new-document-dialog";
 import { documentAccept } from "@/modules/documents/components/record-documents";
+import { ChatActionMenu } from "./chat-action-menu";
 const DocumentEditor = dynamic(() => import("@/modules/documents/components/document-editor"), {
   ssr: false,
 });
@@ -33,12 +38,18 @@ export function ChatChannel({
   title,
   onManage,
   sidebarToggle,
+  mobileChannelToggle,
+  onCreatePrivate,
+  onCreateTeam,
 }: {
   productionId?: string;
   conversation?: DomainRecord;
   title: string;
   onManage?: () => void;
   sidebarToggle?: ReactNode;
+  mobileChannelToggle?: ReactNode;
+  onCreatePrivate?: () => void;
+  onCreateTeam?: () => void;
 }) {
   const { workspace, refresh, save, remove, busy } = useWorkspace();
   const conversationId = conversation?.id || "",
@@ -57,6 +68,30 @@ export function ChatChannel({
     bottom = useRef<HTMLDivElement>(null),
     nearBottom = useRef(true),
     lastMessage = useRef("");
+  const messageInput = useRef<HTMLTextAreaElement>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
+  useLayoutEffect(() => {
+    const resize = () => {
+      const input = messageInput.current;
+      if (!input) return;
+      if (!window.matchMedia("(max-width: 1100px)").matches) {
+        input.style.removeProperty("height");
+        return;
+      }
+      const panelHeight =
+        input.closest(".chat-layout")?.getBoundingClientRect().height || window.innerHeight;
+      const cap = Math.max(44, Math.min(120, panelHeight * 0.28));
+      input.style.height = "auto";
+      input.style.height = `${Math.min(cap, input.scrollHeight)}px`;
+    };
+    resize();
+    window.addEventListener("resize", resize);
+    window.visualViewport?.addEventListener("resize", resize);
+    return () => {
+      window.removeEventListener("resize", resize);
+      window.visualViewport?.removeEventListener("resize", resize);
+    };
+  }, [text]);
   useChatRead(conversationId, productionId, bottom);
   const messages = useMemo(
     () =>
@@ -141,7 +176,49 @@ export function ChatChannel({
   };
   return (
     <section className="chat-main">
-      <header className="chat-heading">
+      <header className="chat-heading chat-mobile-heading">
+        {mobileChannelToggle || <h2>{title}</h2>}
+        <LiveStatus compact />
+        <ChatActionMenu label="Chataktionen" icon={<MoreHorizontal size={21} aria-hidden="true" />}>
+          {archived && <Badge>Archiviert</Badge>}
+          <LiveStatus recovery />
+          {onCreatePrivate && (
+            <button type="button" onClick={onCreatePrivate}>
+              <Plus size={17} />
+              Privater Chat
+            </button>
+          )}
+          {onCreateTeam && (
+            <button type="button" onClick={onCreateTeam}>
+              <Hash size={17} />
+              Teamkanal anlegen
+            </button>
+          )}
+          {onManage && (
+            <button type="button" onClick={onManage}>
+              <Users size={17} />
+              Verwalten
+            </button>
+          )}
+          <button type="button" onClick={() => setExporting(true)}>
+            <Download size={17} />
+            Chat exportieren
+          </button>
+          <Link
+            href="/?module=help&guide=app-install"
+            prefetch={false}
+            onClick={(event) => {
+              event.preventDefault();
+              history.pushState({}, "", "/?module=help&guide=app-install");
+              window.dispatchEvent(new PopStateEvent("popstate"));
+              window.scrollTo({ top: 0, behavior: "instant" });
+            }}
+          >
+            Hilfe & App installieren
+          </Link>
+        </ChatActionMenu>
+      </header>
+      <header className="chat-heading chat-desktop-heading">
         {sidebarToggle}
         {conversation ? (
           conversation.data.mode === "team" ? (
@@ -270,41 +347,71 @@ export function ChatChannel({
         </div>
       ) : (
         <form className="chat-composer" onSubmit={send}>
-          {files.length > 0 && (
-            <div className="pending-files">
-              {files.map((file, index) => (
-                <span key={`${file.name}:${index}`}>
-                  <Paperclip size={13} />
-                  {file.name}
-                  <button
-                    type="button"
-                    aria-label={`Anhang ${file.name} entfernen`}
-                    onClick={() => setFiles(files.filter((_, i) => i !== index))}
-                  >
-                    <X size={13} />
-                  </button>
-                </span>
-              ))}
-            </div>
-          )}
-          <ErrorMessage message={error} />
+          <div className="chat-composer-notices">
+            {files.length > 0 && (
+              <div className="pending-files">
+                {files.map((file, index) => (
+                  <span key={`${file.name}:${index}`}>
+                    <Paperclip size={13} />
+                    {file.name}
+                    <button
+                      type="button"
+                      aria-label={`Anhang ${file.name} entfernen`}
+                      onClick={() => setFiles(files.filter((_, i) => i !== index))}
+                    >
+                      <X size={13} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <ErrorMessage message={error} />
+          </div>
           <label className="visually-hidden" htmlFor="message">
             Nachricht an {title}
           </label>
-          <textarea
-            id="message"
-            rows={2}
-            required={!files.length}
-            value={text}
-            disabled={sending}
-            placeholder={`Nachricht an ${title} …`}
-            onChange={(event) => setText(event.target.value)}
-          />
+          <div className="chat-input-row">
+            <ChatActionMenu
+              label="Anhänge und Dokumente"
+              icon={<Plus size={21} aria-hidden="true" />}
+              className="chat-attachment-menu"
+              disabled={sending}
+            >
+              <button type="button" onClick={() => fileInput.current?.click()} disabled={sending}>
+                <Paperclip size={18} />
+                Datei anhängen
+              </button>
+              <button type="button" onClick={() => setCreatingDocument(true)} disabled={sending}>
+                <FilePlus2 size={18} />
+                Gemeinsames Dokument anlegen
+              </button>
+            </ChatActionMenu>
+            <textarea
+              id="message"
+              ref={messageInput}
+              rows={1}
+              required={!files.length}
+              value={text}
+              disabled={sending}
+              placeholder="Nachricht schreiben …"
+              onChange={(event) => setText(event.target.value)}
+            />
+            <button
+              type="submit"
+              className="chat-compact-button chat-mobile-send"
+              aria-label={sending ? "Sendet …" : "Senden"}
+              title="Nachricht senden"
+              disabled={sending || (!text.trim() && !files.length)}
+            >
+              <Send size={19} aria-hidden="true" />
+            </button>
+          </div>
           <div className="composer-actions">
             <label className="button ghost">
               <Paperclip size={17} />
               Datei
               <input
+                ref={fileInput}
                 className="visually-hidden"
                 type="file"
                 accept={documentAccept}

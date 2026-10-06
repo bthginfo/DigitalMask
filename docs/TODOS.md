@@ -1,5 +1,16 @@
 # Umsetzungsstand
 
+## Mehr Platz für den mobilen Chat
+
+- [x] Große mobile Überschrift und doppelte Kanalbenennung durch eine kompakte Kopfzeile mit Kanalwechsel ersetzen.
+- [x] Neue Chats, Export, Verwaltung und Verbindungswiederherstellung unter Chataktionen erreichbar halten; Rollen beibehalten.
+- [x] Einzeiliges, begrenzt wachsendes Eingabefeld mit Plus-Menü für Dateien/Dokumente und direktem Senden; beschriftete 44-px-Touchflächen.
+- [x] Tatsächlich verfügbare Bildschirmhöhe einschließlich Tastatur und unterer Navigation nutzen; globalen Chatfooter nur mobil ausblenden.
+- [x] Hilfe und privaten Chatclip an den neuen Ablauf anpassen, vorhandene veröffentlichte Medien erhalten.
+- [x] Schmale Smartphones, Dark Mode, Produktion und Desktop gezielt prüfen; Release vorbereiten und Rohmaterial entfernen.
+
+Der Nachrichtenverlauf nutzt in den geprüften Handyansichten 82–85 % des Chatbereichs (547–671 px). Kopfzeile und normale Eingabe sind zusammen etwa 116 px hoch; längere Eingaben und Anhänge bleiben begrenzt. Die unabhängige Designprüfung ist bestanden. Die Änderungen führen keine zusätzlichen Datenbankabfragen oder Polls ein. Temporäre Releaseprüfungen werden nach dem Abgleich der veröffentlichten Version entfernt.
+
 ## Weitere Videoanleitungen und feste Chatansicht
 
 - [x] Sieben zusätzliche Abläufe aufnehmen: Kalenderauswahl/Teammonat, Besetzung/Bilder, Aufgaben, Maskenplan, Aufschriebe, Produktionszeit und private Chats.
@@ -9,7 +20,7 @@
 - [x] Chat auf eine feste, geräteabhängige Höhe begrenzen; Verlauf und Kanalliste intern scrollen und Eingabefeld sichtbar halten.
 - [x] Kurze und lange Chatverläufe auf Handy und Desktop vergleichen; private Chat-Anleitung mit der neuen Ansicht aufnehmen.
 
-Elf Clips einschließlich Poster und Textspuren benötigen zusammen 3.393.271 Bytes. Die zusätzliche Sammlung wird statisch über Vercel ausgeliefert und erzeugt keine Neon-Abfragen. Der Chat bleibt unabhängig von der Nachrichtenanzahl gleich hoch; auf schmalen Handys stehen Datei, Dokument und Senden in einer Zeile.
+Die elf aktiven Clips einschließlich Poster und Textspuren benötigen weniger als 4 MB. Die zusätzliche Sammlung wird statisch über Vercel ausgeliefert und erzeugt keine Neon-Abfragen. Der Chat bleibt unabhängig von der Nachrichtenanzahl gleich hoch.
 
 ## Ausgewählte Kurzvideos und Smartphone-Anleitung
 

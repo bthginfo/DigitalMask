@@ -18,13 +18,19 @@ const descriptions = {
   unavailable: "Die automatische Aktualisierung ist gerade nicht verfügbar.",
 };
 
-export function LiveStatus({ recovery = false }: { recovery?: boolean }) {
+export function LiveStatus({
+  recovery = false,
+  compact = false,
+}: {
+  recovery?: boolean;
+  compact?: boolean;
+}) {
   const { syncStatus, refresh, busy, online } = useWorkspace();
   return (
-    <div className={`live-status is-${syncStatus}`}>
+    <div className={`live-status is-${syncStatus}${compact ? " is-compact" : ""}`}>
       <span role="status" title={descriptions[syncStatus]}>
         <i aria-hidden="true" />
-        {labels[syncStatus]}
+        <span className={compact ? "visually-hidden" : undefined}>{labels[syncStatus]}</span>
       </span>
       {recovery && syncStatus === "unavailable" && (
         <button className="text-button" disabled={busy || !online} onClick={() => void refresh()}>

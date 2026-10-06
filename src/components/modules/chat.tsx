@@ -1,5 +1,5 @@
 ﻿"use client";
-import { useId, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import {
   ChevronDown,
   ChevronRight,
@@ -11,6 +11,7 @@ import {
   Search,
   Theater,
   Users,
+  X,
   type LucideIcon,
 } from "lucide-react";
 import type { DomainRecord } from "@/shared/contracts";
@@ -95,7 +96,7 @@ export function ChatModule({
   conversationId?: string;
   onNavigate?: (conversationId: string, productionId?: string) => void;
 }) {
-  const { workspace, save, remove, busy } = useWorkspace();
+  const { workspace, save, remove, busy, online } = useWorkspace();
   const viewport = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     const panel = viewport.current;
@@ -105,8 +106,20 @@ export function ChatModule({
       // Safari's keyboard resizes the visual viewport, independently of the page.
       const height = visual?.height || window.innerHeight;
       const navigation = document.querySelector<HTMLElement>(".bottom-nav");
-      const navigationHeight = navigation?.getBoundingClientRect().height || 0;
-      const bottomGap = navigationHeight ? navigationHeight + 16 : 24;
+      const mobile = window.matchMedia("(max-width: 1100px)").matches;
+      if (mobile) {
+        const visualBottom = (visual?.offsetTop || 0) + height;
+        const nav = navigation?.getBoundingClientRect();
+        const navigationOverlap = nav && nav.height ? Math.max(0, visualBottom - nav.top) : 0;
+        const available = Math.max(
+          0,
+          visualBottom - panel.getBoundingClientRect().top - navigationOverlap - 8,
+        );
+        panel.style.setProperty("--chat-available-height", `${Math.round(available)}px`);
+        panel.dataset.chatCompact = String(height < 560);
+        return;
+      }
+      const bottomGap = 24;
       const top = Math.min(
         Math.max(0, panel.getBoundingClientRect().top + window.scrollY),
         height * 0.4,
@@ -122,11 +135,13 @@ export function ChatModule({
     resize();
     window.addEventListener("resize", resize);
     visual?.addEventListener("resize", resize);
+    visual?.addEventListener("scroll", resize);
     return () => {
       window.removeEventListener("resize", resize);
       visual?.removeEventListener("resize", resize);
+      visual?.removeEventListener("scroll", resize);
     };
-  }, []);
+  }, [online]);
   const unread = chatUnreadCounts(workspace.records.notifications, workspace.user.id);
   const sidebarId = useId();
   const sidebarKey = `digitalmask:chat-sidebar:${workspace.user.id}`;
@@ -136,6 +151,17 @@ export function ChatModule({
   const channelToggle = useRef<HTMLButtonElement>(null);
   const [channelsOpen, setChannelsOpen] = useState(false),
     [search, setSearch] = useState("");
+  useEffect(() => {
+    if (!channelsOpen) return;
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setChannelsOpen(false);
+        channelToggle.current?.focus();
+      }
+    };
+    document.addEventListener("keydown", escape);
+    return () => document.removeEventListener("keydown", escape);
+  }, [channelsOpen]);
   const [editor, setEditor] = useState<DomainRecord | "new" | "new-team" | null>(null),
     [manage, setManage] = useState(false),
     [archived, setArchived] = useState(false),
@@ -233,6 +259,15 @@ export function ChatModule({
     workspace.user.id,
   );
   const icons = { team: Hash, production: Theater, direct: MessageCircle, group: Users };
+  const SelectedIcon = conversation
+    ? conversation.data.mode === "team"
+      ? Hash
+      : conversation.data.mode === "direct"
+        ? MessageCircle
+        : Users
+    : selectedProduction
+      ? Theater
+      : Hash;
   const renderChoice = (choice: ChatChoice) => (
     <ChannelChoice
       key={choice.key}
@@ -298,28 +333,30 @@ export function ChatModule({
   );
   return (
     <>
-      <PageHeader
-        eyebrow="KURZE WEGE. GUTE ABSPRACHEN."
-        title={locked ? "Projektchat" : "Kommunikation"}
-        description={
-          locked
-            ? "Alles zum Stück an einem gemeinsamen Ort."
-            : "Allgemeine Informationen, Projektkanäle und private Gespräche."
-        }
-      >
-        {!locked && workspace.user.role !== "user" && (
-          <Button onClick={() => setEditor("new-team")}>
-            <Plus size={16} />
-            Teamkanal
-          </Button>
-        )}
-        {!locked && (
-          <Button variant="primary" onClick={() => setEditor("new")}>
-            <Plus size={16} />
-            Privater Chat
-          </Button>
-        )}
-      </PageHeader>
+      <div className={styles.pageHeading}>
+        <PageHeader
+          eyebrow="KURZE WEGE. GUTE ABSPRACHEN."
+          title={locked ? "Projektchat" : "Kommunikation"}
+          description={
+            locked
+              ? "Alles zum Stück an einem gemeinsamen Ort."
+              : "Allgemeine Informationen, Projektkanäle und private Gespräche."
+          }
+        >
+          {!locked && workspace.user.role !== "user" && (
+            <Button onClick={() => setEditor("new-team")}>
+              <Plus size={16} />
+              Teamkanal
+            </Button>
+          )}
+          {!locked && (
+            <Button variant="primary" onClick={() => setEditor("new")}>
+              <Plus size={16} />
+              Privater Chat
+            </Button>
+          )}
+        </PageHeader>
+      </div>
       <div
         ref={viewport}
         className={
@@ -328,6 +365,17 @@ export function ChatModule({
             : `chat-layout ${styles.viewport}${collapsed ? " channels-collapsed" : ""}`
         }
       >
+        {channelsOpen && (
+          <button
+            type="button"
+            className="chat-channel-backdrop"
+            aria-label="Kanalauswahl schließen"
+            onClick={() => {
+              setChannelsOpen(false);
+              channelToggle.current?.focus();
+            }}
+          />
+        )}
         {!locked && (
           <aside
             id={sidebarId}
@@ -337,31 +385,18 @@ export function ChatModule({
             <div className="chat-channels-heading">
               <strong>Deine Kanäle</strong>
               <span>{1 + productions.length + channels.length}</span>
+              <button
+                type="button"
+                className="chat-compact-button chat-channel-close"
+                aria-label="Kanalauswahl schließen"
+                onClick={() => {
+                  setChannelsOpen(false);
+                  channelToggle.current?.focus();
+                }}
+              >
+                <X size={18} aria-hidden="true" />
+              </button>
             </div>
-            <button
-              type="button"
-              className="chat-channel-toggle"
-              ref={channelToggle}
-              aria-expanded={channelsOpen}
-              aria-controls="chat-channel-navigation"
-              aria-label={
-                otherUnread
-                  ? `${title || "Kanal auswählen"} · Kanal wechseln · ${otherUnread} ungelesene ${otherUnread === 1 ? "Nachricht" : "Nachrichten"} in anderen Kanälen`
-                  : undefined
-              }
-              onClick={() => setChannelsOpen(!channelsOpen)}
-            >
-              <span>
-                <small>Kanal wechseln</small>
-                <strong>{title || "Kanal auswählen"}</strong>
-              </span>
-              {otherUnread > 0 && (
-                <span className="chat-unread-count" aria-hidden="true">
-                  {otherUnread > 99 ? "99+" : otherUnread}
-                </span>
-              )}
-              <ChevronDown size={20} aria-hidden="true" />
-            </button>
             <div className="chat-channel-lists" id="chat-channel-navigation">
               <div className="chat-channel-search">
                 <Search size={16} aria-hidden="true" />
@@ -446,6 +481,19 @@ export function ChatModule({
         {selectedConversation && !conversation ? (
           <section className="chat-unavailable">
             {sidebarToggle}
+            <div className="chat-mobile-heading">
+              <button
+                type="button"
+                ref={channelToggle}
+                className="chat-mobile-channel-toggle"
+                aria-expanded={channelsOpen}
+                aria-controls={sidebarId}
+                onClick={() => setChannelsOpen(!channelsOpen)}
+              >
+                <h2>Kanal auswählen</h2>
+                <ChevronDown size={16} aria-hidden="true" />
+              </button>
+            </div>
             <Empty
               title="Dieser Chat ist nicht verfügbar."
               description="Wähle einen anderen Chat aus deinen freigegebenen Gesprächen."
@@ -462,6 +510,32 @@ export function ChatModule({
               conversation && canManageRecord(workspace.user, "conversations", conversation)
                 ? () => setManage(true)
                 : undefined
+            }
+            mobileChannelToggle={
+              !locked ? (
+                <button
+                  type="button"
+                  ref={channelToggle}
+                  className="chat-mobile-channel-toggle"
+                  aria-expanded={channelsOpen}
+                  aria-controls={sidebarId}
+                  aria-label={`${title || "Kanal auswählen"} · Kanal wechseln${otherUnread ? ` · ${otherUnread} ungelesene Nachrichten in anderen Kanälen` : ""}`}
+                  onClick={() => setChannelsOpen(!channelsOpen)}
+                >
+                  <SelectedIcon size={18} aria-hidden="true" />
+                  <h2>{title || "Kanal auswählen"}</h2>
+                  {otherUnread > 0 && (
+                    <span className="chat-unread-count" aria-hidden="true">
+                      {otherUnread > 99 ? "99+" : otherUnread}
+                    </span>
+                  )}
+                  <ChevronDown size={16} aria-hidden="true" />
+                </button>
+              ) : undefined
+            }
+            onCreatePrivate={!locked ? () => setEditor("new") : undefined}
+            onCreateTeam={
+              !locked && workspace.user.role !== "user" ? () => setEditor("new-team") : undefined
             }
           />
         )}

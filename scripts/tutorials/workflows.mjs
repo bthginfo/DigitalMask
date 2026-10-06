@@ -292,9 +292,11 @@ export const workflows = [
     async run({ page, click, fill, stage, hold }) {
       stage(
         "Direkt miteinander schreiben",
-        "Öffne Kommunikation. Ein privater Chat ist nur für seine Teilnehmenden sichtbar.",
+        "Öffne Kommunikation und Chataktionen. Wähle dann Privater Chat.",
       );
       await hold(2200);
+      const actions = page.getByRole("button", { name: "Chataktionen", exact: true });
+      if (await actions.isVisible()) await click(actions);
       await click(page.getByRole("button", { name: "Privater Chat", exact: true }));
       stage(
         "Eine Kollegin auswählen",
@@ -307,7 +309,7 @@ export const workflows = [
       await hold(1800);
       stage("Nachricht schreiben", "Prüfe den Chatnamen und schreibe deine Nachricht.");
       await fill(
-        page.getByPlaceholder("Nachricht an Nora Muster …"),
+        page.getByLabel("Nachricht an Nora Muster", { exact: true }),
         "Können wir die Perücke morgen gemeinsam prüfen?",
       );
       await hold(1600);
