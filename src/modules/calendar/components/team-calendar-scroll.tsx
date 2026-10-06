@@ -1,20 +1,27 @@
 "use client";
-import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import styles from "./mobile-calendar.module.css";
 
 export function TeamCalendarScroll({ children, month }: { children: ReactNode; month: boolean }) {
   const id = useId();
-  const top = useRef<HTMLDivElement>(null);
   const body = useRef<HTMLDivElement>(null);
-  const [width, setWidth] = useState(0);
+  const [metrics, setMetrics] = useState({ max: 0, thumb: 100, position: 0 });
   const [edges, setEdges] = useState({ left: true, right: true });
   const sync = (left: number) => {
     const table = body.current;
     if (!table) return;
     const position = Math.max(0, Math.min(left, table.scrollWidth - table.clientWidth));
-    if (top.current && top.current.scrollLeft !== position) top.current.scrollLeft = position;
     if (table.scrollLeft !== position) table.scrollLeft = position;
+    setMetrics((current) => (current.position === position ? current : { ...current, position }));
     setEdges((current) => {
       const next = {
         left: position <= 1,
@@ -27,7 +34,14 @@ export function TeamCalendarScroll({ children, month }: { children: ReactNode; m
     const table = body.current;
     if (!table) return;
     const update = () => {
-      setWidth(table.scrollWidth);
+      const max = Math.max(0, table.scrollWidth - table.clientWidth);
+      const thumb = Math.max(
+        8,
+        Math.min(100, (table.clientWidth / table.scrollWidth) * 100 || 100),
+      );
+      setMetrics((current) =>
+        current.max === max && current.thumb === thumb ? current : { ...current, max, thumb },
+      );
       sync(table.scrollLeft);
     };
     const observer = new ResizeObserver(update);
@@ -35,9 +49,9 @@ export function TeamCalendarScroll({ children, month }: { children: ReactNode; m
     if (table.firstElementChild) observer.observe(table.firstElementChild);
     update();
     return () => observer.disconnect();
-  }, []);
+  }, [month]);
   const move = (direction: number) => sync((body.current?.scrollLeft || 0) + direction * 240);
-  const keyScroll = (event: KeyboardEvent<HTMLDivElement>) => {
+  const keyScroll = (event: KeyboardEvent<HTMLDivElement | HTMLInputElement>) => {
     if (event.target !== event.currentTarget) return;
     const actions: Record<string, () => void> = {
       ArrowLeft: () => move(-1),
@@ -52,8 +66,8 @@ export function TeamCalendarScroll({ children, month }: { children: ReactNode; m
   };
   return (
     <div className={styles.teamScroll}>
-      <div className={styles.scrollControls}>
-        <span>Weitere Tage · oben oder unten verschieben</span>
+      <div className={styles.scrollControls} hidden={!metrics.max}>
+        <span>Tage seitlich verschieben</span>
         <div>
           <button
             type="button"
@@ -77,18 +91,21 @@ export function TeamCalendarScroll({ children, month }: { children: ReactNode; m
           </button>
         </div>
       </div>
-      <div
-        ref={top}
+      <input
+        type="range"
         className={styles.topScrollbar}
+        style={{ "--scroll-thumb-width": `${metrics.thumb}%` } as CSSProperties}
         data-team-scroll="top"
-        role="region"
+        hidden={!metrics.max}
         aria-label="Kalender oben horizontal verschieben"
-        tabIndex={0}
+        aria-controls={id}
+        min={0}
+        max={metrics.max}
+        step={1}
+        value={metrics.position}
         onKeyDown={keyScroll}
-        onScroll={(event) => sync(event.currentTarget.scrollLeft)}
-      >
-        <div style={{ width, height: 1 }} />
-      </div>
+        onChange={(event) => sync(Number(event.target.value))}
+      />
       <div
         ref={body}
         id={id}

@@ -6,6 +6,43 @@
   min-width: 0;
   max-width: 100%;
 }
+.teamMatrix {
+  min-width: 0;
+}
+.teamScroll:has(:global(.team-calendar)) {
+  display: flex;
+  flex-direction: column;
+}
+:global(.calendar-focus-view) .teamMatrix,
+:global(.calendar-focus-view) .teamScroll {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+:global(.calendar-focus-view) .teamScroll :global(.team-calendar) {
+  flex: 1;
+  min-height: 0;
+}
+.teamScroll :global(thead th) {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+.teamScroll :global(thead th:first-child) {
+  z-index: 4;
+}
+.teamScroll :global(.team-calendar:not(.team-month-calendar) table) {
+  width: 100%;
+  min-width: 966px;
+}
+.teamScroll :global(.team-calendar:not(.team-month-calendar) td) {
+  width: auto;
+  max-width: none;
+}
+.mobileName {
+  display: none;
+}
 
 .scrollControls {
   display: flex;
@@ -21,26 +58,60 @@
   display: flex;
   gap: 3px;
 }
+.scrollControls[hidden],
+.topScrollbar[hidden] {
+  display: none;
+}
 .scrollControls button:disabled {
   opacity: 0.35;
   cursor: default;
 }
 .topScrollbar {
-  height: 20px;
-  overflow-x: scroll;
-  overflow-y: hidden;
-  scrollbar-width: auto;
-  scrollbar-color: var(--muted) var(--surface-soft);
+  appearance: none;
+  width: 100%;
+  min-height: 28px;
+  height: 28px;
+  padding: 0;
+  margin: 0 0 3px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  cursor: ew-resize;
+  flex: 0 0 auto;
 }
-.topScrollbar::-webkit-scrollbar,
+.topScrollbar::-webkit-slider-runnable-track {
+  height: 12px;
+  border-radius: 6px;
+  background: var(--surface-soft);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+.topScrollbar::-webkit-slider-thumb {
+  appearance: none;
+  height: 12px;
+  width: max(36px, var(--scroll-thumb-width));
+  border: 2px solid var(--surface-soft);
+  border-radius: 6px;
+  background: var(--muted);
+}
+.topScrollbar::-moz-range-track {
+  height: 12px;
+  border-radius: 6px;
+  background: var(--surface-soft);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+.topScrollbar::-moz-range-thumb {
+  height: 8px;
+  width: max(36px, var(--scroll-thumb-width));
+  border: 2px solid var(--surface-soft);
+  border-radius: 6px;
+  background: var(--muted);
+}
 .teamScroll :global([data-team-scroll="bottom"])::-webkit-scrollbar {
   height: 12px;
 }
-.topScrollbar::-webkit-scrollbar-track,
 .teamScroll :global([data-team-scroll="bottom"])::-webkit-scrollbar-track {
   background: var(--surface-soft);
 }
-.topScrollbar::-webkit-scrollbar-thumb,
 .teamScroll :global([data-team-scroll="bottom"])::-webkit-scrollbar-thumb {
   border: 3px solid var(--surface-soft);
   border-radius: 6px;
@@ -62,7 +133,13 @@
   border-style: dashed;
 }
 .calendar.calendar :global(.fc-bg-event).backgroundEvent {
+  position: absolute;
+  inset: 0;
+  height: auto;
   opacity: 1;
+  border: 1px dashed var(--calendar-background-border, var(--border));
+  border-left: 3px solid var(--calendar-background-border, var(--accent));
+  pointer-events: none;
 }
 .backgroundLabel {
   position: relative;
@@ -74,13 +151,24 @@
   border: 0;
   border-radius: 3px;
   background: var(--surface);
-  color: var(--muted);
+  color: var(--text);
   font-size: 10px;
   line-height: 1.35;
   text-align: left;
   cursor: pointer;
   pointer-events: auto;
   overflow-wrap: anywhere;
+}
+.backgroundLabel strong,
+.backgroundLabel span {
+  display: block;
+}
+.backgroundLabel strong {
+  font-weight: 500;
+}
+.backgroundLabel span {
+  margin-top: 1px;
+  color: var(--muted);
 }
 .backgroundLabel:hover {
   color: var(--text);
@@ -91,8 +179,84 @@
 }
 
 @media (max-width: 760px) {
-  .teamScroll {
+  .calendar.calendar .teamScroll :global(.team-calendar) {
+    display: block;
+    scrollbar-width: auto;
+    overscroll-behavior-x: contain;
+  }
+  .teamScroll :global(table) {
+    table-layout: fixed;
+  }
+  .teamScroll :global(.team-calendar:not(.team-month-calendar) table) {
+    min-width: 820px;
+  }
+  .teamScroll :global(tbody th),
+  .teamScroll :global(thead th:first-child) {
+    width: 78px;
+    min-width: 78px;
+    max-width: 78px;
+    padding: 6px;
+    font-size: 11px;
+    line-height: 1.3;
+    letter-spacing: 0;
+    box-shadow: 1px 0 0 var(--border);
+  }
+  .teamScroll :global(th:not(:first-child)),
+  .teamScroll :global(td),
+  .teamScroll :global(.team-month-calendar th:not(:first-child)),
+  .teamScroll :global(.team-month-calendar td) {
+    width: 106px;
+    min-width: 106px;
+    max-width: 106px;
+    padding: 4px;
+  }
+  .teamScroll :global(.team-day-heading) {
+    padding: 5px 2px;
+    font-size: 11px;
+  }
+  .teamScroll :global(.team-event) {
+    min-height: 44px;
+    padding: 5px;
+    margin-bottom: 4px;
+    border-left-width: 3px;
+  }
+  .teamScroll :global(.team-event strong) {
+    font-size: 11px;
+    line-height: 1.35;
+  }
+  .teamScroll :global(.team-event span) {
+    font-size: 10px;
+    line-height: 1.3;
+    margin-top: 3px;
+  }
+  .teamScroll :global(.team-add) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+    margin: 0 auto;
+  }
+  .teamScroll :global(td:has(.team-event) .team-add) {
     display: none;
+  }
+  .desktopName {
+    display: none;
+  }
+  .mobileName {
+    display: inline;
+  }
+  .scrollControls {
+    padding: 0 0 2px;
+    font-size: 11px;
+  }
+  .scrollControls button {
+    width: 44px;
+    height: 44px;
+  }
+  .topScrollbar {
+    min-height: 30px;
+    height: 30px;
   }
   .calendar.calendar :global(.fc-daygrid-day-number) {
     width: 100%;

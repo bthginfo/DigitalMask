@@ -2,7 +2,7 @@
 import { useMemo, useRef, useState } from "react";
 import { ChevronRight, Plus } from "lucide-react";
 import type { DomainRecord, Member, RecordData } from "@/shared/contracts";
-import { ids, instantDate, localDate, shiftDate, value, weekStart } from "@/shared/client-api";
+import { ids, instantDate, localDate, value } from "@/shared/client-api";
 import { calendarTeamLanes } from "@/shared/calendar-team";
 import type { CalendarBackground } from "@/shared/calendar-categories";
 import { Empty } from "@/components/ui";
@@ -37,6 +37,13 @@ const fullDay = (date: string) =>
     day: "numeric",
     month: "long",
   }).format(instantDate(date));
+const shortName = (name: string, names: string[]) => {
+  if (name === "Gäste/Aushilfen") return "Gäste / Aushilfen";
+  const [first, ...rest] = name.trim().split(/\s+/);
+  return rest.length && names.filter((candidate) => candidate.split(/\s+/)[0] === first).length > 1
+    ? `${first} ${rest[0][0]}.`
+    : first;
+};
 export function TeamCalendar({
   events,
   members,
@@ -70,7 +77,7 @@ export function TeamCalendar({
     days.includes(localDate()) ? localDate() : days[0],
   );
   const [daySheetOpen, setDaySheetOpen] = useState(false);
-  const mobileCalendar = useRef<HTMLElement>(null);
+  const mobileCalendar = useRef<HTMLDivElement>(null);
   const day = days.includes(selectedDay) ? selectedDay : days[0];
   const team = useMemo(() => calendarTeamLanes(members, people), [members, people]);
   const entriesByDay = useMemo(
@@ -87,141 +94,108 @@ export function TeamCalendar({
     matches(person.id, day).map((event) => ({ person, event })),
   );
   const selectedCount = entriesByDay.get(day)?.length || 0;
-  const gridStart = weekStart(instantDate(days[0]));
-  const offset = Math.round(
-    (instantDate(days[0]).getTime() - instantDate(gridStart).getTime()) / 86400000,
-  );
-  const gridDays = Array.from({ length: Math.ceil((offset + days.length) / 7) * 7 }, (_, index) =>
-    shiftDate(gridStart, index),
-  );
-
   return (
     <>
-      <section
-        ref={mobileCalendar}
-        className="team-mobile-calendar"
-        aria-label={month ? "Mobiler Teammonatskalender" : "Mobiler Teamwochenkalender"}
-      >
-        <div className="team-mobile-weekdays" aria-hidden="true">
-          {["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"].map((name) => (
-            <span key={name}>{name}</span>
-          ))}
-        </div>
-        <div className={`team-mobile-dates${gridDays.length > 35 ? " is-six-weeks" : ""}`}>
-          {gridDays.map((date) => {
-            const inPeriod = days.includes(date);
-            const entries = inPeriod ? entriesByDay.get(date) || [] : [];
-            const colors = [...new Set(entries.map((event) => event.backgroundColor))].slice(0, 3);
-            return inPeriod ? (
-              <button
-                key={date}
-                data-date={date}
-                className={`team-mobile-date${day === date ? " is-selected" : ""}${date === localDate() ? " is-today" : ""}`}
-                aria-pressed={day === date}
-                aria-haspopup="dialog"
-                aria-label={`${fullDay(date)}: ${entries.length} ${entries.length === 1 ? "Termin" : "Termine"}. Details anzeigen`}
-                onClick={() => {
-                  setSelectedDay(date);
-                  setDaySheetOpen(true);
-                }}
-              >
-                <span className="team-mobile-date-number">{Number(date.slice(-2))}</span>
-                <span className="team-mobile-date-markers" aria-hidden="true">
-                  {colors.map((color) => (
-                    <i key={color} style={{ background: color }} />
-                  ))}
-                </span>
-                {!!entries.length && (
-                  <span className="team-mobile-date-count" aria-hidden="true">
-                    {entries.length}
-                  </span>
-                )}
-              </button>
-            ) : (
-              <span className="team-mobile-date outside-period" key={date} aria-hidden="true">
-                {Number(date.slice(-2))}
-              </span>
-            );
-          })}
-        </div>
-      </section>
-      <TeamCalendarScroll month={month}>
-        <table>
-          <thead>
-            <tr>
-              <th>Team</th>
+      <div ref={mobileCalendar} className={styles.teamMatrix}>
+        <TeamCalendarScroll month={month}>
+          <table>
+            <colgroup>
+              <col style={{ width: mobile ? 78 : 140 }} />
               {days.map((date) => (
-                <th key={date}>
-                  <button
-                    className={`team-day-heading ${day === date ? "selected" : ""}`}
-                    aria-label={`Dienste am ${date} anzeigen`}
-                    onClick={() => setSelectedDay(date)}
-                  >
-                    {new Intl.DateTimeFormat("de-DE", {
-                      timeZone: "Europe/Berlin",
-                      weekday: "short",
-                      day: "numeric",
-                      ...(!month ? { month: "numeric" as const } : {}),
-                    }).format(new Date(`${date}T12:00:00Z`))}
-                  </button>
-                </th>
+                <col key={date} />
               ))}
-            </tr>
-          </thead>
-          <tbody>
-            {team.map((person) => (
-              <tr key={person.id}>
-                <th>{person.name}</th>
+            </colgroup>
+            <thead>
+              <tr>
+                <th>Team</th>
                 {days.map((date) => (
-                  <td key={date} className={day === date ? "selected-day" : ""}>
-                    {matches(person.id, date).map((event) => (
-                      <button
-                        key={event.id}
-                        className={`team-event calendar-colored-event${event.background ? ` ${styles.quietEvent}` : ""}`}
-                        style={{
-                          borderLeftColor: event.borderColor,
-                          backgroundColor: event.backgroundColor,
-                          color: event.textColor,
-                        }}
-                        aria-label={`${event.title} · ${event.categoryName} · ${event.allDay ? "ganztägig" : `${clock(event.start)} bis ${clock(event.end)}`} · ${person.name}`}
-                        onClick={() => {
-                          setSelectedDay(date);
-                          onOpen(event.extendedProps.record);
-                        }}
-                      >
-                        <strong>{event.title}</strong>
-                        <span>
-                          {event.allDay ? "Ganztägig" : `${clock(event.start)}–${clock(event.end)}`}
-                          {event.background
-                            ? event.background === "service"
-                              ? " · Arbeitszeit"
-                              : " · Hinweis"
-                            : ""}
-                        </span>
-                      </button>
-                    ))}
-                    {canPlan(person.id) && (
-                      <button
-                        className="team-add"
-                        aria-label={`Termin für ${person.name} am ${date}`}
-                        onClick={() =>
-                          onCreate({
-                            start: `${date}T09:00`,
-                            end: `${date}T17:00`,
-                            participantIds: person.id ? [person.id] : [],
-                          })
-                        }
-                      >
-                        <Plus size={13} />
-                      </button>
-                    )}
-                  </td>
+                  <th key={date}>
+                    <button
+                      className={`team-day-heading ${day === date ? "selected" : ""}`}
+                      data-date={date}
+                      aria-label={`${fullDay(date)} · Tagesdetails anzeigen`}
+                      aria-haspopup={mobile ? "dialog" : undefined}
+                      onClick={() => {
+                        setSelectedDay(date);
+                        if (mobile) setDaySheetOpen(true);
+                      }}
+                    >
+                      {new Intl.DateTimeFormat("de-DE", {
+                        timeZone: "Europe/Berlin",
+                        weekday: "short",
+                        day: "numeric",
+                        ...(!month ? { month: "numeric" as const } : {}),
+                      }).format(new Date(`${date}T12:00:00Z`))}
+                    </button>
+                  </th>
                 ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </TeamCalendarScroll>
+            </thead>
+            <tbody>
+              {team.map((person) => (
+                <tr key={person.id}>
+                  <th scope="row" aria-label={person.name}>
+                    <span className={styles.desktopName}>{person.name}</span>
+                    <span className={styles.mobileName} title={person.name}>
+                      {shortName(
+                        person.name,
+                        team.map((member) => member.name),
+                      )}
+                    </span>
+                  </th>
+                  {days.map((date) => (
+                    <td key={date} className={day === date ? "selected-day" : ""}>
+                      {matches(person.id, date).map((event) => (
+                        <button
+                          key={event.id}
+                          className={`team-event calendar-colored-event${event.background ? ` ${styles.quietEvent}` : ""}`}
+                          style={{
+                            borderLeftColor: event.borderColor,
+                            backgroundColor: event.backgroundColor,
+                            color: event.textColor,
+                          }}
+                          aria-label={`${event.title} · ${event.categoryName} · ${event.allDay ? "ganztägig" : `${clock(event.start)} bis ${clock(event.end)}`} · ${person.name}`}
+                          onClick={() => {
+                            setSelectedDay(date);
+                            onOpen(event.extendedProps.record);
+                          }}
+                        >
+                          <strong>{event.title}</strong>
+                          <span>
+                            {event.allDay
+                              ? "Ganztägig"
+                              : `${clock(event.start)}–${clock(event.end)}`}
+                            {event.background && !mobile
+                              ? event.background === "service"
+                                ? " · Arbeitszeit"
+                                : " · Hinweis"
+                              : ""}
+                          </span>
+                        </button>
+                      ))}
+                      {canPlan(person.id) && (
+                        <button
+                          className="team-add"
+                          aria-label={`Termin für ${person.name} am ${date}`}
+                          onClick={() =>
+                            onCreate({
+                              start: `${date}T09:00`,
+                              end: `${date}T17:00`,
+                              participantIds: person.id ? [person.id] : [],
+                            })
+                          }
+                        >
+                          <Plus size={13} />
+                        </button>
+                      )}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </TeamCalendarScroll>
+      </div>
       <section className={styles.daySummary}>
         <button type="button" aria-haspopup="dialog" onClick={() => setDaySheetOpen(true)}>
           <span>

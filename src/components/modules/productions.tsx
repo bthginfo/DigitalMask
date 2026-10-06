@@ -8,7 +8,7 @@ import { productionContactName } from "@/shared/production-contacts";
 import { productionCastingCounts } from "@/modules/productions/counts";
 import { sortProductionsByPremiere } from "@/shared/production-order";
 import type { Workspace } from "@/shared/contracts";
-import { dateLabel, hours, ids, localDate, num, value } from "@/shared/client-api";
+import { dateLabel, hours, ids, num, value } from "@/shared/client-api";
 import { useWorkspace } from "../workspace-context";
 import { Badge, Button, Empty, ExportButton, PageHeader, Section } from "../ui";
 import { ResourceEditor } from "../resource-editor";
@@ -105,7 +105,7 @@ export function ProductionsModule({
   );
   const records =
     sort === "premiere"
-      ? sortProductionsByPremiere(filteredRecords, localDate())
+      ? sortProductionsByPremiere(filteredRecords)
       : filteredRecords.sort((a, b) => {
           if (sort === "name" || sort === "name-desc")
             return (
@@ -362,7 +362,7 @@ export function ProductionsModule({
         <label className={`production-sort ${styles.productionSort}`}>
           <span>Sortieren nach</span>
           <select value={sort} onChange={(event) => setSort(event.target.value)}>
-            <option value="premiere">Premiere</option>
+            <option value="premiere">Premiere (früheste zuerst)</option>
             <option value="name">Name A–Z</option>
             <option value="name-desc">Name Z–A</option>
             <option value="updated">Zuletzt geändert</option>

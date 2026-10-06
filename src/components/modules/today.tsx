@@ -28,6 +28,7 @@ import { TimerPanel } from "./time";
 import { expandEvents } from "./calendar";
 import { statusLabels } from "../resource-fields";
 import { initialPeriod, recordMatchesPeriod } from "@/shared/period-filter";
+import { unreadNotifications } from "@/modules/notifications/unread";
 export function TodayModule({ navigate }: { navigate: (module: string) => void }) {
   const { workspace, action, notify } = useWorkspace();
   const showTimer = isStaff(workspace.user);
@@ -69,9 +70,7 @@ export function TodayModule({ navigate }: { navigate: (module: string) => void }
   const total = attendanceDays
     .filter((day) => day.date >= week && day.date <= weekEnd)
     .reduce((sum, day) => sum + day.seconds, 0);
-  const notices = workspace.records.notifications.filter(
-    (x) => !x.data.read && x.data.userId === workspace.user.id,
-  );
+  const notices = unreadNotifications(workspace.records.notifications, workspace.user.id);
   const hour = new Date().getHours();
   const greet = hour < 11 ? "Guten Morgen" : hour < 18 ? "Guten Tag" : "Guten Abend";
   return (

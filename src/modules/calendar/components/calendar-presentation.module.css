@@ -1,0 +1,108 @@
+.controls {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.controls button {
+  min-height: 36px;
+  padding: 7px 10px;
+  font-size: 11px;
+}
+
+@media (min-width: 761px) {
+  .collapsed :global(.calendar-layout) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .collapsed :global(.calendar-filters) {
+    display: none;
+  }
+  .focus {
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 18px 24px;
+    background: var(--bg);
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+  .focus > :global(.page-heading) {
+    align-items: center;
+    gap: 12px;
+    margin: 0;
+    flex: 0 0 auto;
+  }
+  .focus > :global(.page-heading) :global(.eyebrow) {
+    display: none;
+  }
+  .focus > :global(.page-heading) h1 {
+    margin: 0;
+    font-size: 23px;
+  }
+  .focus > :global(.calendar-layout) {
+    flex: 1;
+    min-height: 0;
+  }
+  .focus :global(.calendar-filters) {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-right: 8px;
+  }
+  .focus :global(.calendar-board) {
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 14px;
+  }
+  .focus :global(.calendar-toolbar) {
+    flex-shrink: 0;
+    margin-bottom: 12px;
+  }
+  .focus :global(.team-span-controls) {
+    flex-shrink: 0;
+  }
+  .focus :global(.calendar-board) > :global(.fc) {
+    flex: 1;
+    min-height: 0;
+  }
+  .focus :global(.team-day-detail),
+  .focus > :global(.panel) {
+    display: none;
+  }
+}
+
+@media (min-width: 761px) and (max-width: 1000px) {
+  .focus > :global(.calendar-layout) {
+    grid-template-columns: 160px minmax(0, 1fr);
+  }
+  .focus.collapsed > :global(.calendar-layout) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .focus :global(.calendar-filters) {
+    display: block;
+  }
+  .focus.collapsed :global(.calendar-filters) {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .controls {
+    display: none;
+  }
+}
+
+@media print {
+  .controls {
+    display: none;
+  }
+  .focus {
+    position: static;
+    overflow: visible;
+  }
+}

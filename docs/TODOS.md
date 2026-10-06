@@ -1,5 +1,38 @@
 # Umsetzungsstand
 
+## Aktuelle Mitteilungen und verlässliche Premieren-Sortierung
+
+- [x] In Glocke und Neu für dich nur eigene ungelesene Mitteilungen anzeigen, nach Erstellung absteigend sortieren und gelesene aus den sichtbaren Listen entfernen.
+- [x] Premieren ohne Trennung in vergangene/kommende Stücke chronologisch sortieren, früheste zuerst und Stücke ohne Datum zuletzt; Produktionsauswahl im Kalender angleichen.
+- [x] Hilfe aktualisieren und die bestehenden Grenzfallprüfungen an die bestätigte Sortierung anpassen.
+- [x] Gezielte Funktionskontrolle und Produktionsbuild abschließen; das Releasepaket für GitHub und Vercel vorbereiten.
+
+Beide Sortierungen verwenden ausschließlich die bereits geladenen Daten. Das Lesen einer Mitteilung nutzt die vorhandene Bestätigung; neue Datenbankabfragen oder automatische Löschjobs werden nicht eingeführt.
+
+## Kalender: mehr Platz und mobile Teamdetails
+
+- [x] Obere Scrollleiste in Teamwoche und Teammonat mit der unteren synchronisieren und nach Layoutwechseln nutzbar halten.
+- [x] Kalender-Seitenleiste am Desktop einklappbar machen und eine Kalender-Vollbildansicht mit Rückkehrschaltfläche und Escape ergänzen.
+- [x] Tagesdienste als Hintergrund über ihre volle Zeitspanne darstellen; normale Termine bleiben darüber erreichbar.
+- [x] Mobile Teamwoche und Teammonat als kompakte Tabelle mit festen Namen, seitlichem Scrollen sowie sichtbaren Terminen und Uhrzeiten anzeigen.
+- [x] Anleitung aktualisieren, gezielte Funktions- und Darstellungsprüfung bestehen und das Releasepaket vorbereiten.
+
+Ansichtsschalter und Scrollleisten verwenden den bereits geladenen Kalender im Browser und benötigen keine weiteren Datenbankabfragen.
+
+Die unabhängige Designprüfung ist bestanden. Die gezielten Browserprüfungen decken die obere Maus-Scrollleiste, Filterauswahl nach Einklappen, Vollbild mit Escape und Fokusrückkehr, überlagerte Termine sowie Teamwoche und Teammonat bei 375 px ab. Ein achtstündiger Tagesdienst bleibt über die gesamte Zeitspanne sichtbar. Zwölf Sortierungs-/Benachrichtigungstests, Lint und der Produktionsbuild sind bestanden; die Prüfung arbeitet ausschließlich mit fiktiven Daten.
+
+## Teamkalender: platzsparende PDF- und Excel-Druckpläne
+
+- [x] PDF-Kopf auf die Kalenderwoche reduzieren; Titel und Zeiten sämtlicher Termine direkt im Raster mit vollflächigen Farben drucken, ohne Agenda-Zähler oder gekürzte Titel.
+- [x] Teammonat nach Möglichkeit mit zwei vollständigen KWs pro A4-Querformatseite drucken; dicht belegte Wochen und außergewöhnlich lange Inhalte ohne Datenverlust auf weitere Rasterseiten aufteilen.
+- [x] Excel-Teammonat als farbige Monatsmatrix mit Personen links und zwei Monatshälften untereinander ausgeben; keine Agenda als Hauptdarstellung. Mehrere Termine erhalten getrennte farbige Zellen, Namen bleiben links fixiert.
+- [x] Anleitung und Exportdokumentation angleichen; vorhandene Prüfungen auf die vollständigen Druckpläne umstellen und einen echten Fünf-Personen-/Zwei-KW-Export prüfen.
+- [x] Erzeugte PDF-Seiten visuell prüfen, gezielte Exportprüfungen und Produktionsbuild bestehen und das Releasepaket vorbereiten.
+
+Die Exportmodule arbeiten weiterhin ausschließlich mit dem bereits autorisierten Daten-Snapshot und benötigen weder zusätzliche Datenbankabfragen noch externe Schrift- oder Bildabrufe.
+
+Drei gezielte Exportfälle prüfen die Personenauswahl, sämtliche 31 Tage bei 13 Personen sowie fünf Mitarbeitende plus Gästespalte und zwei KWs auf einer A4-Querformatseite. PDF-Inhalte, Seitenmaße und die tatsächliche Excel-Datei mit 70 gefärbten Termineinträgen sind geprüft; die erzeugten PDF-Seiten wurden auch visuell kontrolliert. Der ergänzende lokale Office-Druckstart war nicht verfügbar und ist keine Voraussetzung für den Export. Das veröffentlichte Release wird vor Abschluss gegen den Git-Stand geprüft; temporäre Browserdaten, Arbeitsmappen und Rohbilder werden anschließend entfernt.
+
 ## Maskenplan: Speicher-Hotfix und kompakte Tabelle
 
 - [x] Speichern vorhandener Pläne mit unveränderten früheren Personal- oder Besetzungszuordnungen ermöglichen; neue Zuordnungen, Produktionsrechte und Versionskonflikte weiterhin prüfen.

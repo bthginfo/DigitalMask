@@ -1,16 +1,10 @@
 import React from "react";
-import { Text, View, StyleSheet } from "@react-pdf/renderer";
+import { Page as PdfPage, Text, View, StyleSheet } from "@react-pdf/renderer";
 import { format, parseISO } from "date-fns";
 import { de } from "date-fns/locale";
 import { calendarRange } from "./calendar";
-import { eventDisplay } from "./calendar-presentation";
-import {
-  calendarLegend,
-  eventTimeLabel,
-  memberDayEvents,
-  teamCalendarMembers,
-  teamCalendarWeeks,
-} from "./team-calendar";
+import { calendarLegend, teamCalendarMembers, teamCalendarWeeks } from "./team-calendar";
+import { teamPrintEntries } from "./team-calendar-print";
 import type { ExportInput } from "./types";
 
 type PrintPage = React.ComponentType<{
@@ -19,163 +13,247 @@ type PrintPage = React.ComponentType<{
   children: React.ReactNode;
   label?: string;
 }>;
-const style = StyleSheet.create({
-  context: { fontSize: 10, color: "#53645e", marginBottom: 9 },
-  header: { flexDirection: "row", backgroundColor: "#1e5f50", color: "white" },
-  heading: { width: "12%", fontSize: 9, fontWeight: 700, padding: 6 },
+type WrapLines = (text: string, width: number, size: number, weight: number) => string[];
+const pageWidth = 841.89;
+const availableHeight = 535;
+const nameWidth = 99;
+const dayWidth = (pageWidth - 36 - nameWidth) / 7;
+const styles = StyleSheet.create({
+  page: { padding: 18, paddingBottom: 42, fontFamily: "Noto", color: "#233932" },
+  week: { marginBottom: 14 },
+  title: { fontSize: 12, fontWeight: 700, marginBottom: 5 },
+  head: { flexDirection: "row", backgroundColor: "#edf1ef", minHeight: 20 },
+  heading: { padding: 4, fontSize: 8.5, fontWeight: 700 },
   row: { flexDirection: "row" },
+  name: { width: nameWidth, padding: 4, fontWeight: 700, backgroundColor: "#f5f7f5" },
   cell: {
-    width: "12%",
-    padding: 6,
+    width: dayWidth,
+    padding: 2,
     borderBottomWidth: 0.5,
     borderRightWidth: 0.5,
-    borderColor: "#cbd6cf",
+    borderColor: "#b8c6bf",
   },
-  name: { width: "16%", fontSize: 9, fontWeight: 700, lineHeight: 1.4 },
-  time: { fontSize: 8.5, fontWeight: 700, marginBottom: 3 },
-  title: { fontSize: 9, lineHeight: 1.3 },
-  extra: { fontSize: 8.5, fontWeight: 700, color: "#1e5f50", marginTop: 4 },
-  note: { fontSize: 9, color: "#53645e", marginTop: 9, lineHeight: 1.4 },
+  entry: { padding: 3, marginBottom: 2, borderRadius: 1 },
 });
-function wrapName(text: string): string[] {
-  const lines: string[] = [];
-  let line = "",
-    width = 0;
-  const measure = (word: string) =>
-    [...word].reduce(
-      (sum, character) =>
-        sum + (/[WM]/u.test(character) ? 9 : /[ilItf\s]/u.test(character) ? 4 : 6),
-      0,
+
+function weekLayout(
+  input: ExportInput,
+  week: ReturnType<typeof teamCalendarWeeks>[number],
+  size: number,
+  wrapLines: WrapLines,
+) {
+  const lineHeight = size * 1.25;
+  const rows = teamCalendarMembers(input).map((member) => {
+    const name = wrapLines(member.name, nameWidth - 8, size, 700);
+    const cells = week.days.map((day) => ({
+      day,
+      entries: teamPrintEntries(input, day, member.id).map((entry) => ({
+        ...entry,
+        lines: [
+          ...(entry.time ? wrapLines(entry.time, dayWidth - 10, size - 0.5, 700) : []),
+          ...wrapLines(entry.title, dayWidth - 10, size, 400),
+        ],
+      })),
+    }));
+    const height = Math.max(
+      23,
+      name.length * lineHeight + 8,
+      ...cells.map((cell) =>
+        cell.entries.reduce((sum, entry) => sum + entry.lines.length * lineHeight + 8, 4),
+      ),
     );
-  for (const word of text.trim().split(/\s+/u)) {
-    const size = measure(word) + (line ? 4 : 0);
-    if (width + size > 106 && line) {
-      lines.push(line.trimEnd());
-      line = "";
-      width = 0;
+    return { member, name, cells, height };
+  });
+  return {
+    week,
+    rows,
+    size,
+    lineHeight,
+    height: 41 + rows.reduce((sum, row) => sum + row.height, 0),
+  };
+}
+type WeekLayout = ReturnType<typeof weekLayout>;
+
+function WeekTable({
+  layout,
+  range,
+  rows = layout.rows,
+}: {
+  layout: WeekLayout;
+  range: ReturnType<typeof calendarRange>;
+  rows?: WeekLayout["rows"];
+}) {
+  return (
+    <View style={styles.week} wrap={false}>
+      <Text style={styles.title}>KW {format(parseISO(layout.week.key), "II")}</Text>
+      <View style={styles.head}>
+        <Text style={{ ...styles.heading, width: nameWidth }}>Person</Text>
+        {layout.week.days.map((day) => (
+          <Text key={day} style={{ ...styles.heading, width: dayWidth }}>
+            {format(parseISO(day), "EEE dd.MM.", { locale: de })}
+          </Text>
+        ))}
+      </View>
+      {rows.map((row, index) => (
+        <View
+          key={`${row.member.id}-${index}`}
+          style={{ ...styles.row, minHeight: row.height }}
+          wrap={false}
+        >
+          <Text style={{ ...styles.cell, ...styles.name, fontSize: layout.size, lineHeight: 1.25 }}>
+            {row.name.join("\n")}
+          </Text>
+          {row.cells.map((cell) => (
+            <View
+              key={cell.day}
+              style={{
+                ...styles.cell,
+                backgroundColor:
+                  cell.day < range.from || cell.day > range.to ? "#f4f4f4" : "#ffffff",
+              }}
+            >
+              {cell.entries.map((entry) => (
+                <View key={entry.id} style={{ ...styles.entry, backgroundColor: entry.color }}>
+                  <Text style={{ fontSize: layout.size, lineHeight: 1.25, color: entry.textColor }}>
+                    {entry.lines.join("\n")}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          ))}
+        </View>
+      ))}
+    </View>
+  );
+}
+
+/** No agenda preview/truncation: paginate complete cells only when a week cannot fit. */
+function splitWeek(layout: WeekLayout): WeekLayout["rows"][] {
+  const rowLimit = availableHeight - 41;
+  const segments: WeekLayout["rows"] = [];
+  for (const row of layout.rows) {
+    if (row.height <= rowLimit) {
+      segments.push(row);
+      continue;
     }
-    if (measure(word) > 106) {
-      for (const character of word) {
-        const characterWidth = measure(character);
-        if (width + characterWidth > 106 && line) {
-          lines.push(line);
-          line = "";
-          width = 0;
+    const maxLines = Math.max(1, Math.floor((rowLimit - 18) / layout.lineHeight));
+    const cells = row.cells.map((cell) => ({
+      ...cell,
+      entries: cell.entries.flatMap((entry) =>
+        Array.from({ length: Math.ceil(entry.lines.length / maxLines) }, (_, i) => ({
+          ...entry,
+          id: `${entry.id}-${i}`,
+          lines: entry.lines.slice(i * maxLines, (i + 1) * maxLines),
+        })),
+      ),
+    }));
+    // Individual long entries and crowded days continue in the same date column.
+    while (cells.some((cell) => cell.entries.length)) {
+      const next = cells.map((cell) => {
+        const entries: typeof cell.entries = [];
+        let height = 4;
+        while (
+          cell.entries.length &&
+          height + cell.entries[0].lines.length * layout.lineHeight + 8 <= rowLimit
+        ) {
+          const entry = cell.entries.shift()!;
+          entries.push(entry);
+          height += entry.lines.length * layout.lineHeight + 8;
         }
-        line += character;
-        width += characterWidth;
-      }
-    } else {
-      if (line) {
-        line += " ";
-        width += 4;
-      }
-      line += word;
-      width += measure(word);
+        return { day: cell.day, entries };
+      });
+      segments.push({
+        ...row,
+        cells: next,
+        height: Math.max(
+          23,
+          row.name.length * layout.lineHeight + 8,
+          ...next.map((cell) =>
+            cell.entries.reduce(
+              (sum, entry) => sum + entry.lines.length * layout.lineHeight + 8,
+              4,
+            ),
+          ),
+        ),
+      });
     }
   }
-  if (line) lines.push(line.trimEnd());
-  return lines;
-}
-export function TeamCalendarPdf({ input, Page }: { input: ExportInput; Page: PrintPage }) {
-  const range = calendarRange(input),
-    members = teamCalendarMembers(input);
-  const groups: { id: string; name: string; lines: string[]; height: number }[][] = [[]];
+  const groups: WeekLayout["rows"][] = [[]];
   let height = 0;
-  for (const member of members) {
-    const lines = wrapName(member.name),
-      rowHeight = Math.max(64, lines.length * 13 + 12);
-    if (
-      (height + rowHeight > 320 || groups[groups.length - 1].length === 5) &&
-      groups[groups.length - 1].length
-    ) {
+  for (const row of segments) {
+    if (height + row.height > rowLimit && groups.at(-1)!.length) {
       groups.push([]);
       height = 0;
     }
-    groups[groups.length - 1].push({ ...member, lines, height: rowHeight });
-    height += rowHeight;
+    groups.at(-1)!.push(row);
+    height += row.height;
   }
-  return (
-    <>
-      {teamCalendarWeeks(input).flatMap((week) =>
-        groups.map((group, part) => (
-          <Page
-            input={input}
-            landscape
-            key={`${week.key}-${part}`}
-            label={`Teamplanung · KW ${format(parseISO(week.key), "II")}`}
-          >
-            <Text style={style.context}>
-              {format(parseISO(range.from), "MMMM yyyy", { locale: de })} ·{" "}
-              {format(parseISO(week.days[0]), "dd.MM.")} –{" "}
-              {format(parseISO(week.days[6]), "dd.MM.")} · Personengruppe {part + 1}/{groups.length}
-            </Text>
-            <View style={style.header}>
-              <Text style={{ ...style.heading, width: "16%" }}>Person</Text>
-              {week.days.map((day) => (
-                <Text key={day} style={style.heading}>
-                  {format(parseISO(day), "EEE dd.MM.", { locale: de })}
-                </Text>
-              ))}
-            </View>
-            {!group.length && (
-              <Text style={style.note}>
-                Keine aktiven Mitarbeiter für die ausgewählten Kalender.
-              </Text>
-            )}
-            {group.map((member) => (
-              <View key={member.id} style={style.row} wrap={false}>
-                <Text style={{ ...style.cell, ...style.name, height: member.height }}>
-                  {member.lines.join("\n")}
-                </Text>
-                {week.days.map((day) => {
-                  const events = memberDayEvents(input, day, member.id),
-                    first = events[0],
-                    display = first ? eventDisplay(first, input) : undefined;
-                  const title = display?.title ?? "",
-                    preview = title.length > 17 ? `${title.slice(0, 16)}…` : title;
-                  return (
-                    <View
-                      key={day}
-                      style={{
-                        ...style.cell,
-                        height: member.height,
-                        backgroundColor: day < range.from || day > range.to ? "#fafbf9" : "white",
-                      }}
-                    >
-                      {first && (
-                        <>
-                          <Text
-                            style={{
-                              ...style.time,
-                              borderLeftWidth: 2,
-                              borderLeftColor: display!.color,
-                              paddingLeft: 3,
-                            }}
-                          >
-                            {eventTimeLabel(first, input)}
-                          </Text>
-                          <Text style={style.title}>{preview}</Text>
-                        </>
-                      )}
-                      {events.length > 1 && (
-                        <Text style={style.extra}>+ {events.length - 1} · Agenda</Text>
-                      )}
-                    </View>
-                  );
-                })}
-              </View>
-            ))}
-            <Text style={style.note}>
-              Gekürzte Rasterübersicht. Die vollständige Agenda enthält alle Dienste und Titel.
-              Kategorien und Farben sind in der Legende erklärt.
-            </Text>
-          </Page>
-        )),
-      )}
-    </>
-  );
+  return groups;
 }
+
+export function TeamCalendarPdf({
+  input,
+  wrapLines,
+}: {
+  input: ExportInput;
+  wrapLines: WrapLines;
+}) {
+  const range = calendarRange(input);
+  const weeks = teamCalendarWeeks(input);
+  const pages: React.ReactNode[] = [];
+  for (let index = 0; index < weeks.length;) {
+    let layouts: WeekLayout[] = [];
+    if (input.view === "team-month" && index + 1 < weeks.length) {
+      for (const size of [9, 8.5, 8]) {
+        const pair = [
+          weekLayout(input, weeks[index], size, wrapLines),
+          weekLayout(input, weeks[index + 1], size, wrapLines),
+        ];
+        if (pair[0].height + pair[1].height + 14 <= availableHeight) {
+          layouts = pair;
+          break;
+        }
+      }
+    }
+    if (layouts.length) {
+      pages.push(
+        <PdfPage
+          key={weeks[index].key}
+          size="A4"
+          orientation="landscape"
+          style={styles.page}
+          wrap={false}
+        >
+          {layouts.map((layout) => (
+            <WeekTable key={layout.week.key} layout={layout} range={range} />
+          ))}
+        </PdfPage>,
+      );
+      index += 2;
+      continue;
+    }
+    let layout = weekLayout(input, weeks[index], 9, wrapLines);
+    for (const size of [8.5, 8, 7.5]) {
+      if (layout.height <= availableHeight) break;
+      layout = weekLayout(input, weeks[index], size, wrapLines);
+    }
+    for (const [part, rows] of splitWeek(layout).entries())
+      pages.push(
+        <PdfPage
+          key={`${weeks[index].key}-${part}`}
+          size="A4"
+          orientation="landscape"
+          style={styles.page}
+          wrap={false}
+        >
+          <WeekTable layout={layout} rows={rows} range={range} />
+        </PdfPage>,
+      );
+    index++;
+  }
+  return <>{pages}</>;
+}
+
 export function CalendarLegendPdf({ input, Page }: { input: ExportInput; Page: PrintPage }) {
   const items = calendarLegend(input);
   return (

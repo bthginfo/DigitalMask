@@ -52,10 +52,23 @@ import {
 } from "@/modules/calendar/components/client-calendar";
 import { CalendarCategoriesDialog } from "@/modules/calendar/components/categories-dialog";
 import { TeamCalendar } from "@/modules/calendar/components/team-calendar";
+import {
+  CalendarPresentationControls,
+  useCalendarPresentation,
+} from "@/modules/calendar/components/calendar-presentation-controls";
+import presentationStyles from "@/modules/calendar/components/calendar-presentation.module.css";
 import { MobileDaySheet } from "@/modules/calendar/components/mobile-day-sheet";
 import { calendarDayIndex, calendarDayLabel } from "@/modules/calendar/components/day-details";
 import calendarStyles from "@/modules/calendar/components/mobile-calendar.module.css";
 import { statusLabels } from "../resource-fields";
+const calendarClock = (date: Date | null) =>
+  date
+    ? new Intl.DateTimeFormat("de-DE", {
+        timeZone: "Europe/Berlin",
+        hour: "2-digit",
+        minute: "2-digit",
+      }).format(date)
+    : "";
 export function expandEvents(
   records: DomainRecord[],
   rangeStart: string,
@@ -95,6 +108,8 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
   const admin = workspace.user.role !== "user";
   const calendar = useRef<FullCalendar>(null);
   const calendarRoot = useRef<HTMLDivElement>(null);
+  const presentation = useCalendarPresentation(calendarRoot);
+  const { exitFullscreen } = presentation;
   const actionsMenu = useRef<HTMLDetailsElement>(null);
   const [mobile, setMobile] = useState(false);
   useEffect(() => {
@@ -125,7 +140,7 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
     [workspace.members],
   );
   const productions = useMemo(
-    () => sortProductionsByPremiere(workspace.records.productions, localDate()),
+    () => sortProductionsByPremiere(workspace.records.productions),
     [workspace.records.productions],
   );
   const visiblePeople = useMemo(
@@ -158,6 +173,27 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
   const [detail, setDetail] = useState<DomainRecord | null>(null);
   const [error, setError] = useState("");
   const [exporting, setExporting] = useState(false);
+  useEffect(() => {
+    if (mobile && !editor && !detail && !exporting && !categoriesOpen) exitFullscreen();
+  }, [mobile, editor, detail, exporting, categoriesOpen, exitFullscreen]);
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => calendar.current?.getApi().updateSize());
+    return () => cancelAnimationFrame(frame);
+  }, [presentation.collapsed, presentation.fullscreen, view]);
+  useEffect(() => {
+    const root = calendarRoot.current;
+    if (!root) return;
+    let frame = 0;
+    const observer = new ResizeObserver(() => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => calendar.current?.getApi().updateSize());
+    });
+    observer.observe(root);
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(frame);
+    };
+  }, []);
   const teamStart = teamSpan === "month" ? monthStart(teamDate) : weekStart(instantDate(teamDate));
   const teamEnd = teamSpan === "month" ? shiftMonth(teamStart, 1) : shiftDate(teamStart, 7);
   const filtered = useMemo(
@@ -299,13 +335,24 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
     (_, i) => shiftDate(teamStart, i),
   );
   return (
-    <div ref={calendarRoot} className={`calendar-module ${calendarStyles.calendar}`}>
+    <div
+      ref={calendarRoot}
+      className={`calendar-module ${calendarStyles.calendar}${presentation.collapsed ? ` ${presentationStyles.collapsed}` : ""}${presentation.fullscreen ? ` ${presentationStyles.focus} calendar-focus-view` : ""}`}
+      data-calendar-fullscreen={presentation.fullscreen || undefined}
+    >
       <PageHeader
         eyebrow="DEIN DIENSTPLAN. GEMEINSAM GEPLANT."
         title="Kalender"
         description="Eigene Dienste, Teamkalender und freie Tage im Überblick."
       >
         <div className="calendar-desktop-actions">
+          <CalendarPresentationControls
+            collapsed={presentation.collapsed}
+            fullscreen={presentation.fullscreen}
+            filtersId={filtersId}
+            onToggleFilters={presentation.toggleFilters}
+            onToggleFullscreen={presentation.toggleFullscreen}
+          />
           <ExportButton onClick={() => setExporting(true)} />
           {workspace.user.role !== "superadmin" && (
             <Button onClick={() => setEditor({ kind: "leave" })}>Freien Tag wünschen</Button>
@@ -637,7 +684,7 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
                 slotMaxTime="25:00:00"
                 scrollTime="06:00:00"
                 headerToolbar={false}
-                height="auto"
+                height={presentation.fullscreen ? "100%" : "auto"}
                 fixedWeekCount={!mobile}
                 nowIndicator
                 dayMaxEvents={mobile ? 1 : 3}
@@ -683,11 +730,12 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
                 selectOverlap={true}
                 eventContent={(info) => {
                   if (info.event.display !== "background") return true;
+                  const hours = `${calendarClock(info.event.start)}–${calendarClock(info.event.end)}`;
                   return (
                     <button
                       type="button"
                       className={calendarStyles.backgroundLabel}
-                      aria-label={`${info.event.title} · Details anzeigen`}
+                      aria-label={`${info.event.title} · ${hours} · Details anzeigen`}
                       onMouseDown={(event) => event.stopPropagation()}
                       onTouchStart={(event) => event.stopPropagation()}
                       onClick={(event) => {
@@ -695,9 +743,17 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
                         setDetail(info.event.extendedProps.record as DomainRecord);
                       }}
                     >
-                      {info.event.title}
+                      <strong>{info.event.title}</strong>
+                      <span>{hours}</span>
                     </button>
                   );
+                }}
+                eventDidMount={(info) => {
+                  if (info.event.display === "background")
+                    info.el.style.setProperty(
+                      "--calendar-background-border",
+                      info.event.borderColor,
+                    );
                 }}
                 datesSet={(info) => {
                   setTitle(info.view.title);

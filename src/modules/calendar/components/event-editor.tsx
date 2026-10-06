@@ -74,7 +74,7 @@ export function EventEditor({
         (isActiveStaff(member) || people.includes(member.id)),
     ),
   );
-  const productions = sortProductionsByPremiere(workspace.records.productions, today);
+  const productions = sortProductionsByPremiere(workspace.records.productions);
   const behavior = calendarCategoryBehavior(category, selected);
   return (
     <Modal title={`Termin ${record ? "bearbeiten" : "anlegen"}`} onClose={onClose} wide>

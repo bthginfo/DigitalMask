@@ -155,7 +155,7 @@ describe("department lanes and production ordering", () => {
     expect(memberDayEvents({ ...input, userIds: ["l"] }, "2026-10-04", "")).toEqual([]);
     expect(memberDayEvents(input, "2026-10-04", "")).toEqual([guest]);
   });
-  it("uses the overview premiere order while preserving historical and undated choices", () => {
+  it("sorts all premieres chronologically without pushing past premieres below future ones", () => {
     const productions = [
       record("late", { premiere: "2026-11-24", title: "Später" }, "productions"),
       record("old", { premiere: "2025-01-01", title: "Archiv" }, "productions"),
@@ -163,11 +163,11 @@ describe("department lanes and production ordering", () => {
       record("soon", { premiere: "2026-10-12", title: "Nächste Premiere" }, "productions"),
       record("recent", { premiere: "2026-09-30", title: "Repertoire" }, "productions"),
     ];
-    expect(sortProductionsByPremiere(productions, "2026-10-04").map((row) => row.id)).toEqual([
+    expect(sortProductionsByPremiere(productions).map((row) => row.id)).toEqual([
+      "old",
+      "recent",
       "soon",
       "late",
-      "recent",
-      "old",
       "none",
     ]);
     expect(productions[0].id).toBe("late");

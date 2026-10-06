@@ -30,7 +30,7 @@ import { onboardingVersion, type DomainRecord, type RecordKind } from "@/shared/
 import { initials, post, value } from "@/shared/client-api";
 import { useWorkspace } from "./workspace-context";
 import { stopPushOnLogout } from "@/modules/notifications/client";
-import { chatUnreadCounts } from "@/modules/notifications/unread";
+import { chatUnreadCounts, unreadNotifications } from "@/modules/notifications/unread";
 import { Badge, Empty, Modal } from "./ui";
 import { ThemeSwitch } from "./theme-switch";
 import { LiveStatus } from "./live-status";
@@ -191,9 +191,7 @@ export function WorkspaceShell() {
       notify(e instanceof Error ? e.message : "Abmelden fehlgeschlagen");
     }
   };
-  const unread = workspace.records.notifications.filter(
-    (x) => !x.data.read && x.data.userId === workspace.user.id,
-  );
+  const unread = unreadNotifications(workspace.records.notifications, workspace.user.id);
   const chatUnread = chatUnreadCounts(workspace.records.notifications, workspace.user.id).total;
   const results =
     search.length >= 2
@@ -555,9 +553,9 @@ export function WorkspaceShell() {
       )}
       {notificationOpen && (
         <Modal title="Mitteilungen" onClose={() => setNotificationOpen(false)}>
-          {workspace.records.notifications.length ? (
+          {unread.length ? (
             <div className="list">
-              {workspace.records.notifications.map((item) => (
+              {unread.map((item) => (
                 <button
                   className="notification-row"
                   key={item.id}

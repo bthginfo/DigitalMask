@@ -359,7 +359,7 @@ const previewTitle = (row: ExportRow, limit = 46) => {
 const weekdays = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
 function CalendarPreview({ input }: { input: ExportInput }) {
   if (["team", "team-month"].includes(input.view ?? ""))
-    return <TeamCalendarPdf input={input} Page={BasePage} />;
+    return <TeamCalendarPdf input={input} wrapLines={headerLines} />;
   const range = calendarRange(input),
     rows = exportRows(input),
     lookup = new Map(rows.map((row) => [row.id, row]));
@@ -601,6 +601,17 @@ export async function buildPdf(input: ExportInput): Promise<Uint8Array> {
     input = { ...input, images: normalizedImages };
   }
   const calendar = input.kind === "events" || input.kind === "calendar";
+  if (calendar && ["team", "team-month"].includes(input.view ?? "")) {
+    return addPageNumbers(
+      new Uint8Array(
+        await renderToBuffer(
+          <Document title="Teamkalender" author="DigitalMask" language="de-DE">
+            <TeamCalendarPdf input={input} wrapLines={headerLines} />
+          </Document>,
+        ),
+      ),
+    );
+  }
   const rows = exportRows(input);
   const agendaColumns = [
     ...columnsFor("events"),

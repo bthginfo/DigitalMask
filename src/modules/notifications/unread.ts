@@ -1,4 +1,15 @@
 import type { DomainRecord } from "@/shared/contracts";
+
+/** Current unread notices, newest first; reading never changes their creation order. */
+export function unreadNotifications(notifications: DomainRecord[], userId: string) {
+  return notifications
+    .filter((notice) => notice.data.userId === userId && !notice.data.read)
+    .sort(
+      (a, b) =>
+        (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdAt) || 0) || a.id.localeCompare(b.id),
+    );
+}
+
 export function isChatNotice(record: DomainRecord) {
   return (
     record.data.type === "ChatMessageCreatedV1" ||

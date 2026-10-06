@@ -325,30 +325,100 @@ describe("attendance and configurable calendar exports", () => {
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(new Uint8Array((await buildExport(input)).bytes).buffer);
     const grids = workbook.worksheets.filter((sheet) => sheet.name.startsWith("Team "));
-    expect(grids).toHaveLength(5);
+    expect(grids).toHaveLength(1);
     for (const grid of grids) {
-      expect(grid.columnCount).toBe(8);
-      expect(grid.views[0]).toMatchObject({ xSplit: 1, ySplit: 4 });
-      expect(grid.pageSetup.printTitlesRow).toBe("1:4");
-      expect(grid.getCell("A5").value).toBe("Fiktive Person 2");
+      expect(grid.columnCount).toBe(17);
+      expect(grid.views[0]).toMatchObject({ xSplit: 1, ySplit: 1 });
+      expect(grid.pageSetup.printTitlesRow).toBe("1:1");
+      expect(grid.getCell("A3").value).toBe("Fiktive Person 2");
+      const text = grid.getSheetValues().flat().join(" ");
+      expect(text).toContain("01.10.");
+      expect(text).toContain("31.10.");
+      expect(text).not.toContain("NOT_STAFF");
+      expect(text).not.toContain("NOT_ACTIVE");
     }
-    expect(workbook.getWorksheet("Kalenderlegende")!.getSheetValues().flat().join(" ")).toContain(
-      "Änderungsfreier Sonderdienst",
-    );
+    expect(workbook.worksheets.map((sheet) => sheet.name)).toEqual(["Team 10-2026"]);
   });
-  it("prints all 31 days and 13 staff in readable weekly groups, complete dense agenda and dynamic legend", async () => {
+  it("prints all 31 days and 13 staff with complete dense entries instead of agenda previews", async () => {
     const pdf = await inspectPdf((await buildExport(calendar("pdf"))).bytes, "team-month");
-    const grids = pdf.texts.filter((text) => text.includes("Personengruppe"));
-    expect(grids).toHaveLength(15);
-    expect(pdf.pages).toBeGreaterThan(16);
+    expect(pdf.pages).toBeLessThan(15);
     for (let i = 1; i < 13; i++) expect(pdf.text).toContain(`Fiktive Person ${i + 1}`);
     expect(pdf.text).toContain("31.10.");
     expect(pdf.text).toContain("TITELENDE");
     expect(pdf.text).toContain("MEHRDIENSTENDE4");
     expect(pdf.text).toContain("Änderungsfreier Sonderdienst");
     expect(pdf.text).toContain("Halber freier Tag");
-    expect(pdf.text).toContain("Ganztägig");
-    expect(pdf.text).toContain("+ 5 · Agenda");
+    expect(pdf.text).not.toContain("Agenda");
+    expect(pdf.text).not.toContain("DIGITALMASK /");
+    expect(pdf.text).not.toContain("Personengruppe");
+  }, 60000);
+  it("fits five staff and two complete weeks on one A4 landscape sheet and exports coloured month cells", async () => {
+    const staff = members.slice(1, 6);
+    const short = staff.flatMap((member, index) =>
+      Array.from({ length: 14 }, (_, dayIndex) => {
+        const day = format(addDays(parseISO("2026-10-05"), dayIndex), "yyyy-MM-dd");
+        return record("events", `short-${index}-${dayIndex}`, {
+          title: `Probe M${index}D${dayIndex}`,
+          category: "rehearsal",
+          start: iso(day, "10:00:00"),
+          end: iso(day, "12:00:00"),
+          participantIds: [member.id],
+        });
+      }),
+    );
+    short.push(
+      ...[0, 1].map((index) =>
+        record("events", `extra-${index}`, {
+          title: `Zusatz ENDE${index}`,
+          category: "service",
+          start: iso("2026-10-05", `${14 + index}:00:00`),
+          end: iso("2026-10-05", `${15 + index}:00:00`),
+          participantIds: [staff[0].id],
+        }),
+      ),
+    );
+    const input: ExportInput = {
+      ...calendar("pdf"),
+      members: staff,
+      records: short,
+      from: "2026-10-05",
+      to: "2026-10-18",
+    };
+    const pdf = await inspectPdf((await buildExport(input)).bytes, "team-two-weeks");
+    expect(pdf.pages).toBe(1);
+    expect(pdf.text).toContain("KW 41");
+    expect(pdf.text).toContain("KW 42");
+    for (const member of staff) expect(pdf.text).toContain(member.name);
+    expect(pdf.text).toContain("ENDE1");
+    expect(pdf.text).toContain("Probe M4D13");
+    expect(pdf.text).not.toContain("Agenda");
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(
+      new Uint8Array(
+        (await buildExport({ ...input, format: "xlsx", from: "2026-10-01", to: "2026-10-31" }))
+          .bytes,
+      ).buffer,
+    );
+    const sheet = workbook.worksheets[0];
+    const text = sheet.getSheetValues().flat().join(" ");
+    expect(text).toContain("Probe M4D13");
+    expect(text).toContain("ENDE1");
+    let coloured = 0;
+    sheet.eachRow((row) =>
+      row.eachCell((cell) => {
+        if (String(cell.value ?? "").includes("Probe M")) {
+          expect(cell.fill.type).toBe("pattern");
+          if (cell.fill.type === "pattern") expect(cell.fill.pattern).toBe("solid");
+          coloured++;
+        }
+      }),
+    );
+    expect(coloured).toBe(70);
+    expect(sheet.pageSetup).toMatchObject({
+      paperSize: 9,
+      orientation: "landscape",
+      fitToWidth: 1,
+    });
   }, 60000);
   it("prints multipage attendance with separate person/day/week totals and no production headings", async () => {
     const records = Array.from({ length: 29 }, (_, i) =>
