@@ -833,6 +833,12 @@
     --lane-width: 218px;
     gap: 12px;
   }
+  .module[data-dirty="true"] {
+    padding-bottom: 112px;
+  }
+  .desktopSave {
+    display: none;
+  }
   .heading h2 {
     font-size: 22px;
   }
@@ -935,6 +941,13 @@
     bottom: 78px;
     padding: 12px;
     gap: 10px;
+  }
+  .saveBar[data-dirty="true"] {
+    position: fixed;
+    left: 14px;
+    right: 14px;
+    bottom: calc(72px + env(safe-area-inset-bottom));
+    z-index: 39;
   }
   .saveBar > div {
     width: 100%;

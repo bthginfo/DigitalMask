@@ -13,7 +13,7 @@ import { assertConversation } from "@/modules/chat/permissions";
 import { prepareConversation } from "@/modules/chat/conversations";
 import { prepareProductionContacts } from "@/modules/people/production-contacts";
 import { maskPlanValue } from "@/modules/mask-plans/model";
-import { validateMaskPlanActors } from "@/modules/mask-plans/service";
+import { maskPlanMemberIdsToValidate, validateMaskPlanActors } from "@/modules/mask-plans/service";
 import { personNameKey } from "@/shared/person-identity";
 import {
   validateDomainCategory,
@@ -110,6 +110,7 @@ async function validateRelations(
   data: RecordData,
   tx: Transaction,
   recordId?: string,
+  previousMaskPlan?: ReturnType<typeof maskPlanValue>,
 ) {
   const production = await assertProject(context, data.productionId, tx);
   const maskPlan = kind === "maskPlans" ? maskPlanValue(data) : undefined;
@@ -124,7 +125,7 @@ async function validateRelations(
   const ids = listValue(data.assigneeIds).concat(
     listValue(data.participantIds),
     listValue(data.memberIds),
-    maskPlan?.lanes.flatMap((lane) => lane.memberIds) || [],
+    maskPlan ? maskPlanMemberIdsToValidate(maskPlan, previousMaskPlan) : [],
   );
   if (ids.length) {
     const valid = await tx
@@ -158,7 +159,7 @@ async function validateRelations(
         );
     }
   }
-  if (maskPlan) await validateMaskPlanActors(context, maskPlan, tx);
+  if (maskPlan) await validateMaskPlanActors(context, maskPlan, tx, previousMaskPlan);
   for (const [field, target] of [
     ["actorId", "actors"],
     ["characterId", "characters"],
@@ -420,7 +421,14 @@ export async function saveRecord(
         .limit(1);
       if (duplicate && !existing) return serialize(duplicate);
     }
-    const related = await validateRelations(context, kind, data, tx, existingId);
+    const related = await validateRelations(
+      context,
+      kind,
+      data,
+      tx,
+      existingId,
+      kind === "maskPlans" && existing ? maskPlanValue(existing.data) : undefined,
+    );
     if (kind === "looks" && (data.sections !== undefined || data.actorName)) {
       data.title = lookTitle(data);
       if (data.sections !== undefined) data.status = "published";

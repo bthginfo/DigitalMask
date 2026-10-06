@@ -295,7 +295,11 @@ export function MaskPlansModule({ production }: { production: DomainRecord }) {
   };
 
   return (
-    <section className={styles.module} aria-label="Maskenpläne dieser Produktion">
+    <section
+      className={styles.module}
+      data-dirty={dirty}
+      aria-label="Maskenpläne dieser Produktion"
+    >
       <header className={styles.heading}>
         <div>
           <h2>Maskenplan</h2>
@@ -327,6 +331,18 @@ export function MaskPlansModule({ production }: { production: DomainRecord }) {
               </select>
             </label>
             <div className={styles.planActions}>
+              {dirty && (
+                <div className={styles.desktopSave}>
+                  <Button
+                    variant="primary"
+                    onClick={() => void savePlan()}
+                    disabled={busy || pending || conflictVisible || !online}
+                  >
+                    <Save size={17} />
+                    Speichern
+                  </Button>
+                </div>
+              )}
               <details className={styles.moreActions}>
                 <summary className="button">
                   <MoreHorizontal size={17} />
@@ -582,7 +598,7 @@ export function MaskPlansModule({ production }: { production: DomainRecord }) {
               )}
             </details>
           )}
-          <footer className={styles.saveBar}>
+          <footer className={styles.saveBar} data-dirty={dirty}>
             <span className={styles.saveStatus} role="status">
               {dirty ? (
                 <>

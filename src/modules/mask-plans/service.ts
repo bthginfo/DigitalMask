@@ -5,13 +5,37 @@ import { records } from "@/platform/db/schema";
 import { HttpError } from "@/platform/http";
 import type { MaskPlanData } from "./schema";
 
+/** Persisted assignments may remain after someone leaves; new assignments still need validation. */
+export function maskPlanMemberIdsToValidate(plan: MaskPlanData, previous?: MaskPlanData) {
+  const lanes = new Map(
+    previous?.productionId === plan.productionId
+      ? previous.lanes.map((lane) => [lane.id, new Set(lane.memberIds)])
+      : [],
+  );
+  return [
+    ...new Set(
+      plan.lanes.flatMap((lane) => lane.memberIds.filter((id) => !lanes.get(lane.id)?.has(id))),
+    ),
+  ];
+}
+
 /** One batch for every linked actor; no reads for free-text appointments. */
 export async function validateMaskPlanActors(
   context: Context,
   plan: MaskPlanData,
   tx: Transaction,
+  previous?: MaskPlanData,
 ) {
-  const ids = [...new Set(plan.blocks.flatMap((block) => block.actorIds))];
+  const blocks = new Map(
+    previous?.productionId === plan.productionId
+      ? previous.blocks.map((block) => [block.id, new Set(block.actorIds)])
+      : [],
+  );
+  const ids = [
+    ...new Set(
+      plan.blocks.flatMap((block) => block.actorIds.filter((id) => !blocks.get(block.id)?.has(id))),
+    ),
+  ];
   if (!ids.length) return;
   const rows = await tx
     .select({
