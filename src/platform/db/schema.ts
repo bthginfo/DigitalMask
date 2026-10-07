@@ -13,6 +13,7 @@ import {
 import { sql } from "drizzle-orm";
 import type { AccentPalette, DomainRecord, RecordData, RecordKind, Role } from "@/shared/contracts";
 import type { DocumentFormat, DocumentMetadata } from "@/modules/documents/contracts";
+import type { WorkingTimeSettings } from "@/shared/working-time";
 export const user = pgTable("app_user", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
@@ -31,6 +32,7 @@ export const profilePreferences = pgTable("profile_preferences", {
   accentPalette: text("accent_palette").$type<AccentPalette>().notNull().default("green"),
   onboardingVersion: integer("onboarding_version").notNull().default(0),
   onboardingCompletedAt: timestamp("onboarding_completed_at", { withTimezone: true }),
+  workingTime: jsonb("working_time").$type<WorkingTimeSettings>(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 export const pushSubscriptions = pgTable(

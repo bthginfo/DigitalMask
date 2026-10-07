@@ -1,4 +1,5 @@
 ﻿"use client";
+import { LinkedText } from "@/components/linked-text";
 import { useState } from "react";
 import { Clock3, MapPin, Pencil, Trash2, Users } from "lucide-react";
 import type { DomainRecord } from "@/shared/contracts";
@@ -105,7 +106,11 @@ export function EventDetail({
                 <MapPin size={14} />
                 Ort
               </dt>
-              <dd>{value(current.data, "location") || "Noch kein Ort eingetragen"}</dd>
+              <dd>
+                <LinkedText>
+                  {value(current.data, "location") || "Noch kein Ort eingetragen"}
+                </LinkedText>
+              </dd>
             </div>
             <div>
               <dt>

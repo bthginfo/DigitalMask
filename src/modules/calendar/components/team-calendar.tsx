@@ -4,11 +4,13 @@ import { ChevronRight, Plus } from "lucide-react";
 import type { DomainRecord, Member, RecordData } from "@/shared/contracts";
 import { ids, instantDate, localDate, value } from "@/shared/client-api";
 import { calendarTeamLanes } from "@/shared/calendar-team";
+import { bavarianHoliday } from "@/shared/bavarian-holidays";
 import type { CalendarBackground } from "@/shared/calendar-categories";
 import { Empty } from "@/components/ui";
 import { calendarDayIndex } from "./day-details";
 import { MobileDaySheet } from "./mobile-day-sheet";
 import { TeamCalendarScroll } from "./team-calendar-scroll";
+import { HolidayLabel } from "./holiday-label";
 import styles from "./mobile-calendar.module.css";
 export type CalendarInstance = {
   id: string;
@@ -113,7 +115,7 @@ export function TeamCalendar({
                     <button
                       className={`team-day-heading ${day === date ? "selected" : ""}`}
                       data-date={date}
-                      aria-label={`${fullDay(date)} · Tagesdetails anzeigen`}
+                      aria-label={`${fullDay(date)}${bavarianHoliday(date) ? ` · ${bavarianHoliday(date)}` : ""} · Tagesdetails anzeigen`}
                       aria-haspopup={mobile ? "dialog" : undefined}
                       onClick={() => {
                         setSelectedDay(date);
@@ -126,6 +128,7 @@ export function TeamCalendar({
                         day: "numeric",
                         ...(!month ? { month: "numeric" as const } : {}),
                       }).format(new Date(`${date}T12:00:00Z`))}
+                      <HolidayLabel date={date} compact={mobile || month} />
                     </button>
                   </th>
                 ))}
@@ -200,6 +203,7 @@ export function TeamCalendar({
         <button type="button" aria-haspopup="dialog" onClick={() => setDaySheetOpen(true)}>
           <span>
             <strong className={styles.summaryTitle}>{fullDay(day)}</strong>
+            <HolidayLabel date={day} />
             <span>
               {selectedCount} {selectedCount === 1 ? "Termin" : "Termine"} · Tagesdetails anzeigen
             </span>
@@ -242,6 +246,7 @@ export function TeamCalendar({
           <div>
             <p className="eyebrow">AUSGEWÄHLTE DIENSTE</p>
             <h3>{fullDay(day)}</h3>
+            <HolidayLabel date={day} />
           </div>
           <label>
             Tag auswählen

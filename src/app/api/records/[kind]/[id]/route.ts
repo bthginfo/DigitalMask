@@ -23,9 +23,9 @@ export async function DELETE(request: Request, { params }: Props) {
     const p = await params;
     const kind = z.enum(recordKinds).parse(p.kind);
     const version = new URL(request.url).searchParams.get("version");
-    const undo = await deleteRecord(await requireContext(true), kind, p.id, {
+    await deleteRecord(await requireContext(true), kind, p.id, {
       ...(version ? { version: z.coerce.number().int().positive().parse(version) } : {}),
     });
-    return NextResponse.json({ ok: true, undo });
+    return NextResponse.json({ ok: true });
   });
 }

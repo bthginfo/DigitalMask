@@ -6,7 +6,6 @@ import { HttpError } from "@/platform/http";
 import { auditChange, emit, scheduleEvents } from "@/platform/events";
 import { findRecord, serialize } from "@/modules/records/repository";
 import { invalidateWorkspace } from "@/modules/records/workspace";
-import { captureRecordOperation } from "@/modules/changes/operations";
 import { acquireWorkflowLock } from "@/modules/workflows/locks";
 import { calendarPresentation } from "@/shared/calendar-categories";
 import { listValue, textValue, type RecordData } from "@/shared/contracts";
@@ -110,7 +109,6 @@ async function insertSwap(context: Context, data: ShiftSwapData, tx: Transaction
     })
     .returning();
   await auditChange(tx, context, "shiftSwaps.created", row.id);
-  await captureRecordOperation(tx, context, undefined, row, { undoable: false });
   return row;
 }
 
@@ -133,7 +131,6 @@ async function updateRow(context: Context, before: Row, data: RecordData, tx: Tr
   if (!after)
     throw new HttpError(409, "Der Eintrag wurde inzwischen geändert. Bitte lade ihn neu.");
   await auditChange(tx, context, `${before.kind}.updated`, after.id);
-  await captureRecordOperation(tx, context, before, after, { undoable: false });
   return after;
 }
 
@@ -390,7 +387,6 @@ async function approveCalendarSwap(context: Context, swap: ShiftSwapData, tx: Tr
           },
         })
         .returning();
-      await captureRecordOperation(tx, context, undefined, replacement, { undoable: false });
       await auditChange(tx, context, "events.created", replacement.id);
       resultIds.push(replacement.id);
     } else {

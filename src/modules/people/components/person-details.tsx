@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { LinkedText } from "@/components/linked-text";
 import { Building2, Pencil, Trash2 } from "lucide-react";
 import { Button, ErrorMessage, Modal } from "@/components/ui";
 import { PersonRelationships } from "@/components/record-relationships";
@@ -87,7 +88,9 @@ export function PersonDetails({
               {textValue(current.data.notes) && (
                 <div>
                   <dt>Notizen</dt>
-                  <dd>{textValue(current.data.notes)}</dd>
+                  <dd>
+                    <LinkedText>{textValue(current.data.notes)}</LinkedText>
+                  </dd>
                 </div>
               )}
             </dl>

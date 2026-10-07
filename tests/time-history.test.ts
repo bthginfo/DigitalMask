@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
-import type { DomainRecord } from "../src/shared/contracts";
-import { groupBookingWeeks, isoWeek, periodForWeek } from "../src/modules/time-tracking/history";
+import type { DomainRecord, Member } from "../src/shared/contracts";
+import {
+  groupBookingPeople,
+  groupBookingWeeks,
+  isoWeek,
+  periodForWeek,
+} from "../src/modules/time-tracking/history";
 import { splitAcrossDays } from "../src/modules/time-tracking/rules";
 
 const record = (id: string, data: Record<string, unknown>, kind: "attendance" | "time" = "time") =>
@@ -71,6 +76,62 @@ describe("cached editable weekly history", () => {
     expect(groupBookingWeeks([attendance], { userId: "mara" })[0].entries[0].record).toBe(
       attendance,
     );
+  });
+  it("totals all loaded owners and groups clipped hours by person, retaining former staff", () => {
+    const records = [
+      record("mara-overnight", {
+        productionId: "p",
+        dayAllocations: splitAcrossDays("2026-07-31T23:00+02:00", "2026-08-01T01:00+02:00"),
+      }),
+      record("nora-current", {
+        userId: "nora",
+        date: "2026-08-01",
+        durationSeconds: 7200,
+        productionId: "p",
+      }),
+      record("former-current", {
+        userId: "former",
+        date: "2026-08-02",
+        durationSeconds: 1800,
+        productionId: "p",
+      }),
+      record("outside-project", {
+        userId: "nora",
+        date: "2026-08-01",
+        durationSeconds: 999,
+        productionId: "q",
+      }),
+      record("outside-period", {
+        userId: "nora",
+        date: "2026-07-31",
+        durationSeconds: 999,
+        productionId: "p",
+      }),
+    ];
+    const week = groupBookingWeeks(records, {
+      userId: undefined,
+      productionId: "p",
+      period: { season: "2026/2027" },
+    })[0];
+    expect(week.seconds).toBe(12600);
+    const members = [
+      { id: "mara", name: "Mara", status: "active" },
+      { id: "nora", name: "Nora", status: "disabled" },
+    ] as Member[];
+    const groups = groupBookingPeople(week.entries, members);
+    expect(groups.map(({ userId, seconds, former }) => ({ userId, seconds, former }))).toEqual([
+      { userId: "former", seconds: 1800, former: true },
+      { userId: "mara", seconds: 3600, former: false },
+      { userId: "nora", seconds: 7200, former: true },
+    ]);
+    expect(groups.reduce((sum, group) => sum + group.seconds, 0)).toBe(week.seconds);
+    expect(
+      groupBookingWeeks(records, {
+        userId: "mara",
+        productionId: "p",
+        period: { season: "2026/2027" },
+      })[0].seconds,
+    ).toBe(3600);
   });
   it("aligns active filters to a week and clears boundary filters that would hide its days", () => {
     expect(periodForWeek({ season: "2026/2027", year: 2026 }, "2025-11-10")).toEqual({

@@ -406,37 +406,15 @@ test("real database workflows, permissions and booking integrity", async () => {
     const noTimers = await (await member.get("/api/workspace")).json();
     expect(noTimers.timer).toBeNull();
     expect(noTimers.attendanceTimer).toBeNull();
-    const submitted = await member.post("/api/actions", {
-      data: { action: "timesheet-submit", data: { week: "2026-09-28" } },
-    });
-    expect(submitted.status(), await submitted.text()).toBe(200);
-    const sheet = await submitted.json();
-    expect(
-      (
-        await admin.post("/api/actions", {
-          data: { action: "timesheet-decide", id: sheet.id, data: { status: "approved" } },
-        })
-      ).status(),
-    ).toBe(200);
     expect(
       (
         await member.patch(`/api/records/time/${row.id}`, {
           data: { version: row.version, data: { date: "2026-10-06", start: "", end: "" } },
         })
       ).status(),
-    ).toBe(409);
-    expect((await member.delete(`/api/records/time/${row.id}`)).status()).toBe(409);
-    expect(
-      (
-        await admin.post("/api/actions", {
-          data: {
-            action: "timesheet-decide",
-            id: sheet.id,
-            data: { status: "changes_requested", note: "QA Korrektur" },
-          },
-        })
-      ).status(),
     ).toBe(200);
+    expect((await member.delete(`/api/records/time/${row.id}`)).status()).toBe(200);
+    expect((await (await member.get("/api/workspace")).json()).records.timesheets).toEqual([]);
     const leave = await member.post("/api/records/leave", {
       data: { data: { start: "2026-12-21", end: "2026-12-21", reason: "QA" } },
     });

@@ -35,11 +35,6 @@ import {
   returnToContext,
   setNavigationUser,
 } from "@/shared/client-navigation";
-import {
-  ChangesButton,
-  UndoStrip,
-  WorkspaceChanges,
-} from "@/modules/changes/components/workspace-changes";
 import { subscribeLocation, subscribeMobile } from "@/shared/client-storage";
 import { onboardingVersion, type DomainRecord, type RecordKind } from "@/shared/contracts";
 import { initials, post, value } from "@/shared/client-api";
@@ -463,7 +458,6 @@ export function WorkspaceShell() {
               <Search size={19} />
             </button>
             <ThemeSwitch />
-            <ChangesButton compact />
             <button
               className="icon-button notification-button"
               onClick={() => setNotificationOpen(true)}
@@ -536,8 +530,6 @@ export function WorkspaceShell() {
           </button>
         </div>
       )}
-      <UndoStrip />
-      <WorkspaceChanges />
       {searchOpen && (
         <Modal
           title="Im Arbeitsraum suchen"

@@ -74,6 +74,10 @@ export function SheetEditor({
     void revision;
     return createSheetCalculator(sheets, info);
   }, [sheets, info, revision]);
+  const arrayAnchor = sheet
+    ? calculator.arrayAnchor(sheet.id, selected.row, selected.column)
+    : undefined;
+  const arrayOutput = Boolean(arrayAnchor && arrayAnchor !== cell);
   const undo = useMemo(
     () =>
       new Y.UndoManager([sheets, dimensions], {
@@ -94,7 +98,7 @@ export function SheetEditor({
     target?.scrollIntoView({ block: "nearest", inline: "nearest" });
   }, [cell, page, sheetId]);
   const commit = () => {
-    if (!dirty.current || !editable || !current) return;
+    if (!dirty.current || !editable || arrayOutput || !current) return;
     doc.transact(() => current.set(cell, draft), SHEET_EDIT);
     dirty.current = false;
   };
@@ -162,6 +166,21 @@ export function SheetEditor({
     if (values.some((line) => line.some((value) => value.length > 4000))) {
       setError(
         "Eine eingefügte Zelle enthält mehr als 4.000 Zeichen. Kürze diesen Zellwert und versuche es erneut.",
+      );
+      return;
+    }
+    if (
+      values.some((line, r) =>
+        line.some((_value, c) => {
+          const row = selected.row + r,
+            column = selected.column + c;
+          const anchor = calculator.arrayAnchor(sheet!.id, row, column);
+          return anchor && anchor !== cellKey(row, column);
+        }),
+      )
+    ) {
+      setError(
+        "Dieser Bereich enthält berechnete Array-Ergebnisse. Bearbeite die Ausgangsformel oder öffne die Datei in Excel.",
       );
       return;
     }
@@ -268,7 +287,7 @@ export function SheetEditor({
           ref={input}
           aria-label={`Zelle ${columnName(selected.column)}${selected.row} bearbeiten`}
           value={draft}
-          disabled={!editable}
+          disabled={!editable || arrayOutput}
           maxLength={4000}
           placeholder="Wert oder =Formel eingeben"
           onChange={(event) => {
@@ -294,12 +313,21 @@ export function SheetEditor({
           className="document-tool"
           aria-label="Zellwert übernehmen"
           title="Zellwert übernehmen"
-          disabled={!editable}
+          disabled={!editable || arrayOutput}
           onClick={commit}
         >
           <Check size={18} />
         </button>
       </div>
+      {(raw.startsWith("=") || arrayAnchor) &&
+        calculator.hasError(sheet.id, selected.row, selected.column) && (
+          <p className="small muted" role="status">
+            {arrayOutput
+              ? "Diese Zelle ist das Ergebnis einer Array-Formel. Bearbeite ihre Ausgangszelle oder nutze Excel. "
+              : "Diese Formel bleibt erhalten. "}
+            Das Ergebnis wird beim Öffnen der heruntergeladenen Datei in Excel neu berechnet.
+          </p>
+        )}
       <ErrorMessage message={error} />
       <SheetGrid
         sheet={sheet}
@@ -309,7 +337,11 @@ export function SheetEditor({
         layout={layout}
         selected={selected}
         grid={grid}
-        display={(row, column) => displayCell(calculator(sheet.id, row, column))}
+        display={(row, column) =>
+          calculator.needsExcel(sheet.id, row, column)
+            ? "Excel berechnet"
+            : displayCell(calculator(sheet.id, row, column))
+        }
         onSelect={selectCell}
         onNavigate={navigate}
         onPaste={paste}
@@ -334,7 +366,7 @@ export function SheetEditor({
         ))}
         <button
           className="sheet-edit-selected"
-          disabled={!editable}
+          disabled={!editable || arrayOutput}
           onClick={() => input.current?.focus()}
         >
           <Pencil size={15} /> Zelle bearbeiten

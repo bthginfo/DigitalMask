@@ -7,7 +7,6 @@ import { HttpError } from "@/platform/http";
 import { emit, auditChange, scheduleEvents } from "@/platform/events";
 import { localDay } from "@/modules/time-tracking/rules";
 import { validateBooking } from "@/modules/time-tracking/validation";
-import { reopenCorrectedWeeks } from "@/modules/time-tracking/corrections";
 import { occurrences } from "@/modules/calendar/occurrences";
 import { assertConversation } from "@/modules/chat/permissions";
 import { prepareConversation } from "@/modules/chat/conversations";
@@ -31,7 +30,6 @@ import { validateRecord } from "./schemas";
 import { applySeasonDefaults } from "./season-defaults";
 import { findRecord, assertProject, serialize } from "./repository";
 import { invalidateWorkspace } from "./workspace";
-import { captureRecordOperation } from "@/modules/changes/operations";
 import { acquireWorkflowLock } from "@/modules/workflows/locks";
 import {
   validateReservation,
@@ -326,9 +324,6 @@ export async function saveRecord(
   options: {
     deferEffects?: boolean;
     transaction?: Transaction;
-    skipCapture?: boolean;
-    undo?: boolean;
-    replaceData?: boolean;
   } = {},
 ) {
   let eventQueued = false;
@@ -345,11 +340,7 @@ export async function saveRecord(
     if (existing) await assertRead(context, existing, tx);
     const data = validateRecord(
       kind,
-      applySeasonDefaults(
-        kind,
-        { ...(options.replaceData ? {} : existing?.data), ...input },
-        existing?.createdAt.toISOString(),
-      ),
+      applySeasonDefaults(kind, { ...existing?.data, ...input }, existing?.createdAt.toISOString()),
     );
     if (kind === "reservations") await validateReservation(context, data, tx, existingId, existing);
     if (kind === "materials") await validateMaterialCapacity(context, data, tx, existingId);
@@ -418,13 +409,11 @@ export async function saveRecord(
           409,
           "Genehmigte Freiwünsche werden über die Adminentscheidung geändert.",
         );
-      data.status = options.undo
-        ? input.status
-        : existing
-          ? input.status === "withdrawn"
-            ? "withdrawn"
-            : existing.data.status
-          : "pending";
+      data.status = existing
+        ? input.status === "withdrawn"
+          ? "withdrawn"
+          : existing.data.status
+        : "pending";
     }
     if (kind === "templates" && existing) data.version = Number(existing.data.version || 1) + 1;
     if (kind === "calendarCategories") await validateCalendarCategory(context, data, tx, existing);
@@ -504,11 +493,7 @@ export async function saveRecord(
         })
         .returning();
     }
-    if (kind === "time") await reopenCorrectedWeeks(context, tx, existing?.data, row.data);
     await auditChange(tx, context, existing ? `${kind}.updated` : `${kind}.created`, row.id);
-    const undo = options.skipCapture
-      ? undefined
-      : await captureRecordOperation(tx, context, existing, row);
     if (kind === "looks" || kind === "templates")
       await tx
         .insert(recordHistory)
@@ -600,7 +585,7 @@ export async function saveRecord(
       });
       eventQueued = true;
     }
-    return { ...serialize(row), ...(undo ? { undo } : {}) };
+    return serialize(row);
   };
   const result = options.transaction
     ? await write(options.transaction)
@@ -615,7 +600,7 @@ export async function deleteRecord(
   context: Context,
   kind: RecordKind,
   id: string,
-  options: { transaction?: Transaction; skipCapture?: boolean; version?: number } = {},
+  options: { transaction?: Transaction; version?: number } = {},
 ) {
   let eventQueued = false;
   const write = async (tx: Transaction) => {
@@ -665,26 +650,11 @@ export async function deleteRecord(
           sql`${records.data}->>'recordId'=${id}`,
         ),
       );
-    const history = ["looks", "templates"].includes(kind)
-      ? await tx.select().from(recordHistory).where(eq(recordHistory.recordId, id))
-      : [];
-    const undo = options.skipCapture
-      ? undefined
-      : await captureRecordOperation(tx, context, row, undefined, { payload: { history } });
-    if (undo && attachments.length)
-      await emit(
-        tx,
-        context,
-        "RecordDeletionFinalizedV1",
-        { recordId: id, operationId: undo.id },
-        { availableAt: new Date(undo.expiresAt) },
-      );
-    if (!undo)
-      for (const file of attachments)
-        await emit(tx, context, "FileDeletionRequestedV1", {
-          path: file.data.path,
-          fileId: file.id,
-        });
+    for (const file of attachments)
+      await emit(tx, context, "FileDeletionRequestedV1", {
+        path: file.data.path,
+        fileId: file.id,
+      });
     eventQueued = attachments.length > 0;
     if (kind === "productions")
       await tx
@@ -698,15 +668,13 @@ export async function deleteRecord(
         );
     await tx
       .delete(records)
-      .where(inArray(records.id, [id, ...(undo ? [] : attachments.map((f) => f.id))]));
-    if (kind === "time") await reopenCorrectedWeeks(context, tx, row.data);
+      .where(inArray(records.id, [id, ...attachments.map((file) => file.id)]));
     await auditChange(tx, context, `${kind}.deleted`, id);
-    return undo;
   };
-  const undo = options.transaction ? await write(options.transaction) : await db.transaction(write);
+  if (options.transaction) await write(options.transaction);
+  else await db.transaction(write);
   if (!options.transaction) {
     invalidateWorkspace(context.departmentId);
     if (eventQueued) scheduleEvents();
   }
-  return undo;
 }

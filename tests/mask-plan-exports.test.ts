@@ -91,7 +91,7 @@ describe("mask-plan exports", () => {
     expect(text).toContain("'=HYPERLINK(1)");
     expect(text).toContain("Ins Studio rüber");
   });
-  it("builds a printable timetable plus numeric block data and preserves overlapping labels", async () => {
+  it("builds four compact timetable copies with overlapping blocks beside one another", async () => {
     const input = fixture("xlsx");
     const blocks = input.records[0].data.blocks as {
       id: string;
@@ -111,22 +111,20 @@ describe("mask-plan exports", () => {
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(Buffer.from(result.bytes) as never);
     const sheet = workbook.getWorksheet("Plan 1")!;
-    expect(sheet.pageSetup.orientation).toBe("landscape");
-    expect(sheet.pageSetup.printTitlesRow).toBe("1:4");
+    expect(sheet.pageSetup.orientation).toBe("portrait");
     expect(sheet.pageSetup.fitToWidth).toBe(1);
-    expect(sheet.getCell("B4").value).toBe("Maske\nJules / Janine");
+    expect(sheet.pageSetup.fitToHeight).toBe(1);
+    expect(sheet.getCell("B2").value).toBe("Jules / Janine");
     const values: string[] = [];
     sheet.eachRow((row) => row.eachCell((cell) => values.push(String(cell.value || ""))));
     expect(values.join(" ")).toContain("Parallel");
     expect(values.join(" ")).toContain("Ben E. / Michael A.");
     expect(values.join(" ")).toContain("0 · Beginn");
-    const data = workbook.getWorksheet("Ablauf")!;
-    expect(data.getCell("G2").value).toBe(-60);
-    expect(data.getCell("H2").value).toBe(-30);
-    expect(data.getCell("I2").value).toBe(30);
-    expect(data.getCell("J2").value).toBe("18:30");
+    expect(workbook.worksheets).toHaveLength(1);
+    expect(sheet.getCell("A3").value).toBe("-60\n18:30");
+    expect(sheet.pageSetup.printArea).toMatch(/^A1:/);
   });
-  it("prints the ordinary one-hour plan on one A4 landscape page with staff, actors and curtain", async () => {
+  it("prints four whole quarter-sheet plans on one A4 page without report headers or redundant lists", async () => {
     const result = await buildExport(fixture("pdf"));
     const { getDocument } = await import("pdfjs-dist/legacy/build/pdf.mjs");
     const task = getDocument({ data: result.bytes.slice(), ...pdfOptions });
@@ -134,7 +132,8 @@ describe("mask-plan exports", () => {
     expect(pdf.numPages).toBe(1);
     const page = await pdf.getPage(1),
       viewport = page.getViewport({ scale: 1 });
-    expect(viewport.width).toBeGreaterThan(viewport.height);
+    expect(viewport.width).toBeCloseTo(595.28, 0);
+    expect(viewport.height).toBeCloseTo(841.89, 0);
     const content = await page.getTextContent();
     const text = content.items.flatMap((item) => ("str" in item ? [item.str] : [])).join(" ");
     for (const expected of [
@@ -145,19 +144,22 @@ describe("mask-plan exports", () => {
       "Ins Studio rüber",
       "0 · Beginn",
       "19:30",
-      "Seite 1 von 1",
     ])
       expect(text).toContain(expected);
+    expect(text.split("Jules / Janine")).toHaveLength(5);
+    expect(text).not.toContain("Vollständiger Ablauf");
+    expect(text).not.toContain("Stadttheater Ingolstadt");
+    expect(text).not.toContain("Seite 1");
     for (const item of content.items)
       if ("str" in item && item.str.trim()) {
-        expect(item.transform[4]).toBeGreaterThanOrEqual(25);
-        expect(item.transform[4] + item.width).toBeLessThanOrEqual(viewport.width - 24);
-        expect(item.transform[5]).toBeGreaterThanOrEqual(23);
-        expect(item.transform[5]).toBeLessThan(viewport.height - 20);
+        expect(item.transform[4]).toBeGreaterThanOrEqual(17);
+        expect(item.transform[4] + item.width).toBeLessThanOrEqual(viewport.width - 17);
+        expect(item.transform[5]).toBeGreaterThanOrEqual(17);
+        expect(item.transform[5]).toBeLessThan(viewport.height - 16);
       }
     await task.destroy();
   }, 60_000);
-  it("paginates many lanes and long windows and keeps complete notes in the printable details", async () => {
+  it("keeps six lanes and a longer window on the same compact print and omits the notes appendix", async () => {
     const input = fixture("pdf");
     const plan = input.records[0].data;
     plan.windowMinutes = 120;
@@ -175,7 +177,7 @@ describe("mask-plan exports", () => {
     const { getDocument } = await import("pdfjs-dist/legacy/build/pdf.mjs");
     const task = getDocument({ data: result.bytes.slice(), ...pdfOptions });
     const pdf = await task.promise;
-    expect(pdf.numPages).toBeGreaterThanOrEqual(5);
+    expect(pdf.numPages).toBe(1);
     const text: string[] = [];
     for (let index = 1; index <= pdf.numPages; index++) {
       const page = await pdf.getPage(index),
@@ -184,18 +186,14 @@ describe("mask-plan exports", () => {
       for (const item of content.items)
         if ("str" in item && item.str.trim()) {
           text.push(item.str);
-          expect(item.transform[4] + item.width).toBeLessThanOrEqual(viewport.width - 24);
-          expect(item.transform[5]).toBeGreaterThanOrEqual(23);
+          expect(item.transform[4] + item.width).toBeLessThanOrEqual(viewport.width - 17);
+          expect(item.transform[5]).toBeGreaterThanOrEqual(17);
         }
     }
-    for (const expected of [
-      "Platz 6",
-      "Irina K.",
-      "Ins Studio rüber",
-      endMarker,
-      "Vollständiger Ablauf",
-    ])
+    for (const expected of ["Platz 6", "Irina K.", "Ins Studio rüber"])
       expect(text.join(" ")).toContain(expected);
+    expect(text.join(" ")).not.toContain(endMarker);
+    expect(text.join(" ")).not.toContain("Vollständiger Ablauf");
     await task.destroy();
   });
 });

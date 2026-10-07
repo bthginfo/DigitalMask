@@ -35,6 +35,8 @@ export interface SheetInfo {
   heights?: number[];
   styles?: SheetCellStyle[];
   cellStyles?: Record<string, number>;
+  /** Array/spill outputs are Excel-calculated, not independent editable input values. */
+  formulaArrays?: { anchor: string; ref: string; formula: string }[];
 }
 export interface DocumentMetadata {
   sourceName: string;

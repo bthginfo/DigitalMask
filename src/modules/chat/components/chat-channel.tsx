@@ -1,5 +1,6 @@
 ﻿"use client";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { LinkedText } from "@/components/linked-text";
 import {
   FilePlus2,
   Download,
@@ -280,7 +281,9 @@ export function ChatChannel({
                       </time>
                       {message.version > 1 && <span className="small muted">bearbeitet</span>}
                     </header>
-                    <p>{value(message.data, "text")}</p>
+                    <p>
+                      <LinkedText>{value(message.data, "text")}</LinkedText>
+                    </p>
                     {attached.map((file) => (
                       <DocumentAttachment key={file.id} file={file} compact />
                     ))}

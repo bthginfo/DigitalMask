@@ -1,17 +1,33 @@
 # Umsetzungsstand
 
-## Kontext, Änderungen, Rückgängig und Teamabläufe
+## Aktuelle Ergänzungen: Zeiten, Druckpläne und Bedienung
+
+- [x] Produktionszeiten für Admins mit Auswahl „Alle“ je Person aufteilen, einschließlich älterer Wochen und Export.
+- [x] Zeiten direkt speichern, ohne wöchentliches Einreichen oder Freigabe.
+- [x] Allgemeines Nachtragen mit heutigem Datum beginnen; gezielt gewählte Tage übernehmen und den Wochenkontext erst nach Speichern wechseln.
+- [x] Änderungsverlauf und allgemeines Rückgängig entfernen; Kontextnavigation und normales Dokument-Rückgängig erhalten. Keine historischen Produktivdaten löschen.
+- [x] Gespeicherte Maskenpläne kompakt und vollständig darstellen; Bearbeitungsansicht weiterhin großzügig.
+- [x] Maskenplan als vier vollständige kleine Tabellen auf A4 ausgeben, ohne doppelte Ablauf-/Hinweislisten oder Berichtskopf.
+- [x] Kalender-Excel an Lenas Vorlage anpassen: 35-pt-Zeilen, Calibri 11/12/14, feste Breiten, Außenrahmen, Ränder und 74-%-Druckmaßstab. PDF mit entsprechenden Proportionen und vollflächigen Farben; lange Inhalte fortsetzen statt abschneiden.
+- [x] Eingegebene Weblinks in Chats, Detailfeldern, Aufschrieben, Notizen und weiteren Lesebereichen sicher anklickbar machen.
+- [x] Excel-Formeln bei gemeinsamem Bearbeiten und Herunterladen erhalten; geteilte Formeln und besondere Array-/Spill-Funktionen berücksichtigen, statt alte Ergebnisse als neue Berechnung auszugeben.
+- [x] Bayerische Feiertage für Ingolstadt dezent in allen Kalenderansichten anzeigen; kein Blockieren, kein zusätzlicher Termineintrag und keine automatische Zeitgutschrift.
+- [x] Wochenstunden und sechs Solltage im Profil hinterlegen, für Admins auch bei Kolleginnen. Startsaldo und datierte Solländerungen berücksichtigen.
+- [x] Stundenkonto aus Anwesenheit separat von Produktionszeiten berechnen; Urlaub/Krank anteilig anrechnen, ABF/Ruhetag/halben freien Tag nicht. Gesamt, Woche, Monat und Zeitraum anzeigen.
+- [x] Fokussierte Druck-/Mobilprüfung, Typprüfung, Lint und 64 Fachtests bestehen; additive Migration 0013 einspielen und das Release für GitHub/Vercel vorbereiten.
+
+Die unabhängige Prüfung auf Handy und Desktop ist bestanden. Wochen-/Monatsdruckpläne und vier Maskenplan-Kopien wurden als echte A4-PDFs geprüft und visuell kontrolliert. Migration 0013 ergänzt ausschließlich die Profileinstellungen um die Wochenstunden. Produktionsbuild und Live-Domain werden nach dem Push gegen den veröffentlichten Commit geprüft.
+
+## Kontextnavigation und Teamabläufe
 
 - [x] Rücknavigation und Browser-Zurück mit Produktionsreiter, Zeitraum, Suche, Sortierung, Filtern und Scrollposition erhalten.
-- [x] Lesbare Änderungen seit dem letzten Besuch mit Person, Zeitpunkt, konkretem Vorher/Nachher und passender Verlinkung anzeigen.
-- [x] Den letzten eigenen Daten-Schritt kurzzeitig rückgängig machen, einschließlich Löschung; Versionskonflikte und aktuelle Rechte prüfen, kein Papierkorb.
 - [x] Perücken und andere Fundusartikel nach Zeitraum und Menge reservieren; Verfügbarkeit, Bearbeitung, Stornierung und Überschneidungen sicher prüfen.
 - [x] Diensttausch mit Zustimmung beider Beteiligten und anschließender Adminfreigabe anlegen; Kalender erst nach atomarer Konfliktprüfung ändern.
 - [x] Hilfe, passende Exporte und fokussierte Fach-/Browserprüfungen ergänzen, Migration und Produktionsbuild prüfen und das Releasepaket vorbereiten; temporäre Prüfdaten entfernen.
 
-Neue Planungseinträge verwenden den vorhandenen Record-Speicher, Cache und Live-Signale. Navigation und Ansichtsfilter bleiben lokal; Änderungsverlauf und Rückgängig werden ohne regelmäßige Datenbankabfragen aufgebaut.
+Neue Planungseinträge verwenden den vorhandenen Record-Speicher, Cache und Live-Signale. Navigation, Ansichtsfilter und Stundenkontoberechnung bleiben lokal. Wochenstunden werden in den bestehenden gebündelten Mitgliederabfragen geladen.
 
-Rückgängig ist zwei Minuten für eigene Änderungen verfügbar. Veränderte Versionen und aktuelle Rechte verhindern das Überschreiben fremder Arbeit. Dateirecords und gemeinsame Dokumentstände bleiben bis zum Ablauf erhalten; die vorhandene Outbox bereinigt sie anschließend. Der lesbare Verlauf enthält höchstens 100 sichtbare Änderungen je Abruf aus den letzten 30 Tagen, mit explizitem Gesehen-Markieren. Die unabhängige Oberflächenprüfung ist für Desktop, Tablet und 375/390-px-Mobilansichten in beiden Themes bestanden.
+Dateilöschungen verwenden die vorhandene Outbox zur Speicherbereinigung. Bereits eingereihte ältere Löschaufträge bleiben ausführbar. Audit- und Live-Ereignisse bleiben erhalten; zusätzliche Rückgängig-Snapshots und Verlaufsabfragen entfallen.
 
 Lint, Typprüfung, Produktionsbuild und Migration 0012 sind bestanden. 276 Fachtests sind geprüft; eine bestehende lange PDF-Prüfung überschritt unter paralleler Last ihr Zeitlimit und ist danach einzeln bestanden. Temporäre Aufgaben-/Browserfixtures sind entfernt, ohne künstliche Produktionsdaten anzulegen. Zwei reine Ergebnisvorschauen bleiben im ignorierten Artefaktordner.
 
@@ -39,14 +55,14 @@ Die unabhängige Designprüfung ist bestanden. Die gezielten Browserprüfungen d
 ## Teamkalender: platzsparende PDF- und Excel-Druckpläne
 
 - [x] PDF-Kopf auf die Kalenderwoche reduzieren; Titel und Zeiten sämtlicher Termine direkt im Raster mit vollflächigen Farben drucken, ohne Agenda-Zähler oder gekürzte Titel.
-- [x] Teammonat nach Möglichkeit mit zwei vollständigen KWs pro A4-Querformatseite drucken; dicht belegte Wochen und außergewöhnlich lange Inhalte ohne Datenverlust auf weitere Rasterseiten aufteilen.
+- [x] Teammonat als zwei Monatshälften in A4-Querformat drucken; einheitliche Schriftgrößen und vollständige Inhalte erhalten. Dichte Belegung wird auf weitere Rasterseiten aufgeteilt.
 - [x] Excel-Teammonat als farbige Monatsmatrix mit Personen links und zwei Monatshälften untereinander ausgeben; keine Agenda als Hauptdarstellung. Mehrere Termine erhalten getrennte farbige Zellen, Namen bleiben links fixiert.
 - [x] Anleitung und Exportdokumentation angleichen; vorhandene Prüfungen auf die vollständigen Druckpläne umstellen und einen echten Fünf-Personen-/Zwei-KW-Export prüfen.
 - [x] Erzeugte PDF-Seiten visuell prüfen, gezielte Exportprüfungen und Produktionsbuild bestehen und das Releasepaket vorbereiten.
 
 Die Exportmodule arbeiten weiterhin ausschließlich mit dem bereits autorisierten Daten-Snapshot und benötigen weder zusätzliche Datenbankabfragen noch externe Schrift- oder Bildabrufe.
 
-Drei gezielte Exportfälle prüfen die Personenauswahl, sämtliche 31 Tage bei 13 Personen sowie fünf Mitarbeitende plus Gästespalte und zwei KWs auf einer A4-Querformatseite. PDF-Inhalte, Seitenmaße und die tatsächliche Excel-Datei mit 70 gefärbten Termineinträgen sind geprüft; die erzeugten PDF-Seiten wurden auch visuell kontrolliert. Der ergänzende lokale Office-Druckstart war nicht verfügbar und ist keine Voraussetzung für den Export. Das veröffentlichte Release wird vor Abschluss gegen den Git-Stand geprüft; temporäre Browserdaten, Arbeitsmappen und Rohbilder werden anschließend entfernt.
+Drei gezielte Exportfälle prüfen die Personenauswahl, sämtliche 31 Tage bei 13 Personen sowie fünf Mitarbeitende plus Gästespalte über beide Monatshälften. PDF-Inhalte, A4-Seitenmaße und die tatsächliche Excel-Datei mit 70 gefärbten Termineinträgen sind geprüft; die erzeugten PDF-Seiten wurden auch visuell kontrolliert. Die spätere Anpassung an Lenas Excel-Vorlage verwendet einheitliche Monatshälften statt gepaarter Wochen. Der ergänzende lokale Office-Druckstart war nicht verfügbar und ist keine Voraussetzung für den Export. Das veröffentlichte Release wird vor Abschluss gegen den Git-Stand geprüft; temporäre Browserdaten, Arbeitsmappen und Rohbilder werden anschließend entfernt.
 
 ## Maskenplan: Speicher-Hotfix und kompakte Tabelle
 
@@ -208,7 +224,7 @@ Die Bereitstellung erfolgt nach den Releaseprüfungen über GitHub und die beste
 ## Zeitkorrekturen und Kalenderauswahl
 
 - [x] Produktionszeiten und Anwesenheit für alle Rollen nachträglich bearbeiten; eigene Buchungen für Mitglieder, fremde Buchungen für Admins.
-- [x] Geänderte Produktionszeiten öffnen betroffene eingereichte/freigegebene Wochen automatisch zur erneuten Prüfung; Konflikte mit veralteten Freigaben abfangen.
+- [x] Zeitkorrekturen werden direkt gespeichert; eine erneute Wochenfreigabe ist nicht erforderlich.
 - [x] Beim Nachtragen das Enddatum zunächst am gewählten Starttag halten; ausdrücklich abweichende Enddaten erhalten.
 - [x] Persönlicher Kalender beginnt mit der eigenen Person; leere Auswahl zeigt keine Einträge, „Alle anzeigen“ ist ausdrücklich auswählbar.
 - [x] Teamansicht beginnt mit allen aktiven Teammitgliedern; danach die vorherige persönliche Auswahl wiederherstellen. Exporte übernehmen dieselbe Auswahl.
@@ -219,7 +235,7 @@ Die Bereitstellung erfolgt nach den Releaseprüfungen über GitHub und die beste
 - [x] Freigegebene Teammitglieder können gemeinsame Produktionen, Kontakte, Schauspieler, Figuren, Besetzungen, Aufgaben, Sprints, Aufschriebe und Vorlagen verwalten.
 - [x] Gemeinsame Rechte in Frontend und Backend; Produktionszugriff, private Entwürfe und persönliche Zeitbuchungen weiter schützen.
 - [x] Eigene Kalenderplanung für Teammitglieder; Kalender anderer Personen und Gruppentermine ausschließlich für Admins.
-- [x] Kategorien, Benutzerverwaltung und Freigaben für Freiwünsche und Wochen bleiben Adminaufgaben.
+- [x] Kategorien, Benutzerverwaltung und Freigaben für Freiwünsche bleiben Adminaufgaben.
 - [x] Hilfe, FAQ, Einführung und Architektur beschreiben die neuen Rechte.
 
 ## Rückmeldungen von Lena und zusätzliche Teamkanäle

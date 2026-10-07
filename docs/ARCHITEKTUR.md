@@ -192,7 +192,7 @@ Ein Timer startet für eine ausgewählte Tätigkeit. Er bleibt beim Seitenwechse
 
 Buchungen mit Start und Ende dürfen sich für dieselbe Person nicht überlappen. Pausen werden ausdrücklich erfasst und nicht stillschweigend abgezogen. Buchungen nur mit Dauer sind als solche erkennbar und werden nicht mit erfundenen Uhrzeiten in den Kalender gesetzt. Doppelte Requests werden durch Idempotenzschlüssel abgefangen. Bei Uhrzeitbuchungen über Mitternacht werden die Sekunden korrekt auf lokale Tage verteilt; Sommerzeitwechsel sind Teil der Tests.
 
-Die persönliche Wochenansicht zeigt Tage, Tätigkeiten und Projekte sowie Tages- und Wochensummen. Projektberichte gruppieren nach Person, Zeitraum und Tätigkeitskategorie. Allgemeine Tätigkeiten zählen zur persönlichen Gesamtarbeitszeit, aber nicht zu Produktionsstunden. Produktionssumme und Gesamtarbeitszeit bleiben getrennt sichtbar. Beispielsweise sind 1,75 Stunden exakt 1 Stunde 45 Minuten. Korrekturen bleiben nachvollziehbar; ein optionaler Wochenfreigabeprozess kann später Buchungen sperren.
+Die persönliche Wochenansicht zeigt Tage, Tätigkeiten und Projekte sowie Tages- und Wochensummen. Projektberichte gruppieren nach Person, Zeitraum und Tätigkeitskategorie. Allgemeine Tätigkeiten zählen zur persönlichen Gesamtarbeitszeit, aber nicht zu Produktionsstunden. Produktionssumme und Gesamtarbeitszeit bleiben getrennt sichtbar. Beispielsweise sind 1,75 Stunden exakt 1 Stunde 45 Minuten. Buchungen werden direkt gespeichert und bleiben mit den bestehenden Eigentümer- und Rollenrechten bearbeitbar; eine Wochenfreigabe ist nicht vorgesehen.
 
 ## Kommunikation und Dateien
 
@@ -249,7 +249,7 @@ Diese Punkte sind Vorschläge und gehören erst nach Auswahl zum Umfang:
 1. Material- und Perückenbestand mit Lagerort, Figurenzuordnung, Mindestbestand und Einkaufsbedarf.
 2. Wiederaufnahmen durch Kopieren einer Produktion einschließlich Figuren und versionierter Aufschriebe.
 3. Benachrichtigungen bei Aufgabenzuweisung, Freiwunschentscheidung und geänderten Diensten; Push oder E-Mail als spätere Kanäle.
-4. Wochenfreigabe für Zeiten durch Admins, mit Korrekturanfrage und gesperrten abgeschlossenen Zeiträumen.
+4. Direkte Zeitbuchung ohne Wochenfreigabe; bestehende Buchungen bleiben korrigierbar.
 5. Dienstübergaben und Checklisten pro Vorstellung, einschließlich offener Probleme.
 6. Globaler Suchzugang für Figuren, Schauspieler, Aufgaben und Aufschriebe.
 7. Kalenderabonnement für Outlook und andere Kalender per widerrufbarem ICS-Link; eine echte Synchronisation ist eine separate Erweiterung.

@@ -29,7 +29,10 @@ import { expandEvents } from "./calendar";
 import { statusLabels } from "../resource-fields";
 import { initialPeriod, recordMatchesPeriod } from "@/shared/period-filter";
 import { unreadNotifications } from "@/modules/notifications/unread";
-import { ChangesButton } from "@/modules/changes/components/workspace-changes";
+import {
+  AttendanceBalanceCard,
+  attendanceBalanceStyles,
+} from "@/modules/time-tracking/components/attendance-balance";
 export function TodayModule({ navigate }: { navigate: (module: string) => void }) {
   const { workspace, action, notify } = useWorkspace();
   const showTimer = isStaff(workspace.user);
@@ -88,13 +91,14 @@ export function TodayModule({ navigate }: { navigate: (module: string) => void }
         title={`${greet}, ${workspace.user.name.split(" ")[0]}.`}
         description="Dein Tag hinter der Bühne. Alles Wichtige an einem Ort."
       >
-        <ChangesButton />
         <Button variant="primary" onClick={() => navigate("time")}>
           <Clock3 size={16} />
           Zeit buchen
         </Button>
       </PageHeader>
-      <div className="today-summary">
+      <div
+        className={`today-summary${showTimer ? ` ${attendanceBalanceStyles.dashboardSummary}` : ""}`}
+      >
         <button
           onClick={() =>
             navigate(myTasks.some((task) => task.data.productionId) ? "productions" : "tasks")
@@ -137,6 +141,7 @@ export function TodayModule({ navigate }: { navigate: (module: string) => void }
             <ChevronRight size={17} />
           </button>
         </div>
+        {showTimer && <AttendanceBalanceCard compact onOpenSettings={() => navigate("settings")} />}
       </div>
       <div className={`today-layout${showTimer ? " today-layout--with-timer" : ""}`}>
         <div className="today-main">

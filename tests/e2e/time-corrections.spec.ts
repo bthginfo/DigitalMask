@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import type { DomainRecord } from "../../src/shared/contracts";
 import { qaResources, trackQaResources } from "./qa-resources";
 
-test("all roles correct booked work and attendance; affected approvals reopen", async ({
+test("all roles correct booked work and attendance directly without weekly approval", async ({
   page,
 }) => {
   test.setTimeout(120000);
@@ -34,26 +34,6 @@ test("all roles correct booked work and attendance; affected approvals reopen", 
   ): Promise<DomainRecord> => {
     const response = await client.patch(`/api/records/${row.kind}/${encodeURIComponent(row.id)}`, {
       data: { data, version: row.version },
-    });
-    expect(response.status(), await response.text()).toBe(200);
-    return response.json();
-  };
-  const submit = async (week: string): Promise<DomainRecord> => {
-    const response = await member.post("/api/actions", {
-      data: { action: "timesheet-submit", data: { week } },
-    });
-    expect(response.status()).toBe(200);
-    const row = await response.json();
-    created.push({ kind: "timesheets", id: row.id });
-    return row;
-  };
-  const approve = async (sheet: DomainRecord) => {
-    const response = await admin.post("/api/actions", {
-      data: {
-        action: "timesheet-decide",
-        id: sheet.id,
-        data: { status: "approved", version: sheet.version },
-      },
     });
     expect(response.status(), await response.text()).toBe(200);
     return response.json();
@@ -138,21 +118,8 @@ test("all roles correct booked work and attendance; affected approvals reopen", 
     ).toBe(403);
     attendance = await patch(member, attendance, { pauseSeconds: 1800 });
     expect(attendance.data.durationSeconds).toBe(27000);
-    let sheet = await approve(await submit("2026-09-28"));
-    // An unchanged save must not invalidate a valid approval.
     work = await patch(member, work, work.data);
-    await expect
-      .poll(
-        async () =>
-          (await workspace()).records.timesheets.find((row: DomainRecord) => row.id === sheet.id)
-            ?.data.status,
-        { timeout: 10000 },
-      )
-      .toBe("approved");
-    expect(
-      (await workspace()).records.timesheets.find((row: DomainRecord) => row.id === sheet.id).data
-        .status,
-    ).toBe("approved");
+    expect((await workspace()).records.timesheets).toEqual([]);
     await page.goto("/?module=time");
     await page.getByRole("button", { name: "Produktions- / Arbeitszeiten", exact: true }).click();
     await page.getByLabel("Woche ab").fill("2026-09-28");
@@ -176,20 +143,6 @@ test("all roles correct booked work and attendance; affected approvals reopen", 
     work = current.records.time.find((row: DomainRecord) => row.id === work.id);
     expect(work.data.durationSeconds).toBe(4500);
     expect(current.projectHours[production.id]).toBe(4500);
-    sheet = current.records.timesheets.find((row: DomainRecord) => row.id === sheet.id);
-    expect(sheet.data.status).toBe("changes_requested");
-    expect(
-      (
-        await admin.post("/api/actions", {
-          data: {
-            action: "timesheet-decide",
-            id: sheet.id,
-            data: { status: "approved", version: sheet.version - 1 },
-          },
-        })
-      ).status(),
-    ).toBe(409);
-    sheet = await approve(await submit("2026-09-28"));
     await page.setViewportSize({ width: 390, height: 844 });
     await page.getByRole("button", { name: "Anwesenheit im Theater", exact: true }).click();
     await page.getByLabel("Woche ab").fill("2026-09-28");
@@ -203,9 +156,6 @@ test("all roles correct booked work and attendance; affected approvals reopen", 
     current = await workspace();
     attendance = current.records.attendance.find((row: DomainRecord) => row.id === attendance.id);
     expect(attendance.data.durationSeconds).toBe(26100);
-    expect(
-      current.records.timesheets.find((row: DomainRecord) => row.id === sheet.id).data.status,
-    ).toBe("approved");
     expect(
       (
         await admin.post("/api/actions", {
@@ -221,9 +171,7 @@ test("all roles correct booked work and attendance; affected approvals reopen", 
     work = await patch(member, work, { durationSeconds: 5400 });
     attendance = await patch(member, attendance, { end: "2026-09-30T16:00:00+02:00" });
     expect(attendance.data.userId).toBe(memberId);
-    sheet = await approve(await submit("2026-09-28"));
-    const nextSheet = await approve(await submit("2026-10-05"));
-    // Superadmin corrections keep the original owner and reopen both moved weeks.
+    // Superadmin corrections keep the original owner when moving a booking to another week.
     work = await patch(admin, work, {
       date: "2026-10-05",
       durationSeconds: 7200,
@@ -233,17 +181,13 @@ test("all roles correct booked work and attendance; affected approvals reopen", 
     attendance = await patch(admin, attendance, { pauseSeconds: 600 });
     expect(attendance.data.durationSeconds).toBe(24600);
     current = await workspace();
-    for (const id of [sheet.id, nextSheet.id])
-      expect(
-        current.records.timesheets.find((row: DomainRecord) => row.id === id).data.status,
-      ).toBe("changes_requested");
+    expect(current.records.timesheets).toEqual([]);
   } finally {
     await page.goto("about:blank");
     for (const item of [...created].reverse())
-      if (item.kind !== "timesheets")
-        await admin
-          .delete(`/api/records/${item.kind}/${encodeURIComponent(item.id)}`)
-          .catch(() => {});
+      await admin
+        .delete(`/api/records/${item.kind}/${encodeURIComponent(item.id)}`)
+        .catch(() => {});
     if (memberId)
       await admin
         .post("/api/actions", {

@@ -1,4 +1,5 @@
 "use client";
+import { LinkedText } from "@/components/linked-text";
 import { useState } from "react";
 import { ChevronDown, ChevronLeft, ChevronRight, Pencil } from "lucide-react";
 import type { DomainRecord } from "@/shared/contracts";
@@ -6,7 +7,7 @@ import { dateLabel, hours, num, shiftDate, value, weekStart } from "@/shared/cli
 import { categoryName } from "@/shared/domain-categories";
 import { Button } from "@/components/ui";
 import { useWorkspace } from "@/components/workspace-context";
-import { isoWeek, type BookingWeek, type BookingWeekEntry } from "../history";
+import { groupBookingPeople, isoWeek, type BookingWeek, type BookingWeekEntry } from "../history";
 import { WeekDayOverview } from "./week-day-overview";
 import styles from "./time-history.module.css";
 
@@ -59,13 +60,35 @@ export function BookingList({
   kind,
   onEdit,
   onDetail,
+  groupByPerson = false,
 }: {
   entries: BookingWeekEntry[];
   kind: "time" | "attendance";
   onEdit: (record: DomainRecord) => void;
   onDetail: (record: DomainRecord) => void;
+  groupByPerson?: boolean;
 }) {
   const { workspace } = useWorkspace();
+  if (groupByPerson)
+    return (
+      <div className={styles.personGroups}>
+        {groupBookingPeople(entries, workspace.members).map((person) => (
+          <section key={person.userId} aria-label={`Arbeitszeit von ${person.name}`}>
+            <header className={styles.personHeading}>
+              <div>
+                <h4>{person.name}</h4>
+                <span className="small muted">
+                  {person.entries.length} {person.entries.length === 1 ? "Buchung" : "Buchungen"}
+                  {person.former ? " · ehemaliges Teammitglied" : ""}
+                </span>
+              </div>
+              <strong>{hours(person.seconds)} h</strong>
+            </header>
+            <BookingList entries={person.entries} kind={kind} onEdit={onEdit} onDetail={onDetail} />
+          </section>
+        ))}
+      </div>
+    );
   return (
     <ul className={styles.bookingList}>
       {entries.map(({ record, seconds, allocations }) => {
@@ -85,9 +108,11 @@ export function BookingList({
                 {value(record.data, "title") || "Anwesenheit"}
               </button>
               <span className="small muted">
-                {kind === "time"
-                  ? `${production ? value(production.data, "title") : "Allgemein"} · ${categoryName("time", value(record.data, "category"), workspace.records.categories)}`
-                  : value(record.data, "notes")}
+                {kind === "time" ? (
+                  `${production ? value(production.data, "title") : "Allgemein"} · ${categoryName("time", value(record.data, "category"), workspace.records.categories)}`
+                ) : (
+                  <LinkedText>{value(record.data, "notes")}</LinkedText>
+                )}
               </span>
               {value(record.data, "start") && value(record.data, "end") && (
                 <span className={styles.bookingInterval}>
@@ -125,6 +150,7 @@ export function WeeklyHistory({
   onEdit,
   onDetail,
   onBookDay,
+  groupByPerson = false,
 }: {
   weeks: BookingWeek[];
   selectedWeek: string;
@@ -136,6 +162,7 @@ export function WeeklyHistory({
   onEdit: (record: DomainRecord) => void;
   onDetail: (record: DomainRecord) => void;
   onBookDay?: (date: string) => void;
+  groupByPerson?: boolean;
 }) {
   const [visible, setVisible] = useState(6);
   const history = weeks.filter((week) => week.start !== selectedWeek);
@@ -171,7 +198,13 @@ export function WeeklyHistory({
                 <strong className={styles.historyTotal}>{hours(week.seconds)} h</strong>
                 <ChevronDown size={18} />
               </summary>
-              <BookingList entries={week.entries} kind={kind} onEdit={onEdit} onDetail={onDetail} />
+              <BookingList
+                entries={week.entries}
+                kind={kind}
+                onEdit={onEdit}
+                onDetail={onDetail}
+                groupByPerson={groupByPerson}
+              />
               {(week.markers.length > 0 || onBookDay) && (
                 <WeekDayOverview
                   week={week.start}

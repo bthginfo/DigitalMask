@@ -4,6 +4,7 @@ import { Check, Copy, KeyRound, Link as LinkIcon, ShieldCheck } from "lucide-rea
 import { useWorkspace } from "../workspace-context";
 import { Badge, Button, ErrorMessage, Modal, PageHeader, Section } from "../ui";
 import { AppearanceCard } from "@/modules/profile/components/appearance-card";
+import { WorkingTimeCard } from "@/modules/profile/components/working-time-card";
 import { PushCard } from "@/modules/notifications/components/push-card";
 import { PasswordInput } from "../password-input";
 export function SettingsModule({ navigate }: { navigate?: (module: string) => void }) {
@@ -58,6 +59,7 @@ export function SettingsModule({ navigate }: { navigate?: (module: string) => vo
         </p>
       )}
       <div className="settings-grid">
+        <WorkingTimeCard />
         <AppearanceCard key={workspace.user.id} />
         <PushCard
           key={`push:${workspace.user.id}`}

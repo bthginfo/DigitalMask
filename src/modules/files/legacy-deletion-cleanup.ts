@@ -3,7 +3,7 @@ import { db } from "@/platform/db";
 import { outbox, recordOperations, records } from "@/platform/db/schema";
 import { textValue, type RecordData } from "@/shared/contracts";
 
-/** Reuses the existing outbox worker; no polling or new recurring job. */
+/** Completes deletions queued by earlier releases. New deletions use FileDeletionRequestedV1 directly. */
 export async function finalizeRecordDeletion(departmentId: string, payload: RecordData) {
   const operationId = textValue(payload.operationId);
   const recordId = textValue(payload.recordId);

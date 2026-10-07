@@ -128,7 +128,7 @@ const attendance = record("attendance", "overnight", {
   ],
 });
 let qaDirectory: string | undefined;
-async function inspectPdf(bytes: Uint8Array, name: string) {
+async function inspectPdf(bytes: Uint8Array, name: string, footer = true) {
   const { getDocument } = await import("pdfjs-dist/legacy/build/pdf.mjs");
   const pdf = await getDocument({
     data: new Uint8Array(bytes),
@@ -144,10 +144,15 @@ async function inspectPdf(bytes: Uint8Array, name: string) {
   for (let p = 1; p <= pdf.numPages; p++) {
     const page = await pdf.getPage(p),
       viewport = page.getViewport({ scale: 1 });
+    if (!footer) {
+      expect(viewport.width).toBeCloseTo(841.89, 0);
+      expect(viewport.height).toBeCloseTo(595.28, 0);
+    }
     const content = await page.getTextContent(),
       text = content.items.map((item) => ("str" in item ? item.str : "")).join(" ");
     texts.push(text);
-    expect(text).toContain(`Seite ${p} von ${pdf.numPages}`);
+    if (footer) expect(text).toContain(`Seite ${p} von ${pdf.numPages}`);
+    else expect(text).not.toContain("Seite ");
     for (const item of content.items)
       if ("str" in item && item.str.trim()) {
         expect(item.transform[4]).toBeGreaterThanOrEqual(0);
@@ -328,8 +333,18 @@ describe("attendance and configurable calendar exports", () => {
     expect(grids).toHaveLength(1);
     for (const grid of grids) {
       expect(grid.columnCount).toBe(17);
-      expect(grid.views[0]).toMatchObject({ xSplit: 1, ySplit: 1 });
-      expect(grid.pageSetup.printTitlesRow).toBe("1:1");
+      expect(grid.views[0]).toMatchObject({ xSplit: 1, ySplit: 2 });
+      expect(grid.pageSetup.scale).toBe(74);
+      expect(grid.pageSetup.margins).toMatchObject({
+        left: 0.7,
+        right: 0.7,
+        top: 0.75,
+        bottom: 0.75,
+      });
+      expect(grid.getRow(3).height).toBe(35);
+      expect(grid.getCell("A3").font.size).toBe(12);
+      expect(grid.getCell("B3").font.size).toBe(9);
+      expect(grid.getCell("A3").border.left?.style).toBe("medium");
       expect(grid.getCell("A3").value).toBe("Fiktive Person 2");
       const text = grid.getSheetValues().flat().join(" ");
       expect(text).toContain("01.10.");
@@ -337,22 +352,23 @@ describe("attendance and configurable calendar exports", () => {
       expect(text).not.toContain("NOT_STAFF");
       expect(text).not.toContain("NOT_ACTIVE");
     }
-    expect(workbook.worksheets.map((sheet) => sheet.name)).toEqual(["Team 10-2026"]);
+    expect(workbook.worksheets.map((sheet) => sheet.name)).toEqual(["Team 2026-10"]);
   });
   it("prints all 31 days and 13 staff with complete dense entries instead of agenda previews", async () => {
-    const pdf = await inspectPdf((await buildExport(calendar("pdf"))).bytes, "team-month");
+    const pdf = await inspectPdf((await buildExport(calendar("pdf"))).bytes, "team-month", false);
     expect(pdf.pages).toBeLessThan(15);
     for (let i = 1; i < 13; i++) expect(pdf.text).toContain(`Fiktive Person ${i + 1}`);
     expect(pdf.text).toContain("31.10.");
-    expect(pdf.text).toContain("TITELENDE");
-    expect(pdf.text).toContain("MEHRDIENSTENDE4");
-    expect(pdf.text).toContain("Änderungsfreier Sonderdienst");
+    const letters = pdf.text.replace(/\s/g, "");
+    expect(letters).toContain("TITELENDE");
+    expect(letters).toContain("MEHRDIENSTENDE4");
+    expect(letters).toContain("ÄnderungsfreierSonderdienst");
     expect(pdf.text).toContain("Halber freier Tag");
     expect(pdf.text).not.toContain("Agenda");
     expect(pdf.text).not.toContain("DIGITALMASK /");
     expect(pdf.text).not.toContain("Personengruppe");
   }, 60000);
-  it("fits five staff and two complete weeks on one A4 landscape sheet and exports coloured month cells", async () => {
+  it("uses uniform rows for the two month halves and preserves all coloured entries", async () => {
     const staff = members.slice(1, 6);
     const short = staff.flatMap((member, index) =>
       Array.from({ length: 14 }, (_, dayIndex) => {
@@ -384,10 +400,9 @@ describe("attendance and configurable calendar exports", () => {
       from: "2026-10-05",
       to: "2026-10-18",
     };
-    const pdf = await inspectPdf((await buildExport(input)).bytes, "team-two-weeks");
-    expect(pdf.pages).toBe(1);
-    expect(pdf.text).toContain("KW 41");
-    expect(pdf.text).toContain("KW 42");
+    const pdf = await inspectPdf((await buildExport(input)).bytes, "team-two-weeks", false);
+    expect(pdf.pages).toBeGreaterThanOrEqual(2);
+    expect(pdf.text).toContain("Oktober 2026");
     for (const member of staff) expect(pdf.text).toContain(member.name);
     expect(pdf.text).toContain("ENDE1");
     expect(pdf.text).toContain("Probe M4D13");
@@ -413,11 +428,11 @@ describe("attendance and configurable calendar exports", () => {
         }
       }),
     );
-    expect(coloured).toBe(70);
+    expect(coloured).toBeGreaterThanOrEqual(70);
     expect(sheet.pageSetup).toMatchObject({
       paperSize: 9,
       orientation: "landscape",
-      fitToWidth: 1,
+      scale: 74,
     });
   }, 60000);
   it("prints multipage attendance with separate person/day/week totals and no production headings", async () => {

@@ -2,10 +2,10 @@ import { load } from "cheerio";
 import { strToU8, unzipSync, zipSync } from "fflate";
 import * as Y from "yjs";
 import type { DocumentMetadata } from "./contracts";
-import { SHEETS_MAP } from "./contracts";
+import { SHEETS_MAP, cellKey, MAX_SHEET_ROWS, MAX_SHEET_COLUMNS } from "./contracts";
 import { createSheetCalculator, excelFormula, inputValue } from "./sheet-values";
 import { sheetDimensions } from "./presentation";
-import { originalCellInput } from "./sheet-import";
+import { originalCellInput, originalFormulaArrays } from "./sheet-import";
 import ExcelJS from "exceljs";
 import { HttpError } from "@/platform/http";
 import { safeSheetMetadata } from "./format-upgrade";
@@ -26,8 +26,40 @@ export async function patchOriginalSpreadsheet(
   const $workbook = xml(archive["xl/workbook.xml"]);
   const $relations = xml(archive["xl/_rels/workbook.xml.rels"]);
   const sheets = document.getMap<Y.Map<string>>(SHEETS_MAP);
-  const info = metadata.sheets || [];
+  const info = (metadata.sheets || []).map((sheet) => {
+    const source = workbook.worksheets.find((worksheet) => String(worksheet.id) === sheet.id);
+    return source ? { ...sheet, formulaArrays: originalFormulaArrays(source) } : sheet;
+  });
   const evaluate = createSheetCalculator(sheets, info);
+  // Unsupported functions cannot safely reuse cached values after any workbook input changes.
+  const inputsUnchanged =
+    info.length === workbook.worksheets.length &&
+    info.every((sheet) => {
+      const source = workbook.worksheets.find((worksheet) => String(worksheet.id) === sheet.id),
+        values = sheets.get(sheet.id);
+      if (!source || !values) return false;
+      let unchanged = true;
+      source.eachRow((row, r) =>
+        row.eachCell((cell, c) => {
+          if (cell.isMerged && cell.master.address !== cell.address) return;
+          if (originalCellInput(cell) !== (values.get(cellKey(r, c)) || "")) unchanged = false;
+        }),
+      );
+      values.forEach((raw, key) => {
+        const [row, column] = key.split(":").map(Number);
+        if (
+          !Number.isInteger(row) ||
+          !Number.isInteger(column) ||
+          row < 1 ||
+          column < 1 ||
+          row > MAX_SHEET_ROWS ||
+          column > MAX_SHEET_COLUMNS
+        )
+          return;
+        if (originalCellInput(source.getCell(row, column)) !== raw) unchanged = false;
+      });
+      return unchanged;
+    });
   for (const sheet of info) {
     const source = workbook.worksheets.find((worksheet) => String(worksheet.id) === sheet.id);
     const relationId = $workbook("sheet")
@@ -41,6 +73,39 @@ export async function patchOriginalSpreadsheet(
       throw new HttpError(400, "Die Tabellenstruktur konnte nicht exportiert werden.");
     const $sheet = xml(archive[path]);
     const data = $sheet("sheetData");
+    const values = sheets.get(sheet.id);
+    const sharedGroups = new Map<string, string[]>();
+    const cellElements = new Map<string, ReturnType<typeof $sheet>>();
+    $sheet("c").each((_i, node) => {
+      const cell = $sheet(node),
+        formula = cell.children("f");
+      cellElements.set(node.attribs.r, cell);
+      if (formula.attr("t") !== "shared") return;
+      const id = formula.attr("si") || "";
+      const group = sharedGroups.get(id);
+      if (group) group.push(node.attribs.r);
+      else sharedGroups.set(id, [node.attribs.r]);
+    });
+    for (const group of sharedGroups.values()) {
+      if (
+        !group.some((address) => {
+          const cell = source.getCell(address);
+          return (
+            (values?.get(cellKey(Number(cell.row), Number(cell.col))) || "") !==
+            originalCellInput(cell)
+          );
+        })
+      )
+        continue;
+      // Editing any member invalidates the shared master. Materialize the complete group first.
+      for (const address of group) {
+        const sourceCell = source.getCell(address),
+          raw = values?.get(cellKey(Number(sourceCell.row), Number(sourceCell.col))) || "",
+          cell = cellElements.get(address)!;
+        cell.children("f").remove();
+        if (raw.startsWith("=")) cell.append("<f/>").children("f").text(excelFormula(raw));
+      }
+    }
     if (sheet.merges) {
       for (const merge of source.model.merges || []) {
         if (!sheet.merges.includes(merge)) {
@@ -56,7 +121,15 @@ export async function patchOriginalSpreadsheet(
       else mergeCells.remove();
     }
     const dimension = sheetDimensions(document, sheet);
-    sheets.get(sheet.id)?.forEach((raw, key) => {
+    const keys = new Set(values?.keys());
+    source.eachRow((row, r) =>
+      row.eachCell((cell, c) => {
+        if (cell.isMerged && cell.master.address !== cell.address) return;
+        if (originalCellInput(cell)) keys.add(cellKey(r, c));
+      }),
+    );
+    keys.forEach((key) => {
+      const raw = values?.get(key) || "";
       const [row, col] = key.split(":").map(Number);
       if (
         !Number.isInteger(row) ||
@@ -84,7 +157,8 @@ export async function patchOriginalSpreadsheet(
       }
       if (raw.startsWith("=")) {
         if (raw !== originalRaw) {
-          cell.children("f,is").remove();
+          cell.children("f,v,is").remove();
+          cell.removeAttr("t");
           cell.append("<f/>");
           cell.children("f").text(excelFormula(raw));
         }
@@ -94,8 +168,14 @@ export async function patchOriginalSpreadsheet(
           typeof result === "boolean" ||
           typeof result === "string"
         ) {
-          // Error text is display-only; Excel recalculates unsupported functions on opening.
-          if (typeof result === "string" && result.startsWith("#")) return;
+          // Browser-only errors must never become cached Excel strings or stale results.
+          if (evaluate.hasError(sheet.id, row, col)) {
+            if (!inputsUnchanged || raw !== originalRaw) {
+              cell.children("v,is").remove();
+              cell.removeAttr("t");
+            }
+            return;
+          }
           cell.children("v").remove();
           cell.attr(
             "t",
@@ -133,6 +213,52 @@ export async function patchOriginalSpreadsheet(
         }
       }
     });
+    if (!inputsUnchanged) {
+      // Unsupported array/spill outputs share their anchor's cache and must be recalculated too.
+      const stride = dimension.columns + 2,
+        covered = new Int32Array((dimension.rows + 2) * stride);
+      $sheet("c").each((_i, node) => {
+        const formula = $sheet(node).children("f"),
+          ref = formula.attr("ref"),
+          anchor = source.getCell(node.attribs.r);
+        if (
+          formula.attr("t") !== "array" ||
+          !ref ||
+          !evaluate.hasError(sheet.id, Number(anchor.row), Number(anchor.col))
+        )
+          return;
+        const [first, last = first] = ref.replaceAll("$", "").split(":"),
+          from = source.getCell(first),
+          to = source.getCell(last);
+        const top = Math.max(1, Number(from.row)),
+          left = Math.max(1, Number(from.col)),
+          bottom = Math.min(dimension.rows, Number(to.row)),
+          right = Math.min(dimension.columns, Number(to.col));
+        if (top > bottom || left > right) return;
+        covered[top * stride + left]++;
+        covered[top * stride + right + 1]--;
+        covered[(bottom + 1) * stride + left]--;
+        covered[(bottom + 1) * stride + right + 1]++;
+      });
+      for (let row = 1; row <= dimension.rows; row++)
+        for (let column = 1; column <= dimension.columns; column++) {
+          const index = row * stride + column;
+          covered[index] +=
+            covered[index - 1] + covered[index - stride] - covered[index - stride - 1];
+        }
+      for (const [address, element] of cellElements) {
+        const cell = source.getCell(address),
+          row = Number(cell.row),
+          column = Number(cell.col);
+        if (
+          row <= dimension.rows &&
+          column <= dimension.columns &&
+          covered[row * stride + column] > 0 &&
+          originalCellInput(cell) === (values?.get(cellKey(row, column)) || "")
+        )
+          element.children("v").remove();
+      }
+    }
     // OOXML requires ascending row/cell order, including newly inserted cells.
     data
       .children("row")
@@ -158,6 +284,22 @@ export async function patchOriginalSpreadsheet(
   }
   if (!$workbook("calcPr").length) $workbook("workbook").append("<calcPr/>");
   $workbook("calcPr").attr({ fullCalcOnLoad: "1", forceFullCalc: "1", calcMode: "auto" });
+  if (!inputsUnchanged) {
+    // A prior dependency chain can point to overwritten formula cells.
+    $relations("Relationship").each((_i, node) => {
+      if (!node.attribs.Type.endsWith("/calcChain")) return;
+      const target = node.attribs.Target,
+        path = target.startsWith("/") ? target.slice(1) : `xl/${target}`;
+      delete archive[path];
+      $relations(node).remove();
+      const $types = xml(archive["[Content_Types].xml"]);
+      $types("Override")
+        .filter((_index, entry) => entry.attribs.PartName === `/${path}`)
+        .remove();
+      archive["[Content_Types].xml"] = strToU8($types.xml());
+    });
+    archive["xl/_rels/workbook.xml.rels"] = strToU8($relations.xml());
+  }
   archive["xl/workbook.xml"] = strToU8($workbook.xml());
   return Buffer.from(zipSync(archive, { level: 6 }));
 }

@@ -38,6 +38,7 @@ import { isActiveStaff } from "@/shared/client-members";
 import { calendarEventSelected } from "@/shared/calendar-selection";
 import { calendarEventPaint } from "@/shared/calendar-paint";
 import { sortCalendarStaff } from "@/shared/calendar-team";
+import { bavarianHoliday } from "@/shared/bavarian-holidays";
 import { sortProductionsByPremiere } from "@/shared/production-order";
 import { useWorkspace } from "../workspace-context";
 import { Badge, Button, ErrorMessage, ExportButton, PageHeader } from "../ui";
@@ -58,6 +59,7 @@ import {
 } from "@/modules/calendar/components/calendar-presentation-controls";
 import presentationStyles from "@/modules/calendar/components/calendar-presentation.module.css";
 import { MobileDaySheet } from "@/modules/calendar/components/mobile-day-sheet";
+import { HolidayLabel } from "@/modules/calendar/components/holiday-label";
 import { calendarDayIndex, calendarDayLabel } from "@/modules/calendar/components/day-details";
 import calendarStyles from "@/modules/calendar/components/mobile-calendar.module.css";
 import { statusLabels } from "../resource-fields";
@@ -720,18 +722,37 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
                 dayCellClassNames={(info) =>
                   localDate(info.date) === mobileDay ? ["mobile-selected-day"] : []
                 }
+                dayHeaderContent={(info) =>
+                  view === "week" || view === "day" ? (
+                    <span className={calendarStyles.dateHeader}>
+                      <span>{info.text}</span>
+                      <HolidayLabel date={localDate(info.date)} compact={mobile} />
+                    </span>
+                  ) : (
+                    info.text
+                  )
+                }
                 dayCellContent={(info) => {
-                  if (!mobile || view !== "month") return info.dayNumberText;
+                  if (view !== "month") return info.dayNumberText;
                   const day = localDate(info.date);
+                  const holiday = bavarianHoliday(day);
+                  if (!mobile)
+                    return (
+                      <span className={calendarStyles.monthDate}>
+                        <span>{info.dayNumberText}</span>
+                        <HolidayLabel date={day} />
+                      </span>
+                    );
                   const count = dayEntries.get(day)?.length || 0;
                   return (
                     <button
                       type="button"
                       className={calendarStyles.dayButton}
                       data-calendar-day={day}
+                      data-holiday={holiday ? "true" : undefined}
                       aria-haspopup="dialog"
                       aria-pressed={day === mobileDay}
-                      aria-label={`${calendarDayLabel(day)}: ${count} ${count === 1 ? "Termin" : "Termine"}. Details anzeigen`}
+                      aria-label={`${calendarDayLabel(day)}${holiday ? ` · ${holiday}` : ""}: ${count} ${count === 1 ? "Termin" : "Termine"}. Details anzeigen`}
                       onClick={(event) => {
                         event.stopPropagation();
                         openMobileDay(day);
@@ -742,7 +763,10 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
                           {count}
                         </span>
                       )}
-                      <span>{info.dayNumberText}</span>
+                      <span className={calendarStyles.monthDate}>
+                        <span>{info.dayNumberText}</span>
+                        <HolidayLabel date={day} compact />
+                      </span>
                     </button>
                   );
                 }}

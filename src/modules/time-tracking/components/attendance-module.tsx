@@ -5,7 +5,7 @@ import { DoorOpen, Plus, UploadCloud } from "lucide-react";
 import { PeriodPicker, periodExportFilters, weekForPeriod } from "@/components/period-picker";
 import { seasonForDate, type PeriodFilter } from "@/shared/period-filter";
 import type { DomainRecord, RecordData } from "@/shared/contracts";
-import { hours, post, shiftDate, value, weekStart } from "@/shared/client-api";
+import { hours, localDate, post, shiftDate, value, weekStart } from "@/shared/client-api";
 import { isStaff } from "@/shared/client-members";
 import { useStoredValue } from "@/shared/client-storage";
 import { useWorkspace } from "@/components/workspace-context";
@@ -18,6 +18,7 @@ import { timeDayMarkers } from "../day-markers";
 import { BookingList, WeekNavigator, WeeklyHistory } from "./weekly-bookings";
 import { CalendarTimeProposals } from "./calendar-time-proposals";
 import { WeekDayOverview } from "./week-day-overview";
+import { AttendanceBalanceCard } from "./attendance-balance";
 import styles from "./time-history.module.css";
 
 type AttendanceDraft = { id: string; createdAt: string; data: RecordData };
@@ -88,9 +89,7 @@ export function AttendanceModule({ embedded = false }: { embedded?: boolean }) {
     setPeriod(periodForWeek(period, next, workspace.records.productions));
   };
   const canBookDay = selfBooking && person === workspace.user.id;
-  const openBooking = (date = week) => {
-    selectWeek(isoWeek(date).start);
-    setPerson(workspace.user.id);
+  const openBooking = (date = localDate()) => {
     setCreating(date);
   };
   const secondaryActions = (
@@ -205,6 +204,12 @@ export function AttendanceModule({ embedded = false }: { embedded?: boolean }) {
         </div>
       )}
       <ErrorMessage message={error} />
+      <AttendanceBalanceCard
+        key={person}
+        person={person}
+        selectedWeek={week}
+        onWeekChange={selectWeek}
+      />
       {entries.length ? (
         <section className={styles.currentWeek} aria-label="Anwesenheit der ausgewählten Woche">
           <header className={styles.currentHeading}>
@@ -257,7 +262,10 @@ export function AttendanceModule({ embedded = false }: { embedded?: boolean }) {
         <TimeBookingEditor
           kind="attendance"
           defaults={{ date: creating }}
-          onSaved={(record) => selectWeek(isoWeek(value(record.data, "date")).start)}
+          onSaved={(record) => {
+            setPerson(workspace.user.id);
+            selectWeek(isoWeek(value(record.data, "date")).start);
+          }}
           onClose={() => setCreating("")}
         />
       )}

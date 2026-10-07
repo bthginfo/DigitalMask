@@ -1,284 +1,230 @@
 import React from "react";
-import { StyleSheet, Text, View } from "@react-pdf/renderer";
+import { Page, Text, View } from "@react-pdf/renderer";
 import type { ExportInput } from "@/modules/exports/types";
 import { maskPlanExportData } from "./export";
 import { maskPlanClock } from "./model";
-import { maskPlanPaleColor, maskPlanPrintSegments, maskPlanTracks } from "./layout";
+import { maskPlanPaleColor } from "./layout";
+import { compactMaskPlanGrid } from "./compact-print";
 
-type PrintPage = React.ComponentType<{
-  input: ExportInput;
-  landscape?: boolean;
-  children: React.ReactNode;
-  label?: string;
-}>;
 type WrapLines = (text: string, width: number, size: number, weight: number) => string[];
-const width = 778;
-const rail = 56;
-const rowHeight = 24;
-const styles = StyleSheet.create({
-  caption: { fontSize: 9, color: "#53645e", marginBottom: 10 },
-  heading: {
-    flexDirection: "row",
-    backgroundColor: "#eaf1ed",
-    borderWidth: 0.5,
-    borderColor: "#bfcfc7",
-  },
-  staff: { padding: 6, borderLeftWidth: 0.5, borderColor: "#bfcfc7" },
-  staffName: { fontSize: 9, fontWeight: 700, lineHeight: 1.3 },
-  laneLabel: { fontSize: 8, color: "#53645e", lineHeight: 1.3, marginBottom: 3 },
-  body: { position: "relative", borderWidth: 0.5, borderColor: "#bfcfc7" },
-  line: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    height: rowHeight,
-    borderBottomWidth: 0.5,
-    borderColor: "#d5dfd9",
-  },
-  time: { width: rail, paddingHorizontal: 5, paddingTop: 3, fontSize: 9, fontWeight: 700 },
-  clock: { fontSize: 7.5, color: "#53645e", fontWeight: 400, marginTop: 1 },
-  divider: {
-    position: "absolute",
-    top: 0,
-    bottom: 0,
-    borderLeftWidth: 0.5,
-    borderColor: "#bfcfc7",
-  },
-  block: {
-    position: "absolute",
-    padding: 4,
-    borderRadius: 3,
-    borderWidth: 0.5,
-    borderColor: "#a7bcb0",
-    overflow: "hidden",
-  },
-  blockText: { fontSize: 9, lineHeight: 1.22, color: "#233932" },
-  begin: {
-    padding: 7,
-    backgroundColor: "#f6d3ca",
-    fontSize: 10,
-    fontWeight: 700,
-    borderWidth: 0.5,
-    borderColor: "#d9aaa0",
-  },
-  section: { fontSize: 12, fontWeight: 700, marginBottom: 8, marginTop: 8 },
-  detail: { padding: 10, borderBottomWidth: 0.5, borderColor: "#cbd6cf" },
-  detailTitle: { fontSize: 10, fontWeight: 700, marginBottom: 5 },
-  detailMeta: { fontSize: 9, color: "#53645e", marginBottom: 4 },
-  paragraph: { fontSize: 10, lineHeight: 1.4, marginBottom: 7 },
-});
+const pageWidth = 595.28,
+  pageHeight = 841.89,
+  margin = 18,
+  gap = 12;
+const cardWidth = (pageWidth - margin * 2 - gap) / 2;
+const cardHeight = (pageHeight - margin * 2 - gap) / 2;
+const rail = 34,
+  size = 6.5;
 
-export function MaskPlanPages({
-  input,
-  Page,
-  availableHeight,
-  wrapLines,
-}: {
-  input: ExportInput;
-  Page: PrintPage;
-  availableHeight: (label: string) => number;
-  wrapLines: WrapLines;
-}) {
-  const plans = maskPlanExportData(input);
-  if (!plans.length)
-    return (
-      <Page input={input} landscape>
-        <Text>Keine Maskenpläne ausgewählt.</Text>
-      </Page>
-    );
+/** Four complete quarter-sheet copies; no second list, report headers, or footers. */
+export function MaskPlanPages({ input, wrapLines }: { input: ExportInput; wrapLines: WrapLines }) {
   return (
     <>
-      {plans.map((item) => {
-        const label = `${item.productionTitle} · ${item.plan.title}`;
-        // A one-minute editing raster need not turn a long printable plan into dozens of pages.
-        const plan =
-          item.plan.stepMinutes === 1 && item.plan.windowMinutes > 30
-            ? { ...item.plan, stepMinutes: 5 as const }
-            : item.plan;
-        const laneWidth = (width - rail) / Math.max(1, Math.min(4, plan.lanes.length));
-        const headers = new Map(
-          item.lanes.map((lane) => [
-            lane.lane.id,
-            {
-              names: wrapLines(
-                lane.staff.join(" / ") || "Noch kein Personal gewählt",
-                laneWidth - 12,
-                9,
-                700,
-              ),
-              label: wrapLines(lane.label, laneWidth - 12, 8, 400),
-            },
-          ]),
-        );
-        const headerHeight = Math.max(
-          34,
-          ...[...headers.values()].map(
-            (header) =>
-              12 + Math.min(4, header.names.length) * 12 + Math.min(2, header.label.length) * 11,
-          ),
-        );
-        const slots = Math.max(
-          1,
-          Math.floor((availableHeight(label) - headerHeight - 52) / rowHeight),
-        );
-        const segments = maskPlanPrintSegments(plan, slots);
-        const tracks = new Map(
-          plan.lanes.map((lane) => [
-            lane.id,
-            maskPlanTracks(plan.blocks.filter((block) => block.laneId === lane.id)),
-          ]),
-        );
-        let needsDetails = Boolean(
-          plan.notes ||
-          plan.blocks.some((block) => block.notes) ||
-          [...headers.values()].some(
-            (header) => header.names.length > 4 || header.label.length > 2,
-          ),
-        );
-        const pages = segments.map((segment, pageIndex) => {
-          const columnWidth = (width - rail) / Math.max(1, segment.lanes.length);
-          const height = ((segment.end - segment.start) / plan.stepMinutes) * rowHeight;
-          const appointments = item.blocks.flatMap((appointment) => {
-            const laneIndex = segment.lanes.findIndex(
-              (lane) => lane.id === appointment.block.laneId,
+      {maskPlanExportData(input).map((item) => {
+        const { boundaries, columns } = compactMaskPlanGrid(item.plan);
+        const columnWidth = (cardWidth - rail) / Math.max(1, columns.length);
+        const rowHeights = boundaries.slice(0, -1).map(() => (input.performanceTime ? 20 : 9));
+        const appointments = columns.flatMap((column, index) =>
+          column.blocks.map((block) => {
+            const entry = item.blocks.find((candidate) => candidate.block.id === block.id)!;
+            const lines = wrapLines(
+              [entry.actors.join(" / "), block.title].filter(Boolean).join(" · "),
+              columnWidth - 5,
+              size,
+              700,
             );
-            const start = Math.max(segment.start, appointment.block.startMinutes),
-              end = Math.min(
-                segment.end,
-                appointment.block.startMinutes + appointment.block.durationMinutes,
-              );
-            if (laneIndex === -1 || end <= start) return [];
-            const position = tracks.get(appointment.block.laneId)!.get(appointment.block.id)!;
-            const blockWidth = columnWidth / position.count - 4;
-            const blockHeight = ((end - start) / plan.stepMinutes) * rowHeight - 2;
-            const text = `${appointment.number} · ${[appointment.actors.join(" / "), appointment.block.title].filter(Boolean).join(" · ")}\n${appointment.block.startMinutes} bis ${appointment.block.startMinutes + appointment.block.durationMinutes} · ${appointment.block.durationMinutes} min`;
-            const lines = wrapLines(text, Math.max(10, blockWidth - 8), 9, 400);
-            const maxLines = Math.max(0, Math.floor((blockHeight - 8) / 11));
-            if (
-              lines.length > maxLines ||
-              start !== appointment.block.startMinutes ||
-              end !== appointment.block.startMinutes + appointment.block.durationMinutes
-            )
-              needsDetails = true;
-            const visible = lines.slice(0, maxLines);
-            if (visible.length && lines.length > maxLines)
-              visible[visible.length - 1] = `${visible[visible.length - 1].slice(0, -1)}…`;
-            return [
+            const first = boundaries.indexOf(block.startMinutes);
+            const last = boundaries.indexOf(block.startMinutes + block.durationMinutes);
+            const timing = `${block.startMinutes} bis ${block.startMinutes + block.durationMinutes} · ${block.durationMinutes} min`;
+            const timingLines = wrapLines(timing, columnWidth - 5, size - 1, 400);
+            return { block, index, lines, timingLines, first, last };
+          }),
+        );
+        for (const appointment of appointments) {
+          const actual = rowHeights
+            .slice(appointment.first, appointment.last)
+            .reduce((sum, height) => sum + height, 0);
+          const needed =
+            appointment.lines.length * size * 1.2 +
+            appointment.timingLines.length * (size - 1) * 1.2 +
+            5;
+          if (actual < needed) {
+            const extra = (needed - actual) / Math.max(1, appointment.last - appointment.first);
+            for (let row = appointment.first; row < appointment.last; row++)
+              rowHeights[row] += extra;
+          }
+        }
+        const headerLines = columns.map((column) => {
+          const lane = item.lanes.find((candidate) => candidate.lane.id === column.lane.id)!;
+          const label = lane.staff.length
+            ? [item.lanes.length > 1 ? lane.label : "", lane.staff.join(" / ")]
+                .filter(Boolean)
+                .join(" · ")
+            : lane.label;
+          return wrapLines(label, columnWidth - 5, size, 700);
+        });
+        const headingHeight = Math.max(
+          15,
+          ...headerLines.map((lines) => lines.length * size * 1.3 + 10),
+        );
+        const titleLines = wrapLines(
+          `${item.productionTitle} · ${item.plan.title}`,
+          cardWidth - 4,
+          7.5,
+          700,
+        );
+        const captionHeight = titleLines.length * 9 + 4;
+        const bodyHeight = rowHeights.reduce((sum, height) => sum + height, 0);
+        const totalHeight = captionHeight + headingHeight + bodyHeight + 16;
+        const scale = Math.min(1, (cardHeight - 2) / totalHeight);
+        const topFor = (row: number) =>
+          rowHeights.slice(0, row).reduce((sum, height) => sum + height, 0) * scale;
+        return (
+          <Page
+            key={item.record.id}
+            size="A4"
+            orientation="portrait"
+            style={{ fontFamily: "Noto", color: "#233932" }}
+            wrap={false}
+          >
+            <View style={{ height: pageHeight, width: pageWidth }} />
+            {Array.from({ length: 4 }, (_, copy) => (
               <View
-                key={appointment.block.id}
+                key={copy}
                 style={{
-                  ...styles.block,
-                  top: ((start - segment.start) / plan.stepMinutes) * rowHeight + 1,
-                  left:
-                    rail +
-                    laneIndex * columnWidth +
-                    (position.track * columnWidth) / position.count +
-                    2,
-                  width: blockWidth,
-                  height: Math.max(1, blockHeight),
-                  backgroundColor: maskPlanPaleColor(appointment.block.color || item.color),
+                  position: "absolute",
+                  left: margin + (copy % 2) * (cardWidth + gap),
+                  top: margin + Math.floor(copy / 2) * (cardHeight + gap),
+                  width: cardWidth,
+                  height: totalHeight * scale,
                 }}
               >
-                <Text style={styles.blockText}>{visible.join("\n")}</Text>
-              </View>,
-            ];
-          });
-          return (
-            <Page key={`${item.record.id}-${pageIndex}`} input={input} label={label} landscape>
-              <Text style={styles.caption}>
-                Minuten vor Vorstellungsbeginn · {segment.start} bis {segment.end}
-                {input.performanceTime ? ` · Beginn ${input.performanceTime} Uhr` : ""}
-                {segment.groups > 1
-                  ? ` · Personalspalten ${segment.group + 1} von ${segment.groups}`
-                  : ""}
-              </Text>
-              <View style={{ ...styles.heading, height: headerHeight }} wrap={false}>
-                <View style={{ width: rail, padding: 6 }}>
-                  <Text style={styles.staffName}>ZEIT</Text>
+                <Text
+                  style={{
+                    fontSize: 7.5 * scale,
+                    fontWeight: 700,
+                    height: captionHeight * scale,
+                    lineHeight: 1.2,
+                  }}
+                >
+                  {titleLines.join("\n")}
+                </Text>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    height: headingHeight * scale,
+                    borderWidth: 0.6,
+                    borderColor: "#233932",
+                    backgroundColor: "#edf1ef",
+                  }}
+                >
+                  <Text
+                    style={{ width: rail, padding: 2, fontSize: size * scale, fontWeight: 700 }}
+                  >
+                    ZEIT
+                  </Text>
+                  {headerLines.map((lines, index) => (
+                    <Text
+                      key={index}
+                      style={{
+                        width: columnWidth,
+                        padding: 2,
+                        fontSize: size * scale,
+                        fontWeight: 700,
+                        lineHeight: 1.2,
+                        borderLeftWidth: 0.4,
+                        borderColor: "#83968c",
+                      }}
+                    >
+                      {lines.join("\n")}
+                    </Text>
+                  ))}
                 </View>
-                {segment.lanes.map((lane) => {
-                  const header = headers.get(lane.id)!;
-                  return (
-                    <View key={lane.id} style={{ ...styles.staff, width: columnWidth }}>
-                      <Text style={styles.laneLabel}>{header.label.slice(0, 2).join("\n")}</Text>
-                      <Text style={styles.staffName}>
-                        {header.names.slice(0, 4).join("\n")}
-                        {header.names.length > 4 ? "…" : ""}
+                <View
+                  style={{
+                    height: bodyHeight * scale,
+                    position: "relative",
+                    borderLeftWidth: 0.6,
+                    borderRightWidth: 0.6,
+                    borderColor: "#233932",
+                  }}
+                >
+                  {boundaries.slice(0, -1).map((minute, index) => (
+                    <View
+                      key={minute}
+                      style={{
+                        position: "absolute",
+                        top: topFor(index),
+                        left: 0,
+                        width: cardWidth,
+                        height: rowHeights[index] * scale,
+                        borderBottomWidth: 0.25,
+                        borderColor: "#b8c6bf",
+                      }}
+                    >
+                      <Text style={{ width: rail, padding: 1.5, fontSize: (size - 1) * scale }}>
+                        {minute}
+                        {input.performanceTime
+                          ? `\n${maskPlanClock(minute, input.performanceTime)}`
+                          : ""}
                       </Text>
                     </View>
-                  );
-                })}
-              </View>
-              <View style={{ ...styles.body, height }} wrap={false}>
-                {Array.from(
-                  { length: (segment.end - segment.start) / plan.stepMinutes },
-                  (_, index) => {
-                    const minute = segment.start + index * plan.stepMinutes;
-                    return (
-                      <View key={minute} style={{ ...styles.line, top: index * rowHeight }}>
-                        <View style={styles.time}>
-                          <Text>{minute}</Text>
-                          {input.performanceTime && (
-                            <Text style={styles.clock}>
-                              {maskPlanClock(minute, input.performanceTime)}
-                            </Text>
-                          )}
-                        </View>
-                      </View>
-                    );
-                  },
-                )}
-                {segment.lanes.map((lane, index) => (
-                  <View
-                    key={lane.id}
-                    style={{ ...styles.divider, left: rail + index * columnWidth }}
-                  />
-                ))}
-                {appointments}
-              </View>
-              <Text style={styles.begin}>
-                {segment.end === 0
-                  ? `0 · Beginn${input.performanceTime ? ` · ${input.performanceTime} Uhr` : ""}`
-                  : `Fortsetzung ab ${segment.end} min`}
-              </Text>
-            </Page>
-          );
-        });
-        if (!needsDetails) return <React.Fragment key={item.record.id}>{pages}</React.Fragment>;
-        return (
-          <React.Fragment key={item.record.id}>
-            {pages}
-            <Page input={input} label={`${label} · Vollständiger Ablauf`} landscape>
-              {plan.notes && (
-                <>
-                  <Text style={styles.section}>Hinweise zum Maskenplan</Text>
-                  <Text style={styles.paragraph}>{plan.notes}</Text>
-                </>
-              )}
-              <Text style={styles.section}>Maskenpersonal</Text>
-              {item.lanes.map((lane) => (
-                <Text key={lane.lane.id} style={styles.paragraph}>
-                  {lane.label}: {lane.staff.join(" / ") || "Noch kein Personal gewählt"}
-                </Text>
-              ))}
-              <Text style={styles.section}>Zeitblöcke</Text>
-              {item.blocks.map(({ block, number, actors, lane }) => (
-                <View key={block.id} style={styles.detail}>
-                  <Text style={styles.detailTitle}>
-                    {number} · {[actors.join(" / "), block.title].filter(Boolean).join(" · ")}
-                  </Text>
-                  <Text style={styles.detailMeta}>
-                    {block.startMinutes} bis {block.startMinutes + block.durationMinutes} min ·{" "}
-                    {block.durationMinutes} Minuten · {lane.label} · {lane.staff.join(" / ")}
-                    {input.performanceTime
-                      ? ` · ${maskPlanClock(block.startMinutes, input.performanceTime)} bis ${maskPlanClock(block.startMinutes + block.durationMinutes, input.performanceTime)}`
-                      : ""}
-                  </Text>
-                  {block.notes && <Text style={styles.paragraph}>{block.notes}</Text>}
+                  ))}
+                  {columns.map((column, index) => (
+                    <View
+                      key={`${column.lane.id}-${column.track}`}
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        bottom: 0,
+                        left: rail + index * columnWidth,
+                        borderLeftWidth: 0.4,
+                        borderColor: "#83968c",
+                      }}
+                    />
+                  ))}
+                  {appointments.map(({ block, index, lines, timingLines, first, last }) => (
+                    <View
+                      key={block.id}
+                      style={{
+                        position: "absolute",
+                        left: rail + index * columnWidth,
+                        top: topFor(first),
+                        width: columnWidth,
+                        height: topFor(last) - topFor(first),
+                        backgroundColor: maskPlanPaleColor(block.color || item.color),
+                        borderWidth: 0.4,
+                        borderColor: "#83968c",
+                        padding: 2 * scale,
+                      }}
+                    >
+                      <Text style={{ fontSize: size * scale, lineHeight: 1.2, fontWeight: 700 }}>
+                        {lines.join("\n")}
+                      </Text>
+                      <Text
+                        style={{ marginTop: scale, fontSize: (size - 1) * scale, lineHeight: 1.2 }}
+                      >
+                        {timingLines.join("\n")}
+                      </Text>
+                    </View>
+                  ))}
                 </View>
-              ))}
-            </Page>
-          </React.Fragment>
+                <Text
+                  style={{
+                    height: 16 * scale,
+                    padding: 2 * scale,
+                    borderWidth: 0.6,
+                    borderColor: "#233932",
+                    fontSize: size * scale,
+                    fontWeight: 700,
+                    backgroundColor: "#f6d3ca",
+                  }}
+                >
+                  0 · Beginn{input.performanceTime ? ` · ${input.performanceTime}` : ""}
+                </Text>
+              </View>
+            ))}
+          </Page>
         );
       })}
     </>

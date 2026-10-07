@@ -10,9 +10,8 @@ import {
   setNavigationUser,
 } from "../src/shared/client-navigation";
 import { readViewState, writeViewState } from "../src/shared/view-state";
-import { validUndoReceipts } from "../src/modules/changes/client";
 
-describe("navigation context and undo receipts", () => {
+describe("navigation context", () => {
   const states: { url: URL; state: Record<string, unknown> }[] = [];
   let index = 0;
   const storage = new Map<string, string>();
@@ -113,20 +112,6 @@ describe("navigation context and undo receipts", () => {
     navigateWorkspace(source);
     restoreNavigationScroll();
     expect(scrollTo).toHaveBeenLastCalledWith({ left: 0, top: 680, behavior: "instant" });
-  });
-  it("expires undo receipts and rejects malformed or expired operations", () => {
-    const now = Date.parse("2026-10-07T09:00:00Z");
-    expect(
-      validUndoReceipts(
-        [
-          { id: "valid", label: "Termin geändert", expiresAt: "2026-10-07T09:01:00Z" },
-          { id: "old", label: "Alt", expiresAt: "2026-10-07T08:00:00Z" },
-          { id: "broken" },
-        ],
-        now,
-      ).map((item) => item.id),
-    ).toEqual(["valid"]);
-    expect(validUndoReceipts(null, now)).toEqual([]);
   });
   it("opens workflow changes in their inventory article or focused calendar request", () => {
     const reservation: DomainRecord = {

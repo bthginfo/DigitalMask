@@ -10,7 +10,6 @@ const mocks = vi.hoisted(() => ({
   find: vi.fn(),
   emit: vi.fn(),
   audit: vi.fn(),
-  capture: vi.fn(),
   invalidate: vi.fn(),
   schedule: vi.fn(),
 }));
@@ -29,7 +28,6 @@ vi.mock("@/platform/events", () => ({
   scheduleEvents: mocks.schedule,
 }));
 vi.mock("@/modules/records/workspace", () => ({ invalidateWorkspace: mocks.invalidate }));
-vi.mock("@/modules/changes/operations", () => ({ captureRecordOperation: mocks.capture }));
 import { createShiftSwap, decideShiftSwap } from "@/modules/shift-swaps/service";
 
 type Row = typeof records.$inferSelect;
@@ -210,13 +208,7 @@ describe("atomic shift-swap service", () => {
     );
     expect(data.stored.get("a-duty")!.data.participantIds).toEqual(["b"]);
     expect(data.stored.get("b-duty")!.data.participantIds).toEqual(["a"]);
-    expect(mocks.capture).toHaveBeenCalledWith(
-      expect.anything(),
-      admin,
-      expect.anything(),
-      expect.anything(),
-      { undoable: false },
-    );
+    expect(mocks.audit).toHaveBeenCalledWith(expect.anything(), admin, "events.updated", "a-duty");
     expect(mocks.emit).toHaveBeenCalledWith(
       expect.anything(),
       admin,

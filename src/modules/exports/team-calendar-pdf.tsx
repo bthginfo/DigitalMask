@@ -2,9 +2,12 @@ import React from "react";
 import { Page as PdfPage, Text, View, StyleSheet } from "@react-pdf/renderer";
 import { format, parseISO } from "date-fns";
 import { de } from "date-fns/locale";
-import { calendarRange } from "./calendar";
-import { calendarLegend, teamCalendarMembers, teamCalendarWeeks } from "./team-calendar";
-import { teamPrintEntries } from "./team-calendar-print";
+import { calendarLegend } from "./team-calendar";
+import {
+  teamCalendarBlocks,
+  teamCalendarRows,
+  teamCalendarPrintStyle as metrics,
+} from "./team-calendar-layout";
 import type { ExportInput } from "./types";
 
 type PrintPage = React.ComponentType<{
@@ -14,183 +17,95 @@ type PrintPage = React.ComponentType<{
   label?: string;
 }>;
 type WrapLines = (text: string, width: number, size: number, weight: number) => string[];
-const pageWidth = 841.89;
-const availableHeight = 535;
-const nameWidth = 99;
-const dayWidth = (pageWidth - 36 - nameWidth) / 7;
+const pageWidth = 841.89,
+  pageHeight = 595.28;
+const horizontalMargin = metrics.margins.left * 72,
+  verticalMargin = metrics.margins.top * 72;
+const points = (width: number) => (width * 7 + 5) * 0.75;
 const styles = StyleSheet.create({
-  page: { padding: 18, paddingBottom: 42, fontFamily: "Noto", color: "#233932" },
-  week: { marginBottom: 14 },
-  title: { fontSize: 12, fontWeight: 700, marginBottom: 5 },
-  head: { flexDirection: "row", backgroundColor: "#edf1ef", minHeight: 20 },
-  heading: { padding: 4, fontSize: 8.5, fontWeight: 700 },
-  row: { flexDirection: "row" },
-  name: { width: nameWidth, padding: 4, fontWeight: 700, backgroundColor: "#f5f7f5" },
-  cell: {
-    width: dayWidth,
-    padding: 2,
-    borderBottomWidth: 0.5,
-    borderRightWidth: 0.5,
-    borderColor: "#b8c6bf",
+  page: {
+    paddingHorizontal: horizontalMargin,
+    paddingVertical: verticalMargin,
+    fontFamily: "Noto",
+    color: "#233932",
   },
-  entry: { padding: 3, marginBottom: 2, borderRadius: 1 },
+  matrix: { borderWidth: 1.2, borderColor: "#000000" },
+  row: { flexDirection: "row" },
+  cell: { padding: 2, borderRightWidth: 0.3, borderRightColor: "#b8c6bf" },
 });
 
-function weekLayout(
+function printLayout(
   input: ExportInput,
-  week: ReturnType<typeof teamCalendarWeeks>[number],
-  size: number,
+  block: ReturnType<typeof teamCalendarBlocks>[number],
   wrapLines: WrapLines,
 ) {
-  const lineHeight = size * 1.25;
-  const rows = teamCalendarMembers(input).map((member) => {
-    const name = wrapLines(member.name, nameWidth - 8, size, 700);
-    const cells = week.days.map((day) => ({
-      day,
-      entries: teamPrintEntries(input, day, member.id).map((entry) => ({
-        ...entry,
-        lines: [
-          ...(entry.time ? wrapLines(entry.time, dayWidth - 10, size - 0.5, 700) : []),
-          ...wrapLines(entry.title, dayWidth - 10, size, 400),
-        ],
-      })),
-    }));
-    const height = Math.max(
-      23,
-      name.length * lineHeight + 8,
-      ...cells.map((cell) =>
-        cell.entries.reduce((sum, entry) => sum + entry.lines.length * lineHeight + 8, 4),
+  const compact = block.days.length > 7;
+  const nameWidth = points(metrics.nameWidth),
+    dayWidth = points(compact ? metrics.monthDayWidth : metrics.dayWidth);
+  const rawWidth = nameWidth + dayWidth * block.days.length;
+  const scale = Math.min(metrics.scale / 100, (pageWidth - 2 * horizontalMargin - 2.4) / rawWidth);
+  const size = compact ? metrics.monthFontSize : metrics.fontSize;
+  const rows = teamCalendarRows(input, block.days, (line) =>
+    wrapLines(line, dayWidth - (compact ? 2 : 6), size, 400),
+  ).map((row) => {
+    return {
+      ...row,
+      slots: Math.max(
+        row.slots,
+        Math.ceil(
+          (wrapLines(row.member.name, nameWidth - 6, metrics.nameFontSize, 700).length *
+            metrics.nameFontSize *
+            1.2) /
+            metrics.rowHeight,
+        ),
+        ...row.cells.map((cell) => cell.length),
       ),
-    );
-    return { member, name, cells, height };
+    };
   });
+  const maxSlots = Math.max(
+    2,
+    Math.floor(
+      (pageHeight -
+        2 * verticalMargin -
+        (metrics.titleHeight + metrics.headingHeight) * scale -
+        3) /
+        (metrics.rowHeight * scale),
+    ),
+  );
+  const pages: (typeof rows)[] = [[]];
+  let used = 0;
+  for (const row of rows) {
+    let offset = 0;
+    while (offset < row.slots) {
+      const remaining = maxSlots - used;
+      if (!remaining || (row.slots <= maxSlots && row.slots > remaining)) {
+        pages.push([]);
+        used = 0;
+        continue;
+      }
+      const slots = Math.min(row.slots - offset, maxSlots - used);
+      pages.at(-1)!.push({
+        ...row,
+        cells: row.cells.map((cell) => cell.slice(offset, offset + slots)),
+        slots,
+      });
+      offset += slots;
+      used += slots;
+    }
+  }
   return {
-    week,
+    block,
     rows,
+    pages,
+    scale,
     size,
-    lineHeight,
-    height: 41 + rows.reduce((sum, row) => sum + row.height, 0),
+    nameWidth: nameWidth * scale,
+    dayWidth: dayWidth * scale,
+    width: rawWidth * scale,
   };
 }
-type WeekLayout = ReturnType<typeof weekLayout>;
 
-function WeekTable({
-  layout,
-  range,
-  rows = layout.rows,
-}: {
-  layout: WeekLayout;
-  range: ReturnType<typeof calendarRange>;
-  rows?: WeekLayout["rows"];
-}) {
-  return (
-    <View style={styles.week} wrap={false}>
-      <Text style={styles.title}>KW {format(parseISO(layout.week.key), "II")}</Text>
-      <View style={styles.head}>
-        <Text style={{ ...styles.heading, width: nameWidth }}>Person</Text>
-        {layout.week.days.map((day) => (
-          <Text key={day} style={{ ...styles.heading, width: dayWidth }}>
-            {format(parseISO(day), "EEE dd.MM.", { locale: de })}
-          </Text>
-        ))}
-      </View>
-      {rows.map((row, index) => (
-        <View
-          key={`${row.member.id}-${index}`}
-          style={{ ...styles.row, minHeight: row.height }}
-          wrap={false}
-        >
-          <Text style={{ ...styles.cell, ...styles.name, fontSize: layout.size, lineHeight: 1.25 }}>
-            {row.name.join("\n")}
-          </Text>
-          {row.cells.map((cell) => (
-            <View
-              key={cell.day}
-              style={{
-                ...styles.cell,
-                backgroundColor:
-                  cell.day < range.from || cell.day > range.to ? "#f4f4f4" : "#ffffff",
-              }}
-            >
-              {cell.entries.map((entry) => (
-                <View key={entry.id} style={{ ...styles.entry, backgroundColor: entry.color }}>
-                  <Text style={{ fontSize: layout.size, lineHeight: 1.25, color: entry.textColor }}>
-                    {entry.lines.join("\n")}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          ))}
-        </View>
-      ))}
-    </View>
-  );
-}
-
-/** No agenda preview/truncation: paginate complete cells only when a week cannot fit. */
-function splitWeek(layout: WeekLayout): WeekLayout["rows"][] {
-  const rowLimit = availableHeight - 41;
-  const segments: WeekLayout["rows"] = [];
-  for (const row of layout.rows) {
-    if (row.height <= rowLimit) {
-      segments.push(row);
-      continue;
-    }
-    const maxLines = Math.max(1, Math.floor((rowLimit - 18) / layout.lineHeight));
-    const cells = row.cells.map((cell) => ({
-      ...cell,
-      entries: cell.entries.flatMap((entry) =>
-        Array.from({ length: Math.ceil(entry.lines.length / maxLines) }, (_, i) => ({
-          ...entry,
-          id: `${entry.id}-${i}`,
-          lines: entry.lines.slice(i * maxLines, (i + 1) * maxLines),
-        })),
-      ),
-    }));
-    // Individual long entries and crowded days continue in the same date column.
-    while (cells.some((cell) => cell.entries.length)) {
-      const next = cells.map((cell) => {
-        const entries: typeof cell.entries = [];
-        let height = 4;
-        while (
-          cell.entries.length &&
-          height + cell.entries[0].lines.length * layout.lineHeight + 8 <= rowLimit
-        ) {
-          const entry = cell.entries.shift()!;
-          entries.push(entry);
-          height += entry.lines.length * layout.lineHeight + 8;
-        }
-        return { day: cell.day, entries };
-      });
-      segments.push({
-        ...row,
-        cells: next,
-        height: Math.max(
-          23,
-          row.name.length * layout.lineHeight + 8,
-          ...next.map((cell) =>
-            cell.entries.reduce(
-              (sum, entry) => sum + entry.lines.length * layout.lineHeight + 8,
-              4,
-            ),
-          ),
-        ),
-      });
-    }
-  }
-  const groups: WeekLayout["rows"][] = [[]];
-  let height = 0;
-  for (const row of segments) {
-    if (height + row.height > rowLimit && groups.at(-1)!.length) {
-      groups.push([]);
-      height = 0;
-    }
-    groups.at(-1)!.push(row);
-    height += row.height;
-  }
-  return groups;
-}
-
+/** The same complete coloured matrix and typography proportions as the Excel template. */
 export function TeamCalendarPdf({
   input,
   wrapLines,
@@ -198,60 +113,134 @@ export function TeamCalendarPdf({
   input: ExportInput;
   wrapLines: WrapLines;
 }) {
-  const range = calendarRange(input);
-  const weeks = teamCalendarWeeks(input);
-  const pages: React.ReactNode[] = [];
-  for (let index = 0; index < weeks.length;) {
-    let layouts: WeekLayout[] = [];
-    if (input.view === "team-month" && index + 1 < weeks.length) {
-      for (const size of [9, 8.5, 8]) {
-        const pair = [
-          weekLayout(input, weeks[index], size, wrapLines),
-          weekLayout(input, weeks[index + 1], size, wrapLines),
-        ];
-        if (pair[0].height + pair[1].height + 14 <= availableHeight) {
-          layouts = pair;
-          break;
-        }
-      }
-    }
-    if (layouts.length) {
-      pages.push(
-        <PdfPage
-          key={weeks[index].key}
-          size="A4"
-          orientation="landscape"
-          style={styles.page}
-          wrap={false}
-        >
-          {layouts.map((layout) => (
-            <WeekTable key={layout.week.key} layout={layout} range={range} />
-          ))}
-        </PdfPage>,
-      );
-      index += 2;
-      continue;
-    }
-    let layout = weekLayout(input, weeks[index], 9, wrapLines);
-    for (const size of [8.5, 8, 7.5]) {
-      if (layout.height <= availableHeight) break;
-      layout = weekLayout(input, weeks[index], size, wrapLines);
-    }
-    for (const [part, rows] of splitWeek(layout).entries())
-      pages.push(
-        <PdfPage
-          key={`${weeks[index].key}-${part}`}
-          size="A4"
-          orientation="landscape"
-          style={styles.page}
-          wrap={false}
-        >
-          <WeekTable layout={layout} rows={rows} range={range} />
-        </PdfPage>,
-      );
-    index++;
-  }
-  return <>{pages}</>;
+  return (
+    <>
+      {teamCalendarBlocks(input).flatMap((block) => {
+        const layout = printLayout(input, block, wrapLines);
+        const { scale, dayWidth, nameWidth } = layout;
+        return layout.pages.map((rows, part) => (
+          <PdfPage
+            key={`${block.key}-${part}`}
+            size="A4"
+            orientation="landscape"
+            style={styles.page}
+          >
+            <Text
+              style={{
+                height: metrics.titleHeight * scale,
+                fontSize: metrics.titleFontSize * scale,
+                fontWeight: 700,
+              }}
+            >
+              {block.title}
+            </Text>
+            <View style={{ ...styles.matrix, width: layout.width }}>
+              <View
+                style={{
+                  ...styles.row,
+                  height: metrics.headingHeight * scale,
+                  backgroundColor: "#edf1ef",
+                  borderBottomWidth: 1,
+                  borderBottomColor: "#000000",
+                }}
+              >
+                {[
+                  "Person",
+                  ...block.days.map((day) =>
+                    day
+                      ? format(parseISO(day), block.days.length > 7 ? "EEEdd.MM." : "EEE dd.MM.", {
+                          locale: de,
+                        })
+                      : "",
+                  ),
+                ].map((label, index) => (
+                  <Text
+                    key={index}
+                    style={{
+                      ...styles.cell,
+                      width: index ? dayWidth : nameWidth,
+                      fontSize: metrics.headingFontSize * scale,
+                      fontWeight: 700,
+                      textAlign: "center",
+                    }}
+                  >
+                    {label}
+                  </Text>
+                ))}
+              </View>
+              {rows.map((row, index) => (
+                <View
+                  key={`${row.member.id}-${index}`}
+                  style={{
+                    ...styles.row,
+                    borderBottomWidth: index === rows.length - 1 ? 0 : 0.6,
+                    borderBottomColor: "#83968c",
+                  }}
+                  wrap={false}
+                >
+                  <View
+                    style={{
+                      ...styles.cell,
+                      width: nameWidth,
+                      justifyContent: "center",
+                      backgroundColor: "#ffffff",
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: metrics.nameFontSize * scale,
+                        fontWeight: 700,
+                        lineHeight: 1.15,
+                      }}
+                    >
+                      {row.member.name}
+                    </Text>
+                  </View>
+                  {block.days.map((day, dayIndex) => (
+                    <View
+                      key={`${day}-${dayIndex}`}
+                      style={{
+                        width: dayWidth,
+                        borderRightWidth: dayIndex === block.days.length - 1 ? 0 : 0.3,
+                        borderRightColor: "#b8c6bf",
+                      }}
+                    >
+                      {Array.from({ length: row.slots }, (_, slot) => {
+                        const entry = row.cells[dayIndex][slot];
+                        return (
+                          <View
+                            key={slot}
+                            style={{
+                              height: metrics.rowHeight * scale,
+                              paddingVertical: 2 * scale,
+                              paddingHorizontal: (block.days.length > 7 ? 0.75 : 2) * scale,
+                              backgroundColor: entry?.color || "#ffffff",
+                            }}
+                          >
+                            {entry && (
+                              <Text
+                                style={{
+                                  fontSize: layout.size * scale,
+                                  color: entry.textColor,
+                                  lineHeight: block.days.length > 7 ? 1.1 : 1.2,
+                                }}
+                              >
+                                {entry.text}
+                              </Text>
+                            )}
+                          </View>
+                        );
+                      })}
+                    </View>
+                  ))}
+                </View>
+              ))}
+            </View>
+          </PdfPage>
+        ));
+      })}
+    </>
+  );
 }
 
 export function CalendarLegendPdf({ input, Page }: { input: ExportInput; Page: PrintPage }) {
@@ -261,9 +250,8 @@ export function CalendarLegendPdf({ input, Page }: { input: ExportInput; Page: P
       {Array.from({ length: Math.max(1, Math.ceil(items.length / 10)) }, (_, chunk) => (
         <Page input={input} key={chunk} label="Kalender · Legende">
           <Text style={{ fontSize: 10, marginBottom: 18 }}>
-            Die Namen und Farben entsprechen den aktuellen Kalenderkategorien. Ganztägige Termine
-            enthalten keine Uhrzeiten; das Enddatum in der Agenda ist der letzte eingeschlossene
-            Tag.
+            Ganztägige Termine enthalten keine Uhrzeiten. Die Farben entsprechen den
+            Kalenderkategorien und Produktionen.
           </Text>
           {items.slice(chunk * 10, chunk * 10 + 10).map((item) => (
             <View

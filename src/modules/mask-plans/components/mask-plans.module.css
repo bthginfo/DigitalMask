@@ -36,16 +36,36 @@
   font-size: 11px;
 }
 .module[data-compact="true"] {
-  --time-rail: 64px;
-  --lane-width: 220px;
-  gap: 12px;
+  --time-rail: 44px;
+  gap: 10px;
 }
 .module[data-compact="true"] .heading h2 {
-  font-size: 20px;
+  font-size: 18px;
+}
+.module[data-compact="true"] .heading > div {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.module[data-compact="true"] .savedIndicator {
+  margin-top: 0;
 }
 .module[data-compact="true"] .planBar {
   padding-bottom: 0;
   border: 0;
+  gap: 8px;
+}
+.module[data-compact="true"] .planSelect {
+  flex-basis: 200px;
+  max-width: 360px;
+}
+.module[data-compact="true"] .planSelect > span,
+.module[data-compact="true"] .viewControls label > span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
 }
 .module[data-compact="true"] .planTitle,
 .module[data-compact="true"] .moreLabel {
@@ -72,7 +92,10 @@
   flex: none;
 }
 .module[data-compact="true"] .viewControls input {
-  width: 132px;
+  width: 98px;
+}
+.module[data-compact="true"] .planActions {
+  margin-left: auto;
 }
 .planBar {
   align-items: end;
@@ -953,6 +976,192 @@
   margin-top: 18px;
 }
 
+.savedTimetable {
+  min-width: 0;
+  width: 100%;
+  max-width: var(--saved-preferred-width);
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  overscroll-behavior-x: contain;
+}
+.savedTimetable:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.savedSheet {
+  min-width: var(--saved-min-width);
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.savedRailColumn {
+  width: var(--time-rail);
+}
+.savedSheet th,
+.savedSheet td {
+  padding: 0;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  text-transform: none;
+  letter-spacing: 0;
+  white-space: normal;
+  vertical-align: top;
+  color: var(--text);
+}
+.savedSheet tr > :last-child {
+  border-right: 0;
+}
+.savedSheet tbody tr:last-child td {
+  border-bottom: 1px solid var(--border);
+}
+.savedSheet thead th {
+  border-bottom: 2px solid var(--accent);
+  background: var(--surface-soft);
+}
+.savedSheet tbody tr:hover {
+  background: transparent;
+}
+.savedSheet .savedCorner {
+  position: sticky;
+  left: 0;
+  z-index: 4;
+  padding: 12px 4px;
+  text-align: right;
+  font-size: 10px;
+  color: var(--muted);
+}
+.savedStaff {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  width: 100%;
+  min-height: 44px;
+  padding: 4px 7px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  font-size: 12px;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.savedStaff > span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 500;
+}
+.savedStaff:hover,
+.savedAppointmentEdit:hover {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+.savedStaff:focus-visible,
+.savedAppointmentEdit:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.savedSheet .savedTime,
+.savedSheet .savedZero {
+  height: 18px;
+  padding: 2px 4px;
+  text-align: right;
+  font-size: 11px;
+  line-height: 14px;
+  white-space: nowrap;
+}
+.savedTime strong,
+.savedTime span,
+.savedZero strong,
+.savedZero span {
+  display: inline;
+}
+.savedTime span,
+.savedZero span {
+  margin-left: 3px;
+  font-size: 9px;
+  color: var(--muted);
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.savedSheet .savedCell {
+  border-left: 3px solid var(--block-color);
+  background: color-mix(in srgb, var(--block-color) 20%, var(--surface));
+}
+.savedAppointment {
+  position: relative;
+  min-height: 26px;
+  padding: 3px 28px 3px 5px;
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.savedTiming {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1px 6px;
+  font-variant-numeric: tabular-nums;
+  font-size: 10px;
+  line-height: 1.3;
+}
+.savedActors {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 6px;
+  font-weight: 650;
+}
+.savedActors:empty {
+  display: none;
+}
+.savedActors a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  line-height: 1.3;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
+  text-underline-offset: 2px;
+}
+.savedActors a:hover {
+  text-decoration-color: currentColor;
+}
+.savedNotes {
+  margin: 2px 0 0;
+  white-space: pre-wrap;
+  font-size: 10.5px;
+  line-height: 1.35;
+}
+.savedAppointmentEdit {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+.savedSheet .savedZero,
+.savedSheet .savedBegin {
+  height: 26px;
+  padding: 5px 7px;
+  border-top: 2px solid var(--accent);
+  border-bottom: 0;
+  background: var(--accent-soft);
+  font-size: 11px;
+  font-weight: 750;
+  line-height: 14px;
+}
+
 @media (max-width: 760px) {
   .module {
     --time-rail: 60px;
@@ -960,10 +1169,40 @@
     gap: 12px;
   }
   .module[data-compact="true"] {
-    --time-rail: 54px;
+    --time-rail: 44px;
+  }
+  .module[data-compact="true"] .heading h2 {
+    font-size: 18px;
+  }
+  .module[data-compact="true"] .heading > :global(.button) {
+    width: 44px;
+    padding-inline: 0;
+  }
+  .module[data-compact="true"] .newPlanLabel {
+    display: none;
+  }
+  .module[data-compact="true"] .planBar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    padding-bottom: 0;
+  }
+  .module[data-compact="true"] .planSelect {
+    max-width: none;
+    min-width: 0;
+  }
+  .module[data-compact="true"] .planSelect select {
+    width: 100%;
+    min-width: 0;
+    padding-right: 24px;
   }
   .module[data-compact="true"] .planActions {
+    grid-column: 1 / -1;
     grid-template-columns: 1fr 1fr 44px;
+    margin-left: 0;
+  }
+  .module[data-compact="true"] .viewControls input {
+    width: 95px;
   }
   .module[data-dirty="true"] {
     padding-bottom: 112px;
@@ -1157,6 +1396,19 @@
   }
 }
 @media print {
+  .savedTimetable {
+    max-width: none;
+    overflow: visible;
+    border-radius: 0;
+  }
+  .savedAppointmentEdit {
+    display: none;
+  }
+  .savedCell,
+  .savedBegin,
+  .savedZero {
+    print-color-adjust: exact;
+  }
   .heading > :global(.button),
   .planBar,
   .toolbar,

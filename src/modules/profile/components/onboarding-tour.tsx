@@ -75,7 +75,7 @@ const steps = [
     text: "Zwei Timer erfassen getrennt, wie lange du im Theater bist und woran du arbeitest. Beide dürfen gleichzeitig laufen. Du kannst Zeiten auch später eintragen und korrigieren.",
     tips: [
       "Ohne Internet kannst du Zeiten auf dem Gerät vormerken. Sobald du wieder verbunden bist, kannst du sie speichern.",
-      "Unter Produktions- / Arbeitszeiten reichst du deine Tätigkeiten zur Wochenfreigabe ein. Anwesenheit bleibt getrennt.",
+      "Deine Zeiten werden direkt gespeichert und bleiben bearbeitbar. Unter Einstellungen hinterlegst du deine Wochenstunden für das persönliche Zeitkonto. Anwesenheit bleibt getrennt von Produktionsarbeit.",
     ],
   },
   {

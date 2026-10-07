@@ -1,5 +1,6 @@
 ﻿"use client";
 import type { DomainRecord } from "@/shared/contracts";
+import { LinkedText } from "@/components/linked-text";
 import { documentSections, pieceDuration, sectionName } from "@/shared/document-sections";
 import { useWorkspace } from "@/components/workspace-context";
 export function DocumentContent({ record }: { record: DomainRecord }) {
@@ -21,7 +22,9 @@ export function DocumentContent({ record }: { record: DomainRecord }) {
             section.entries.map((entry) => (
               <div key={entry.id}>
                 {entry.label && <h4>{entry.label}</h4>}
-                <p>{entry.text || "Noch kein Text eingetragen."}</p>
+                <p>
+                  <LinkedText>{entry.text || "Noch kein Text eingetragen."}</LinkedText>
+                </p>
               </div>
             ))
           ) : (

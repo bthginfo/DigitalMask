@@ -8,21 +8,15 @@ export type HelpArticle = {
 };
 export const helpArticles: HelpArticle[] = [
   {
-    id: "context-changes-undo",
-    title: "Zurück, Änderungen & Rückgängig",
+    id: "context-navigation",
+    title: "Zurück zur vorherigen Ansicht",
     module: "today",
     intro:
-      "Du kannst zwischen zusammengehörenden Einträgen wechseln und danach an derselben Stelle weiterarbeiten. Änderungen im Team findest du gesammelt unter Änderungen.",
+      "Du kannst zwischen zusammengehörenden Einträgen wechseln und danach an derselben Stelle weiterarbeiten.",
     steps: [
       "Wenn du etwa aus einer Besetzung einen Schauspieler öffnest, führen Schließen beziehungsweise Zurück und der Zurück-Knopf deines Browsers zur vorherigen Ansicht. Deine Produktionsseite, der gewählte Bereich und die Filter bleiben erhalten.",
       "Suchbegriffe, Sortierung, Spielzeit, Kalenderdatum und ausgewählte Personen bleiben während deiner Sitzung auf diesem Gerät erhalten. Eine neue Sitzung startet weiterhin mit der aktuellen Spielzeit. Andere Teammitglieder haben ihre eigene Auswahl.",
-      "Öffne Änderungen oben neben den Mitteilungen oder auf der Heute-Seite. Du siehst, wer einen Eintrag wann geändert hat. Vorher und Jetzt zeigen die konkreten Angaben. Öffnen führt direkt zum Eintrag.",
-      "In einer Produktion zeigt Änderungen nur die zugehörigen Einträge. In den Details eines Schauspielers, Aufschriebs oder Fundusartikels kannst du die Änderungen genau dieses Eintrags öffnen.",
-      "Neue Änderungen sind markiert. Erst mit Als gesehen markieren entfernst du ihre Neu-Markierung. Der Verlauf der letzten 30 Tage bleibt weiterhin sichtbar; dafür ist kein ständiges Nachladen nötig.",
-      "Nach unterstützten Änderungen erscheint Rückgängig. Du hast dafür zwei Minuten Zeit und kannst währenddessen auch in einen anderen Bereich wechseln. Es gibt keinen Papierkorb.",
-      "Hat jemand den betroffenen Eintrag inzwischen weiter verändert, wird das Rückgängigmachen aus Sicherheitsgründen gestoppt. Die neueren Angaben werden dabei nicht überschrieben. Öffne dann den aktuellen Eintrag und prüfe ihn gemeinsam.",
     ],
-    note: "Rückgängig gilt für die zuletzt angebotenen Änderungen an Einträgen und Dateien. Freigaben, Kontoverwaltung und laufende Timer werden nicht pauschal zurückgesetzt. Der Hinweis verschwindet nach Ablauf der kurzen Frist.",
   },
   {
     id: "app-install",
@@ -199,25 +193,29 @@ export const helpArticles: HelpArticle[] = [
   },
   {
     id: "time",
-    title: "Zeit buchen, korrigieren & freigeben",
+    title: "Zeit buchen und korrigieren",
     module: "time",
     intro:
       "Anwesenheit zeigt deine Zeit im Theater. Arbeitszeiten zeigen deine Tätigkeiten, mit oder ohne Produktion. Beide bleiben getrennt.",
     steps: [
       "Anwesenheits- und Arbeitstimer dürfen gleichzeitig laufen. Unter Anwesenheit trägst du Beginn, Ende und Pause nach. Unter Produktions- / Arbeitszeiten buchst du eine Tätigkeit mit Dauer oder Zeitraum.",
-      "Zum Nachtragen wählst du zuerst die gewünschte Woche. Klicke dann in der Tagesübersicht auf den passenden Tag. Das Buchungsfenster öffnet sich mit genau diesem Datum. Bei Produktionszeiten kannst du auch den Tagesbalken anklicken. Du kannst für jeden Tag mehrere Tätigkeiten buchen; das Datum lässt sich im Buchungsfenster ändern. Tag kennzeichnen ist nur für ABF, Ruhetag und andere freie Tage gedacht.",
+      "Nachtragen öffnet das Buchungsfenster immer mit dem heutigen Datum, auch wenn du gerade eine ältere Woche ansiehst. Du kannst das Datum ändern. Wenn du einen bestimmten Tag anklickst, wird stattdessen dessen Datum übernommen. Bei Produktionszeiten geht das auch über den Tagesbalken. Abbrechen lässt deine Wochenauswahl unverändert; nach dem Speichern siehst du die Woche der neuen Buchung. Tag kennzeichnen ist nur für ABF, Ruhetag und andere freie Tage gedacht.",
       "Am Smartphone bleiben beide Timer kompakt sichtbar. Öffne die Angaben, wenn du die Tätigkeit, Produktion oder Kategorie ändern möchtest. Ein laufender Timer bleibt auch bei geschlossenen Angaben erkennbar.",
       "Pausiere den Timer bei Bedarf. Stoppen & buchen legt die Zeitbuchung an. Timer verwerfen entfernt einen ungebuchten Lauf nach Bestätigung.",
-      "Wähle bei einer Buchung Bearbeiten, um Datum, Dauer, Beginn, Ende oder Pause zu korrigieren. Alle Rollen können eigene Zeiten ändern; Admins auch Zeiten anderer Teammitglieder. Korrigierte Produktionswochen werden bei Bedarf erneut zur Prüfung geöffnet.",
+      "Wähle bei einer Buchung Bearbeiten, um Datum, Dauer, Beginn, Ende oder Pause zu korrigieren. Alle Rollen können eigene Zeiten ändern; Admins auch Zeiten anderer Teammitglieder. Die Änderung wird direkt gespeichert.",
       "Unter Wochenverlauf stehen frühere Wochen mit Kalenderwoche, Datum und Stundensumme. Klappe eine Woche auf, um die einzelnen Buchungen zu lesen oder zu bearbeiten. Anwesenheit und Produktionsarbeit haben jeweils ihren eigenen Verlauf.",
       "Mit der Wochenauswahl wechselst du auch zu leeren oder älteren Wochen. Für Einträge aus früheren Spielzeiten öffnest du Zeitraum auswählen und wählst die passende oder Alle Spielzeiten. Die Filter für Person und Produktion gelten auch im Verlauf.",
+      "Als Admin kannst du unter Produktions- / Arbeitszeiten bei Person die Auswahl Alle wählen. Du siehst die Stunden des gesamten Teams, nach Personen aufgeteilt. Das gilt auch für frühere Wochen und für den Export. Mit einer einzelnen Person grenzt du die Ansicht wieder ein.",
       "Kalenderzeiten prüfen zeigt ungeprüfte Vorschläge aus deinen bereits beendeten Kalenderterminen. Öffne einen Vorschlag, vergleiche ihn mit deiner tatsächlichen Arbeit und korrigiere Beginn, Ende, Pause oder Tätigkeit. Erst dein ausdrückliches Speichern bucht die Zeit. Kalendertermine allein sind keine gebuchten Stunden.",
       "Wenn ein Termin innerhalb eines Tagesdienstes liegt, wird seine Zeit bei den Arbeitsvorschlägen zuerst berücksichtigt. Der Dienst füllt nur die übrige Zeit. So wird derselbe Zeitraum nicht doppelt vorgeschlagen. Die Anwesenheit fasst zusammenhängende geplante Arbeitszeiten zusammen; auch diese musst du selbst prüfen und bestätigen.",
       "Ganztägige freie Tage und Abwesenheiten werden nicht als Arbeitszeit vorgeschlagen. Bereits gebuchte Zeiträume werden berücksichtigt. Prüfe die Vorschläge spätestens beim Rückblick auf die vergangene Woche; Anwesenheit und Tätigkeiten bestätigst du getrennt.",
       "Die Wochenübersicht zeigt auch ABF, Ruhetag, Urlaub und andere ganztägige Kennzeichnungen aus deinem Kalender. Über Tag kennzeichnen kannst du eine vorhandene Kalenderart für deinen Tag wählen. Diese Kennzeichnungen erzeugen keine Arbeitsstunden. Besprechung, Aufräumen und andere Tätigkeiten lassen sich weiterhin ohne Produktion buchen.",
       "Beim PDF-Export stehen Kalenderkennzeichen in einer zusätzlichen Wochenübersicht. Im Excel-Export findest du sie auf dem Blatt Kalenderkennzeichen. Die Stundensummen enthalten weiterhin nur tatsächlich gebuchte Zeit.",
       "Die Tages- und Wochensummen berücksichtigen Mitternacht. Der Wochenvergleich zeigt Anwesenheit und Tätigkeiten nebeneinander. In einer Produktion stehen nur ihre Arbeitszeiten.",
-      "Reiche die vollständige Woche unter Produktions- / Arbeitszeiten zur Freigabe ein. Anwesenheit wird getrennt exportiert und gehört nicht zu dieser Freigabe.",
+      "Gespeicherte Zeiten sind sofort eingetragen. Es gibt keine Wochenfreigabe und du musst sie nicht einreichen. Anwesenheit und Produktionsarbeit bleiben getrennt und können jederzeit korrigiert werden.",
+      "Unter Einstellungen trägst du deine Wochenstunden und den Beginn deines Zeitkontos ein. Standardmäßig verteilen sich die Sollstunden auf 6 Tage von Montag bis Samstag. Du kannst andere Soll-Tage und einen vorhandenen Startsaldo wählen. Vor diesem Beginn entstehen keine fehlenden Stunden.",
+      "Das Zeitkonto auf Heute und unter Anwesenheit zeigt Plus- oder Minusstunden aus gespeicherter Anwesenheit. Produktionsbuchungen zählen nicht zusätzlich. Wähle Gesamt, Woche, Monat oder einen eigenen Zeitraum; zukünftige Tage zählen noch nicht zur Sollzeit. Eine neue Wochenstundenzahl gilt ab ihrem Änderungsdatum, frühere Sollzeiten bleiben erhalten.",
+      "Urlaub und Krank im Kalender füllen höchstens die noch fehlende Sollzeit eines Soll-Tages auf. ABF, Ruhetag, halber freier Tag und Feiertage erhalten keine automatische Gutschrift. Anwesenheit und eine Gutschrift für denselben Tag werden dabei nicht doppelt gezählt.",
       "Offlineentwürfe liegen auf dem Gerät. Übernehme unzugeordnete Geräteentwürfe ausdrücklich in deinen Account und synchronisiere sie anschließend. Auf gemeinsam genutzten Geräten zuerst die Tätigkeit prüfen.",
     ],
   },
@@ -345,10 +343,11 @@ export const helpArticles: HelpArticle[] = [
     intro: "Accounts und Mitarbeiterzuordnungen erfüllen unterschiedliche Aufgaben.",
     steps: [
       "Neue Teammitglieder registrieren sich mit Benutzername und Passwort. Ein Admin gibt ihren Zugang frei.",
-      "Das Team arbeitet gemeinsam an Produktionen, Kontakten, Besetzung, Aufgaben, Sprints, Aufschrieben und Vorlagen. Du planst deinen eigenen Kalender, buchst deine eigenen Zeiten und stellst Freiwünsche. Kalenderplanung für andere Personen, Kategorien, Zugangsverwaltung sowie die Freigabe von Freiwünschen und Wochen bleiben bei Admins.",
+      "Das Team arbeitet gemeinsam an Produktionen, Kontakten, Besetzung, Aufgaben, Sprints, Aufschrieben und Vorlagen. Du planst deinen eigenen Kalender, buchst deine eigenen Zeiten und stellst Freiwünsche. Kalenderplanung für andere Personen, Kategorien, Zugangsverwaltung sowie die Freigabe von Freiwünschen bleiben bei Admins.",
       "Der Superadmin vergibt Adminrollen und bearbeitet den zentralen Feedbackverlauf. Ein Superadmin ist ein Systemkonto und erscheint nicht als neue Mitarbeiterauswahl.",
       "Passwörter werden im Profil geändert. Bei einem vergessenen Passwort erstellt ein Admin einen Wiederherstellungscode, der auf der Anmeldeseite verwendet werden kann.",
       "Wähle in deinen Einstellungen eine persönliche Akzentfarbe. Die fachlichen Farben von Terminen, Status und Produktionen behalten ihre Bedeutung.",
+      "Deine Wochenstunden und dein Zeitkonto sind für dich und die Admins sichtbar. Admins können die Wochenstunden von Teammitgliedern ihrer Abteilung in den Einstellungen bearbeiten.",
     ],
   },
 ];
@@ -387,7 +386,7 @@ export const helpFaq = [
   ],
   [
     "Was darf ich als normales Teammitglied?",
-    "Du kannst gemeinsame Arbeitsinhalte in deinen zugänglichen Bereichen anlegen, bearbeiten und löschen: Produktionen, Kontakte, Schauspieler, Figuren, Besetzungen, Aufgaben, Sprints, Aufschriebe und Vorlagen. Du kannst außerdem deinen eigenen Kalender planen. Kalenderplanung für andere Personen, Kategorien, Benutzerverwaltung und die Freigabe von Freiwünschen oder Wochen sind Adminaufgaben. Persönliche Zeitbuchungen und private Chats bleiben geschützt.",
+    "Du kannst gemeinsame Arbeitsinhalte in deinen zugänglichen Bereichen anlegen, bearbeiten und löschen: Produktionen, Kontakte, Schauspieler, Figuren, Besetzungen, Aufgaben, Sprints, Aufschriebe und Vorlagen. Du kannst außerdem deinen eigenen Kalender planen. Kalenderplanung für andere Personen, Kategorien, Benutzerverwaltung und die Freigabe von Freiwünschen sind Adminaufgaben. Persönliche Zeitbuchungen und private Chats bleiben geschützt.",
   ],
   [
     "Warum sehe ich eine Produktion nicht?",
@@ -426,12 +425,16 @@ export const helpFaq = [
     "Speichere zuerst Figur, Besetzung, Schauspieler oder Aufschrieb. Öffne danach die Galerie und wähle über Hochladen mehrere Dateien.",
   ],
   [
-    "Kann ich Zeiten nach der Wochenfreigabe korrigieren?",
-    "Ja. Wähle Bearbeiten bei der Buchung. Die betroffene Produktionswoche wird automatisch wieder zur Prüfung geöffnet. Reiche sie danach erneut ein. Anwesenheitszeiten lassen sich unabhängig davon korrigieren.",
+    "Kann ich gespeicherte Zeiten nachträglich korrigieren?",
+    "Ja. Wähle Bearbeiten bei der Buchung und passe Datum, Dauer, Beginn, Ende oder Pause an. Deine Änderung wird direkt gespeichert. Das geht sowohl für Anwesenheit als auch für Produktionsarbeit. Eine Wochenfreigabe ist nicht erforderlich.",
   ],
   [
     "Wo finde ich meine Stunden aus früheren Wochen?",
     "Öffne Zeit und den gewünschten Bereich: Anwesenheit oder Produktions- / Arbeitszeiten. Im Wochenverlauf findest du Kalenderwochen mit ihren Summen. Klappe eine Woche auf, um Einträge zu lesen und zu bearbeiten. Für frühere Spielzeiten passe den Zeitraum an oder wähle Alle Spielzeiten.",
+  ],
+  [
+    "Wie berechnet sich mein Plus oder Minus?",
+    "Hinterlege unter Einstellungen deine Wochenstunden, Soll-Tage, den Beginn des Zeitkontos und bei Bedarf einen Startsaldo. Das Zeitkonto rechnet gespeicherte Anwesenheit plus Urlaub/Krank-Gutschriften minus Sollzeit. Standard sind 6 Soll-Tage pro Woche. ABF, Ruhetag, halber freier Tag und Feiertage geben keine automatische Gutschrift. Künftige Tage und Produktionsbuchungen zählen nicht zusätzlich. Woche, Monat und eigene Zeiträume zeigen ihre Veränderung ohne den Startsaldo; Gesamt enthält den Startsaldo.",
   ],
   [
     "Werden Kalendertermine automatisch als Arbeitszeit gebucht?",

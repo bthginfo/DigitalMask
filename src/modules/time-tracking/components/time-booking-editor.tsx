@@ -170,9 +170,7 @@ export function TimeBookingEditor({
             Du bearbeitest die Buchung von{" "}
             {workspace.members.find((member) => member.id === record.data.userId)?.name ||
               workspace.user.name}
-            .
-            {!attendance &&
-              " Falls die betroffene Woche bereits eingereicht oder freigegeben ist, wird sie zur erneuten Prüfung geöffnet."}
+            . Die Änderung wird direkt gespeichert.
           </p>
         )}
         <label>

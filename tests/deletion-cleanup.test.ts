@@ -5,7 +5,7 @@ import { recordOperations, outbox } from "@/platform/db/schema";
 
 const mock = vi.hoisted(() => ({ transaction: vi.fn() }));
 vi.mock("@/platform/db", () => ({ db: { transaction: mock.transaction } }));
-import { finalizeRecordDeletion } from "@/modules/changes/cleanup";
+import { finalizeRecordDeletion } from "@/modules/files/legacy-deletion-cleanup";
 
 function fixture(fileOnly = false) {
   const now = Date.now();
@@ -110,7 +110,7 @@ function fixture(fileOnly = false) {
   return { state, operation, file, payload };
 }
 
-describe("deferred deletion preserves documents during undo", () => {
+describe("legacy queued deletion preserves documents restored by earlier releases", () => {
   beforeEach(() => vi.clearAllMocks());
   it("keeps files and collaborative edits until the undo window expires", async () => {
     const { state, operation, payload } = fixture();

@@ -1,4 +1,5 @@
 "use client";
+import { LinkedText } from "@/components/linked-text";
 import { useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useViewState } from "@/shared/view-state";
 import {
@@ -155,7 +156,9 @@ function TaskCard({
       <button className="task-title" onClick={onOpen}>
         {value(task.data, "title")}
       </button>
-      <p className="small muted task-description">{value(task.data, "description")}</p>
+      <p className="small muted task-description">
+        <LinkedText>{value(task.data, "description")}</LinkedText>
+      </p>
       <div className="task-meta">
         {task.data.priority === "high" && (
           <Badge tone="coral">

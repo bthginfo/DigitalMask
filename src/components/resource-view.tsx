@@ -1,5 +1,6 @@
 "use client";
 import { useState, type ReactNode } from "react";
+import { LinkedText } from "./linked-text";
 import Image from "next/image";
 import {
   ArrowLeft,
@@ -42,7 +43,6 @@ import { ActorPortrait } from "@/modules/ensemble/components/actor-portrait";
 import portraitStyles from "@/modules/ensemble/components/actor-portrait.module.css";
 import { initialPeriod, teamTaskSeason } from "@/shared/period-filter";
 import { useViewState } from "@/shared/view-state";
-import { ChangesButton } from "@/modules/changes/components/workspace-changes";
 import { MaterialReservations } from "@/modules/reservations/components/material-reservations";
 
 function recordTitle(record: DomainRecord, workspace: Workspace) {
@@ -158,10 +158,6 @@ function GenericRecordDetail({
                 Zurück
               </Button>
             )}
-            <ChangesButton
-              productionId={current.kind === "productions" ? current.id : ""}
-              recordId={current.kind === "productions" ? "" : current.id}
-            />
             {!["looks", "handovers"].includes(current.kind) && (
               <Badge
                 tone={
@@ -263,7 +259,9 @@ function GenericRecordDetail({
                 return (
                   <div key={field.key} className={field.type === "textarea" ? "field-wide" : ""}>
                     <dt>{field.label}</dt>
-                    <dd>{display}</dd>
+                    <dd>
+                      {typeof display === "string" ? <LinkedText>{display}</LinkedText> : display}
+                    </dd>
                   </div>
                 );
               })}
@@ -304,7 +302,9 @@ function GenericRecordDetail({
                       )
                     }
                   />
-                  <span className={item.done ? "done" : ""}>{item.text}</span>
+                  <span className={item.done ? "done" : ""}>
+                    <LinkedText>{item.text}</LinkedText>
+                  </span>
                 </label>
               ))}
             </section>
@@ -472,7 +472,9 @@ function GenericRecordDetail({
                 </RecordLink>
               </header>
               {value(linkedFigure.data, "description") && (
-                <p>{value(linkedFigure.data, "description")}</p>
+                <p>
+                  <LinkedText>{value(linkedFigure.data, "description")}</LinkedText>
+                </p>
               )}
               {figureFiles.length > 0 && (
                 <>

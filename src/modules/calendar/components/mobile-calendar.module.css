@@ -1,6 +1,23 @@
 .daySummary {
   display: none;
 }
+.dateHeader,
+.monthDate {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  max-width: 100%;
+}
+.dateHeader {
+  align-items: center;
+}
+.monthDate {
+  align-items: flex-end;
+  text-align: right;
+}
+.calendar.calendar :global(.fc-daygrid-day-number) {
+  max-width: 100%;
+}
 
 .teamScroll {
   min-width: 0;
@@ -263,6 +280,13 @@
     height: 26px;
     padding: 0;
     position: static;
+  }
+  .calendar.calendar :global(.fc-daygrid-day-number):has(.dayButton[data-holiday="true"]) {
+    height: 38px;
+  }
+  .dayButton[data-holiday="true"] {
+    padding-top: 5px;
+    padding-inline: 3px;
   }
 
   .dayButton {

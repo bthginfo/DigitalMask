@@ -4,7 +4,6 @@ import Papa from "papaparse";
 import { SHEETS_MAP, cellKey, type DocumentMetadata } from "./contracts";
 import { inputValue, excelFormula, createSheetCalculator, displayCell } from "./sheet-values";
 import { sheetDimensions } from "./presentation";
-import { originalCellInput } from "./sheet-import";
 import { cellFormatting } from "./sheet-formatting";
 import { safeSheetMetadata } from "./format-upgrade";
 
@@ -13,9 +12,12 @@ export async function exportSpreadsheet(
   metadata: DocumentMetadata,
   original?: Buffer,
 ) {
+  if (original) {
+    const { patchOriginalSpreadsheet } = await import("./office-package");
+    return patchOriginalSpreadsheet(original, document, metadata);
+  }
   metadata = safeSheetMetadata(document, metadata);
   const workbook = new ExcelJS.Workbook();
-  if (original) await workbook.xlsx.load(original as unknown as ExcelJS.Buffer);
   const info = metadata.sheets || [];
   const sheets = document.getMap<Y.Map<string>>(SHEETS_MAP);
   const evaluate = createSheetCalculator(sheets, info);
@@ -24,10 +26,6 @@ export async function exportSpreadsheet(
       workbook.worksheets.find((entry) => String(entry.id) === sheet.id) ||
       workbook.addWorksheet(sheet.name);
     const dimension = sheetDimensions(document, sheet);
-    if (original && sheet.merges)
-      for (const merge of worksheet.model.merges || []) {
-        if (!sheet.merges.includes(merge)) worksheet.unMergeCells(merge);
-      }
     if (!original) {
       sheet.widths?.forEach((width, index) => {
         worksheet.getColumn(index + 1).width = Math.max(1, (width - 5) / 7);
@@ -99,18 +97,29 @@ export async function exportSpreadsheet(
         return;
       const cell = worksheet.getCell(row, col);
       if (cell.isMerged && cell.master.address !== cell.address) return;
-      // Preserve rich text, date formats, hyperlinks and other original cell metadata when unchanged.
-      if (original && originalCellInput(cell) === raw && !raw.startsWith("=")) return;
       if (raw.startsWith("=")) {
         const computed = evaluate(sheet.id, row, col);
         const result =
-          typeof computed === "number" ||
-          typeof computed === "boolean" ||
-          typeof computed === "string"
+          !evaluate.hasError(sheet.id, row, col) &&
+          (typeof computed === "number" ||
+            typeof computed === "boolean" ||
+            typeof computed === "string")
             ? computed
             : undefined;
-        cell.value = { formula: excelFormula(raw), result };
+        const array = sheet.formulaArrays?.find(
+          (entry) => entry.anchor === key && entry.formula === raw,
+        );
+        const formula: ExcelJS.CellFormulaValue & { shareType?: "array"; ref?: string } = {
+          formula: excelFormula(raw),
+          result,
+          ...(array ? { shareType: "array", ref: array.ref } : {}),
+        };
+        cell.value = formula;
       } else {
+        if (evaluate.arrayAnchor(sheet.id, row, col)) {
+          cell.value = null;
+          return;
+        }
         const value = inputValue(raw);
         cell.value =
           cell.value instanceof Date &&

@@ -602,13 +602,11 @@ export async function buildPdf(input: ExportInput): Promise<Uint8Array> {
   }
   const calendar = input.kind === "events" || input.kind === "calendar";
   if (calendar && ["team", "team-month"].includes(input.view ?? "")) {
-    return addPageNumbers(
-      new Uint8Array(
-        await renderToBuffer(
-          <Document title="Teamkalender" author="DigitalMask" language="de-DE">
-            <TeamCalendarPdf input={input} wrapLines={headerLines} />
-          </Document>,
-        ),
+    return new Uint8Array(
+      await renderToBuffer(
+        <Document title="Teamkalender" author="DigitalMask" language="de-DE">
+          <TeamCalendarPdf input={input} wrapLines={headerLines} />
+        </Document>,
       ),
     );
   }
@@ -637,12 +635,7 @@ export async function buildPdf(input: ExportInput): Promise<Uint8Array> {
       ) : input.kind === "productions" ? (
         <ProductionPages input={input} Page={BasePage} />
       ) : input.kind === "maskPlans" ? (
-        <MaskPlanPages
-          input={input}
-          Page={BasePage}
-          availableHeight={(label) => 542 - headerLayout(input, label, true).bodyTop}
-          wrapLines={headerLines}
-        />
+        <MaskPlanPages input={input} wrapLines={headerLines} />
       ) : (
         <>
           {calendar && <CalendarPreview input={input} />}
@@ -701,5 +694,6 @@ export async function buildPdf(input: ExportInput): Promise<Uint8Array> {
       )}
     </Document>
   );
-  return addPageNumbers(new Uint8Array(await renderToBuffer(document)));
+  const bytes = new Uint8Array(await renderToBuffer(document));
+  return input.kind === "maskPlans" ? bytes : addPageNumbers(bytes);
 }

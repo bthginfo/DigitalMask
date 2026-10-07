@@ -6,6 +6,7 @@ import { shiftDate } from "@/shared/client-api";
 import { Button } from "@/components/ui";
 import { calendarDayEntries, calendarDayLabel } from "./day-details";
 import { MobileDayAgenda } from "./mobile-day-agenda";
+import { HolidayLabel } from "./holiday-label";
 import type { CalendarInstance } from "./team-calendar";
 import styles from "./mobile-day-sheet.module.css";
 
@@ -123,6 +124,7 @@ export function MobileDaySheet({
         <div>
           <p className="eyebrow">TAG IM KALENDER</p>
           <h2 id={headingId}>{calendarDayLabel(day)}</h2>
+          <HolidayLabel date={day} />
           <p className={styles.summary} id={summaryId}>
             {contextLabel} · {count} {count === 1 ? "Termin" : "Termine"}
           </p>

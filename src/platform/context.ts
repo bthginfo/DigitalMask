@@ -32,7 +32,7 @@ async function membershipFor(userId: string, fresh = false) {
       .limit(1);
   return fresh
     ? get()
-    : unstable_cache(get, ["membership-profile-v1", userId], {
+    : unstable_cache(get, ["membership-profile-v2", userId], {
         revalidate: 60,
         tags: [`member:${userId}`],
       })();
@@ -71,6 +71,7 @@ export async function requireContext(fresh = false): Promise<Context> {
       preferences: {
         accentPalette: row.preferences?.accentPalette || "green",
         onboardingVersion: row.preferences?.onboardingVersion || 0,
+        ...(row.preferences?.workingTime ? { workingTime: row.preferences.workingTime } : {}),
       },
     },
     organizationId: row.membership.organizationId,

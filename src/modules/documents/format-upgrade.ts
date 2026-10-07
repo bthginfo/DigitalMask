@@ -23,6 +23,7 @@ export function upgradeSheetMetadata(
         merges: sheet.merges || original.merges,
         styles: sheet.styles || original.styles,
         cellStyles: sheet.cellStyles || original.cellStyles,
+        formulaArrays: sheet.formulaArrays || original.formulaArrays,
       };
     }),
   };

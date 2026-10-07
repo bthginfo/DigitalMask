@@ -1,4 +1,4 @@
-import type { DomainRecord } from "@/shared/contracts";
+import type { DomainRecord, Member } from "@/shared/contracts";
 import { instantDate, shiftDate, timeAllocations, weekStart } from "@/shared/client-api";
 import { dateMatchesPeriod, seasonForDate, type PeriodFilter } from "@/shared/period-filter";
 import type { TimeDayMarker } from "./day-markers";
@@ -37,12 +37,17 @@ export function groupBookingWeeks(
     productionId = "",
     period = {},
     markers = [],
-  }: { userId: string; productionId?: string; period?: PeriodFilter; markers?: TimeDayMarker[] },
+  }: {
+    userId: string | undefined;
+    productionId?: string;
+    period?: PeriodFilter;
+    markers?: TimeDayMarker[];
+  },
 ): BookingWeek[] {
   const weeks = new Map<string, BookingWeek>();
   for (const record of records) {
     if (
-      record.data.userId !== userId ||
+      (userId !== undefined && record.data.userId !== userId) ||
       (productionId && record.data.productionId !== productionId)
     )
       continue;
@@ -90,6 +95,34 @@ export function groupBookingWeeks(
           String(b.record.data.start || "").localeCompare(String(a.record.data.start || "")),
       ),
     }));
+}
+
+/** Group the existing, period-clipped bookings without loading each person's records again. */
+export function groupBookingPeople(entries: BookingWeekEntry[], members: Member[]) {
+  const people = new Map<
+    string,
+    { userId: string; name: string; former: boolean; seconds: number; entries: BookingWeekEntry[] }
+  >();
+  for (const entry of entries) {
+    const userId = String(entry.record.data.userId || "");
+    let person = people.get(userId);
+    if (!person) {
+      const member = members.find((row) => row.id === userId);
+      person = {
+        userId,
+        name: member?.name || "Ehemaliges Teammitglied",
+        former: !member || member.status !== "active",
+        seconds: 0,
+        entries: [],
+      };
+      people.set(userId, person);
+    }
+    person.seconds += entry.seconds;
+    person.entries.push(entry);
+  }
+  return [...people.values()].sort(
+    (a, b) => a.name.localeCompare(b.name, "de") || a.userId.localeCompare(b.userId),
+  );
 }
 
 /** A deliberate week change must never be hidden by the previous year or season. */

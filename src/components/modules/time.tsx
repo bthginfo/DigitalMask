@@ -1,7 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import { useViewState } from "@/shared/view-state";
-import { Check, Plus, UploadCloud } from "lucide-react";
+import { Plus, UploadCloud } from "lucide-react";
 import { PeriodPicker, periodExportFilters, weekForPeriod } from "@/components/period-picker";
 import { dateMatchesPeriod, initialPeriod, type PeriodFilter } from "@/shared/period-filter";
 import { categoriesFor } from "@/shared/domain-categories";
@@ -19,11 +19,10 @@ import {
 import { useStoredValue } from "@/shared/client-storage";
 import { isStaff } from "@/shared/client-members";
 import { useWorkspace } from "../workspace-context";
-import { ActionMenu, Badge, Button, ErrorMessage, ExportButton, Modal, PageHeader } from "../ui";
+import { ActionMenu, Button, ErrorMessage, ExportButton, Modal, PageHeader } from "../ui";
 import { ResourceEditor } from "../resource-editor";
 import { RecordDetail } from "../resource-view";
 import { ExportDialog } from "../export-dialog";
-import { statusLabels } from "../resource-fields";
 export { TimerPanel } from "@/modules/time-tracking/components/work-timer";
 import { TimerPanel } from "@/modules/time-tracking/components/work-timer";
 import { TimeWorkspace } from "@/modules/time-tracking/components/time-workspace";
@@ -48,7 +47,7 @@ export function WorkTimeModule({
   productionId?: string;
   embedded?: boolean;
 }) {
-  const { workspace, action, refresh, online, busy } = useWorkspace();
+  const { workspace, refresh, online } = useWorkspace();
   const scope = `time:${productionId || "all"}`;
   const [period, setPeriod] = useViewState<PeriodFilter>(workspace.user.id, scope, "period", () =>
     initialPeriod(workspace.records.productions, productionId),
@@ -73,6 +72,7 @@ export function WorkTimeModule({
   const [draftModal, setDraftModal] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const admin = workspace.user.role !== "user";
+  const allPeople = admin && !person;
   const key = `digitalmask-time-drafts:${workspace.user.id}`;
   const [draftJson, setDraftJson] = useStoredValue(key, "[]");
   const drafts = useMemo<Draft[]>(() => {
@@ -115,6 +115,7 @@ export function WorkTimeModule({
   };
   const until = shiftDate(week, 6);
   const markers = useMemo(() => {
+    if (allPeople) return [];
     const first =
       workspace.records.events
         .map((event) => value(event.data, "start").slice(0, 10))
@@ -128,16 +129,24 @@ export function WorkTimeModule({
       to: until > shiftDate(weekStart(), 6) ? until : shiftDate(weekStart(), 6),
       period,
     });
-  }, [workspace.records.events, workspace.records.calendarCategories, person, week, until, period]);
+  }, [
+    workspace.records.events,
+    workspace.records.calendarCategories,
+    person,
+    week,
+    until,
+    period,
+    allPeople,
+  ]);
   const weeks = useMemo(
     () =>
       groupBookingWeeks(workspace.records.time, {
-        userId: person,
+        userId: allPeople ? undefined : person,
         productionId: project,
         period,
         markers,
       }),
-    [workspace.records.time, person, project, period, markers],
+    [workspace.records.time, person, project, period, markers, allPeople],
   );
   const selected = weeks.find((row) => row.start === week);
   const entries = selected?.entries || [];
@@ -147,9 +156,7 @@ export function WorkTimeModule({
     setPeriod(periodForWeek(period, next, workspace.records.productions));
   };
   const canBookDay = workspace.user.role !== "superadmin" && person === workspace.user.id;
-  const openBooking = (date = week) => {
-    selectWeek(isoWeek(date).start);
-    setPerson(workspace.user.id);
+  const openBooking = (date = localDate()) => {
     setEditor(date);
   };
   const secondaryActions = (
@@ -162,9 +169,6 @@ export function WorkTimeModule({
         <Button onClick={() => setDraftModal(true)}>Ohne Internet vormerken</Button>
       )}
     </>
-  );
-  const sheets = workspace.records.timesheets.filter(
-    (x) => admin || x.data.userId === workspace.user.id,
   );
   return (
     <>
@@ -201,7 +205,9 @@ export function WorkTimeModule({
       >
         {!embedded && <TimerPanel productionId={productionId} />}
         <section className="time-summary">
-          <p className="eyebrow">{productionId ? "DEINE PRODUKTIONSWOCHE" : "DEINE WOCHE"}</p>
+          <p className="eyebrow">
+            {allPeople ? "TEAMWOCHE" : productionId ? "DEINE PRODUKTIONSWOCHE" : "DEINE WOCHE"}
+          </p>
           <strong>
             {hours(total)} <span>Stunden</span>
           </strong>
@@ -238,15 +244,6 @@ export function WorkTimeModule({
               );
             })}
           </div>
-          {!productionId && (
-            <Button
-              disabled={busy || !entries.length || person !== workspace.user.id}
-              onClick={() => void run(() => action("timesheet-submit", undefined, { week }))}
-            >
-              <Check size={16} />
-              Woche zur Freigabe einreichen
-            </Button>
-          )}
         </section>
       </div>
       {workspace.user.role !== "superadmin" && inbox.length > 0 && (
@@ -309,16 +306,26 @@ export function WorkTimeModule({
         value={period}
         onChange={(next) => {
           setPeriod(next);
-          setWeek(weekForPeriod(workspace.records.time, person, next, week));
+          setWeek(
+            allPeople && !dateMatchesPeriod(week, next)
+              ? groupBookingWeeks(workspace.records.time, {
+                  userId: undefined,
+                  productionId: project,
+                  period: next,
+                })[0]?.start || weekForPeriod(workspace.records.time, person, next, week)
+              : weekForPeriod(workspace.records.time, person, next, week),
+          );
         }}
       />
       <div className={styles.weekToolbar}>
         <WeekNavigator week={week} onChange={selectWeek} />
         {admin && (
           <select aria-label="Person" value={person} onChange={(e) => setPerson(e.target.value)}>
+            <option value="">Alle</option>
             {workspace.members.filter(isStaff).map((x) => (
               <option key={x.id} value={x.id}>
                 {x.name}
+                {x.status !== "active" ? " · ehemaliges Teammitglied" : ""}
               </option>
             ))}
           </select>
@@ -346,7 +353,13 @@ export function WorkTimeModule({
             </h3>
             <strong>{hours(total)} h</strong>
           </header>
-          <BookingList entries={entries} kind="time" onEdit={setEditing} onDetail={setDetail} />
+          <BookingList
+            entries={entries}
+            kind="time"
+            onEdit={setEditing}
+            onDetail={setDetail}
+            groupByPerson={allPeople}
+          />
         </section>
       ) : (
         <section className={styles.emptyWeek}>
@@ -360,14 +373,16 @@ export function WorkTimeModule({
           )}
         </section>
       )}
-      <WeekDayOverview
-        week={week}
-        person={person}
-        entries={entries}
-        markers={selected?.markers || []}
-        onDetail={setDetail}
-        onBookDay={canBookDay ? openBooking : undefined}
-      />
+      {!allPeople && (
+        <WeekDayOverview
+          week={week}
+          person={person}
+          entries={entries}
+          markers={selected?.markers || []}
+          onDetail={setDetail}
+          onBookDay={canBookDay ? openBooking : undefined}
+        />
+      )}
       <WeeklyHistory
         key={`${person}:${project}:${period.year || ""}:${period.season || ""}`}
         weeks={weeks}
@@ -380,82 +395,26 @@ export function WorkTimeModule({
         onEdit={setEditing}
         onDetail={setDetail}
         onBookDay={canBookDay ? openBooking : undefined}
+        groupByPerson={allPeople}
       />
-      <CalendarTimeProposals
-        kind="time"
-        person={person}
-        week={week}
-        period={period}
-        productionId={project}
-      />
-      {!productionId && (
-        <section className="panel margin-top">
-          <header className="panel-heading">
-            <h2>{admin ? "Wochenfreigaben im Team" : "Meine Wochenfreigaben"}</h2>
-          </header>
-          {!sheets.length ? (
-            <p className="empty-inline">Noch keine Wochen eingereicht.</p>
-          ) : (
-            <div className="list">
-              {sheets.map((sheet) => (
-                <div className="list-row" key={sheet.id}>
-                  <div>
-                    <strong>
-                      {workspace.members.find((x) => x.id === sheet.data.userId)?.name}
-                    </strong>
-                    <p className="small muted">
-                      Woche ab {dateLabel(value(sheet.data, "week"))} · {value(sheet.data, "note")}
-                    </p>
-                  </div>
-                  <Badge tone={sheet.data.status === "approved" ? "green" : "neutral"}>
-                    {statusLabels[value(sheet.data, "status")]}
-                  </Badge>
-                  {admin && (
-                    <>
-                      {sheet.data.status !== "approved" && (
-                        <Button
-                          disabled={busy}
-                          onClick={() =>
-                            void run(() =>
-                              action("timesheet-decide", sheet.id, {
-                                status: "approved",
-                                version: sheet.version,
-                              }),
-                            )
-                          }
-                        >
-                          Freigeben
-                        </Button>
-                      )}
-                      <Button
-                        disabled={busy}
-                        onClick={() => {
-                          const note = prompt("Welche Korrektur wird benötigt?");
-                          if (note)
-                            void run(() =>
-                              action("timesheet-decide", sheet.id, {
-                                status: "changes_requested",
-                                note,
-                              }),
-                            );
-                        }}
-                      >
-                        Korrektur
-                      </Button>
-                    </>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
+      {!allPeople && (
+        <CalendarTimeProposals
+          kind="time"
+          person={person}
+          week={week}
+          period={period}
+          productionId={project}
+        />
       )}
       {editor && (
         <ResourceEditor
           kind="time"
           lockedProductionId={productionId || undefined}
           defaults={{ productionId: project, date: editor }}
-          onSaved={(record) => selectWeek(isoWeek(value(record.data, "date")).start)}
+          onSaved={(record) => {
+            setPerson(workspace.user.id);
+            selectWeek(isoWeek(value(record.data, "date")).start);
+          }}
           onClose={() => setEditor("")}
         />
       )}
@@ -472,7 +431,7 @@ export function WorkTimeModule({
           kind="time"
           filters={{
             ...periodExportFilters(period),
-            userId: person,
+            ...(!allPeople ? { userId: person } : {}),
             from: week,
             to: until,
             ...(project ? { productionId: project } : {}),

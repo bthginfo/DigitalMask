@@ -5,6 +5,7 @@ import { HttpError } from "@/platform/http";
 import { inspectOfficeArchive } from "./file-policy";
 import { themeColors } from "./office-colors";
 import { spreadsheetFormatting } from "./sheet-formatting";
+import { translateSharedFormula } from "./formula-tokens";
 import {
   SHEETS_MAP,
   MAX_SHEET_CELLS,
@@ -20,8 +21,18 @@ export function originalCellInput(cell: ExcelJS.Cell): string {
   if (value instanceof Date) return value.toISOString().slice(0, 10);
   if (typeof value === "object") {
     if ("formula" in value) return `=${value.formula}`;
-    if ("sharedFormula" in value)
-      return cell.formula ? `=${cell.formula}` : String(value.result || "");
+    if ("sharedFormula" in value) {
+      const master = cell.worksheet.getCell(value.sharedFormula);
+      const source = master.value;
+      if (
+        source &&
+        typeof source === "object" &&
+        "formula" in source &&
+        typeof source.formula === "string"
+      )
+        return `=${translateSharedFormula(source.formula, master.address, cell.address)}`;
+      throw new HttpError(400, "Eine geteilte Formel hat keine gültige Ausgangszelle.");
+    }
     if ("richText" in value) return value.richText.map((part) => part.text).join("");
     if ("hyperlink" in value) return value.text || value.hyperlink;
     if ("error" in value) return value.error;
@@ -32,6 +43,28 @@ export function originalCellInput(cell: ExcelJS.Cell): string {
   )
     return `'${value}`;
   return String(value);
+}
+export function originalFormulaArrays(
+  worksheet: ExcelJS.Worksheet,
+): NonNullable<SheetInfo["formulaArrays"]> {
+  const arrays: NonNullable<SheetInfo["formulaArrays"]> = [];
+  worksheet.eachRow((row, r) =>
+    row.eachCell((cell, c) => {
+      const value = cell.value;
+      if (
+        value &&
+        typeof value === "object" &&
+        "formula" in value &&
+        "shareType" in value &&
+        value.shareType === "array" &&
+        "ref" in value &&
+        typeof value.ref === "string" &&
+        typeof value.formula === "string"
+      )
+        arrays.push({ anchor: cellKey(r, c), ref: value.ref, formula: `=${value.formula}` });
+    }),
+  );
+  return arrays;
 }
 export async function importSpreadsheet(bytes: Buffer, csv = false) {
   const document = new Y.Doc();
@@ -52,7 +85,7 @@ export async function importSpreadsheet(bytes: Buffer, csv = false) {
     return map;
   }
   const warnings = [
-    "Zellen, Formeln und Tabellenblätter werden gemeinsam bearbeitet. Zell- und Schriftfarben, einfache Schriftformate, Ausrichtung, Rahmen und verbundene Zellen werden angezeigt. Makros, Diagramm-Bearbeitung und bedingte Formatierungen werden im Editor nicht unterstützt; das Original bleibt verfügbar.",
+    "Zellen, Formeln und Tabellenblätter werden gemeinsam bearbeitet. Formeln bleiben beim XLSX-Download erhalten; besondere Excel-Funktionen werden erst beim Öffnen in Excel neu berechnet. Zell- und Schriftfarben, einfache Schriftformate, Ausrichtung, Rahmen und verbundene Zellen werden angezeigt. Makros, Diagramm-Bearbeitung und bedingte Formatierungen werden im Editor nicht unterstützt; das Original bleibt verfügbar.",
   ];
   try {
     if (csv) {
@@ -97,6 +130,8 @@ export async function importSpreadsheet(bytes: Buffer, csv = false) {
           ),
         );
         meta.merges = worksheet.model.merges || [];
+        const arrays = originalFormulaArrays(worksheet);
+        if (arrays.length) meta.formulaArrays = arrays;
         Object.assign(meta, spreadsheetFormatting(worksheet, palette));
         worksheet.eachRow((row, r) =>
           row.eachCell((cell, c) => {

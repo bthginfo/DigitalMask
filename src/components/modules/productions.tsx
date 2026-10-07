@@ -1,4 +1,5 @@
 "use client";
+import { LinkedText } from "@/components/linked-text";
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowUpRight, CalendarDays, Plus, Users } from "lucide-react";
 import { PeriodPicker, periodExportFilters } from "@/components/period-picker";
@@ -26,7 +27,6 @@ import { RecordLink } from "../record-link";
 import relationStyles from "../record-links.module.css";
 import styles from "../workspace-browse.module.css";
 import { useViewState } from "@/shared/view-state";
-import { ChangesButton } from "@/modules/changes/components/workspace-changes";
 const productionSections = [
   ["overview", "Überblick"],
   ["team", "Team & Kontakte"],
@@ -145,7 +145,6 @@ export function ProductionsModule({
             <h1>{value(production.data, "title")}</h1>
           </div>
           <div className="heading-actions">
-            <ChangesButton productionId={production.id} />
             <Button onClick={() => setDetails(true)}>Produktion verwalten</Button>
           </div>
         </header>
@@ -220,8 +219,10 @@ export function ProductionsModule({
               <Section title="Über die Produktion">
                 <div className="panel-content">
                   <p>
-                    {value(production.data, "description") ||
-                      "Hier ist Raum für die wichtigsten Informationen zu diesem Stück."}
+                    <LinkedText>
+                      {value(production.data, "description") ||
+                        "Hier ist Raum für die wichtigsten Informationen zu diesem Stück."}
+                    </LinkedText>
                   </p>
                   <dl className="detail-grid">
                     <div>

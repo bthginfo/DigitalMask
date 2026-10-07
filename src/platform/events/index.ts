@@ -71,7 +71,7 @@ export async function processEvents() {
     try {
       const noticeIds: string[] = [];
       if (event.type === "RecordDeletionFinalizedV1") {
-        const { finalizeRecordDeletion } = await import("@/modules/changes/cleanup");
+        const { finalizeRecordDeletion } = await import("@/modules/files/legacy-deletion-cleanup");
         await finalizeRecordDeletion(event.departmentId, event.payload);
       }
       if (event.type === "FileDeletionRequestedV1") {

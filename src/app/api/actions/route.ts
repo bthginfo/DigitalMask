@@ -4,7 +4,6 @@ import { auth } from "@/platform/auth";
 import { requireContext } from "@/platform/context";
 import { readJson, route, HttpError } from "@/platform/http";
 import { timerAction } from "@/modules/time-tracking/timer";
-import { timesheetAction } from "@/modules/time-tracking/timesheets";
 import { decideLeave } from "@/modules/calendar/leave";
 import { organizationAction } from "@/modules/organization/actions";
 import { copyProduction } from "@/modules/productions/copy";
@@ -31,8 +30,6 @@ export async function POST(request: Request) {
     else if (action.startsWith("attendance-timer-"))
       result = await timerAction(context, action.replace("attendance-", ""), data, "attendance");
     else if (action.startsWith("timer-")) result = await timerAction(context, action, data);
-    else if (action.startsWith("timesheet-"))
-      result = await timesheetAction(context, action, id, data);
     else if (action === "leave-decide" && id)
       result = await decideLeave(context, id, data.status, data.category);
     else if (action === "production-copy" && id)

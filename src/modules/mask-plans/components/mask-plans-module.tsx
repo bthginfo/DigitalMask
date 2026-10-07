@@ -1,4 +1,5 @@
 "use client";
+import { LinkedText } from "@/components/linked-text";
 
 import { useEffect, useRef, useState } from "react";
 import {
@@ -32,6 +33,7 @@ import {
 } from "../model";
 import { BlockEditor, LaneEditor, PlanOptions } from "./plan-editors";
 import { Timetable } from "./timetable";
+import { SavedTimetable } from "./saved-timetable";
 import styles from "./mask-plans.module.css";
 import { useViewState } from "@/shared/view-state";
 import { navigateWorkspace } from "@/shared/client-navigation";
@@ -313,6 +315,19 @@ export function MaskPlansModule({ production }: { production: DomainRecord }) {
     onDragStart: beginDrag,
     onDragCancel: cancelDrag,
   };
+  const beginningControl = (
+    <div className={styles.viewControls}>
+      <label>
+        <span>Beginn (optional)</span>
+        <input
+          type="time"
+          aria-label="Vorstellungsbeginn (optional)"
+          value={performanceTime}
+          onChange={(event) => setPerformanceTime(event.target.value)}
+        />
+      </label>
+    </div>
+  );
 
   return (
     <section
@@ -334,16 +349,21 @@ export function MaskPlansModule({ production }: { production: DomainRecord }) {
             </span>
           )}
         </div>
-        <Button onClick={beginNew} disabled={busy || pending}>
+        <Button
+          onClick={beginNew}
+          disabled={busy || pending}
+          aria-label="Neuer Plan"
+          title="Neuen Maskenplan anlegen"
+        >
           <Plus size={16} />
-          Neuer Plan
+          <span className={styles.newPlanLabel}>Neuer Plan</span>
         </Button>
       </header>
       {plan ? (
         <>
           <div className={styles.planBar}>
             <label className={styles.planSelect}>
-              Plan auswählen
+              <span>Plan auswählen</span>
               <select
                 value={dirty && !draft?.base ? "new" : selected?.id || ""}
                 onChange={(event) => changePlan(event.target.value)}
@@ -357,6 +377,7 @@ export function MaskPlansModule({ production }: { production: DomainRecord }) {
                 ))}
               </select>
             </label>
+            {compact && beginningControl}
             <div className={styles.planActions}>
               {compact && (
                 <Button variant="primary" onClick={() => setEditing(true)} disabled={pending}>
@@ -495,8 +516,8 @@ export function MaskPlansModule({ production }: { production: DomainRecord }) {
             </div>
           )}
           <ErrorMessage message={error} />
-          <div className={styles.toolbar}>
-            {!compact && (
+          {!compact && (
+            <div className={styles.toolbar}>
               <div className={styles.addActions}>
                 <Button onClick={addLane} disabled={pending || plan.lanes.length >= 24}>
                   <Plus size={16} />
@@ -510,19 +531,9 @@ export function MaskPlansModule({ production }: { production: DomainRecord }) {
                   Zeitblock
                 </Button>
               </div>
-            )}
-            <div className={styles.viewControls}>
-              <label>
-                Beginn (optional)
-                <input
-                  type="time"
-                  aria-label="Vorstellungsbeginn (optional)"
-                  value={performanceTime}
-                  onChange={(event) => setPerformanceTime(event.target.value)}
-                />
-              </label>
+              {beginningControl}
             </div>
-          </div>
+          )}
           <div
             inert={pending}
             className={styles.workspaceContent}
@@ -542,7 +553,11 @@ export function MaskPlansModule({ production }: { production: DomainRecord }) {
             }}
           >
             {plan.lanes.length ? (
-              <Timetable key={compact ? "saved" : "editing"} {...timetableProps} />
+              compact ? (
+                <SavedTimetable {...timetableProps} />
+              ) : (
+                <Timetable {...timetableProps} />
+              )
             ) : (
               <div className={styles.empty}>
                 <Empty
@@ -557,7 +572,9 @@ export function MaskPlansModule({ production }: { production: DomainRecord }) {
           {plan.notes && (
             <details className={styles.planNotes}>
               <summary>Hinweise zum Plan</summary>
-              <p>{plan.notes}</p>
+              <p>
+                <LinkedText>{plan.notes}</LinkedText>
+              </p>
             </details>
           )}
           {overlaps.length > 0 && (

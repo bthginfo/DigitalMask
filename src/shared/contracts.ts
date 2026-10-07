@@ -1,3 +1,4 @@
+import type { WorkingTimeSettings } from "./working-time";
 export const recordKinds = [
   "productions",
   "actors",
@@ -33,6 +34,7 @@ export type AccentPalette = (typeof accentPalettes)[number];
 export interface ProfilePreferences {
   accentPalette: AccentPalette;
   onboardingVersion: number;
+  workingTime?: WorkingTimeSettings;
 }
 export const onboardingVersion = 1;
 export type RecordData = Record<string, unknown>;

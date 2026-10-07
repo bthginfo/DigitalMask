@@ -1,7 +1,14 @@
 import { unstable_cache, revalidateTag } from "next/cache";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, ne, sql } from "drizzle-orm";
 import { db } from "@/platform/db";
-import { records, memberships, user, timers, attendanceTimers } from "@/platform/db/schema";
+import {
+  records,
+  memberships,
+  user,
+  timers,
+  attendanceTimers,
+  profilePreferences,
+} from "@/platform/db/schema";
 import { scopeTag, type Context } from "@/platform/context";
 import {
   recordKinds,
@@ -13,6 +20,7 @@ import {
 import { serialize, projectVisible } from "./repository";
 import { scheduleLiveChange } from "@/platform/realtime";
 import { canReadShiftSwap } from "@/modules/shift-swaps/rules";
+import { visibleWorkingTime } from "@/shared/working-time";
 export function invalidateWorkspace(departmentId: string, broadcast = true) {
   revalidateTag(scopeTag(departmentId), { expire: 0 });
   if (broadcast) scheduleLiveChange(departmentId);
@@ -27,7 +35,7 @@ async function readScope(departmentId: string) {
   const rows = await db
     .select()
     .from(records)
-    .where(eq(records.departmentId, departmentId))
+    .where(and(eq(records.departmentId, departmentId), ne(records.kind, "timesheets")))
     .orderBy(records.createdAt);
   return rows.map(serialize);
 }
@@ -41,11 +49,13 @@ async function readTeam(departmentId: string) {
           username: user.username,
           role: memberships.role,
           status: memberships.status,
+          workingTime: profilePreferences.workingTime,
         })
         .from(memberships)
         .innerJoin(user, eq(memberships.userId, user.id))
+        .leftJoin(profilePreferences, eq(profilePreferences.userId, memberships.userId))
         .where(eq(memberships.departmentId, departmentId)),
-    ["department-team-v3", departmentId],
+    ["department-team-v4", departmentId],
     { revalidate: 3600, tags: [`team:${departmentId}`] },
   )();
   return members.map((m) => ({ ...m, username: m.username || "" }));
@@ -54,7 +64,7 @@ export async function getWorkspace(context: Context): Promise<Workspace> {
   const [rows, members] = await Promise.all([
     unstable_cache(
       () => readScope(context.departmentId),
-      ["department-data-v4", context.departmentId],
+      ["department-data-v5", context.departmentId],
       { revalidate: 300, tags: [scopeTag(context.departmentId)] },
     )(),
     readTeam(context.departmentId),
@@ -159,11 +169,30 @@ export async function getWorkspace(context: Context): Promise<Workspace> {
     user: context.user,
     organization: { id: context.organizationId, name: context.organizationName },
     department: { id: context.departmentId, name: context.departmentName },
-    members: members.map((m) =>
-      context.user.role === "user"
-        ? { ...m, status: m.status === "active" ? "active" : "disabled" }
-        : m,
-    ),
+    members: members.map(({ workingTime, ...member }) => {
+      const visible = visibleWorkingTime(
+        workingTime,
+        member.id,
+        context.user.id,
+        context.user.role,
+      );
+      return {
+        ...member,
+        status:
+          context.user.role === "user" && member.status !== "active"
+            ? ("disabled" as const)
+            : member.status,
+        ...(visible
+          ? {
+              preferences: {
+                accentPalette: "green" as const,
+                onboardingVersion: 0,
+                workingTime: visible,
+              },
+            }
+          : {}),
+      };
+    }),
     records: grouped,
     timer: personalTimers.find((timer) => timer.kind === "time") || null,
     attendanceTimer: personalTimers.find((timer) => timer.kind === "attendance") || null,

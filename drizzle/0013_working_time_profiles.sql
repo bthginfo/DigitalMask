@@ -1,0 +1,1 @@
+ALTER TABLE "profile_preferences" ADD COLUMN "working_time" jsonb;

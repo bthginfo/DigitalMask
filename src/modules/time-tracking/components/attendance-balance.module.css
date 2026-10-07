@@ -1,0 +1,193 @@
+.dashboardSummary:global(.today-summary) {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.card {
+  min-width: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.panel {
+  margin: 18px 0;
+}
+.compact {
+  border: 0;
+  border-left: 1px solid var(--border);
+  border-radius: 0;
+}
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.heading {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.heading svg {
+  flex: none;
+  color: var(--accent);
+}
+.header select {
+  width: auto;
+  max-width: 125px;
+  min-height: 40px;
+  padding: 8px;
+  font-size: 13px;
+  margin: 0;
+}
+.total {
+  display: grid;
+  gap: 4px;
+  margin-top: 3px;
+}
+.total .value {
+  font-size: 29px;
+  letter-spacing: -0.6px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.25;
+}
+.total small {
+  font-size: 16px;
+  letter-spacing: 0;
+}
+.total > span,
+.range {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.positive .value {
+  color: var(--accent);
+}
+.negative .value {
+  color: var(--coral);
+}
+.dates {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.dates label,
+.datePicker {
+  min-width: 0;
+  margin: 0;
+  font-size: 11px;
+}
+.dates input,
+.datePicker input {
+  width: 100%;
+  min-width: 0;
+  margin: 4px 0 0;
+  padding: 8px;
+  min-height: 40px;
+  font-size: 13px;
+}
+.details {
+  font-size: 11px;
+  color: var(--muted);
+}
+.details summary {
+  cursor: pointer;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  color: var(--text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.details p {
+  line-height: 1.6;
+  margin-top: 8px;
+}
+.breakdown {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0;
+}
+.breakdown > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+}
+.breakdown dd {
+  margin: 0;
+  white-space: nowrap;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+.unconfigured {
+  display: grid;
+  gap: 8px;
+  font-size: 12px;
+}
+.card .unconfigured > strong {
+  font-size: 14px;
+  line-height: 1.4;
+  letter-spacing: 0;
+}
+.unconfigured p {
+  color: var(--muted);
+  line-height: 1.5;
+}
+.unconfigured a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  font-weight: 600;
+}
+@media (max-width: 1180px) {
+  .dashboardSummary:global(.today-summary) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .dashboardSummary:global(.today-summary) > :global(.hours-summary) {
+    grid-column: auto;
+    border-top: 1px solid var(--border);
+  }
+  .dashboardSummary:global(.today-summary) > button:nth-child(2) {
+    border-right: 0;
+  }
+  .compact {
+    border-top: 1px solid var(--border);
+  }
+}
+@media (max-width: 600px) {
+  .card {
+    padding: 14px;
+  }
+  .header {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .header select,
+  .datePicker input,
+  .dates input {
+    font-size: 16px;
+    min-height: 44px;
+  }
+  .compact .header select {
+    max-width: none;
+    width: 100%;
+  }
+  .compact .dates {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .compact .total .value {
+    font-size: 25px;
+  }
+  .details summary {
+    min-height: 44px;
+  }
+}

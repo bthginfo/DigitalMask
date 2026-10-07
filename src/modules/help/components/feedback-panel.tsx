@@ -1,4 +1,5 @@
 "use client";
+import { LinkedText } from "@/components/linked-text";
 import { useState } from "react";
 import { ArrowUpRight, Bug, Lightbulb, Plus } from "lucide-react";
 import type { DomainRecord } from "@/shared/contracts";
@@ -199,7 +200,9 @@ export function FeedbackPanel() {
                     ? ` · ${workspace.members.find((member) => member.id === record.data.userId)?.name || "Teammitglied"}`
                     : ""}
                 </p>
-                <p className="feedback-excerpt">{value(record.data, "description")}</p>
+                <p className="feedback-excerpt">
+                  <LinkedText>{value(record.data, "description")}</LinkedText>
+                </p>
               </div>
               {superadmin ? (
                 <select
@@ -250,7 +253,9 @@ export function FeedbackPanel() {
               {current.data.type === "bug" ? "Fehler" : "Idee / Wunsch"} ·{" "}
               {dateLabel(current.createdAt, true)}
             </p>
-            <p className="feedback-description">{value(current.data, "description")}</p>
+            <p className="feedback-description">
+              <LinkedText>{value(current.data, "description")}</LinkedText>
+            </p>
             {superadmin && (
               <label>
                 Bearbeitungsstatus

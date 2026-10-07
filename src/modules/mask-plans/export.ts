@@ -1,12 +1,6 @@
 import type { ExportInput } from "@/modules/exports/types";
-import { csvCell, safeSpreadsheetText, printChunks } from "@/modules/exports/spreadsheet";
-import {
-  maskPlanValue,
-  maskPlanActorNames,
-  maskPlanStaffNames,
-  maskPlanClock,
-  maskPlanWindow,
-} from "./model";
+import { csvCell, safeSpreadsheetText } from "@/modules/exports/spreadsheet";
+import { maskPlanValue, maskPlanActorNames, maskPlanStaffNames, maskPlanClock } from "./model";
 import { maskPlanPaleColor } from "./layout";
 
 export function maskPlanExportData(input: ExportInput) {
@@ -90,253 +84,152 @@ export function buildMaskPlanCsv(input: ExportInput) {
   return new TextEncoder().encode(`\uFEFF${lines.join("\r\n")}\r\n`);
 }
 
-/** Timetables remain readable across horizontal sheets and vertical print pages. */
+/** Four compact print copies per A4 sheet, with every overlap in its own column. */
 export async function buildMaskPlanXlsx(input: ExportInput) {
   const { default: ExcelJS } = await import("exceljs");
+  const { compactMaskPlanGrid } = await import("./compact-print");
   const workbook = new ExcelJS.Workbook();
   workbook.creator = "DigitalMask";
-  workbook.title = "Maskenpläne";
-  const plans = maskPlanExportData(input);
-  for (let planIndex = 0; planIndex < plans.length; planIndex++) {
-    const item = plans[planIndex];
-    const { plan } = item;
-    const { start, ticks } = maskPlanWindow(plan);
-    const points = [
-      ...new Set([
-        ...ticks,
-        ...plan.blocks.flatMap((block) => [
-          block.startMinutes,
-          block.startMinutes + block.durationMinutes,
-        ]),
-      ]),
-    ].sort((a, b) => a - b);
-    const groups = Math.max(1, Math.ceil(item.lanes.length / 4));
-    for (let group = 0; group < groups; group++) {
-      const lanes = item.lanes.slice(group * 4, (group + 1) * 4);
-      const sheet = workbook.addWorksheet(
-        `Plan ${planIndex + 1}${groups > 1 ? ` - ${group + 1}` : ""}`,
-        {
-          views: [{ state: "frozen", xSplit: 1, ySplit: 4 }],
-          pageSetup: {
-            paperSize: 9,
-            orientation: "landscape",
-            fitToPage: true,
-            fitToWidth: 1,
-            fitToHeight: 0,
-            printTitlesRow: "1:4",
-            printTitlesColumn: "A:A",
-            margins: { left: 0.3, right: 0.3, top: 0.4, bottom: 0.4, header: 0.2, footer: 0.2 },
-          },
-        },
-      );
-      const columnCount = Math.max(2, lanes.length + 1);
-      sheet.columns = Array.from({ length: columnCount }, (_, index) => ({
-        width: index === 0 ? (input.performanceTime ? 18 : 12) : 30,
-      }));
-      for (const row of [1, 2, 3]) sheet.mergeCells(row, 1, row, columnCount);
-      sheet.getCell(1, 1).value = safeSpreadsheetText(`${item.productionTitle} · ${plan.title}`);
-      sheet.getCell(1, 1).font = {
-        name: "Calibri",
-        size: 17,
-        bold: true,
-        color: { argb: "FF173F39" },
-      };
-      sheet.getRow(1).height = 48;
-      sheet.getCell(1, 1).alignment = { vertical: "middle", wrapText: true };
-      sheet.getCell(2, 1).value = safeSpreadsheetText(
-        `${input.organization} · ${input.department}${groups > 1 ? ` · Spalten ${group * 4 + 1}–${group * 4 + lanes.length}` : ""}`,
-      );
-      sheet.getRow(2).height = 28;
-      sheet.getCell(3, 1).value =
-        `Minuten vor Vorstellungsbeginn · ${start} bis 0${input.performanceTime ? ` · Beginn ${input.performanceTime}` : ""}`;
-      sheet.getRow(3).height = 26;
-      sheet.getCell(4, 1).value = "ZEIT";
-      for (let index = 0; index < lanes.length; index++)
-        sheet.getCell(4, index + 2).value = safeSpreadsheetText(
-          [lanes[index].label, lanes[index].staff.join(" / ")].filter(Boolean).join("\n"),
-        );
-      const headerLines = Math.max(
-        2,
-        ...lanes.map(
-          (lane) => Math.ceil((lane.label.length + lane.staff.join(" / ").length) / 28) + 1,
-        ),
-      );
-      sheet.getRow(4).height = Math.min(110, headerLines * 14);
-      sheet.getRow(4).eachCell((cell) => {
-        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF377A68" } };
-        cell.font = { name: "Calibri", size: 11, bold: true, color: { argb: "FFFFFFFF" } };
-        cell.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
+  for (const [planIndex, item] of maskPlanExportData(input).entries()) {
+    const { boundaries, columns } = compactMaskPlanGrid(item.plan);
+    const count = Math.max(1, columns.length),
+      totalColumns = count + 1;
+    const laneWidth = 42 / count;
+    const sheet = workbook.addWorksheet("Plan " + (planIndex + 1), {
+      views: [{ state: "frozen", xSplit: 1, ySplit: 2, showGridLines: false }],
+      pageSetup: {
+        paperSize: 9,
+        orientation: "portrait",
+        fitToPage: true,
+        fitToWidth: 1,
+        fitToHeight: 1,
+        margins: { left: 0.25, right: 0.25, top: 0.25, bottom: 0.25, header: 0, footer: 0 },
+      },
+    });
+    sheet.columns = [
+      ...[6, ...Array(count).fill(laneWidth)],
+      2,
+      ...[6, ...Array(count).fill(laneWidth)],
+    ].map((width) => ({ width }));
+    const rowHeights = boundaries.slice(0, -1).map(() => (input.performanceTime ? 24 : 10));
+    const appointments = columns.flatMap((column, index) =>
+      column.blocks.map((block) => {
+        const entry = item.blocks.find((candidate) => candidate.block.id === block.id)!;
+        const text =
+          [entry.actors.join(" / "), block.title].filter(Boolean).join(" · ") +
+          "\n" +
+          block.startMinutes +
+          " bis " +
+          (block.startMinutes + block.durationMinutes) +
+          " · " +
+          block.durationMinutes +
+          " min";
+        const first = boundaries.indexOf(block.startMinutes),
+          last = boundaries.indexOf(block.startMinutes + block.durationMinutes);
+        const lines = text
+          .split("\n")
+          .reduce(
+            (sum, line) => sum + Math.max(1, Math.ceil(line.length / Math.max(6, laneWidth * 1.5))),
+            0,
+          );
+        const available = rowHeights.slice(first, last).reduce((sum, height) => sum + height, 0);
+        const needed = lines * 9 + 4;
+        if (needed > available)
+          for (let row = first; row < last; row++)
+            rowHeights[row] += (needed - available) / (last - first);
+        return { block, index, text, first, last };
+      }),
+    );
+    const headings = columns.map((column) => {
+      const lane = item.lanes.find((candidate) => candidate.lane.id === column.lane.id)!;
+      return lane.staff.length
+        ? [item.lanes.length > 1 ? lane.label : "", lane.staff.join(" / ")]
+            .filter(Boolean)
+            .join(" · ")
+        : lane.label;
+    });
+    const headerHeight = Math.max(
+      18,
+      ...headings.map((label) => Math.ceil(label.length / Math.max(6, laneWidth * 1.5)) * 9 + 6),
+    );
+    const rowsPerCopy = boundaries.length + 2;
+    for (let copy = 0; copy < 4; copy++) {
+      const top = 1 + Math.floor(copy / 2) * (rowsPerCopy + 2),
+        left = 1 + (copy % 2) * (totalColumns + 1);
+      sheet.mergeCells(top, left, top, left + totalColumns - 1);
+      const title = sheet.getCell(top, left);
+      title.value = safeSpreadsheetText(item.productionTitle + " · " + item.plan.title);
+      title.font = { name: "Calibri", size: 9, bold: true };
+      title.alignment = { wrapText: true, vertical: "middle" };
+      sheet.getRow(top).height = Math.max(16, Math.ceil(String(title.value).length / 65) * 11);
+      sheet.getRow(top + 1).height = headerHeight;
+      sheet.getCell(top + 1, left).value = "ZEIT";
+      headings.forEach((label, index) => {
+        sheet.getCell(top + 1, left + index + 1).value = safeSpreadsheetText(label);
       });
-      const rowByMinute = new Map(points.map((minute, index) => [minute, index + 5]));
-      for (let index = 0; index < points.length; index++) {
-        const minute = points[index],
-          rowIndex = index + 5;
-        const row = sheet.getRow(rowIndex);
-        row.height =
-          minute === 0 ? 30 : Math.max(4, ((points[index + 1] - minute) / plan.stepMinutes) * 28);
-        row.getCell(1).value =
+      for (let index = 0; index < boundaries.length; index++) {
+        const minute = boundaries[index],
+          row = top + index + 2;
+        sheet.getRow(row).height = minute === 0 ? 16 : rowHeights[index];
+        sheet.getCell(row, left).value =
           minute === 0
-            ? `0 · Beginn${input.performanceTime ? `\n${input.performanceTime}` : ""}`
-            : `${minute}${input.performanceTime ? `\n${maskPlanClock(minute, input.performanceTime)}` : ""}`;
-        for (let column = 1; column <= columnCount; column++) {
-          const cell = row.getCell(column);
+            ? "0 · Beginn" + (input.performanceTime ? " · " + input.performanceTime : "")
+            : String(minute) +
+              (input.performanceTime ? "\n" + maskPlanClock(minute, input.performanceTime) : "");
+        if (minute === 0) sheet.mergeCells(row, left, row, left + totalColumns - 1);
+      }
+      for (let row = top + 1; row < top + rowsPerCopy; row++)
+        for (let col = left; col < left + totalColumns; col++) {
+          const cell = sheet.getCell(row, col);
           cell.font = {
             name: "Calibri",
-            size: 10,
+            size: 8,
+            bold: row === top + 1 || row === top + rowsPerCopy - 1,
             color: { argb: "FF233932" },
-            bold: minute === 0,
           };
-          cell.alignment = { vertical: "top", wrapText: true };
+          cell.alignment = { wrapText: true, vertical: "top" };
           cell.border = {
-            bottom: { style: "hair", color: { argb: "FFC9D5CF" } },
-            right: { style: "hair", color: { argb: "FFC9D5CF" } },
+            left: { style: "hair", color: { argb: "FF83968C" } },
+            right: { style: "hair", color: { argb: "FF83968C" } },
+            bottom: { style: "hair", color: { argb: "FFB8C6BF" } },
           };
-          if (minute === 0)
-            cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF6D3CA" } };
-        }
-        if (minute === 0) sheet.mergeCells(rowIndex, 1, rowIndex, columnCount);
-      }
-      for (let index = 0; index < lanes.length; index++) {
-        const laneBlocks = item.blocks.filter(({ block }) => block.laneId === lanes[index].lane.id);
-        const overlapping = new Set(
-          laneBlocks
-            .filter(({ block }) =>
-              laneBlocks.some(
-                ({ block: other }) =>
-                  other.id !== block.id &&
-                  block.startMinutes < other.startMinutes + other.durationMinutes &&
-                  other.startMinutes < block.startMinutes + block.durationMinutes,
-              ),
-            )
-            .map(({ block }) => block.id),
-        );
-        for (const appointment of laneBlocks) {
-          const { block, actors, number } = appointment;
-          const first = rowByMinute.get(block.startMinutes)!,
-            last = rowByMinute.get(block.startMinutes + block.durationMinutes)! - 1;
-          const label = safeSpreadsheetText(
-            `${number} · ${[actors.join(" / "), block.title].filter(Boolean).join(" · ")}\n${block.startMinutes} → ${block.startMinutes + block.durationMinutes} · ${block.durationMinutes} min`,
-          );
-          if (!overlapping.has(block.id) && first < last)
-            sheet.mergeCells(first, index + 2, last, index + 2);
-          for (let rowIndex = first; rowIndex <= last; rowIndex++) {
-            const cell = sheet.getCell(rowIndex, index + 2);
+          if (row === top + 1 || row === top + rowsPerCopy - 1)
             cell.fill = {
               type: "pattern",
               pattern: "solid",
-              fgColor: {
-                argb: `FF${maskPlanPaleColor(block.color || item.color)
-                  .slice(1)
-                  .toUpperCase()}`,
-              },
+              fgColor: { argb: row === top + 1 ? "FFEDF1EF" : "FFF6D3CA" },
             };
-            if (rowIndex === first || overlapping.has(block.id))
-              cell.value = cell.value ? safeSpreadsheetText(`${cell.value}\n${label}`) : label;
-          }
         }
+      for (const { block, index, text, first, last } of appointments) {
+        const row = top + 2 + first,
+          end = top + 1 + last,
+          col = left + 1 + index;
+        if (row < end) sheet.mergeCells(row, col, end, col);
+        const cell = sheet.getCell(row, col);
+        cell.value = safeSpreadsheetText(text);
+        cell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: {
+            argb:
+              "FF" +
+              maskPlanPaleColor(block.color || item.color)
+                .slice(1)
+                .toUpperCase(),
+          },
+        };
       }
-      sheet.pageSetup.printArea = `A1:${sheet.getColumn(columnCount).letter}${points.length + 4}`;
-      sheet.headerFooter.oddFooter = "DigitalMask · Seite &P von &N";
+      for (let row = top + 1; row < top + rowsPerCopy; row++)
+        for (const [col, side] of [
+          [left, "left"],
+          [left + totalColumns - 1, "right"],
+        ] as const) {
+          const cell = sheet.getCell(row, col);
+          cell.border = { ...cell.border, [side]: { style: "thin", color: { argb: "FF233932" } } };
+        }
     }
+    sheet.pageSetup.printArea =
+      "A1:" + sheet.getColumn(totalColumns * 2 + 1).letter + (rowsPerCopy * 2 + 2);
   }
-  const list = workbook.addWorksheet("Ablauf", {
-    views: [{ state: "frozen", ySplit: 1 }],
-    pageSetup: {
-      paperSize: 9,
-      orientation: "landscape",
-      fitToPage: true,
-      fitToWidth: 2,
-      fitToHeight: 0,
-      printTitlesRow: "1:1",
-      printTitlesColumn: "A:C",
-    },
-  });
-  list.columns = maskPlanColumns.map((header, index) => ({
-    header,
-    width: [24, 24, 7, 20, 30, 35, 15, 15, 12, 18, 18, 35, 50][index],
-  }));
-  list.getRow(1).font = { name: "Calibri", size: 11, bold: true };
-  const rows = maskPlanExportRows(input);
-  for (const values of rows) {
-    const parts = values.map((value, index) =>
-      typeof value === "string" ? printChunks(value, list.getColumn(index + 1).width!) : [value],
-    );
-    for (let segment = 0; segment < Math.max(...parts.map((part) => part.length)); segment++) {
-      const cells = parts.map((part, index) => part[segment] ?? (index === 0 ? "Fortsetzung" : ""));
-      const row = list.addRow(
-        cells.map((value) => (typeof value === "string" ? safeSpreadsheetText(value) : value)),
-      );
-      row.alignment = { wrapText: true, vertical: "top" };
-      row.font = { name: "Calibri", size: 11 };
-      row.height = Math.min(
-        409,
-        Math.max(
-          28,
-          ...cells.map(
-            (value, index) =>
-              String(value)
-                .split("\n")
-                .reduce(
-                  (sum, part) =>
-                    sum +
-                    Math.max(1, Math.ceil(part.length / (list.getColumn(index + 1).width! - 3))),
-                  0,
-                ) * 14,
-          ),
-        ),
-      );
-    }
-  }
-  list.autoFilter = {
-    from: { row: 1, column: 1 },
-    to: { row: Math.max(1, list.rowCount), column: maskPlanColumns.length },
-  };
-  const notes = workbook.addWorksheet("Personal und Hinweise");
-  notes.columns = [
-    { header: "Produktion / Plan", width: 35 },
-    { header: "Spalte", width: 25 },
-    { header: "Personal / Hinweise", width: 80 },
-  ];
-  for (const item of plans) {
-    if (item.plan.notes)
-      for (const part of printChunks(item.plan.notes, 80))
-        notes.addRow([
-          safeSpreadsheetText(`${item.productionTitle} · ${item.plan.title}`),
-          "Hinweise",
-          safeSpreadsheetText(part),
-        ]);
-    for (const lane of item.lanes)
-      for (const part of printChunks(lane.staff.join(" / "), 80))
-        notes.addRow([
-          safeSpreadsheetText(item.plan.title),
-          safeSpreadsheetText(lane.label),
-          safeSpreadsheetText(part),
-        ]);
-  }
-  notes.pageSetup = {
-    paperSize: 9,
-    orientation: "landscape",
-    fitToPage: true,
-    fitToWidth: 1,
-    fitToHeight: 0,
-    printTitlesRow: "1:1",
-  };
-  notes.eachRow((row) => {
-    row.alignment = { wrapText: true, vertical: "top" };
-    row.font = { name: "Calibri", size: 11 };
-    row.height = Math.max(
-      28,
-      ...[1, 2, 3].map(
-        (column) =>
-          String(row.getCell(column).value || "")
-            .split("\n")
-            .reduce(
-              (sum, part) =>
-                sum + Math.max(1, Math.ceil(part.length / (notes.getColumn(column).width! - 4))),
-              0,
-            ) * 14,
-      ),
-    );
-  });
   return new Uint8Array(await workbook.xlsx.writeBuffer());
 }
