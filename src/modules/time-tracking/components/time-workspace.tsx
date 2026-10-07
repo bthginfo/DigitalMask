@@ -10,10 +10,11 @@ import { AttendanceModule } from "./attendance-module";
 import { TimerPanel } from "./work-timer";
 import { TimeBookingEditor } from "./time-booking-editor";
 import styles from "./time-workspace.module.css";
+import { useViewState } from "@/shared/view-state";
 
 export function TimeWorkspace() {
   const { workspace } = useWorkspace();
-  const [tab, setTab] = useState("attendance");
+  const [tab, setTab] = useViewState(workspace.user.id, "time", "tab", "attendance");
   const [booked, setBooked] = useState<DomainRecord | null>(null);
   const selfBooking = workspace.user.role !== "superadmin";
   const week = weekStart(),

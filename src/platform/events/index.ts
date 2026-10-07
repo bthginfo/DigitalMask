@@ -7,12 +7,19 @@ import { invalidateWorkspace } from "@/modules/records/workspace";
 import type { RecordData } from "@/shared/contracts";
 import { listValue } from "@/shared/contracts";
 import { deliverNotifications } from "@/modules/notifications/service";
-export async function emit(tx: Transaction, context: Context, type: string, payload: RecordData) {
+export async function emit(
+  tx: Transaction,
+  context: Context,
+  type: string,
+  payload: RecordData,
+  options: { availableAt?: Date } = {},
+) {
   await tx.insert(outbox).values({
     id: crypto.randomUUID(),
     departmentId: context.departmentId,
     type,
     payload: { ...payload, actorId: context.user.id, organizationId: context.organizationId },
+    ...(options.availableAt ? { availableAt: options.availableAt } : {}),
   });
 }
 export async function auditChange(
@@ -63,6 +70,10 @@ export async function processEvents() {
   for (const event of due) {
     try {
       const noticeIds: string[] = [];
+      if (event.type === "RecordDeletionFinalizedV1") {
+        const { finalizeRecordDeletion } = await import("@/modules/changes/cleanup");
+        await finalizeRecordDeletion(event.departmentId, event.payload);
+      }
       if (event.type === "FileDeletionRequestedV1") {
         const [reference] = await db
           .select({ id: records.id })
@@ -92,6 +103,7 @@ export async function processEvents() {
           event.type === "TaskAssignedV1" ||
           event.type === "LeaveRequestDecidedV1" ||
           event.type === "ServiceChangedV1" ||
+          event.type === "ShiftSwapChangedV1" ||
           event.type === "LookPublishedV1" ||
           event.type === "ChatMessageCreatedV1"
         ) {

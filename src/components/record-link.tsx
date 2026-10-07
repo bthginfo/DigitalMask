@@ -34,7 +34,8 @@ export function RecordLink({
           event.ctrlKey ||
           event.shiftKey ||
           event.altKey ||
-          props.target === "_blank"
+          props.target === "_blank" ||
+          props.download !== undefined
         )
           return;
         event.preventDefault();

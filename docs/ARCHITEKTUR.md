@@ -14,6 +14,16 @@ Die Anwendung zeigt pro Sitzung ein Gewerk. Das Schema ermöglicht weitere Organ
 
 Empfehlung: eine modulare Next.js-Anwendung mit PostgreSQL, privatem Dateispeicher und gezielt eingesetzten, zuverlässig verarbeiteten Ereignissen. Fachmodule trennen Oberfläche, Geschäftslogik und Datenzugriff. Weitere Gewerke können dieselbe Plattform verwenden.
 
+## Kontext und gemeinsame Teamabläufe (7. Oktober 2026)
+
+`shared/client-navigation.ts` und `shared/view-state.ts` bewahren Herkunft, Produktionsreiter, Filter und Scrollposition je Person im Browser. Ansichten werden ohne zusätzliche Datenbankabfragen wiederhergestellt. `modules/changes` liefert einen gecachten, berechtigungsgefilterten Änderungsverlauf und serverseitige Rückgängig-Belege. Die neue Tabelle `record_operations` hält vorherige/nachfolgende Record-Versionen für 30 Tage; ein Rückgängig-Beleg ist zwei Minuten gültig, nur für seine Person nutzbar und nur bei unveränderter aktueller Version. Wiederherstellungen durchlaufen dieselben Fachvalidierungen wie normale Schreibzugriffe. Es gibt keine Papierkorbansicht.
+
+Dateien und CRDT-Dokumentstände bleiben im kurzen Rückgängig-Zeitraum bestehen und sind nach der Löschung nicht abrufbar. Verzögerte Outboxereignisse entfernen anschließend verwaiste Dateimetadaten und nutzen den bestehenden, referenzgeprüften Blob-Löschprozess. Der tägliche Wartungslauf entfernt abgelaufene Rückgängig-Nutzdaten und alte Verlaufseinträge; Belege mit noch ausstehender Dateibereinigung bleiben für diese Verarbeitung erhalten.
+
+`modules/reservations` speichert Reservierungen für alle Fundusarten im bestehenden Record-Speicher. Mengenprüfung und Bestandsänderung verwenden denselben Gewerklock; Kapazität wird über tatsächlich gleichzeitig überlappende Reservierungen ermittelt. `modules/shift-swaps` trennt Anfrage, Zustimmung der Partnerperson und Adminentscheidung. Erst die Freigabe ändert die betroffenen Dienste zusammen in einer Transaktion unter dem gemeinsamen Kalenderlock. Änderungen an einzelnen Serienterminen erzeugen eine Ausnahme und einen eigenen Ersatztermin. Aktive Personen, Produktionszugriff, Originalversionen, Zukunftsdatum und Zeitkonflikte werden vor Zustimmung/Freigabe erneut geprüft.
+
+Die neuen Abläufe verwenden vorhandene Live-Signale, Caches, Push-Mitteilungen und Exporte. Regelmäßige Browserabfragen und ein zusätzlicher Hintergrunddienst werden nicht eingeführt.
+
 ## Ausgangslage und Annahmen
 
 - GitHub und lokales Repository sind leer; es gibt noch keinen Commit und keine bestehende Anwendung.

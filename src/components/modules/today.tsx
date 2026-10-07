@@ -29,6 +29,7 @@ import { expandEvents } from "./calendar";
 import { statusLabels } from "../resource-fields";
 import { initialPeriod, recordMatchesPeriod } from "@/shared/period-filter";
 import { unreadNotifications } from "@/modules/notifications/unread";
+import { ChangesButton } from "@/modules/changes/components/workspace-changes";
 export function TodayModule({ navigate }: { navigate: (module: string) => void }) {
   const { workspace, action, notify } = useWorkspace();
   const showTimer = isStaff(workspace.user);
@@ -87,6 +88,7 @@ export function TodayModule({ navigate }: { navigate: (module: string) => void }
         title={`${greet}, ${workspace.user.name.split(" ")[0]}.`}
         description="Dein Tag hinter der Bühne. Alles Wichtige an einem Ort."
       >
+        <ChangesButton />
         <Button variant="primary" onClick={() => navigate("time")}>
           <Clock3 size={16} />
           Zeit buchen
@@ -150,7 +152,7 @@ export function TodayModule({ navigate }: { navigate: (module: string) => void }
                         try {
                           await action("notification-read", notice.id);
                           const link = value(notice.data, "link");
-                          if (link.startsWith("/?") || link.startsWith("/")) location.href = link;
+                          if (link.startsWith("/") && !link.startsWith("//")) navigate(link);
                         } catch (e) {
                           notify(e instanceof Error ? e.message : "Aktion fehlgeschlagen");
                         }

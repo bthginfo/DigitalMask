@@ -61,6 +61,8 @@ import { MobileDaySheet } from "@/modules/calendar/components/mobile-day-sheet";
 import { calendarDayIndex, calendarDayLabel } from "@/modules/calendar/components/day-details";
 import calendarStyles from "@/modules/calendar/components/mobile-calendar.module.css";
 import { statusLabels } from "../resource-fields";
+import { useViewState } from "@/shared/view-state";
+import { ShiftSwapPanel } from "@/modules/shift-swaps/components/shift-swap-panel";
 const calendarClock = (date: Date | null) =>
   date
     ? new Intl.DateTimeFormat("de-DE", {
@@ -119,22 +121,35 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
     query.addEventListener("change", update);
     return () => query.removeEventListener("change", update);
   }, []);
-  const [period, setPeriod] = useState<PeriodFilter>(() =>
+  const scope = `calendar:${productionId || "all"}`;
+  const [period, setPeriod] = useViewState<PeriodFilter>(workspace.user.id, scope, "period", () =>
     initialPeriod(workspace.records.productions, productionId),
   );
-  const [view, setView] = useState("month");
-  const [teamSpan, setTeamSpan] = useState("week");
+  const [view, setView] = useViewState(workspace.user.id, scope, "view", "month");
+  const [teamSpan, setTeamSpan] = useViewState(workspace.user.id, scope, "teamSpan", "week");
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [mobileDay, setMobileDay] = useState(localDate());
+  const [mobileDay, setMobileDay] = useViewState(
+    workspace.user.id,
+    scope,
+    "mobileDay",
+    localDate(),
+  );
   const [mobileDaySheetOpen, setMobileDaySheetOpen] = useState(false);
   const filtersId = useId();
   const categoryOptions = calendarCategories(workspace);
-  const [people, setPeople] = useState<string[]>(
+  const [people, setPeople] = useViewState<string[]>(
+    workspace.user.id,
+    scope,
+    "people",
     workspace.user.role === "superadmin" ? [] : [workspace.user.id],
   );
-  const [showAll, setShowAll] = useState(false);
+  const [showAll, setShowAll] = useViewState(workspace.user.id, scope, "showAll", false);
   const personalSelection = useRef<{ people: string[]; showAll: boolean } | null>(null);
+  const [savedPersonalSelection, setSavedPersonalSelection] = useViewState<{
+    people: string[];
+    showAll: boolean;
+  } | null>(workspace.user.id, scope, "personalSelection", null);
   const staff = useMemo(
     () => sortCalendarStaff(workspace.members.filter(isActiveStaff)),
     [workspace.members],
@@ -150,21 +165,27 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
         : people.filter((id) => staff.some((member) => member.id === id)),
     [showAll, people, staff],
   );
-  const [category, setCategory] = useState("");
+  const [category, setCategory] = useViewState(workspace.user.id, scope, "category", "");
   const [leaveCategories, setLeaveCategories] = useState<Record<string, string>>({});
   const absenceCategories = categoryOptions.filter((option) => option.allDay);
   const defaultLeaveCategory =
     absenceCategories.find((option) => option.key === "absence")?.key ||
     absenceCategories.find((option) => option.key === "vacation")?.key ||
     "";
-  const [project, setProject] = useState(productionId);
+  const [project, setProject] = useViewState(workspace.user.id, scope, "project", productionId);
   const [range, setRange] = useState(() => ({
     start: weekStart(),
     end: localDate(new Date(Date.now() + 42 * 86400000)),
   }));
   const [exportDates, setExportDates] = useState(() => ({ from: localDate(), to: localDate() }));
   const [title, setTitle] = useState("");
-  const [teamDate, setTeamDate] = useState(localDate());
+  const [teamDate, setTeamDate] = useViewState(workspace.user.id, scope, "teamDate", localDate());
+  const [calendarDate, setCalendarDate] = useViewState(
+    workspace.user.id,
+    scope,
+    "date",
+    localDate(),
+  );
   const [editor, setEditor] = useState<{
     kind: "events" | "leave";
     defaults?: Record<string, unknown>;
@@ -297,11 +318,18 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
     setMobileDaySheetOpen(false);
     if (next === "team" && view !== "team") {
       personalSelection.current = { people, showAll };
+      setSavedPersonalSelection({ people, showAll });
       setShowAll(true);
-    } else if (next !== "team" && view === "team" && personalSelection.current) {
-      setPeople(personalSelection.current.people);
-      setShowAll(personalSelection.current.showAll);
+    } else if (
+      next !== "team" &&
+      view === "team" &&
+      (personalSelection.current || savedPersonalSelection)
+    ) {
+      const previous = personalSelection.current || savedPersonalSelection!;
+      setPeople(previous.people);
+      setShowAll(previous.showAll);
       personalSelection.current = null;
+      setSavedPersonalSelection(null);
     }
     setView(next);
     if (next !== "team")
@@ -678,6 +706,7 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
                         : "dayGridMonth"
                 }
                 locale={deLocale}
+                initialDate={calendarDate}
                 timeZone="Europe/Berlin"
                 firstDay={1}
                 slotMinTime="06:00:00"
@@ -756,6 +785,7 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
                     );
                 }}
                 datesSet={(info) => {
+                  setCalendarDate(localDate(info.view.currentStart));
                   setTitle(info.view.title);
                   const firstDay = localDate(info.view.currentStart);
                   const afterLastDay = localDate(info.view.currentEnd);
@@ -990,6 +1020,7 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
           onClose={() => setEditor(null)}
         />
       )}
+      <ShiftSwapPanel />
       {detail && <RecordDetail record={detail} onClose={() => setDetail(null)} />}
       {exporting && (
         <ExportDialog

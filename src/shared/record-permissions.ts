@@ -11,7 +11,9 @@ export function canManageRecord(
   kind: RecordKind,
   record?: { createdBy: string; data: RecordData },
 ) {
-  if (["notifications", "timesheets", "files"].includes(kind)) return false;
+  if (["notifications", "timesheets", "files", "shiftSwaps"].includes(kind)) return false;
+  if (kind === "reservations" && record)
+    return member.role !== "user" || record.data.userId === member.id;
   if (["categories", "calendarCategories"].includes(kind)) return member.role !== "user";
   if (kind === "events" && record?.data.leaveId) return false;
   if (kind === "events" && record) return canSetCalendarParticipants(member, record.data);

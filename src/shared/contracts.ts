@@ -13,6 +13,8 @@ export const recordKinds = [
   "templates",
   "messages",
   "materials",
+  "reservations",
+  "shiftSwaps",
   "handovers",
   "notifications",
   "timesheets",

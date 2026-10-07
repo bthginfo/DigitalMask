@@ -8,6 +8,7 @@ import { db } from "@/platform/db";
 import { records } from "@/platform/db/schema";
 import { buildExport, selectExportRecords } from "@/modules/exports";
 import { recordKinds, listValue } from "@/shared/contracts";
+import { workflowMatchesExportPeriod } from "@/modules/workflows/export-period";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 export async function GET(request: Request) {
@@ -31,6 +32,14 @@ export async function GET(request: Request) {
       userId = query.get("userId"),
       from = query.get("from") || undefined,
       to = query.get("to") || undefined;
+    const materialId = query.get("materialId");
+    if (materialId) {
+      if (kind !== "reservations")
+        throw new HttpError(400, "Ein Artikelfilter ist nur für Reservierungen verfügbar.");
+      if (!workspace.records.materials.some((material) => material.id === materialId))
+        throw new HttpError(403, "Kein Zugriff auf diesen Artikel.");
+      selected = selected.filter((record) => record.data.materialId === materialId);
+    }
     const teamOnly = query.get("teamOnly") === "true";
     const generalOnly =
       query.get("generalOnly") === "true" ||
@@ -88,6 +97,8 @@ export async function GET(request: Request) {
       selected = selected.filter((record) => record.data.category === query.get("category"));
     if (kind !== "events")
       selected = selected.filter((r) => {
+        if (["reservations", "shiftSwaps"].includes(kind))
+          return workflowMatchesExportPeriod(r, from, to);
         const dates =
           (kind === "time" || kind === "attendance") && Array.isArray(r.data.dayAllocations)
             ? r.data.dayAllocations.map((x) => String((x as { date: string }).date))

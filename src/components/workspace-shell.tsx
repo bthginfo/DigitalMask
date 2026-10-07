@@ -3,6 +3,7 @@ import { BrandMark } from "./brand-mark";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
   Bell,
+  ArrowLeft,
   BookOpen,
   CalendarDays,
   ClipboardCheck,
@@ -24,7 +25,21 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { recordHref } from "@/shared/client-navigation";
+import {
+  captureNavigationScroll,
+  closeRecordDetail,
+  navigateWorkspace,
+  navigationReturn,
+  recordHref,
+  restoreNavigationScroll,
+  returnToContext,
+  setNavigationUser,
+} from "@/shared/client-navigation";
+import {
+  ChangesButton,
+  UndoStrip,
+  WorkspaceChanges,
+} from "@/modules/changes/components/workspace-changes";
 import { subscribeLocation, subscribeMobile } from "@/shared/client-storage";
 import { onboardingVersion, type DomainRecord, type RecordKind } from "@/shared/contracts";
 import { initials, post, value } from "@/shared/client-api";
@@ -101,6 +116,23 @@ export function WorkspaceShell() {
     () => false,
   );
   useEffect(() => {
+    setNavigationUser(workspace.user.id);
+    const previous = history.scrollRestoration;
+    history.scrollRestoration = "manual";
+    let timeout: ReturnType<typeof setTimeout>;
+    const saveScroll = () => {
+      clearTimeout(timeout);
+      timeout = setTimeout(captureNavigationScroll, 120);
+    };
+    window.addEventListener("scroll", saveScroll, { passive: true });
+    return () => {
+      clearTimeout(timeout);
+      window.removeEventListener("scroll", saveScroll);
+      history.scrollRestoration = previous;
+    };
+  }, [workspace.user.id]);
+  useEffect(() => restoreNavigationScroll(), [query]);
+  useEffect(() => {
     const key = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key === "k") {
         event.preventDefault();
@@ -159,13 +191,7 @@ export function WorkspaceShell() {
   }, [notice, notify]);
   const navigate = useCallback((next: string) => {
     setMobileMenu(false);
-    history.pushState(
-      {},
-      "",
-      next.startsWith("/") ? next : next === "today" ? "/" : `/?module=${next}`,
-    );
-    window.dispatchEvent(new PopStateEvent("popstate"));
-    window.scrollTo({ top: 0, behavior: "instant" });
+    navigateWorkspace(next.startsWith("/") ? next : next === "today" ? "/" : `/?module=${next}`);
   }, []);
   const logout = async () => {
     let drafts: unknown[] = [];
@@ -222,12 +248,7 @@ export function WorkspaceShell() {
     : undefined;
   const closeDetail = () => {
     setDetail(null);
-    const next = new URL(location.href);
-    next.searchParams.delete("record");
-    next.searchParams.delete("relatedSeason");
-    next.searchParams.delete("relatedYear");
-    history.replaceState({}, "", next.pathname + next.search);
-    window.dispatchEvent(new PopStateEvent("popstate"));
+    closeRecordDetail();
   };
   const active = nav.find((x) => x.id === activeModule)!;
   const screen =
@@ -242,8 +263,7 @@ export function WorkspaceShell() {
             module: "productions",
             ...(id ? { productionId: id, tab } : {}),
           });
-          history.pushState({}, "", `/?${next}`);
-          window.dispatchEvent(new PopStateEvent("popstate"));
+          navigateWorkspace(`/?${next}`);
         }}
       />
     ) : activeModule === "calendar" ? (
@@ -261,8 +281,7 @@ export function WorkspaceShell() {
             module: "chat",
             ...(conversationId ? { conversationId } : productionId ? { productionId } : {}),
           });
-          history.pushState({}, "", `/?${query}`);
-          window.dispatchEvent(new PopStateEvent("popstate"));
+          navigateWorkspace(`/?${query}`);
         }}
       />
     ) : activeModule === "people" ? (
@@ -314,6 +333,14 @@ export function WorkspaceShell() {
           href="/"
           prefetch={false}
           onClick={(event) => {
+            if (
+              event.button !== 0 ||
+              event.ctrlKey ||
+              event.metaKey ||
+              event.altKey ||
+              event.shiftKey
+            )
+              return;
             event.preventDefault();
             navigate("today");
           }}
@@ -401,6 +428,16 @@ export function WorkspaceShell() {
       >
         <header className="topbar">
           <div className="breadcrumbs">
+            {navigationReturn() && !recordId && (
+              <button
+                className="icon-button"
+                onClick={() => returnToContext("/")}
+                title="Zur vorherigen Ansicht"
+                aria-label="Zur vorherigen Ansicht"
+              >
+                <ArrowLeft size={18} />
+              </button>
+            )}
             <button
               className="icon-button mobile-menu-button"
               onClick={openMenu}
@@ -426,6 +463,7 @@ export function WorkspaceShell() {
               <Search size={19} />
             </button>
             <ThemeSwitch />
+            <ChangesButton compact />
             <button
               className="icon-button notification-button"
               onClick={() => setNotificationOpen(true)}
@@ -498,6 +536,8 @@ export function WorkspaceShell() {
           </button>
         </div>
       )}
+      <UndoStrip />
+      <WorkspaceChanges />
       {searchOpen && (
         <Modal
           title="Im Arbeitsraum suchen"

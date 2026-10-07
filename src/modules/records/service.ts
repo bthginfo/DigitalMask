@@ -31,6 +31,13 @@ import { validateRecord } from "./schemas";
 import { applySeasonDefaults } from "./season-defaults";
 import { findRecord, assertProject, serialize } from "./repository";
 import { invalidateWorkspace } from "./workspace";
+import { captureRecordOperation } from "@/modules/changes/operations";
+import { acquireWorkflowLock } from "@/modules/workflows/locks";
+import {
+  validateReservation,
+  validateMaterialCapacity,
+  validateWorkflowDelete,
+} from "@/modules/reservations/service";
 import {
   type RecordKind,
   type RecordData,
@@ -66,6 +73,13 @@ export async function assertRead(
     context.user.role === "user"
   )
     throw new HttpError(403, "Dieser Entwurf ist privat.");
+  if (
+    row.kind === "shiftSwaps" &&
+    context.user.role === "user" &&
+    row.data.requesterId !== context.user.id &&
+    row.data.partnerId !== context.user.id
+  )
+    throw new HttpError(403, "Diese Diensttauschanfrage ist privat.");
 }
 export function assertWrite(
   context: Context,
@@ -193,7 +207,10 @@ async function validateRelations(
           inArray(records.id, fileIds),
         ),
       );
-    if (assets.length !== fileIds.length)
+    if (
+      assets.length !== fileIds.length ||
+      assets.some((file) => file.data.pendingDeletionOperation)
+    )
       throw new HttpError(404, "Eine verknüpfte Datei wurde nicht gefunden.");
     const linkedIds = Array.from(new Set(assets.map((file) => String(file.data.recordId))));
     const linkedRecords = await tx
@@ -306,11 +323,18 @@ export async function saveRecord(
   input: RecordData,
   existingId?: string,
   version?: number,
-  options: { deferEffects?: boolean } = {},
+  options: {
+    deferEffects?: boolean;
+    transaction?: Transaction;
+    skipCapture?: boolean;
+    undo?: boolean;
+    replaceData?: boolean;
+  } = {},
 ) {
   let eventQueued = false;
   assertWrite(context, kind);
-  const result = await db.transaction(async (tx) => {
+  const write = async (tx: Transaction) => {
+    await acquireWorkflowLock(context, kind, tx);
     // Same lock order as approval/linking and consolidation, before locking any production.
     if (["productions", "people"].includes(kind))
       await tx.execute(
@@ -321,8 +345,14 @@ export async function saveRecord(
     if (existing) await assertRead(context, existing, tx);
     const data = validateRecord(
       kind,
-      applySeasonDefaults(kind, { ...existing?.data, ...input }, existing?.createdAt.toISOString()),
+      applySeasonDefaults(
+        kind,
+        { ...(options.replaceData ? {} : existing?.data), ...input },
+        existing?.createdAt.toISOString(),
+      ),
     );
+    if (kind === "reservations") await validateReservation(context, data, tx, existingId, existing);
+    if (kind === "materials") await validateMaterialCapacity(context, data, tx, existingId);
     if (kind === "events" && !canSetCalendarParticipants(context.user, data))
       throw new HttpError(
         403,
@@ -388,11 +418,13 @@ export async function saveRecord(
           409,
           "Genehmigte Freiwünsche werden über die Adminentscheidung geändert.",
         );
-      data.status = existing
-        ? input.status === "withdrawn"
-          ? "withdrawn"
-          : existing.data.status
-        : "pending";
+      data.status = options.undo
+        ? input.status
+        : existing
+          ? input.status === "withdrawn"
+            ? "withdrawn"
+            : existing.data.status
+          : "pending";
     }
     if (kind === "templates" && existing) data.version = Number(existing.data.version || 1) + 1;
     if (kind === "calendarCategories") await validateCalendarCategory(context, data, tx, existing);
@@ -474,6 +506,9 @@ export async function saveRecord(
     }
     if (kind === "time") await reopenCorrectedWeeks(context, tx, existing?.data, row.data);
     await auditChange(tx, context, existing ? `${kind}.updated` : `${kind}.created`, row.id);
+    const undo = options.skipCapture
+      ? undefined
+      : await captureRecordOperation(tx, context, existing, row);
     if (kind === "looks" || kind === "templates")
       await tx
         .insert(recordHistory)
@@ -565,27 +600,39 @@ export async function saveRecord(
       });
       eventQueued = true;
     }
-    return serialize(row);
-  });
-  if (!options.deferEffects) {
+    return { ...serialize(row), ...(undo ? { undo } : {}) };
+  };
+  const result = options.transaction
+    ? await write(options.transaction)
+    : await db.transaction(write);
+  if (!options.deferEffects && !options.transaction) {
     invalidateWorkspace(context.departmentId);
     if (eventQueued) scheduleEvents();
   }
   return result;
 }
-export async function deleteRecord(context: Context, kind: RecordKind, id: string) {
+export async function deleteRecord(
+  context: Context,
+  kind: RecordKind,
+  id: string,
+  options: { transaction?: Transaction; skipCapture?: boolean; version?: number } = {},
+) {
   let eventQueued = false;
-  await db.transaction(async (tx) => {
+  const write = async (tx: Transaction) => {
+    await acquireWorkflowLock(context, kind, tx);
     const row = await findRecord(context, id, kind, tx, true);
+    if (options.version !== undefined && row.version !== options.version)
+      throw new HttpError(409, "Der Eintrag wurde inzwischen geändert. Bitte öffne ihn neu.");
     assertWrite(context, kind, row);
     await assertRead(context, row, tx);
+    await validateWorkflowDelete(context, kind, row, tx);
     if (kind === "calendarCategories")
       await assertUnusedCategory(context, String(row.data.key), tx);
     if (kind === "categories")
       await assertUnusedDomainCategory(context, String(row.data.scope), String(row.data.key), tx);
     if (kind === "events" && row.data.leaveId)
       throw new HttpError(409, "Diese Abwesenheit wird über die Freiwunschentscheidung verwaltet.");
-    if (kind === "time" || kind === "leave") {
+    if (kind === "time" || kind === "attendance" || kind === "leave") {
       await validateRelations(context, kind, { ...row.data }, tx, id);
       if (kind === "leave" && row.data.status === "approved")
         throw new HttpError(409, "Genehmigte Abwesenheiten können nicht direkt gelöscht werden.");
@@ -598,7 +645,8 @@ export async function deleteRecord(context: Context, kind: RecordKind, id: strin
           eq(records.departmentId, context.departmentId),
           ne(records.id, id),
           ne(records.kind, "notifications"),
-          sql`(${records.productionId}=${id} or ${records.parentId}=${id} or ${records.data}->>'actorId'=${id} or ${records.data}->>'characterId'=${id} or ${records.data}->>'sprintId'=${id} or ${records.data}->>'taskId'=${id} or ${records.data}->>'templateId'=${id} or ${records.data}->>'conversationId'=${id} or ${records.data}->'contacts' @> ${JSON.stringify([{ personId: id }])}::jsonb or (${records.kind}='maskPlans' and ${records.data}->'blocks' @> ${JSON.stringify([{ actorIds: [id] }])}::jsonb))`,
+          ne(records.kind, "files"),
+          sql`(${records.productionId}=${id} or ${records.parentId}=${id} or ${records.data}->>'actorId'=${id} or ${records.data}->>'characterId'=${id} or ${records.data}->>'sprintId'=${id} or ${records.data}->>'taskId'=${id} or ${records.data}->>'templateId'=${id} or ${records.data}->>'conversationId'=${id} or ${records.data}->>'materialId'=${id} or (${records.kind}='shiftSwaps' and ${records.data}->>'status' in ('awaiting_partner','awaiting_admin') and (${records.data}->>'serviceId'=${id} or ${records.data}->>'counterServiceId'=${id})) or ${records.data}->'contacts' @> ${JSON.stringify([{ personId: id }])}::jsonb or (${records.kind}='maskPlans' and ${records.data}->'blocks' @> ${JSON.stringify([{ actorIds: [id] }])}::jsonb))`,
         ),
       )
       .limit(1);
@@ -617,8 +665,26 @@ export async function deleteRecord(context: Context, kind: RecordKind, id: strin
           sql`${records.data}->>'recordId'=${id}`,
         ),
       );
-    for (const file of attachments)
-      await emit(tx, context, "FileDeletionRequestedV1", { path: file.data.path, fileId: file.id });
+    const history = ["looks", "templates"].includes(kind)
+      ? await tx.select().from(recordHistory).where(eq(recordHistory.recordId, id))
+      : [];
+    const undo = options.skipCapture
+      ? undefined
+      : await captureRecordOperation(tx, context, row, undefined, { payload: { history } });
+    if (undo && attachments.length)
+      await emit(
+        tx,
+        context,
+        "RecordDeletionFinalizedV1",
+        { recordId: id, operationId: undo.id },
+        { availableAt: new Date(undo.expiresAt) },
+      );
+    if (!undo)
+      for (const file of attachments)
+        await emit(tx, context, "FileDeletionRequestedV1", {
+          path: file.data.path,
+          fileId: file.id,
+        });
     eventQueued = attachments.length > 0;
     if (kind === "productions")
       await tx
@@ -630,10 +696,17 @@ export async function deleteRecord(context: Context, kind: RecordKind, id: strin
             eq(records.productionId, id),
           ),
         );
-    await tx.delete(records).where(inArray(records.id, [id, ...attachments.map((f) => f.id)]));
+    await tx
+      .delete(records)
+      .where(inArray(records.id, [id, ...(undo ? [] : attachments.map((f) => f.id))]));
     if (kind === "time") await reopenCorrectedWeeks(context, tx, row.data);
     await auditChange(tx, context, `${kind}.deleted`, id);
-  });
-  invalidateWorkspace(context.departmentId);
-  if (eventQueued) scheduleEvents();
+    return undo;
+  };
+  const undo = options.transaction ? await write(options.transaction) : await db.transaction(write);
+  if (!options.transaction) {
+    invalidateWorkspace(context.departmentId);
+    if (eventQueued) scheduleEvents();
+  }
+  return undo;
 }

@@ -35,6 +35,8 @@ export const labels: Record<RecordKind, [string, string]> = {
   templates: ["Vorlagen", "Vorlage"],
   messages: ["Nachrichten", "Nachricht"],
   materials: ["Fundus", "Material"],
+  reservations: ["Reservierungen", "Reservierung"],
+  shiftSwaps: ["Diensttausch", "Tauschanfrage"],
   handovers: ["Übergaben", "Übergabe"],
   notifications: ["Mitteilungen", "Mitteilung"],
   timesheets: ["Wochenabschlüsse", "Wochenabschluss"],
@@ -62,6 +64,16 @@ const checklist: Field = {
 const title: Field = { key: "title", label: "Titel", required: true };
 const description: Field = { key: "description", label: "Beschreibung", type: "textarea" };
 export const fields: Partial<Record<RecordKind, Field[]>> = {
+  reservations: [
+    { key: "materialId", label: "Artikel", type: "select", source: "materials", required: true },
+    { key: "quantity", label: "Menge", type: "number", min: 0.001, required: true },
+    { key: "start", label: "Von", type: "datetime-local", required: true },
+    { key: "end", label: "Bis", type: "datetime-local", required: true },
+    production,
+    { key: "actorId", label: "Schauspielperson", type: "select", source: "actors" },
+    { key: "purpose", label: "Verwendung" },
+    { key: "notes", label: "Hinweise", type: "textarea" },
+  ],
   productions: [
     title,
     description,

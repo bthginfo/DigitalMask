@@ -1,6 +1,7 @@
 "use client";
 import {
   useEffect,
+  useCallback,
   useId,
   useRef,
   useState,
@@ -10,26 +11,34 @@ import {
 } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import styles from "./mobile-calendar.module.css";
+import { useWorkspace } from "@/components/workspace-context";
+import { readViewState, writeViewState } from "@/shared/view-state";
 
 export function TeamCalendarScroll({ children, month }: { children: ReactNode; month: boolean }) {
+  const { workspace } = useWorkspace();
+  const scope = `team-calendar-scroll:${typeof location === "undefined" ? "all" : new URLSearchParams(location.search).get("productionId") || "all"}:${month ? "month" : "week"}`;
   const id = useId();
   const body = useRef<HTMLDivElement>(null);
   const [metrics, setMetrics] = useState({ max: 0, thumb: 100, position: 0 });
   const [edges, setEdges] = useState({ left: true, right: true });
-  const sync = (left: number) => {
-    const table = body.current;
-    if (!table) return;
-    const position = Math.max(0, Math.min(left, table.scrollWidth - table.clientWidth));
-    if (table.scrollLeft !== position) table.scrollLeft = position;
-    setMetrics((current) => (current.position === position ? current : { ...current, position }));
-    setEdges((current) => {
-      const next = {
-        left: position <= 1,
-        right: position >= table.scrollWidth - table.clientWidth - 1,
-      };
-      return current.left === next.left && current.right === next.right ? current : next;
-    });
-  };
+  const sync = useCallback(
+    (left: number) => {
+      const table = body.current;
+      if (!table) return;
+      const position = Math.max(0, Math.min(left, table.scrollWidth - table.clientWidth));
+      if (table.scrollLeft !== position) table.scrollLeft = position;
+      writeViewState(workspace.user.id, scope, "left", position);
+      setMetrics((current) => (current.position === position ? current : { ...current, position }));
+      setEdges((current) => {
+        const next = {
+          left: position <= 1,
+          right: position >= table.scrollWidth - table.clientWidth - 1,
+        };
+        return current.left === next.left && current.right === next.right ? current : next;
+      });
+    },
+    [scope, workspace.user.id],
+  );
   useEffect(() => {
     const table = body.current;
     if (!table) return;
@@ -47,9 +56,10 @@ export function TeamCalendarScroll({ children, month }: { children: ReactNode; m
     const observer = new ResizeObserver(update);
     observer.observe(table);
     if (table.firstElementChild) observer.observe(table.firstElementChild);
+    table.scrollLeft = readViewState(workspace.user.id, scope, "left", 0);
     update();
     return () => observer.disconnect();
-  }, [month]);
+  }, [month, scope, workspace.user.id, sync]);
   const move = (direction: number) => sync((body.current?.scrollLeft || 0) + direction * 240);
   const keyScroll = (event: KeyboardEvent<HTMLDivElement | HTMLInputElement>) => {
     if (event.target !== event.currentTarget) return;

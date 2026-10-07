@@ -12,6 +12,7 @@ import {
 } from "@/shared/contracts";
 import { serialize, projectVisible } from "./repository";
 import { scheduleLiveChange } from "@/platform/realtime";
+import { canReadShiftSwap } from "@/modules/shift-swaps/rules";
 export function invalidateWorkspace(departmentId: string, broadcast = true) {
   revalidateTag(scopeTag(departmentId), { expire: 0 });
   if (broadcast) scheduleLiveChange(departmentId);
@@ -78,6 +79,7 @@ export async function getWorkspace(context: Context): Promise<Workspace> {
   for (const row of rows) {
     // A rolling release may add record kinds before every running build knows them.
     if (!Object.hasOwn(grouped, row.kind)) continue;
+    if (row.kind === "shiftSwaps" && !canReadShiftSwap(context.user, row.data)) continue;
     if (row.kind === "conversations" && !visibleConversations.has(row.id)) continue;
     if (row.data.conversationId && !visibleConversations.has(String(row.data.conversationId)))
       continue;
@@ -120,7 +122,12 @@ export async function getWorkspace(context: Context): Promise<Workspace> {
       .map((r) => r.id),
   );
   grouped.files = rows
-    .filter((r) => r.kind === "files" && readableIds.has(String(r.data.recordId)))
+    .filter(
+      (r) =>
+        r.kind === "files" &&
+        !r.data.pendingDeletionOperation &&
+        readableIds.has(String(r.data.recordId)),
+    )
     .map((r) => ({ ...r, data: { ...r.data, path: undefined } }));
   const personalTimers = await unstable_cache(
     () =>

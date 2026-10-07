@@ -36,6 +36,7 @@ export async function sourceBytes(path: string) {
 }
 async function documentAccess(context: Context, id: string) {
   const file = await findRecord(context, id, "files");
+  if (file.data.pendingDeletionOperation) throw new HttpError(404, "Die Datei wurde entfernt.");
   const parent = await findRecord(context, String(file.data.recordId));
   await assertRead(context, parent);
   const format = documentFormat(file.data.mime);

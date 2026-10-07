@@ -12,13 +12,22 @@ import { RecordDetail, ResourceView } from "@/components/resource-view";
 import { ResourceEditor } from "@/components/resource-editor";
 import { ExportDialog } from "@/components/export-dialog";
 import { CategoryManager } from "@/modules/categories/components/category-manager";
+import { useViewState } from "@/shared/view-state";
 export function DocumentationModule() {
   const { workspace } = useWorkspace();
-  const [tab, setTab] = useState("looks"),
-    [production, setProduction] = useState(""),
-    [search, setSearch] = useState(""),
-    [period, setPeriod] = useState<PeriodFilter>(() =>
-      initialPeriod(workspace.records.productions),
+  const [tab, setTab] = useViewState(workspace.user.id, "documentation", "tab", "looks"),
+    [production, setProduction] = useViewState(
+      workspace.user.id,
+      "documentation",
+      "production",
+      "",
+    ),
+    [search, setSearch] = useViewState(workspace.user.id, "documentation", "search", ""),
+    [period, setPeriod] = useViewState<PeriodFilter>(
+      workspace.user.id,
+      "documentation",
+      "period",
+      () => initialPeriod(workspace.records.productions),
     ),
     [editing, setEditing] = useState(false),
     [detail, setDetail] = useState<DomainRecord | null>(null),

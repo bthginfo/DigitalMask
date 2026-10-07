@@ -3,6 +3,8 @@ import type { RecordKind } from "@/shared/contracts";
 import { categoryScopes } from "@/shared/domain-categories";
 import { maskPlanSchema } from "@/modules/mask-plans/schema";
 import { seasonKey } from "@/shared/period-filter";
+import { reservationSchema } from "@/modules/reservations/schema";
+import { shiftSwapSchema } from "@/modules/shift-swaps/schema";
 const short = z.string().trim().max(200);
 const title = short.min(1, "Ein Titel ist erforderlich.");
 const note = z.string().max(20000).default("");
@@ -89,6 +91,8 @@ const productionContacts = z
   )
   .default([]);
 export const schemas: Record<RecordKind, z.ZodType> = {
+  reservations: reservationSchema,
+  shiftSwaps: shiftSwapSchema,
   maskPlans: maskPlanSchema,
   people: z.object({
     name: title,

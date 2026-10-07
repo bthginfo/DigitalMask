@@ -16,6 +16,8 @@ import { subscribeConnectivity } from "@/shared/client-storage";
 import { useRouter } from "next/navigation";
 import { connectLiveSync, type SyncStatus } from "@/shared/live-sync";
 import { syncAppBadge } from "@/modules/notifications/client";
+import { changeSignal, useChangeFeed, useUndoReceipts } from "@/modules/changes/client";
+import type { MutationRecord, UndoReceipt } from "@/modules/changes/contracts";
 
 interface Context {
   workspace: Workspace;
@@ -29,6 +31,16 @@ interface Context {
   action: (action: string, id?: string, data?: RecordData) => Promise<unknown>;
   notify: (message: string) => void;
   mergeMessages: (messages: DomainRecord[]) => void;
+  changes: ReturnType<typeof useChangeFeed>;
+  changesScope: { productionId: string; recordId: string } | null;
+  openChanges: (productionId?: string, recordId?: string) => void;
+  closeChanges: () => void;
+  undoReceipts: UndoReceipt[];
+  undoOperation: (id: string) => Promise<void>;
+  dismissUndo: (id: string) => void;
+  captureUndo: (result: unknown) => void;
+  removeFile: (file: DomainRecord) => Promise<void>;
+  runWorkflow: <T = unknown>(url: string, data: RecordData) => Promise<T>;
 }
 const WorkspaceContext = createContext<Context | null>(null);
 export const useWorkspace = () => {
@@ -44,6 +56,10 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const [pending, setPending] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
+  const [changesScope, setChangesScope] = useState<{
+    productionId: string;
+    recordId: string;
+  } | null>(null);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("connecting");
   const [liveAttempt, setLiveAttempt] = useState(0);
   const liveAccess = useRef<Workspace["live"]>(null);
@@ -97,6 +113,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const liveEnabled = Boolean(workspace?.live);
   const departmentId = workspace?.department.id;
   const userId = workspace?.user.id;
+  const changes = useChangeFeed(userId);
+  const undo = useUndoReceipts(userId);
   const unreadCount =
     workspace?.records.notifications.filter(
       (notice) => notice.data.userId === userId && !notice.data.read,
@@ -124,7 +142,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
           changed();
           return;
         }
-        void refresh();
+        void refresh().then(() => window.dispatchEvent(new Event(changeSignal)));
       }, 450);
     };
     const disconnect = connectLiveSync({
@@ -144,7 +162,9 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     setBusy(true);
     try {
       const result = await run();
+      undo.capture(result);
       await refresh();
+      window.dispatchEvent(new Event(changeSignal));
       return result;
     } finally {
       mutationPending.current = false;
@@ -159,13 +179,28 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
             body: JSON.stringify({ data, version: record.version }),
           })
         : post(`/api/records/${kind}`, { data }),
-    )) as DomainRecord;
+    )) as MutationRecord;
   };
   const remove = async (record: DomainRecord) => {
-    await mutate(() => api(`/api/records/${record.kind}/${record.id}`, { method: "DELETE" }));
+    await mutate(() =>
+      api(
+        `/api/records/${record.kind}/${record.id}?${new URLSearchParams({ version: String(record.version) })}`,
+        { method: "DELETE" },
+      ),
+    );
   };
   const action = (action: string, id?: string, data?: RecordData) =>
     mutate(() => post("/api/actions", { action, id, data }));
+  const runWorkflow = async <T = unknown,>(url: string, data: RecordData) =>
+    (await mutate(() => post<T>(url, data))) as T;
+  const removeFile = async (file: DomainRecord) => {
+    await mutate(() => api(`/api/files/${file.id}`, { method: "DELETE" }));
+  };
+  const undoOperation = async (id: string) => {
+    await mutate(() => post("/api/undo", { operationId: id }));
+    undo.dismiss(id);
+    setNotice("Die Änderung wurde rückgängig gemacht.");
+  };
   const mergeMessages = (messages: DomainRecord[]) =>
     setWorkspace((current) =>
       current
@@ -233,6 +268,17 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         action,
         notify: setNotice,
         mergeMessages,
+        changes,
+        changesScope,
+        openChanges: (productionId = "", recordId = "") =>
+          setChangesScope({ productionId, recordId }),
+        closeChanges: () => setChangesScope(null),
+        undoReceipts: undo.receipts,
+        undoOperation,
+        dismissUndo: undo.dismiss,
+        captureUndo: undo.capture,
+        removeFile,
+        runWorkflow,
       }}
     >
       {error && (

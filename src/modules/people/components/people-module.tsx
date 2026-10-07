@@ -1,5 +1,6 @@
 "use client";
 import { useId, useMemo, useState } from "react";
+import { useViewState } from "@/shared/view-state";
 import { ArrowUpRight, Plus, Search, UsersRound } from "lucide-react";
 import { Button, Empty, ExportButton, PageHeader } from "@/components/ui";
 import { RecordLink } from "@/components/record-link";
@@ -15,8 +16,8 @@ import styles from "./people.module.css";
 type Panel = { type: "create" | "export" } | null;
 export function PeopleModule() {
   const { workspace, busy, online } = useWorkspace();
-  const [query, setQuery] = useState(""),
-    [organization, setOrganization] = useState("");
+  const [query, setQuery] = useViewState(workspace.user.id, "people", "query", ""),
+    [organization, setOrganization] = useViewState(workspace.user.id, "people", "organization", "");
   const [panel, setPanel] = useState<Panel>(null);
   const id = useId(),
     canManage = canManageRecord(workspace.user, "people");

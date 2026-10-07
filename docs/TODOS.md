@@ -1,5 +1,20 @@
 # Umsetzungsstand
 
+## Kontext, Änderungen, Rückgängig und Teamabläufe
+
+- [x] Rücknavigation und Browser-Zurück mit Produktionsreiter, Zeitraum, Suche, Sortierung, Filtern und Scrollposition erhalten.
+- [x] Lesbare Änderungen seit dem letzten Besuch mit Person, Zeitpunkt, konkretem Vorher/Nachher und passender Verlinkung anzeigen.
+- [x] Den letzten eigenen Daten-Schritt kurzzeitig rückgängig machen, einschließlich Löschung; Versionskonflikte und aktuelle Rechte prüfen, kein Papierkorb.
+- [x] Perücken und andere Fundusartikel nach Zeitraum und Menge reservieren; Verfügbarkeit, Bearbeitung, Stornierung und Überschneidungen sicher prüfen.
+- [x] Diensttausch mit Zustimmung beider Beteiligten und anschließender Adminfreigabe anlegen; Kalender erst nach atomarer Konfliktprüfung ändern.
+- [x] Hilfe, passende Exporte und fokussierte Fach-/Browserprüfungen ergänzen, Migration und Produktionsbuild prüfen und das Releasepaket vorbereiten; temporäre Prüfdaten entfernen.
+
+Neue Planungseinträge verwenden den vorhandenen Record-Speicher, Cache und Live-Signale. Navigation und Ansichtsfilter bleiben lokal; Änderungsverlauf und Rückgängig werden ohne regelmäßige Datenbankabfragen aufgebaut.
+
+Rückgängig ist zwei Minuten für eigene Änderungen verfügbar. Veränderte Versionen und aktuelle Rechte verhindern das Überschreiben fremder Arbeit. Dateirecords und gemeinsame Dokumentstände bleiben bis zum Ablauf erhalten; die vorhandene Outbox bereinigt sie anschließend. Der lesbare Verlauf enthält höchstens 100 sichtbare Änderungen je Abruf aus den letzten 30 Tagen, mit explizitem Gesehen-Markieren. Die unabhängige Oberflächenprüfung ist für Desktop, Tablet und 375/390-px-Mobilansichten in beiden Themes bestanden.
+
+Lint, Typprüfung, Produktionsbuild und Migration 0012 sind bestanden. 276 Fachtests sind geprüft; eine bestehende lange PDF-Prüfung überschritt unter paralleler Last ihr Zeitlimit und ist danach einzeln bestanden. Temporäre Aufgaben-/Browserfixtures sind entfernt, ohne künstliche Produktionsdaten anzulegen. Zwei reine Ergebnisvorschauen bleiben im ignorierten Artefaktordner.
+
 ## Aktuelle Mitteilungen und verlässliche Premieren-Sortierung
 
 - [x] In Glocke und Neu für dich nur eigene ungelesene Mitteilungen anzeigen, nach Erstellung absteigend sortieren und gelesene aus den sichtbaren Listen entfernen.

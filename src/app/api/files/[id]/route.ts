@@ -23,7 +23,7 @@ export async function GET(_request: Request, { params }: Props) {
 export async function DELETE(request: Request, { params }: Props) {
   return route(async () => {
     assertOrigin(request);
-    await deleteFile(await requireContext(true), (await params).id);
-    return NextResponse.json({ ok: true });
+    const undo = await deleteFile(await requireContext(true), (await params).id);
+    return NextResponse.json({ ok: true, undo });
   });
 }

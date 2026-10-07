@@ -33,6 +33,8 @@ import {
 import { BlockEditor, LaneEditor, PlanOptions } from "./plan-editors";
 import { Timetable } from "./timetable";
 import styles from "./mask-plans.module.css";
+import { useViewState } from "@/shared/view-state";
+import { navigateWorkspace } from "@/shared/client-navigation";
 
 type Draft = { data: MaskPlanData; base?: DomainRecord };
 type Editor =
@@ -47,8 +49,11 @@ function updateLocation(id: string, push = false) {
   const next = new URL(location.href);
   if (id) next.searchParams.set("record", id);
   else next.searchParams.delete("record");
-  history[push ? "pushState" : "replaceState"]({}, "", next.pathname + next.search);
-  window.dispatchEvent(new PopStateEvent("popstate"));
+  if (push) navigateWorkspace(next.pathname + next.search);
+  else {
+    history.replaceState(history.state, "", next.pathname + next.search);
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  }
 }
 
 export function MaskPlansModule({ production }: { production: DomainRecord }) {
@@ -56,15 +61,25 @@ export function MaskPlansModule({ production }: { production: DomainRecord }) {
   const plans = workspace.records.maskPlans.filter(
     (record) => record.data.productionId === production.id,
   );
-  const [selectedId, setSelectedId] = useState(() => {
-    const queryId =
-      typeof location === "undefined" ? "" : new URLSearchParams(location.search).get("record");
-    return plans.find((record) => record.id === queryId)?.id || plans[0]?.id || "";
-  });
+  const [selectedId, setSelectedId] = useViewState(
+    workspace.user.id,
+    `mask-plans:${production.id}`,
+    "selected",
+    () => {
+      const queryId =
+        typeof location === "undefined" ? "" : new URLSearchParams(location.search).get("record");
+      return plans.find((record) => record.id === queryId)?.id || plans[0]?.id || "";
+    },
+  );
   const [draft, setDraft] = useState<Draft | null>(null);
   const [editor, setEditor] = useState<Editor>(null);
   const [editing, setEditing] = useState(false);
-  const [performanceTime, setPerformanceTime] = useState("");
+  const [performanceTime, setPerformanceTime] = useViewState(
+    workspace.user.id,
+    `mask-plans:${production.id}`,
+    "performanceTime",
+    "",
+  );
   const [error, setError] = useState("");
   const [conflict, setConflict] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -119,7 +134,7 @@ export function MaskPlansModule({ production }: { production: DomainRecord }) {
     };
     window.addEventListener("popstate", changed);
     return () => window.removeEventListener("popstate", changed);
-  }, [production.id]);
+  }, [production.id, setSelectedId]);
   useEffect(() => {
     if (!dirty && !editor) return;
     const beforeUnload = (event: BeforeUnloadEvent) => {

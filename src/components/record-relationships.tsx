@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useViewState } from "@/shared/view-state";
 import { Badge } from "./ui";
 import { PeriodPicker } from "./period-picker";
 import { RecordLink } from "./record-link";
@@ -24,16 +24,21 @@ type RelationshipProps = { record: DomainRecord; onNavigate?: () => void };
 
 function useRelationshipPeriod(record: DomainRecord) {
   const { workspace } = useWorkspace();
-  const [period, setPeriod] = useState<PeriodFilter>(() => {
-    const query = new URLSearchParams(typeof location === "undefined" ? "" : location.search);
-    const selected = query.get("record") === record.id ? query.get("relatedSeason") : null;
-    const year = Number(query.get("relatedYear"));
-    return {
-      season:
-        selected === "all" ? undefined : selected || seasonForDate(workspace.records.productions),
-      year: year >= 1900 && year <= 2100 ? year : undefined,
-    };
-  });
+  const [period, setPeriod] = useViewState<PeriodFilter>(
+    workspace.user.id,
+    `relationships:${record.id}`,
+    "period",
+    () => {
+      const query = new URLSearchParams(typeof location === "undefined" ? "" : location.search);
+      const selected = query.get("record") === record.id ? query.get("relatedSeason") : null;
+      const year = Number(query.get("relatedYear"));
+      return {
+        season:
+          selected === "all" ? undefined : selected || seasonForDate(workspace.records.productions),
+        year: year >= 1900 && year <= 2100 ? year : undefined,
+      };
+    },
+  );
   const update = (next: PeriodFilter) => {
     setPeriod(next);
     const url = new URL(location.href);
@@ -41,7 +46,7 @@ function useRelationshipPeriod(record: DomainRecord) {
     url.searchParams.set("relatedSeason", next.season || "all");
     if (next.year) url.searchParams.set("relatedYear", String(next.year));
     else url.searchParams.delete("relatedYear");
-    history.replaceState({}, "", url.pathname + url.search);
+    history.replaceState(history.state, "", url.pathname + url.search);
   };
   return [period, update] as const;
 }

@@ -15,7 +15,7 @@ const DocumentEditor = dynamic(() => import("./document-editor"), { ssr: false }
 
 export const documentAccept = `.docx,.xlsx,.csv,.pdf,${imageAccept}`;
 export function RecordDocuments({ record }: { record: DomainRecord }) {
-  const { workspace, refresh } = useWorkspace();
+  const { workspace, refresh, removeFile } = useWorkspace();
   const [creating, setCreating] = useState(false),
     [opened, setOpened] = useState<DomainRecord | null>(null),
     [busy, setBusy] = useState(false),
@@ -96,8 +96,7 @@ export function RecordDocuments({ record }: { record: DomainRecord }) {
                     if (!confirm("Datei und ihren gemeinsamen Bearbeitungsstand löschen?")) return;
                     setBusy(true);
                     setError("");
-                    void api(`/api/files/${file.id}`, { method: "DELETE" })
-                      .then(refresh)
+                    void removeFile(file)
                       .catch((exception) =>
                         setError(
                           exception instanceof Error

@@ -8,6 +8,23 @@ export type HelpArticle = {
 };
 export const helpArticles: HelpArticle[] = [
   {
+    id: "context-changes-undo",
+    title: "Zurück, Änderungen & Rückgängig",
+    module: "today",
+    intro:
+      "Du kannst zwischen zusammengehörenden Einträgen wechseln und danach an derselben Stelle weiterarbeiten. Änderungen im Team findest du gesammelt unter Änderungen.",
+    steps: [
+      "Wenn du etwa aus einer Besetzung einen Schauspieler öffnest, führen Schließen beziehungsweise Zurück und der Zurück-Knopf deines Browsers zur vorherigen Ansicht. Deine Produktionsseite, der gewählte Bereich und die Filter bleiben erhalten.",
+      "Suchbegriffe, Sortierung, Spielzeit, Kalenderdatum und ausgewählte Personen bleiben während deiner Sitzung auf diesem Gerät erhalten. Eine neue Sitzung startet weiterhin mit der aktuellen Spielzeit. Andere Teammitglieder haben ihre eigene Auswahl.",
+      "Öffne Änderungen oben neben den Mitteilungen oder auf der Heute-Seite. Du siehst, wer einen Eintrag wann geändert hat. Vorher und Jetzt zeigen die konkreten Angaben. Öffnen führt direkt zum Eintrag.",
+      "In einer Produktion zeigt Änderungen nur die zugehörigen Einträge. In den Details eines Schauspielers, Aufschriebs oder Fundusartikels kannst du die Änderungen genau dieses Eintrags öffnen.",
+      "Neue Änderungen sind markiert. Erst mit Als gesehen markieren entfernst du ihre Neu-Markierung. Der Verlauf der letzten 30 Tage bleibt weiterhin sichtbar; dafür ist kein ständiges Nachladen nötig.",
+      "Nach unterstützten Änderungen erscheint Rückgängig. Du hast dafür zwei Minuten Zeit und kannst währenddessen auch in einen anderen Bereich wechseln. Es gibt keinen Papierkorb.",
+      "Hat jemand den betroffenen Eintrag inzwischen weiter verändert, wird das Rückgängigmachen aus Sicherheitsgründen gestoppt. Die neueren Angaben werden dabei nicht überschrieben. Öffne dann den aktuellen Eintrag und prüfe ihn gemeinsam.",
+    ],
+    note: "Rückgängig gilt für die zuletzt angebotenen Änderungen an Einträgen und Dateien. Freigaben, Kontoverwaltung und laufende Timer werden nicht pauschal zurückgesetzt. Der Hinweis verschwindet nach Ablauf der kurzen Frist.",
+  },
+  {
     id: "app-install",
     title: "App auf dem Smartphone installieren",
     module: "settings",
@@ -264,6 +281,38 @@ export const helpArticles: HelpArticle[] = [
     ],
   },
   {
+    id: "reservations",
+    title: "Perücken, Material und Geräte reservieren",
+    module: "inventory",
+    intro:
+      "Im Fundus kannst du jeden Artikel für einen Zeitraum reservieren, etwa eine Perücke, Schminke oder ein Gerät. Der Bestand ist die gesamte verfügbare Menge.",
+    steps: [
+      "Öffne den Artikel im Fundus und tippe unter Reservierungen auf Reservieren. Trage Menge, Beginn und Ende ein.",
+      "Wähle bei Bedarf eine Produktion und Schauspielperson oder beschreibe die Verwendung. Ohne Produktion ist die Reservierung allgemein sichtbar; mit Produktion gilt deren Teamzugang.",
+      "Verfügbarkeit prüfen zeigt, wie viel für den gesamten Zeitraum frei ist. Dabei werden auch Reservierungen aus anderen Produktionen berücksichtigt. Beim Speichern wird nochmals geprüft; Überbuchungen werden verhindert.",
+      "Mit Bearbeiten passt du deine Reservierungen nachträglich an. Aufheben gibt den Artikel wieder frei. Admins können auch Reservierungen anderer Personen bearbeiten und aufheben.",
+      "Unter Alle Reservierungen findest du frühere und aufgehobene Reservierungen. Diese können bei Bedarf entfernt werden; es gibt keinen Papierkorb. Über Exportieren erhältst du die Reservierungen dieses Artikels als PDF, Excel, CSV oder JSON.",
+      "Der Bestand kann nicht unter die gleichzeitig reservierte Menge gesenkt werden. Passe zuerst die betroffenen zukünftigen Reservierungen an. Ein Bestand von null bedeutet, dass nichts reserviert werden kann.",
+    ],
+  },
+  {
+    id: "shift-swaps",
+    title: "Einen Dienst tauschen oder abgeben",
+    module: "calendar",
+    intro:
+      "Diensttausch läuft in drei Schritten: anfragen, als Kollegin zustimmen und durch einen Admin freigeben. Erst danach ändert sich der Kalender.",
+    steps: [
+      "Klappe im Kalender Diensttausch auf und wähle Tausch anfragen. Wähle deinen zukünftigen Dienst und die Kollegin, die ihn übernehmen soll.",
+      "Wenn du dafür einen ihrer Dienste übernehmen möchtest, hake die Auswahl für einen Gegendienst an. Ohne Gegendienst fragst du nur die Übernahme deines Dienstes an.",
+      "Prüfe Datum, Zeiten und Personen. Bestätige, dass du diesen Dienst abgeben möchtest, und sende die Anfrage. Die Kollegin erhält eine Mitteilung.",
+      "Die angefragte Kollegin kann zustimmen oder ablehnen. Nach ihrer Zustimmung erhalten die Admins die Anfrage zur Freigabe. Admins können erst dann freigeben oder ablehnen.",
+      "Vor der Freigabe kannst du deine offene Anfrage zurückziehen. Unter Alle Anfragen bleibt auch der Verlauf abgeschlossener Anfragen sichtbar; nur Beteiligte und Admins sehen die Anfrage.",
+      "Bei der Freigabe werden Dienstzeiten, aktive Personen, Produktionszugänge und Zeitkonflikte erneut geprüft. Wenn ein Dienst zwischenzeitlich geändert wurde, zieht die Anfrage zurück und stellt sie mit den aktuellen Angaben neu.",
+      "Bei einem Serientermin wird ausschließlich der ausgewählte Tag getauscht. Die restliche Serie bleibt erhalten. Ganztägige Abwesenheiten und genehmigte Freiwünsche können nicht getauscht werden.",
+      "Exportieren erstellt einen Nachweis der für dich sichtbaren Anfragen als PDF, Excel, CSV oder JSON. Nach einer Freigabe können Admins den Kalender bei Bedarf regulär korrigieren.",
+    ],
+  },
+  {
     id: "categories",
     title: "Eigene Fachkategorien",
     module: "inventory",
@@ -282,7 +331,7 @@ export const helpArticles: HelpArticle[] = [
     module: "documentation",
     intro: "Mit Jahr und Spielzeit findest du auch ältere Produktionsarbeit wieder.",
     steps: [
-      "Kalender und Zeitnachweise öffnen mit der aktuellen Spielzeit von August bis Juli. Jahr und Spielzeit sind kompakte Filter. Mit Alle Spielzeiten oder Zeitraum zurücksetzen kannst du weitere Zeiträume sehen.",
+      "Beim ersten Öffnen starten Kalender und Zeitnachweise mit der aktuellen Spielzeit von August bis Juli. Wenn du zwischendurch in einen anderen Bereich wechselst und zurückkommst, bleibt deine Auswahl erhalten. Mit Alle Spielzeiten oder Zeitraum zurücksetzen kannst du weitere Zeiträume sehen.",
       "Wähle Jahr und Spielzeit in der jeweiligen Übersicht. Im Sammelordner kannst du zusätzlich eine Produktion oder allgemeine Aufschriebe auswählen; archivierte Produktionen bleiben auffindbar.",
       "Bei Produktionsdokumenten zählt die Spielzeit beziehungsweise das Premierenjahr des Stücks. Bei allgemeinen Aufschrieben zählt das Erstellungsjahr. Zeitbuchungen und Anwesenheit richten sich nach dem tatsächlich gebuchten Tag.",
       "Öffne Exportieren aus der gefilterten Übersicht. Produktion, Jahr und Spielzeit werden übernommen. Prüfe bei Zeit- und Kalenderexporten zusätzlich den Zeitraum, damit er zur gewählten Auswahl passt.",

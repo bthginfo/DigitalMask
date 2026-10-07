@@ -20,6 +20,8 @@ export const titles: Record<string, string> = {
   timesheets: "Wochenfreigaben",
   looks: "Aufschriebe",
   materials: "Material- und Perückenbestand",
+  reservations: "Artikelreservierungen",
+  shiftSwaps: "Diensttausch-Anfragen",
   actors: "Schauspielerkatalog",
   people: "Kontaktverzeichnis",
   characters: "Figurenkatalog",
@@ -110,6 +112,28 @@ const column = (key: string, label: string, width: number, type?: Column["type"]
 });
 export function columnsFor(kind: string, input?: ExportInput): Column[] {
   switch (kind) {
+    case "reservations":
+      return [
+        column("title", "Artikel / Verwendung", 29),
+        column("quantity", "Menge", 10),
+        column("start", "Von", 20, "date"),
+        column("end", "Bis", 20, "date"),
+        column("person", "Reserviert von", 23),
+        column("production", "Produktion", 24),
+        column("actor", "Schauspielperson", 22),
+        column("status", "Stand", 17),
+        column("description", "Hinweise", 35),
+      ];
+    case "shiftSwaps":
+      return [
+        column("person", "Von → an", 28),
+        column("title", "Dienst", 28),
+        column("start", "Beginn", 20, "date"),
+        column("end", "Ende", 20, "date"),
+        column("counter", "Gegendienst", 35),
+        column("status", "Stand", 25),
+        column("description", "Nachricht", 35),
+      ];
     case "events":
     case "calendar":
       return [
@@ -248,6 +272,11 @@ const statuses: Record<string, string> = {
   completed: "Abgeschlossen",
   withdrawn: "Zurückgezogen",
   changes_requested: "Korrektur angefragt",
+  reserved: "Reserviert",
+  cancelled: "Aufgehoben",
+  awaiting_partner: "Antwort ausstehend",
+  awaiting_admin: "Adminfreigabe ausstehend",
+  declined: "Von angefragter Person abgelehnt",
 };
 export function exportRows(input: ExportInput): ExportRow[] {
   const members = new Map(input.members.map((m) => [m.id, m.name]));
@@ -293,11 +322,24 @@ export function exportRows(input: ExportInput): ExportRow[] {
         record,
         values: {
           title:
-            document?.title ??
-            display?.title ??
-            (readable(value(record, "title", "name", "activity", "subject", "label")) ||
-              (record.kind === "attendance" ? "Anwesenheit" : "")),
-          person,
+            record.kind === "reservations"
+              ? [name(record.data.materialId), readable(record.data.purpose)]
+                  .filter(Boolean)
+                  .join(" · ")
+              : record.kind === "shiftSwaps"
+                ? readable(record.data.serviceTitle)
+                : (document?.title ??
+                  display?.title ??
+                  (readable(value(record, "title", "name", "activity", "subject", "label")) ||
+                    (record.kind === "attendance" ? "Anwesenheit" : ""))),
+          person:
+            record.kind === "shiftSwaps"
+              ? `${name(record.data.requesterId)} → ${name(record.data.partnerId)}`
+              : person,
+          counter:
+            record.kind === "shiftSwaps" && record.data.counterServiceId
+              ? `${readable(record.data.counterServiceTitle)}\n${dateText(record.data.counterServiceStart, true)} – ${dateText(record.data.counterServiceEnd, true)}`
+              : "",
           production: name(value(record, "productionName", "productionId", "projectId")),
           actor: referenceName(
             record.data.actorId,
@@ -312,15 +354,30 @@ export function exportRows(input: ExportInput): ExportRow[] {
           documentDate: dateValue(record.createdAt) ?? "",
           start:
             dateValue(
-              value(record, "start", "startAt", "date", "day", "due", "dueAt", "dueDate"),
+              value(
+                record,
+                "start",
+                "serviceStart",
+                "startAt",
+                "date",
+                "day",
+                "due",
+                "dueAt",
+                "dueDate",
+              ),
             ) ?? "",
-          end: endDate ? (display?.allDay ? new Date(+endDate - 1) : endDate) : "",
+          end: endDate
+            ? display?.allDay
+              ? new Date(+endDate - 1)
+              : endDate
+            : dateValue(record.data.serviceEnd) || "",
           isAllDay: display?.allDay ? 1 : 0,
           dayLabel: display?.allDay ? "Ganztägig" : "Mit Uhrzeit",
           duration: durationSeconds(record) / 86400,
           status: statuses[readable(value(record, "status"))] ?? readable(value(record, "status")),
           description: [
             description,
+            record.kind === "shiftSwaps" ? readable(record.data.note) : "",
             Array.isArray(checklist)
               ? checklist
                   .map((item) =>
@@ -410,7 +467,8 @@ export function cellText(row: ExportRow, col: Column): string {
           v,
           !row.values.isAllDay &&
             col.key !== "documentDate" &&
-            (col.key !== "start" || row.record.kind === "events"),
+            (col.key !== "start" ||
+              ["events", "reservations", "shiftSwaps"].includes(row.record.kind)),
         )
       : readable(v);
 }

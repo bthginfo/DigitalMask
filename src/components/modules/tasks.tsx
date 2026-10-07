@@ -1,5 +1,6 @@
 "use client";
 import { useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useViewState } from "@/shared/view-state";
 import {
   DndContext,
   PointerSensor,
@@ -255,13 +256,14 @@ function Column({
 export function TasksModule({ productionId = "" }: { productionId?: string }) {
   const { workspace, save } = useWorkspace();
   const project = productionId;
-  const [period, setPeriod] = useState<PeriodFilter>(() =>
+  const scope = `tasks:${productionId || "team"}`;
+  const [period, setPeriod] = useViewState<PeriodFilter>(workspace.user.id, scope, "period", () =>
     initialPeriod(workspace.records.productions, productionId),
   );
-  const [sprint, setSprint] = useState("");
-  const [mine, setMine] = useState(false);
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("");
+  const [sprint, setSprint] = useViewState(workspace.user.id, scope, "sprint", "");
+  const [mine, setMine] = useViewState(workspace.user.id, scope, "mine", false);
+  const [search, setSearch] = useViewState(workspace.user.id, scope, "search", "");
+  const [status, setStatus] = useViewState(workspace.user.id, scope, "status", "");
   const isMobile = useSyncExternalStore(
     subscribeMobile,
     () => window.matchMedia("(max-width: 760px)").matches,

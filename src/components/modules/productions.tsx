@@ -25,6 +25,8 @@ import { MaskPlansModule } from "@/modules/mask-plans/components/mask-plans-modu
 import { RecordLink } from "../record-link";
 import relationStyles from "../record-links.module.css";
 import styles from "../workspace-browse.module.css";
+import { useViewState } from "@/shared/view-state";
+import { ChangesButton } from "@/modules/changes/components/workspace-changes";
 const productionSections = [
   ["overview", "Überblick"],
   ["team", "Team & Kontakte"],
@@ -51,12 +53,17 @@ export function ProductionsModule({
   const tab = productionSections.some(([key]) => key === activeTab) ? activeTab : "overview";
   const setSelected = (id: string) => onNavigate(id, "overview");
   const setTab = (next: string) => onNavigate(selected, next);
-  const [period, setPeriod] = useState<PeriodFilter>(() => ({
-    season: seasonForDate(workspace.records.productions),
-  }));
-  const [status, setStatus] = useState("current");
-  const [search, setSearch] = useState("");
-  const [sort, setSort] = useState("premiere");
+  const [period, setPeriod] = useViewState<PeriodFilter>(
+    workspace.user.id,
+    "productions",
+    "period",
+    () => ({
+      season: seasonForDate(workspace.records.productions),
+    }),
+  );
+  const [status, setStatus] = useViewState(workspace.user.id, "productions", "status", "current");
+  const [search, setSearch] = useViewState(workspace.user.id, "productions", "search", "");
+  const [sort, setSort] = useViewState(workspace.user.id, "productions", "sort", "premiere");
   const makeupNames = (data: Record<string, unknown>) =>
     [
       ...new Set(
@@ -137,7 +144,10 @@ export function ProductionsModule({
             <p className="eyebrow">{statusLabels[value(production.data, "status")]}</p>
             <h1>{value(production.data, "title")}</h1>
           </div>
-          <Button onClick={() => setDetails(true)}>Produktion verwalten</Button>
+          <div className="heading-actions">
+            <ChangesButton productionId={production.id} />
+            <Button onClick={() => setDetails(true)}>Produktion verwalten</Button>
+          </div>
         </header>
         <label className={styles.productionSection}>
           Produktionsbereich

@@ -1,7 +1,15 @@
 "use client";
 import { useState, type ReactNode } from "react";
 import Image from "next/image";
-import { Image as ImageIcon, MoreHorizontal, Pencil, Plus, Trash2, Upload } from "lucide-react";
+import {
+  ArrowLeft,
+  Image as ImageIcon,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  Trash2,
+  Upload,
+} from "lucide-react";
 import type { DomainRecord, RecordData, RecordKind, Workspace } from "@/shared/contracts";
 import { api, dateLabel, hours, ids, localDate, num, value } from "@/shared/client-api";
 import { imageAccept, prepareUpload } from "@/shared/client-files";
@@ -27,12 +35,15 @@ import {
   SprintRelationships,
 } from "./record-relationships";
 import { PersonDetails } from "@/modules/people/components/person-details";
-import { navigateRecord } from "@/shared/client-navigation";
+import { navigateRecord, navigationReturn } from "@/shared/client-navigation";
 import relationStyles from "./record-links.module.css";
 import { actorPortrait } from "@/modules/ensemble/portrait-layout";
 import { ActorPortrait } from "@/modules/ensemble/components/actor-portrait";
 import portraitStyles from "@/modules/ensemble/components/actor-portrait.module.css";
 import { initialPeriod, teamTaskSeason } from "@/shared/period-filter";
+import { useViewState } from "@/shared/view-state";
+import { ChangesButton } from "@/modules/changes/components/workspace-changes";
+import { MaterialReservations } from "@/modules/reservations/components/material-reservations";
 
 function recordTitle(record: DomainRecord, workspace: Workspace) {
   if (record.kind === "looks") return lookTitle(record.data, workspace.records.actors);
@@ -72,7 +83,7 @@ function GenericRecordDetail({
   onClose: () => void;
   onNavigate: () => void;
 }) {
-  const { workspace, save, remove, refresh, action, busy } = useWorkspace();
+  const { workspace, save, remove, removeFile, refresh, action, busy } = useWorkspace();
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -141,6 +152,16 @@ function GenericRecordDetail({
       ) : (
         <Modal title={title} onClose={onClose} wide>
           <div className="detail-actions">
+            {navigationReturn() && (
+              <Button variant="ghost" onClick={onClose}>
+                <ArrowLeft size={15} />
+                Zurück
+              </Button>
+            )}
+            <ChangesButton
+              productionId={current.kind === "productions" ? current.id : ""}
+              recordId={current.kind === "productions" ? "" : current.id}
+            />
             {!["looks", "handovers"].includes(current.kind) && (
               <Badge
                 tone={
@@ -247,6 +268,7 @@ function GenericRecordDetail({
                 );
               })}
           </dl>
+          {current.kind === "materials" && <MaterialReservations material={current} />}
           {current.kind === "actors" && (
             <ActorRelationships record={current} onNavigate={onNavigate} />
           )}
@@ -417,8 +439,7 @@ function GenericRecordDetail({
                             onClick={() => {
                               if (confirm("Datei löschen?"))
                                 void attempt(async () => {
-                                  await api(`/api/files/${file.id}`, { method: "DELETE" });
-                                  await refresh();
+                                  await removeFile(file);
                                 });
                             }}
                           >
@@ -626,11 +647,12 @@ export function ResourceView({
   exportFilters?: Record<string, string>;
 }) {
   const { workspace } = useWorkspace();
-  const [search, setSearch] = useState("");
+  const scope = `resource:${kind}:${lockedProductionId || "all"}`;
+  const [search, setSearch] = useViewState(workspace.user.id, scope, "search", "");
   const [editor, setEditor] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
-  const [low, setLow] = useState(false);
+  const [low, setLow] = useViewState(workspace.user.id, scope, "low", false);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const admin = workspace.user.role !== "user";
   const allowedCreate = canCreate !== false && canManageRecord(workspace.user, kind);

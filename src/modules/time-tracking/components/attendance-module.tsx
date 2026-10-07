@@ -1,5 +1,6 @@
 ﻿"use client";
 import { useMemo, useState } from "react";
+import { useViewState } from "@/shared/view-state";
 import { DoorOpen, Plus, UploadCloud } from "lucide-react";
 import { PeriodPicker, periodExportFilters, weekForPeriod } from "@/components/period-picker";
 import { seasonForDate, type PeriodFilter } from "@/shared/period-filter";
@@ -24,11 +25,19 @@ export function AttendanceModule({ embedded = false }: { embedded?: boolean }) {
   const { workspace, refresh, online, busy } = useWorkspace();
   const selfBooking = workspace.user.role !== "superadmin";
   const admin = workspace.user.role !== "user";
-  const [period, setPeriod] = useState<PeriodFilter>(() => ({
-    season: seasonForDate(workspace.records.productions),
-  }));
-  const [week, setWeek] = useState(weekStart());
-  const [person, setPerson] = useState(
+  const [period, setPeriod] = useViewState<PeriodFilter>(
+    workspace.user.id,
+    "attendance",
+    "period",
+    () => ({
+      season: seasonForDate(workspace.records.productions),
+    }),
+  );
+  const [week, setWeek] = useViewState(workspace.user.id, "attendance", "week", weekStart());
+  const [person, setPerson] = useViewState(
+    workspace.user.id,
+    "attendance",
+    "person",
     selfBooking ? workspace.user.id : workspace.members.find(isStaff)?.id || "",
   );
   const [creating, setCreating] = useState(false);

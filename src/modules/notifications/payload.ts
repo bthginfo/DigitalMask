@@ -22,6 +22,7 @@ export function pushPayload(
     ChatMessageCreatedV1: "Neue Nachricht",
     TaskAssignedV1: "Neue Aufgabe",
     ServiceChangedV1: "Dein Dienstplan wurde geändert",
+    ShiftSwapChangedV1: "Neue Information zum Diensttausch",
     LeaveRequestDecidedV1: "Dein Freiwunsch wurde beantwortet",
     LookPublishedV1: "Neuer Aufschrieb",
   };

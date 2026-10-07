@@ -1,5 +1,6 @@
 "use client";
 import { useMemo, useState } from "react";
+import { useViewState } from "@/shared/view-state";
 import { Check, Plus, UploadCloud } from "lucide-react";
 import { PeriodPicker, periodExportFilters, weekForPeriod } from "@/components/period-picker";
 import { dateMatchesPeriod, initialPeriod, type PeriodFilter } from "@/shared/period-filter";
@@ -48,18 +49,22 @@ export function WorkTimeModule({
   embedded?: boolean;
 }) {
   const { workspace, action, refresh, online, busy } = useWorkspace();
-  const [period, setPeriod] = useState<PeriodFilter>(() =>
+  const scope = `time:${productionId || "all"}`;
+  const [period, setPeriod] = useViewState<PeriodFilter>(workspace.user.id, scope, "period", () =>
     initialPeriod(workspace.records.productions, productionId),
   );
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const categoryOptions = categoriesFor("time", workspace.records.categories);
-  const [week, setWeek] = useState(weekStart());
-  const [person, setPerson] = useState(
+  const [week, setWeek] = useViewState(workspace.user.id, scope, "week", weekStart());
+  const [person, setPerson] = useViewState(
+    workspace.user.id,
+    scope,
+    "person",
     workspace.user.role === "superadmin"
       ? workspace.members.find(isStaff)?.id || ""
       : workspace.user.id,
   );
-  const [project, setProject] = useState(productionId);
+  const [project, setProject] = useViewState(workspace.user.id, scope, "project", productionId);
   const [editor, setEditor] = useState(false);
   const [editing, setEditing] = useState<DomainRecord | null>(null);
   const [detail, setDetail] = useState<DomainRecord | null>(null);

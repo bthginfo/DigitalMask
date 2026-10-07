@@ -14,6 +14,7 @@ import {
   seasonKey,
   type PeriodFilter,
 } from "@/shared/period-filter";
+import { useViewState } from "@/shared/view-state";
 
 interface Preview {
   season: string;
@@ -37,8 +38,11 @@ interface ImportResult {
 export function ActorsModule() {
   const { workspace } = useWorkspace();
   const [open, setOpen] = useState(false);
-  const [period, setPeriod] = useState<PeriodFilter>(() =>
-    initialPeriod(workspace.records.productions),
+  const [period, setPeriod] = useViewState<PeriodFilter>(
+    workspace.user.id,
+    "actors",
+    "period",
+    () => initialPeriod(workspace.records.productions),
   );
   return (
     <>
