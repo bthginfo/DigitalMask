@@ -25,29 +25,46 @@ export const workingTimeUpdateSchema = z
     expectedVersion: z.number().int().min(0),
   })
   .strict();
+export const workingTimeDeleteSchema = z
+  .object({
+    effectiveFrom: effectiveDate,
+    expectedVersion: z.number().int().min(0),
+  })
+  .strict();
 export const profileUpdateSchema = z
   .object({
     accentPalette: z.enum(accentPalettes).optional(),
     onboardingCompleted: z.literal(true).optional(),
     memberId: z.string().min(1).max(100).optional(),
     workingTime: workingTimeUpdateSchema.optional(),
+    workingTimeDelete: workingTimeDeleteSchema.optional(),
   })
   .refine(
-    (data) => !data.workingTime || (!data.accentPalette && !data.onboardingCompleted),
+    (data) =>
+      (!data.workingTime && !data.workingTimeDelete) ||
+      (!data.accentPalette && !data.onboardingCompleted),
     "Speichere Wochenstunden und Darstellungsänderungen getrennt.",
+  )
+  .refine(
+    (data) => !data.workingTime || !data.workingTimeDelete,
+    "Speichere oder lösche jeweils nur einen Sollzeit-Eintrag.",
   )
   .strict()
   .refine(
     (data) =>
       data.accentPalette !== undefined ||
       data.onboardingCompleted === true ||
-      data.workingTime !== undefined,
+      data.workingTime !== undefined ||
+      data.workingTimeDelete !== undefined,
     {
       message: "Bitte wähle eine Profiländerung.",
     },
   )
   .refine(
     (data) =>
-      !data.memberId || (!!data.workingTime && !data.accentPalette && !data.onboardingCompleted),
+      !data.memberId ||
+      ((!!data.workingTime || !!data.workingTimeDelete) &&
+        !data.accentPalette &&
+        !data.onboardingCompleted),
     "Für andere Personen kannst du hier ausschließlich die Wochenstunden bearbeiten.",
   );

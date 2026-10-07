@@ -30,6 +30,7 @@ export function AttendanceBalanceCard({
       ? workspace.user
       : workspace.members.find((row) => row.id === selected);
   const settings = member?.preferences?.workingTime;
+  const configured = Boolean(settings?.schedules.length);
   const [period, setPeriod] = useState<BalancePeriod>("total");
   const [ownWeek, setOwnWeek] = useState(weekStart());
   const week = selectedWeek || ownWeek;
@@ -55,7 +56,7 @@ export function AttendanceBalanceCard({
     period === "custom" &&
     (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to) || from > to);
   const balance =
-    settings && !invalidRange
+    settings && configured && !invalidRange
       ? calculateAttendanceBalance({
           userId: selected,
           settings,
@@ -102,7 +103,7 @@ export function AttendanceBalanceCard({
           <Scale size={17} />
           Zeitkonto{!compact && member ? ` · ${member.name}` : ""}
         </span>
-        {settings && (
+        {configured && (
           <select
             aria-label="Zeitraum des Zeitkontos"
             value={period}
@@ -115,7 +116,7 @@ export function AttendanceBalanceCard({
           </select>
         )}
       </header>
-      {!settings ? (
+      {!configured ? (
         <div className={styles.unconfigured}>
           <strong>Wochenstunden fehlen</strong>
           <p>Lege Wochenstunden und Beginn fest, damit dein Plus / Minus berechnet wird.</p>

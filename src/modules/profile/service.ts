@@ -14,10 +14,10 @@ import { profileUpdateSchema } from "./schema";
 
 export async function updateProfile(context: Context, input: RecordData) {
   const data = profileUpdateSchema.parse(input);
-  if (data.workingTime) {
+  if (data.workingTime || data.workingTimeDelete) {
     const targetId = data.memberId || context.user.id;
-    if (targetId !== context.user.id) requireAdmin(context);
-    const update = data.workingTime;
+    if (data.workingTimeDelete || targetId !== context.user.id) requireAdmin(context);
+    const change = data.workingTime || data.workingTimeDelete!;
     const profile = await db.transaction(async (tx) => {
       const [membership] = await tx
         .select({ role: memberships.role })
@@ -42,36 +42,51 @@ export async function updateProfile(context: Context, input: RecordData) {
         .where(eq(profilePreferences.userId, targetId))
         .limit(1);
       const previous = existing?.settings;
-      if ((previous?.version || 0) !== update.expectedVersion)
+      if ((previous?.version || 0) !== change.expectedVersion)
         throw new HttpError(
           409,
           "Die Wochenstunden wurden inzwischen geändert. Lade den aktuellen Stand und prüfe deine Angaben erneut.",
         );
-      if (previous?.schedules.length && update.effectiveFrom < localDay(new Date()))
-        throw new HttpError(
-          400,
-          "Neue Wochenstunden gelten frühestens heute. Frühere Sollzeiten bleiben erhalten.",
-        );
-      const schedules = [
-        ...(previous?.schedules || []).filter(
-          (schedule) => schedule.effectiveFrom !== update.effectiveFrom,
-        ),
-        {
-          effectiveFrom: update.effectiveFrom,
-          weeklyMinutes: update.weeklyMinutes,
-          workingDays: [...update.workingDays].sort((a, b) => a - b),
-        },
-      ].sort((a, b) => a.effectiveFrom.localeCompare(b.effectiveFrom));
-      if (schedules.length > 200)
-        throw new HttpError(
-          400,
-          "Es sind bereits sehr viele Sollzeit-Änderungen hinterlegt. Bitte kontaktiere den Superadmin.",
-        );
-      const settings: WorkingTimeSettings = {
-        version: (previous?.version || 0) + 1,
-        openingBalanceSeconds: update.openingBalanceSeconds,
-        schedules,
-      };
+      let settings: WorkingTimeSettings;
+      if (data.workingTimeDelete) {
+        const effectiveFrom = data.workingTimeDelete.effectiveFrom;
+        if (!previous?.schedules.some((schedule) => schedule.effectiveFrom === effectiveFrom))
+          throw new HttpError(404, "Dieser Sollzeit-Eintrag ist nicht mehr vorhanden.");
+        settings = {
+          ...previous,
+          version: previous.version + 1,
+          schedules: previous.schedules.filter(
+            (schedule) => schedule.effectiveFrom !== effectiveFrom,
+          ),
+        };
+      } else {
+        const update = data.workingTime!;
+        if (previous?.schedules.length && update.effectiveFrom < localDay(new Date()))
+          throw new HttpError(
+            400,
+            "Neue Wochenstunden gelten frühestens heute. Frühere Sollzeiten bleiben erhalten.",
+          );
+        const schedules = [
+          ...(previous?.schedules || []).filter(
+            (schedule) => schedule.effectiveFrom !== update.effectiveFrom,
+          ),
+          {
+            effectiveFrom: update.effectiveFrom,
+            weeklyMinutes: update.weeklyMinutes,
+            workingDays: [...update.workingDays].sort((a, b) => a - b),
+          },
+        ].sort((a, b) => a.effectiveFrom.localeCompare(b.effectiveFrom));
+        if (schedules.length > 200)
+          throw new HttpError(
+            400,
+            "Es sind bereits sehr viele Sollzeit-Änderungen hinterlegt. Bitte kontaktiere den Superadmin.",
+          );
+        settings = {
+          version: (previous?.version || 0) + 1,
+          openingBalanceSeconds: update.openingBalanceSeconds,
+          schedules,
+        };
+      }
       const [saved] = await tx
         .insert(profilePreferences)
         .values({ userId: targetId, workingTime: settings })
@@ -84,7 +99,12 @@ export async function updateProfile(context: Context, input: RecordData) {
           onboardingVersion: profilePreferences.onboardingVersion,
           workingTime: profilePreferences.workingTime,
         });
-      await auditChange(tx, context, "profile.working-time.updated", targetId);
+      await auditChange(
+        tx,
+        context,
+        data.workingTimeDelete ? "profile.working-time.deleted" : "profile.working-time.updated",
+        targetId,
+      );
       return saved;
     });
     revalidateTag(`member:${targetId}`, { expire: 0 });

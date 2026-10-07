@@ -215,6 +215,7 @@ export const helpArticles: HelpArticle[] = [
       "Gespeicherte Zeiten sind sofort eingetragen. Es gibt keine Wochenfreigabe und du musst sie nicht einreichen. Anwesenheit und Produktionsarbeit bleiben getrennt und können jederzeit korrigiert werden.",
       "Unter Einstellungen trägst du deine Wochenstunden und den Beginn deines Zeitkontos ein. Standardmäßig verteilen sich die Sollstunden auf 6 Tage von Montag bis Samstag. Du kannst andere Soll-Tage und einen vorhandenen Startsaldo wählen. Vor diesem Beginn entstehen keine fehlenden Stunden.",
       "Das Zeitkonto auf Heute und unter Anwesenheit zeigt Plus- oder Minusstunden aus gespeicherter Anwesenheit. Produktionsbuchungen zählen nicht zusätzlich. Wähle Gesamt, Woche, Monat oder einen eigenen Zeitraum; zukünftige Tage zählen noch nicht zur Sollzeit. Eine neue Wochenstundenzahl gilt ab ihrem Änderungsdatum, frühere Sollzeiten bleiben erhalten.",
+      "Admins können unter Einstellungen bei Bisherige Sollzeiten einzelne Einträge löschen, auch bei anderen Teammitgliedern. Das Zeitkonto wird danach neu berechnet: Ein früherer Eintrag gilt bis zur nächsten verbliebenen Änderung. Löschst du den ersten Eintrag, beginnt das Konto beim nächsten. Nach dem letzten gelöschten Eintrag kannst du die Sollstunden neu anlegen. Gebuchte Anwesenheit bleibt erhalten.",
       "Urlaub und Krank im Kalender füllen höchstens die noch fehlende Sollzeit eines Soll-Tages auf. ABF, Ruhetag, halber freier Tag und Feiertage erhalten keine automatische Gutschrift. Anwesenheit und eine Gutschrift für denselben Tag werden dabei nicht doppelt gezählt.",
       "Offlineentwürfe liegen auf dem Gerät. Übernehme unzugeordnete Geräteentwürfe ausdrücklich in deinen Account und synchronisiere sie anschließend. Auf gemeinsam genutzten Geräten zuerst die Tätigkeit prüfen.",
     ],
@@ -347,7 +348,7 @@ export const helpArticles: HelpArticle[] = [
       "Der Superadmin vergibt Adminrollen und bearbeitet den zentralen Feedbackverlauf. Ein Superadmin ist ein Systemkonto und erscheint nicht als neue Mitarbeiterauswahl.",
       "Passwörter werden im Profil geändert. Bei einem vergessenen Passwort erstellt ein Admin einen Wiederherstellungscode, der auf der Anmeldeseite verwendet werden kann.",
       "Wähle in deinen Einstellungen eine persönliche Akzentfarbe. Die fachlichen Farben von Terminen, Status und Produktionen behalten ihre Bedeutung.",
-      "Deine Wochenstunden und dein Zeitkonto sind für dich und die Admins sichtbar. Admins können die Wochenstunden von Teammitgliedern ihrer Abteilung in den Einstellungen bearbeiten.",
+      "Deine Wochenstunden und dein Zeitkonto sind für dich und die Admins sichtbar. Admins können die Wochenstunden von Teammitgliedern ihrer Abteilung in den Einstellungen bearbeiten und einzelne bisherige Sollzeit-Einträge löschen.",
     ],
   },
 ];

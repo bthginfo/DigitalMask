@@ -1,5 +1,13 @@
 # Umsetzungsstand
 
+## Sollzeit-Einträge durch Admins löschen
+
+- [x] Admins können datierte Sollzeiten bei sich und Teammitgliedern derselben Abteilung gezielt löschen, einschließlich des ersten und letzten Eintrags.
+- [x] Bestätigung und Stundenkonto-Neuberechnung verständlich darstellen; leere Sollzeiten wieder als unkonfiguriert behandeln.
+- [x] Berechtigung, Versionskonflikte und neue Konto-Anlage gezielt prüfen, Anleitung anpassen und das Release vorbereiten.
+
+19 gezielte Fachtests, Typprüfung, bereichsbezogenes Lint und die unabhängige Prüfung auf Handy und Desktop sind bestanden. Die Löschung verwendet die bestehende atomare Profiländerung mit Versionsprüfung, Cache-Aktualisierung und Live-Signal. Eine weitere Datenbankmigration ist nicht nötig. Produktionsbuild und Live-Domain werden nach dem Push gegen den veröffentlichten Commit geprüft.
+
 ## Aktuelle Ergänzungen: Zeiten, Druckpläne und Bedienung
 
 - [x] Produktionszeiten für Admins mit Auswahl „Alle“ je Person aufteilen, einschließlich älterer Wochen und Export.
