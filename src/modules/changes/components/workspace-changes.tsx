@@ -9,6 +9,7 @@ import { RecordLink } from "@/components/record-link";
 import { dateLabel } from "@/shared/client-api";
 import { api } from "@/shared/client-api";
 import type { ChangeFeed } from "../contracts";
+import { changeLoadError } from "../client";
 import { changeFieldLabel, readableChangeValue } from "../readable";
 import styles from "./workspace-changes.module.css";
 
@@ -74,10 +75,7 @@ export function WorkspaceChanges() {
           }
         })
         .catch((cause) => {
-          if (active)
-            setRecordError(
-              cause instanceof Error ? cause.message : "Änderungen konnten nicht geladen werden.",
-            );
+          if (active) setRecordError(changeLoadError(cause));
         })
         .finally(() => {
           if (active) setRecordLoading(false);

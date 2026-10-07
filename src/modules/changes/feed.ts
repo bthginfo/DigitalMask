@@ -11,8 +11,8 @@ export async function getChanges(context: Context, recordId?: string): Promise<C
   const [workspace, operations] = await Promise.all([
     getWorkspace(context),
     unstable_cache(
-      () =>
-        db
+      async () => {
+        const rows = await db
           .select({
             id: recordOperations.id,
             kind: recordOperations.kind,
@@ -40,8 +40,11 @@ export async function getChanges(context: Context, recordId?: string): Promise<C
             ),
           )
           .orderBy(desc(recordOperations.createdAt), desc(recordOperations.id))
-          .limit(100),
-      ["record-changes-v2", context.departmentId, recordId || "all"],
+          .limit(100);
+        // The persistent cache uses JSON: normalise Dates before the first response too.
+        return rows.map((entry) => ({ ...entry, createdAt: entry.createdAt.toISOString() }));
+      },
+      ["record-changes-v3", context.departmentId, recordId || "all"],
       { revalidate: 300, tags: [scopeTag(context.departmentId)] },
     )(),
   ]);
@@ -56,7 +59,7 @@ export async function getChanges(context: Context, recordId?: string): Promise<C
         kind: entry.kind,
         operation: entry.operation,
         userId: entry.userId,
-        createdAt: entry.createdAt.toISOString(),
+        createdAt: entry.createdAt,
         title: changeTitle(record),
         productionId: typeof record.data.productionId === "string" ? record.data.productionId : "",
         version: entry.after?.version || record.version,

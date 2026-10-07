@@ -1,10 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api } from "@/shared/client-api";
+import { api, ApiFailure } from "@/shared/client-api";
 import type { ChangeFeed, ChangeSummary, UndoReceipt } from "./contracts";
 
 export const changeSignal = "digitalmask-data-changed";
+export function changeLoadError(cause: unknown) {
+  if (cause instanceof ApiFailure && (cause.status === 401 || cause.status === 403))
+    return cause.message;
+  return "Der Änderungsverlauf konnte gerade nicht geladen werden. Deine gespeicherten Einträge bleiben erhalten. Bitte versuche es erneut.";
+}
 const seenKey = (userId: string) => `digitalmask-changes-seen:${userId}`;
 const readKey = (userId: string) => `digitalmask-changes-read:${userId}`;
 const undoKey = (userId: string) => `digitalmask-undo:${userId}`;
@@ -111,9 +116,7 @@ export function useChangeFeed(userId?: string) {
           cursor.current = typeof feed.cursor === "string" ? feed.cursor : "";
           setError("");
         } catch (cause) {
-          setError(
-            cause instanceof Error ? cause.message : "Änderungen konnten nicht geladen werden.",
-          );
+          setError(changeLoadError(cause));
         }
       } while (reloadQueued.current);
     };

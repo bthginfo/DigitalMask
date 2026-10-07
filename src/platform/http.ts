@@ -21,6 +21,14 @@ export function route<T>(handler: () => Promise<T>) {
     console.error("DigitalMask request failed", {
       name: error instanceof Error ? error.name : "unknown",
       code: (error as { cause?: { code?: string } })?.cause?.code || "unknown",
+      // Log locations only; error messages can contain SQL values or private input.
+      frames:
+        error instanceof Error
+          ? error.stack
+              ?.split("\n")
+              .filter((line) => /^\s+at .+:\d+:\d+\)?$/.test(line))
+              .slice(0, 5)
+          : undefined,
     });
     return NextResponse.json(
       { error: "Die Anfrage konnte nicht verarbeitet werden. Bitte versuche es erneut." },
