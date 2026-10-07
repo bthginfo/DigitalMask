@@ -174,8 +174,14 @@ export async function buildMaskPlanXlsx(input: ExportInput) {
         sheet.getCell(row, left).value =
           minute === 0
             ? "0 · Beginn" + (input.performanceTime ? " · " + input.performanceTime : "")
-            : String(minute) +
-              (input.performanceTime ? "\n" + maskPlanClock(minute, input.performanceTime) : "");
+            : input.performanceTime
+              ? {
+                  richText: [
+                    { text: String(minute) + "\n" },
+                    { text: maskPlanClock(minute, input.performanceTime), font: { bold: true } },
+                  ],
+                }
+              : String(minute);
         if (minute === 0) sheet.mergeCells(row, left, row, left + totalColumns - 1);
       }
       for (let row = top + 1; row < top + rowsPerCopy; row++)

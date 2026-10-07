@@ -121,7 +121,10 @@ describe("mask-plan exports", () => {
     expect(values.join(" ")).toContain("Ben E. / Michael A.");
     expect(values.join(" ")).toContain("0 · Beginn");
     expect(workbook.worksheets).toHaveLength(1);
-    expect(sheet.getCell("A3").value).toBe("-60\n18:30");
+    expect(sheet.getCell("A3").value).toEqual({
+      richText: [{ text: "-60\n" }, { text: "18:30", font: { bold: true } }],
+    });
+    expect(sheet.getCell("A3").font.bold).not.toBe(true);
     expect(sheet.pageSetup.printArea).toMatch(/^A1:/);
   });
   it("prints four whole quarter-sheet plans on one A4 page without report headers or redundant lists", async () => {
@@ -150,6 +153,15 @@ describe("mask-plan exports", () => {
     expect(text).not.toContain("Vollständiger Ablauf");
     expect(text).not.toContain("Stadttheater Ingolstadt");
     expect(text).not.toContain("Seite 1");
+    const items = content.items.filter((item) => "str" in item);
+    const clock = items.find((item) => item.str === "18:30");
+    const offset = items.find((item) => item.str === "-60");
+    const heading = items.find((item) => item.str === "Jules / Janine");
+    expect(clock).toBeDefined();
+    expect(offset).toBeDefined();
+    expect(heading).toBeDefined();
+    expect(clock!.fontName).toBe(heading!.fontName);
+    expect(clock!.fontName).not.toBe(offset!.fontName);
     for (const item of content.items)
       if ("str" in item && item.str.trim()) {
         expect(item.transform[4]).toBeGreaterThanOrEqual(17);

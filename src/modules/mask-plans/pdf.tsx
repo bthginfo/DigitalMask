@@ -164,9 +164,11 @@ export function MaskPlanPages({ input, wrapLines }: { input: ExportInput; wrapLi
                     >
                       <Text style={{ width: rail, padding: 1.5, fontSize: (size - 1) * scale }}>
                         {minute}
-                        {input.performanceTime
-                          ? `\n${maskPlanClock(minute, input.performanceTime)}`
-                          : ""}
+                        {input.performanceTime && (
+                          <Text style={{ fontWeight: 700 }}>
+                            {`\n${maskPlanClock(minute, input.performanceTime)}`}
+                          </Text>
+                        )}
                       </Text>
                     </View>
                   ))}

@@ -1,5 +1,13 @@
 # Umsetzungsstand
 
+## Drucknachbesserung: Maskenplan und Monatskalender
+
+- [x] Konkrete Uhrzeiten im Maskenplan-PDF und -Excel fett darstellen; relative Minuten behalten die normale Schriftstärke.
+- [x] Beide Monatshälften einschließlich aller ausgewählten Personen und Gäste/Aushilfen auf einer A4-Querformatseite je Monat ausgeben; volle Tabellenbreite und vollständige Termine erhalten.
+- [x] PDF-Seitengröße, vollständige Texte, mehrere Monate und Excel-Schriftstärken gezielt prüfen, Druckvorschauen kontrollieren und das Release vorbereiten.
+
+Fachprüfungen, Typprüfung und bereichsbezogenes Lint sind bestanden. Die erzeugten A4-PDFs sind visuell kontrolliert; Monatspläne behalten die volle Tabellenbreite und passen Zeilen und Schrift an den Inhalt an. Die Exportmodule arbeiten ausschließlich mit den bereits autorisierten Daten im Speicher und verursachen keine zusätzlichen Datenbankabfragen.
+
 ## Sollzeit-Einträge durch Admins löschen
 
 - [x] Admins können datierte Sollzeiten bei sich und Teammitgliedern derselben Abteilung gezielt löschen, einschließlich des ersten und letzten Eintrags.

@@ -354,12 +354,14 @@ describe("attendance and configurable calendar exports", () => {
     }
     expect(workbook.worksheets.map((sheet) => sheet.name)).toEqual(["Team 2026-10"]);
   });
-  it("prints all 31 days and 13 staff with complete dense entries instead of agenda previews", async () => {
+  it("fits the whole month and all 13 staff on one A4 page without dropping dense entries", async () => {
     const pdf = await inspectPdf((await buildExport(calendar("pdf"))).bytes, "team-month", false);
-    expect(pdf.pages).toBeLessThan(15);
+    expect(pdf.pages).toBe(1);
     for (let i = 1; i < 13; i++) expect(pdf.text).toContain(`Fiktive Person ${i + 1}`);
     expect(pdf.text).toContain("31.10.");
     const letters = pdf.text.replace(/\s/g, "");
+    for (const member of members) expect(letters).toContain(member.name.replace(/\s/g, ""));
+    expect(letters).toContain("Gäste/Aushilfen");
     expect(letters).toContain("TITELENDE");
     expect(letters).toContain("MEHRDIENSTENDE4");
     expect(letters).toContain("ÄnderungsfreierSonderdienst");
@@ -401,12 +403,20 @@ describe("attendance and configurable calendar exports", () => {
       to: "2026-10-18",
     };
     const pdf = await inspectPdf((await buildExport(input)).bytes, "team-two-weeks", false);
-    expect(pdf.pages).toBeGreaterThanOrEqual(2);
+    expect(pdf.pages).toBe(1);
     expect(pdf.text).toContain("Oktober 2026");
     for (const member of staff) expect(pdf.text).toContain(member.name);
     expect(pdf.text).toContain("ENDE1");
     expect(pdf.text).toContain("Probe M4D13");
     expect(pdf.text).not.toContain("Agenda");
+    const twoMonths = await inspectPdf(
+      (await buildExport({ ...input, from: "2026-10-01", to: "2026-11-30" })).bytes,
+      "team-two-months",
+      false,
+    );
+    expect(twoMonths.pages).toBe(2);
+    for (const text of twoMonths.texts)
+      for (const member of staff) expect(text).toContain(member.name);
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(
       new Uint8Array(
