@@ -29,7 +29,7 @@ export function WeekNavigator({
       </button>
       <label>
         <span>
-          KW {identity.number} · {identity.year}
+          KW {identity.number} · {identity.year} · Woche ab
         </span>
         <input
           type="date"
@@ -124,6 +124,7 @@ export function WeeklyHistory({
   onSelectWeek,
   onEdit,
   onDetail,
+  onBookDay,
 }: {
   weeks: BookingWeek[];
   selectedWeek: string;
@@ -134,6 +135,7 @@ export function WeeklyHistory({
   onSelectWeek: (week: string) => void;
   onEdit: (record: DomainRecord) => void;
   onDetail: (record: DomainRecord) => void;
+  onBookDay?: (date: string) => void;
 }) {
   const [visible, setVisible] = useState(6);
   const history = weeks.filter((week) => week.start !== selectedWeek);
@@ -170,13 +172,15 @@ export function WeeklyHistory({
                 <ChevronDown size={18} />
               </summary>
               <BookingList entries={week.entries} kind={kind} onEdit={onEdit} onDetail={onDetail} />
-              {week.markers.length > 0 && (
+              {(week.markers.length > 0 || onBookDay) && (
                 <WeekDayOverview
                   week={week.start}
                   person={person}
                   entries={week.entries}
                   markers={week.markers}
                   onDetail={onDetail}
+                  onBookDay={onBookDay}
+                  bookingLabel={kind === "attendance" ? "Anwesenheit" : "Zeit"}
                 />
               )}
               <div className={styles.historyFooter}>

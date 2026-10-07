@@ -205,6 +205,7 @@ export const helpArticles: HelpArticle[] = [
       "Anwesenheit zeigt deine Zeit im Theater. Arbeitszeiten zeigen deine Tätigkeiten, mit oder ohne Produktion. Beide bleiben getrennt.",
     steps: [
       "Anwesenheits- und Arbeitstimer dürfen gleichzeitig laufen. Unter Anwesenheit trägst du Beginn, Ende und Pause nach. Unter Produktions- / Arbeitszeiten buchst du eine Tätigkeit mit Dauer oder Zeitraum.",
+      "Zum Nachtragen wählst du zuerst die gewünschte Woche. Klicke dann in der Tagesübersicht auf den passenden Tag. Das Buchungsfenster öffnet sich mit genau diesem Datum. Bei Produktionszeiten kannst du auch den Tagesbalken anklicken. Du kannst für jeden Tag mehrere Tätigkeiten buchen; das Datum lässt sich im Buchungsfenster ändern. Tag kennzeichnen ist nur für ABF, Ruhetag und andere freie Tage gedacht.",
       "Am Smartphone bleiben beide Timer kompakt sichtbar. Öffne die Angaben, wenn du die Tätigkeit, Produktion oder Kategorie ändern möchtest. Ein laufender Timer bleibt auch bei geschlossenen Angaben erkennbar.",
       "Pausiere den Timer bei Bedarf. Stoppen & buchen legt die Zeitbuchung an. Timer verwerfen entfernt einen ungebuchten Lauf nach Bestätigung.",
       "Wähle bei einer Buchung Bearbeiten, um Datum, Dauer, Beginn, Ende oder Pause zu korrigieren. Alle Rollen können eigene Zeiten ändern; Admins auch Zeiten anderer Teammitglieder. Korrigierte Produktionswochen werden bei Bedarf erneut zur Prüfung geöffnet.",

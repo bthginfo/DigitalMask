@@ -40,7 +40,7 @@ export function AttendanceModule({ embedded = false }: { embedded?: boolean }) {
     "person",
     selfBooking ? workspace.user.id : workspace.members.find(isStaff)?.id || "",
   );
-  const [creating, setCreating] = useState(false);
+  const [creating, setCreating] = useState("");
   const [editing, setEditing] = useState<DomainRecord | null>(null);
   const [offline, setOffline] = useState(false);
   const [detail, setDetail] = useState<DomainRecord | null>(null);
@@ -87,6 +87,12 @@ export function AttendanceModule({ embedded = false }: { embedded?: boolean }) {
     setWeek(next);
     setPeriod(periodForWeek(period, next, workspace.records.productions));
   };
+  const canBookDay = selfBooking && person === workspace.user.id;
+  const openBooking = (date = week) => {
+    selectWeek(isoWeek(date).start);
+    setPerson(workspace.user.id);
+    setCreating(date);
+  };
   const secondaryActions = (
     <>
       <ExportButton onClick={() => setExporting(true)} />
@@ -122,7 +128,7 @@ export function AttendanceModule({ embedded = false }: { embedded?: boolean }) {
           <div className={styles.moduleActions}>
             <ActionMenu>{secondaryActions}</ActionMenu>
             {selfBooking && (
-              <Button variant="primary" onClick={() => setCreating(true)}>
+              <Button variant="primary" onClick={() => openBooking()}>
                 <Plus size={16} /> Nachtragen
               </Button>
             )}
@@ -138,7 +144,7 @@ export function AttendanceModule({ embedded = false }: { embedded?: boolean }) {
         >
           {selfBooking && (
             <>
-              <Button variant="primary" onClick={() => setCreating(true)}>
+              <Button variant="primary" onClick={() => openBooking()}>
                 <Plus size={16} />
                 Anwesenheit nachtragen
               </Button>
@@ -221,7 +227,7 @@ export function AttendanceModule({ embedded = false }: { embedded?: boolean }) {
             Frühere Buchungen findest du im Wochenverlauf. Kalenderkennzeichen sind keine gebuchten
             Stunden.
           </p>
-          {selfBooking && <Button onClick={() => setCreating(true)}>Anwesenheit nachtragen</Button>}
+          {selfBooking && <Button onClick={() => openBooking()}>Anwesenheit nachtragen</Button>}
         </section>
       )}
       <WeekDayOverview
@@ -230,6 +236,8 @@ export function AttendanceModule({ embedded = false }: { embedded?: boolean }) {
         entries={entries}
         markers={selected?.markers || []}
         onDetail={setDetail}
+        bookingLabel="Anwesenheit"
+        onBookDay={canBookDay ? openBooking : undefined}
       />
       <WeeklyHistory
         key={`${person}:${period.year || ""}:${period.season || ""}`}
@@ -242,13 +250,15 @@ export function AttendanceModule({ embedded = false }: { embedded?: boolean }) {
         onSelectWeek={selectWeek}
         onEdit={setEditing}
         onDetail={setDetail}
+        onBookDay={canBookDay ? openBooking : undefined}
       />
       <CalendarTimeProposals kind="attendance" person={person} week={week} period={period} />
       {creating && (
         <TimeBookingEditor
           kind="attendance"
-          defaults={{ date: week }}
-          onClose={() => setCreating(false)}
+          defaults={{ date: creating }}
+          onSaved={(record) => selectWeek(isoWeek(value(record.data, "date")).start)}
+          onClose={() => setCreating("")}
         />
       )}
       {editing && (

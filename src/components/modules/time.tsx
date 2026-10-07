@@ -65,7 +65,7 @@ export function WorkTimeModule({
       : workspace.user.id,
   );
   const [project, setProject] = useViewState(workspace.user.id, scope, "project", productionId);
-  const [editor, setEditor] = useState(false);
+  const [editor, setEditor] = useState("");
   const [editing, setEditing] = useState<DomainRecord | null>(null);
   const [detail, setDetail] = useState<DomainRecord | null>(null);
   const [exporting, setExporting] = useState(false);
@@ -146,6 +146,12 @@ export function WorkTimeModule({
     setWeek(next);
     setPeriod(periodForWeek(period, next, workspace.records.productions));
   };
+  const canBookDay = workspace.user.role !== "superadmin" && person === workspace.user.id;
+  const openBooking = (date = week) => {
+    selectWeek(isoWeek(date).start);
+    setPerson(workspace.user.id);
+    setEditor(date);
+  };
   const secondaryActions = (
     <>
       <ExportButton onClick={() => setExporting(true)} />
@@ -168,7 +174,7 @@ export function WorkTimeModule({
           <div className={styles.moduleActions}>
             <ActionMenu>{secondaryActions}</ActionMenu>
             {workspace.user.role !== "superadmin" && (
-              <Button variant="primary" onClick={() => setEditor(true)}>
+              <Button variant="primary" onClick={() => openBooking()}>
                 <Plus size={16} /> Nachtragen
               </Button>
             )}
@@ -183,7 +189,7 @@ export function WorkTimeModule({
           secondaryActions={secondaryActions}
         >
           {workspace.user.role !== "superadmin" && (
-            <Button variant="primary" onClick={() => setEditor(true)}>
+            <Button variant="primary" onClick={() => openBooking()}>
               <Plus size={16} />
               Zeit nachtragen
             </Button>
@@ -207,7 +213,19 @@ export function WorkTimeModule({
                 .filter((day) => day.date === date && dateMatchesPeriod(day.date, period))
                 .reduce((sum, day) => sum + day.seconds, 0);
               return (
-                <div key={date}>
+                <button
+                  key={date}
+                  type="button"
+                  className={styles.weekDayButton}
+                  disabled={!canBookDay}
+                  aria-label={
+                    canBookDay
+                      ? `Zeit für ${dateLabel(date)} nachtragen`
+                      : `${dateLabel(date)} · ${hours(seconds)} Stunden`
+                  }
+                  title={canBookDay ? `Zeit für ${dateLabel(date)} nachtragen` : undefined}
+                  onClick={() => openBooking(date)}
+                >
                   <span className="small">{hours(seconds)}h</span>
                   <div className="bar-track">
                     <span style={{ height: `${Math.min(100, (seconds / (8 * 3600)) * 100)}%` }} />
@@ -215,7 +233,8 @@ export function WorkTimeModule({
                   <span className="small muted">
                     {["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"][i]}
                   </span>
-                </div>
+                  <span className="small muted">{dateLabel(date)}</span>
+                </button>
               );
             })}
           </div>
@@ -337,7 +356,7 @@ export function WorkTimeModule({
             Aufräumen lässt sich ohne Produktion buchen.
           </p>
           {workspace.user.role !== "superadmin" && (
-            <Button onClick={() => setEditor(true)}>Zeit nachtragen</Button>
+            <Button onClick={() => openBooking()}>Zeit nachtragen</Button>
           )}
         </section>
       )}
@@ -347,6 +366,7 @@ export function WorkTimeModule({
         entries={entries}
         markers={selected?.markers || []}
         onDetail={setDetail}
+        onBookDay={canBookDay ? openBooking : undefined}
       />
       <WeeklyHistory
         key={`${person}:${project}:${period.year || ""}:${period.season || ""}`}
@@ -359,6 +379,7 @@ export function WorkTimeModule({
         onSelectWeek={selectWeek}
         onEdit={setEditing}
         onDetail={setDetail}
+        onBookDay={canBookDay ? openBooking : undefined}
       />
       <CalendarTimeProposals
         kind="time"
@@ -433,8 +454,9 @@ export function WorkTimeModule({
         <ResourceEditor
           kind="time"
           lockedProductionId={productionId || undefined}
-          defaults={{ productionId: project, date: week }}
-          onClose={() => setEditor(false)}
+          defaults={{ productionId: project, date: editor }}
+          onSaved={(record) => selectWeek(isoWeek(value(record.data, "date")).start)}
+          onClose={() => setEditor("")}
         />
       )}
       {editing && (

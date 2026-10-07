@@ -290,19 +290,74 @@
   flex-direction: column;
   gap: 6px;
 }
-.overviewDay > span {
+.dayDate {
   display: grid;
   gap: 4px;
   font-size: 10px;
   color: var(--muted);
 }
-.overviewDay > span strong {
+.dayDate strong {
   font-size: 12px;
   color: var(--text);
 }
 .dayHours {
   font-size: 15px;
   font-variant-numeric: tabular-nums;
+}
+.daySummary,
+.dayBooking {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+  min-width: 0;
+}
+.dayBooking {
+  color: var(--text);
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  width: 100%;
+  min-height: 90px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.dayBookingLabel {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--accent);
+  font-size: 11px;
+}
+.dayBooking:hover .dayBookingLabel {
+  text-decoration: underline;
+}
+.weekDayButton {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  flex: 1;
+  gap: 5px;
+  min-width: 0;
+  padding: 5px 0;
+  color: var(--text);
+  background: none;
+  border: 0;
+  border-radius: 4px;
+  font: inherit;
+  cursor: pointer;
+}
+.weekDayButton:hover:not(:disabled) {
+  background: var(--accent-soft);
+}
+.weekDayButton:disabled {
+  cursor: default;
+}
+.dayBooking:focus-visible,
+.weekDayButton:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
 }
 .dayMarker {
   color: var(--accent);

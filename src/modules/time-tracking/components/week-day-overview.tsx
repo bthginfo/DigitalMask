@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { CalendarPlus } from "lucide-react";
+import { CalendarPlus, Plus } from "lucide-react";
 import type { DomainRecord } from "@/shared/contracts";
 import { Button } from "@/components/ui";
 import { useWorkspace } from "@/components/workspace-context";
@@ -18,12 +18,16 @@ export function WeekDayOverview({
   entries,
   markers,
   onDetail,
+  onBookDay,
+  bookingLabel = "Zeit",
 }: {
   week: string;
   person: string;
   entries: BookingWeekEntry[];
   markers: TimeDayMarker[];
   onDetail: (record: DomainRecord) => void;
+  onBookDay?: (date: string) => void;
+  bookingLabel?: string;
 }) {
   const { workspace } = useWorkspace();
   const [day, setDay] = useState("");
@@ -39,7 +43,9 @@ export function WeekDayOverview({
           <div>
             <h2>Tagesübersicht</h2>
             <p className="small muted">
-              ABF, Ruhetag und Abwesenheiten bleiben Kalenderkennzeichen ohne Stunden.
+              {onBookDay
+                ? "Wähle einen Tag, um Zeiten nachzutragen. Freie Tage trägst du über „Tag kennzeichnen“ ein."
+                : "ABF, Ruhetag und Abwesenheiten bleiben Kalenderkennzeichen ohne Stunden."}
             </p>
           </div>
           {canMark && (
@@ -56,13 +62,32 @@ export function WeekDayOverview({
               .flatMap((entry) => entry.allocations)
               .filter((allocation) => allocation.date === date)
               .reduce((total, allocation) => total + allocation.seconds, 0);
-            return (
-              <div key={date} className={styles.overviewDay}>
-                <span>
+            const summary = (
+              <>
+                <span className={styles.dayDate}>
                   <strong>{["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"][index]}</strong>{" "}
                   {dateLabel(date)}
                 </span>
                 <strong className={styles.dayHours}>{seconds ? `${hours(seconds)} h` : "–"}</strong>
+              </>
+            );
+            return (
+              <div key={date} className={styles.overviewDay}>
+                {onBookDay ? (
+                  <button
+                    type="button"
+                    className={styles.dayBooking}
+                    aria-label={`${bookingLabel} für ${dateLabel(date)} nachtragen`}
+                    onClick={() => onBookDay(date)}
+                  >
+                    {summary}
+                    <span className={styles.dayBookingLabel}>
+                      <Plus size={13} /> Zeit
+                    </span>
+                  </button>
+                ) : (
+                  <div className={styles.daySummary}>{summary}</div>
+                )}
                 {labels.map((marker) => (
                   <button
                     key={`${marker.event.id}:${date}`}
