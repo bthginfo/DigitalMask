@@ -440,7 +440,29 @@ export async function saveRecord(
           ),
         )
         .limit(1);
-      if (duplicate && !existing) return serialize(duplicate);
+      if (duplicate && !existing) {
+        if (String(data.idempotencyKey).startsWith("manual:")) {
+          const fields = [
+            "title",
+            "start",
+            "end",
+            "date",
+            "durationSeconds",
+            "pauseSeconds",
+            ...(kind === "attendance" ? ["notes"] : ["productionId", "taskId", "category"]),
+          ];
+          if (
+            fields.some(
+              (field) => String(duplicate.data[field] ?? "") !== String(data[field] ?? ""),
+            )
+          )
+            throw new HttpError(
+              409,
+              "Diese Buchung wurde bereits gespeichert. Lade deine Zeiten neu und bearbeite den vorhandenen Eintrag, um deine Änderungen zu übernehmen.",
+            );
+        }
+        return serialize(duplicate);
+      }
     }
     const related = await validateRelations(
       context,

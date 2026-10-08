@@ -1,11 +1,20 @@
 ﻿"use client";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { categoriesFor } from "@/shared/domain-categories";
 import type { DomainRecord, RecordData } from "@/shared/contracts";
-import { hours, instantDate, localDate, localDateTime, num, value } from "@/shared/client-api";
+import {
+  ApiFailure,
+  hours,
+  instantDate,
+  localDate,
+  localDateTime,
+  num,
+  value,
+} from "@/shared/client-api";
 import { useWorkspace } from "@/components/workspace-context";
 import { Button, ErrorMessage, Modal } from "@/components/ui";
 import { numberDraft, parseNumberDraft, previewNumberDraft } from "@/shared/number-draft";
+import { clearTimeDraft, retainTimeDraft, timeDraftQueueKey } from "../client-drafts";
 import styles from "./time-history.module.css";
 
 export function TimeBookingEditor({
@@ -27,7 +36,7 @@ export function TimeBookingEditor({
   onDraft?: (data: RecordData) => void;
   proposal?: string;
 }) {
-  const { workspace, save, busy } = useWorkspace();
+  const { workspace, save, busy, notify } = useWorkspace();
   const attendance = kind === "attendance";
   const initial = { ...defaults, ...record?.data };
   const date = value(initial, "date") || localDate();
@@ -64,6 +73,9 @@ export function TimeBookingEditor({
   );
   const [taskId, setTaskId] = useState(value(initial, "taskId"));
   const [error, setError] = useState("");
+  const receipt = useRef("");
+  const submitting = useRef(false);
+  const queueKey = timeDraftQueueKey(kind, workspace.user.id);
   const pauseValue = previewNumberDraft(pause, { fallback: 0, min: 0, max: 1440, integer: true });
   const minutesValue = previewNumberDraft(minutes, { min: 1, max: 10080, integer: true });
   const elapsed =
@@ -92,7 +104,11 @@ export function TimeBookingEditor({
         className="booking-form"
         onSubmit={async (event) => {
           event.preventDefault();
+          if (submitting.current || busy) return;
+          submitting.current = true;
           setError("");
+          let retained = false;
+          let saved = false;
           try {
             const parsedPause = parseNumberDraft(pause, {
               label: "Pause in Minuten",
@@ -139,12 +155,39 @@ export function TimeBookingEditor({
             };
             if (onDraft) onDraft(data);
             else {
-              const saved = await save(kind, data, record);
-              onSaved?.(saved);
+              if (!record) {
+                receipt.current ||= `manual:${crypto.randomUUID()}`;
+                data.idempotencyKey = receipt.current;
+                retained = retainTimeDraft(queueKey, receipt.current, data);
+              }
+              const booking = await save(kind, data, record);
+              saved = true;
+              if (!record) clearTimeDraft(queueKey, receipt.current);
+              onSaved?.(booking);
             }
             onClose();
           } catch (exception) {
-            setError(exception instanceof Error ? exception.message : "Speichern fehlgeschlagen");
+            if (saved) {
+              notify(
+                "Deine Buchung wurde gespeichert. Lade die Zeiten neu, falls die Anzeige noch nicht aktuell ist.",
+              );
+              onClose();
+              return;
+            }
+            const uncertain =
+              !saved &&
+              exception instanceof ApiFailure &&
+              (exception.status === 0 || exception.status >= 500);
+            if (!uncertain && retained) clearTimeDraft(queueKey, receipt.current);
+            const message =
+              exception instanceof Error ? exception.message : "Speichern fehlgeschlagen";
+            setError(
+              uncertain
+                ? `${message} ${retained ? "Deine Buchung ist in diesem Browser gesichert. Du kannst erneut speichern oder später die lokalen Entwürfe synchronisieren." : "Deine Eingaben bleiben hier stehen. Lass dieses Fenster geöffnet, bis das Speichern klappt."}`
+                : message,
+            );
+          } finally {
+            submitting.current = false;
           }
         }}
       >

@@ -10,15 +10,34 @@ export class ApiFailure extends Error {
   }
 }
 export async function api<T>(url: string, options: RequestInit = {}): Promise<T> {
-  const response = await fetch(url, {
-    credentials: "same-origin",
-    ...options,
-    headers: {
-      ...(options.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
-      ...options.headers,
-    },
-  });
-  const data = await response.json().catch(() => ({}));
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      credentials: "same-origin",
+      ...options,
+      headers: {
+        ...(options.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
+        ...options.headers,
+      },
+    });
+  } catch (error) {
+    if (options.signal?.aborted) throw error;
+    throw new ApiFailure(
+      "Keine Antwort vom Server erhalten. Bitte prüfe deine Verbindung und versuche es erneut.",
+      0,
+    );
+  }
+  let data: { error?: string };
+  try {
+    data = await response.json();
+  } catch {
+    if (response.ok)
+      throw new ApiFailure(
+        "Die Serverantwort ist unvollständig angekommen. Bitte versuche es erneut.",
+        0,
+      );
+    data = {};
+  }
   if (!response.ok)
     throw new ApiFailure(
       data.error || "Die Anfrage konnte nicht abgeschlossen werden.",
