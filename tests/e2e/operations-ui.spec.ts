@@ -145,10 +145,10 @@ for (const mobile of [false, true])
       const state = await mock(page);
       await page.goto("/?module=time");
       const attendance = page.getByRole("region", { name: "Anwesenheitstimer" }),
-        work = page.getByRole("region", { name: "Arbeitstimer" });
+        work = page.getByRole("region", { name: "Produktionstimer" });
       await attendance.getByRole("button", { name: "Anwesenheit starten" }).click();
       await work.getByLabel("Tätigkeit", { exact: true }).fill("Perücke vorbereiten");
-      await work.getByRole("button", { name: "Arbeitstimer starten" }).click();
+      await work.getByRole("button", { name: "Produktionstimer starten" }).click();
       await expect(attendance.getByText("Timer läuft")).toBeVisible();
       await expect(work.getByText("Timer läuft")).toBeVisible();
       await attendance.getByRole("button", { name: "Pause", exact: true }).click();
@@ -359,7 +359,7 @@ for (const mobile of [false, true])
       expect(state.reads()).toBe(1);
       await cards.filter({ hasText: "Klara Extern" }).click();
       await expect(page.locator(".production-makeup-contact")).toContainText("Klara Extern");
-      await page.getByRole("button", { name: "Zeiten", exact: true }).click();
+      await page.getByRole("button", { name: "Produktionsstunden", exact: true }).click();
       await expect(page.getByRole("region", { name: "Anwesenheitstimer" })).toHaveCount(0);
       await noOverflow(page);
     });

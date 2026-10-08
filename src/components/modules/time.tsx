@@ -174,7 +174,7 @@ export function WorkTimeModule({
     <>
       {embedded ? (
         <header className={styles.moduleHeading}>
-          <h2>Produktions- / Arbeitszeiten</h2>
+          <h2>Produktionsstunden</h2>
           <div className={styles.moduleActions}>
             <ActionMenu>{secondaryActions}</ActionMenu>
             {workspace.user.role !== "superadmin" && (
@@ -186,8 +186,8 @@ export function WorkTimeModule({
         </header>
       ) : (
         <PageHeader
-          eyebrow="PRODUKTIONS- / ARBEITSZEITEN"
-          title={embedded ? "Deine Tätigkeiten" : "Produktionszeiten"}
+          eyebrow="PRODUKTIONSSTUNDEN"
+          title="Produktionsstunden"
           description="Produktionsarbeit und allgemeine Tätigkeiten. Tages- und Wochensummen rechnen sich von selbst."
           compact
           secondaryActions={secondaryActions}

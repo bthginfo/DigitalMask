@@ -46,7 +46,7 @@ export function TimeWeeklyPdf({
             <Page
               key={`${userId}:${start}`}
               input={input}
-              label={`${input.kind === "attendance" ? "Anwesenheit" : "Arbeitszeit"} · Wochenübersicht`}
+              label={`${input.kind === "attendance" ? "Anwesenheit" : "Produktionsstunden"} · Wochenübersicht`}
             >
               <Text style={{ fontSize: 16, fontWeight: 700, marginBottom: 5 }}>
                 KW {week.number} · {week.year} · {person}

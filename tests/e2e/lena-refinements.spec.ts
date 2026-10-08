@@ -177,7 +177,7 @@ for (const width of [1440, 768, 375]) {
       await expect(
         page.getByRole("button", { name: "Ohne Internet vormerken", exact: true }),
       ).toHaveCount(0);
-      await page.getByRole("button", { name: "Produktions- / Arbeitszeiten", exact: true }).click();
+      await page.getByRole("button", { name: "Produktionsstunden", exact: true }).click();
       await expect(page.getByLabel("Spielzeit", { exact: true })).toHaveValue("2026/27");
       await page.goto("/?module=chat");
       await page.getByRole("button", { name: "Teamkanal", exact: true }).click();

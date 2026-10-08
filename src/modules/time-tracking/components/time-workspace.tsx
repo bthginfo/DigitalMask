@@ -36,7 +36,7 @@ export function TimeWorkspace() {
       <PageHeader
         eyebrow="ZEIT IM THEATER"
         title="Zeit buchen"
-        description="Anwesenheit und Tätigkeiten getrennt erfassen. Beide Timer können gleichzeitig laufen."
+        description="Anwesenheit und Produktionsstunden getrennt erfassen. Beide Timer können gleichzeitig laufen."
         compact
       />
       {selfBooking && (
@@ -64,7 +64,7 @@ export function TimeWorkspace() {
             <div>
               <Clock3 size={19} />
               <span>
-                Tätigkeiten<strong>{hours(totals.work)} h</strong>
+                Produktionsstunden<strong>{hours(totals.work)} h</strong>
               </span>
             </div>
             <div className="time-comparison-note">
@@ -90,8 +90,8 @@ export function TimeWorkspace() {
           onClick={() => setTab("work")}
         >
           <Clock3 size={16} />
-          <span className={styles.desktopLabel}>Produktions- / Arbeitszeiten</span>
-          <span className={styles.mobileLabel}>Arbeitszeiten</span>
+          <span className={styles.desktopLabel}>Produktionsstunden</span>
+          <span className={styles.mobileLabel}>Produktionsstunden</span>
         </button>
       </div>
       <div hidden={tab !== "attendance"}>

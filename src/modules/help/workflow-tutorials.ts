@@ -115,7 +115,7 @@ export const workflowTutorials: HelpTutorial[] = [
     poster: "/tutorials/v4/production-time.webp",
     captions: "/tutorials/v4/production-time.vtt",
     steps: [
-      "Öffne Zeiten im Stück. Das ist deine Tätigkeit, nicht deine gesamte Anwesenheit.",
+      "Öffne Produktionsstunden im Stück. Hier buchst du deine Tätigkeit. Deine gesamte Anwesenheit trägst du separat ein.",
       "Trage ein, was du gemacht hast. Die Produktion ist bereits zugeordnet.",
       "Wähle Dauer für eine Minutenbuchung. Beginn & Ende geht ebenfalls.",
       "90 Minuten sind 1,5 Stunden Produktionsarbeit. Prüfe die Angaben und speichere.",

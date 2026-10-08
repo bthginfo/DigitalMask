@@ -50,7 +50,7 @@ for (const kind of ["attendance", "time"] as const) {
     });
     await page.goto("/?module=time");
     if (kind === "time")
-      await page.getByRole("button", { name: "Produktions- / Arbeitszeiten", exact: true }).click();
+      await page.getByRole("button", { name: "Produktionsstunden", exact: true }).click();
     await page.getByRole("button", { name: "Nachtragen", exact: true }).click();
     const dialog = page.getByRole("dialog");
     if (kind === "time") {

@@ -146,7 +146,7 @@ test("stock, optional zero, category, template, year and booked minutes retain e
   await expect(page.getByRole("dialog")).toHaveCount(0);
   expect(fixture.writes[2].data.version).toBe(3);
   await page.goto("/?module=time");
-  await page.getByRole("button", { name: "Produktions- / Arbeitszeiten", exact: true }).click();
+  await page.getByRole("button", { name: "Produktionsstunden", exact: true }).click();
   await page.getByRole("button", { name: "Zeit nachtragen", exact: true }).click();
   await page.getByRole("dialog").getByLabel("Tätigkeit", { exact: true }).fill("Pinsel einrichten");
   await page.getByLabel("Dauer in Minuten").fill("");

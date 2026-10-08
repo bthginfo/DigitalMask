@@ -257,7 +257,7 @@ for (const browserName of ["chromium", "webkit"] as const)
       await expect.poll(() => state.exports.length).toBe(2);
       expect(state.exports[1]).toContain("generalOnly=true");
       await page.goto("/?module=time");
-      await page.getByRole("button", { name: "Produktions- / Arbeitszeiten", exact: true }).click();
+      await page.getByRole("button", { name: "Produktionsstunden", exact: true }).click();
       await page.getByLabel("Jahr", { exact: true }).fill("2021");
       await expect(page.getByLabel("Woche ab", { exact: true })).toHaveValue("2021-10-04");
       await expect(page.getByText("Historische Arbeit", { exact: true })).toBeVisible();

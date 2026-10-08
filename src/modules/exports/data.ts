@@ -15,7 +15,7 @@ import {
 export const titles: Record<string, string> = {
   events: "Dienst- und Kalenderplanung",
   calendar: "Dienst- und Kalenderplanung",
-  time: "Arbeitszeitnachweis",
+  time: "Produktionsstunden",
   attendance: "Anwesenheitsnachweis",
   timesheets: "Wochenfreigaben",
   looks: "Aufschriebe",

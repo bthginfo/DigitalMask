@@ -36,7 +36,7 @@ const productionSections = [
   ["looks", "Aufschriebe"],
   ["documents", "Dokumente"],
   ["calendar", "Kalender"],
-  ["time", "Zeiten"],
+  ["time", "Produktionsstunden"],
   ["chat", "Projektchat"],
 ];
 export function ProductionsModule({

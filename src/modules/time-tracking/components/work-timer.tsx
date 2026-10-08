@@ -83,14 +83,14 @@ export function TimerPanel({
   return (
     <section
       className={`timer-panel ${styles.timer} ${compact ? "compact" : ""} ${attendance ? "attendance-timer" : ""}`}
-      aria-label={attendance ? "Anwesenheitstimer" : "Arbeitstimer"}
+      aria-label={attendance ? "Anwesenheitstimer" : "Produktionstimer"}
     >
       <header className={styles.header}>
         <button
           className={styles.mobileToggle}
           aria-label={
             timer
-              ? `${attendance ? "Anwesenheit" : "Arbeit"}: Details und weitere Aktionen`
+              ? `${attendance ? "Anwesenheit" : "Produktion"}: Details und weitere Aktionen`
               : attendance
                 ? "Bezeichnung ändern"
                 : "Tätigkeit & Zuordnung"
@@ -101,7 +101,7 @@ export function TimerPanel({
         >
           <Icon size={16} />
           <span>
-            {attendance ? "Anwesenheit" : "Arbeit"}
+            {attendance ? "Anwesenheit" : "Produktion"}
             <small>
               {timer ? "Details" : attendance ? "Bezeichnung" : "Tätigkeit & Zuordnung"}
             </small>
@@ -110,7 +110,7 @@ export function TimerPanel({
         </button>
         <span className={styles.label}>
           <Icon size={16} />
-          {attendance ? "Anwesenheit" : "Arbeit"}
+          {attendance ? "Anwesenheit" : "Produktion"}
         </span>
         <Badge tone={timer && !timer.data.pausedAt ? "green" : "neutral"}>
           {timer ? (timer.data.pausedAt ? "Pausiert" : "Timer läuft") : "Bereit"}
@@ -150,7 +150,7 @@ export function TimerPanel({
             >
               <Play size={15} />
               <span className={styles.desktopLabel}>
-                {attendance ? "Anwesenheit starten" : "Arbeitstimer starten"}
+                {attendance ? "Anwesenheit starten" : "Produktionstimer starten"}
               </span>
               <span className={styles.mobileLabel}>Starten</span>
             </Button>
@@ -173,7 +173,9 @@ export function TimerPanel({
               disabled={busy}
               onClick={() => {
                 if (
-                  confirm(`${attendance ? "Anwesenheits" : "Arbeits"}timer ohne Buchung verwerfen?`)
+                  confirm(
+                    `${attendance ? "Anwesenheits" : "Produktions"}timer ohne Buchung verwerfen?`,
+                  )
                 )
                   void run("discard");
               }}
@@ -232,7 +234,7 @@ export function TimerPanel({
             )}
             <p className="small muted">
               {attendance
-                ? "Im Theater beginnen. Der Arbeitstimer kann gleichzeitig laufen."
+                ? "Im Theater beginnen. Der Produktionstimer kann gleichzeitig laufen."
                 : "Allgemeine Tätigkeiten kannst du auch ohne Produktion buchen."}
             </p>
           </>

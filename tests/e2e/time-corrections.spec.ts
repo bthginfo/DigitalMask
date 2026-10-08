@@ -121,7 +121,7 @@ test("all roles correct booked work and attendance directly without weekly appro
     work = await patch(member, work, work.data);
     expect((await workspace()).records.timesheets).toEqual([]);
     await page.goto("/?module=time");
-    await page.getByRole("button", { name: "Produktions- / Arbeitszeiten", exact: true }).click();
+    await page.getByRole("button", { name: "Produktionsstunden", exact: true }).click();
     await page.getByLabel("Woche ab").fill("2026-09-28");
     await page
       .getByRole("row")

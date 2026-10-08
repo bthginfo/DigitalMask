@@ -256,7 +256,7 @@ export const workflows = [
     async run({ page, click, fill, stage, hold }) {
       stage(
         "Produktionszeit buchen",
-        "Öffne Zeiten im Stück. Das ist deine Tätigkeit, nicht deine gesamte Anwesenheit.",
+        "Öffne Produktionsstunden im Stück. Hier buchst du deine Tätigkeit. Deine gesamte Anwesenheit trägst du separat ein.",
       );
       await hold(2300);
       await click(page.getByRole("button", { name: "Zeit nachtragen", exact: true }).first());
