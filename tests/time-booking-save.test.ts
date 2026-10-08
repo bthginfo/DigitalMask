@@ -31,7 +31,7 @@ function fixture() {
   const rows: (typeof records.$inferSelect)[] = [];
   const writes = vi.fn();
   const dialect = new PgDialect();
-  const result = (values: typeof rows) => ({
+  const result = (values: Pick<typeof records.$inferSelect, "data">[]) => ({
     then: Promise.resolve(values).then.bind(Promise.resolve(values)),
     limit: (count: number) => result(values.slice(0, count)),
     for: () => result(values),
@@ -43,7 +43,7 @@ function fixture() {
         where: (condition: SQL) => {
           const { params } = dialect.sqlToQuery(condition);
           if (params.includes("categories"))
-            return result([{ data: { key: "other" } } as typeof records.$inferSelect]);
+            return result([{ data: { key: "other" } }]);
           if (params[0] && rows.some((row) => row.id === params[0]))
             return result(rows.filter((row) => row.id === params[0]));
           if (params.includes("time") && params.includes("manual:receipt"))
