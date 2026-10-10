@@ -15,6 +15,7 @@ import { useWorkspace } from "@/components/workspace-context";
 import { Button, ErrorMessage, Modal } from "@/components/ui";
 import { numberDraft, parseNumberDraft, previewNumberDraft } from "@/shared/number-draft";
 import { clearTimeDraft, retainTimeDraft, timeDraftQueueKey } from "../client-drafts";
+import { TimeBookingDelete } from "./time-booking-delete";
 import styles from "./time-history.module.css";
 
 export function TimeBookingEditor({
@@ -393,6 +394,7 @@ export function TimeBookingEditor({
         </div>
         <ErrorMessage message={error} />
         <footer className="dialog-footer">
+          {record && <TimeBookingDelete record={record} onDeleted={onClose} />}
           <Button onClick={onClose}>Abbrechen</Button>
           <Button type="submit" variant="primary" disabled={busy}>
             {onDraft

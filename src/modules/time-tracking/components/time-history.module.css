@@ -155,6 +155,15 @@
   font-size: 18px;
   font-variant-numeric: tabular-nums;
 }
+.bookingActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.bookingActions > :global(.button) {
+  min-height: 44px;
+}
 .history {
   padding: 18px;
 }
@@ -467,11 +476,13 @@
     padding: 12px 14px;
     align-items: start;
   }
-  .bookingRow > button {
+  .bookingActions {
     grid-column: 1 / -1;
     justify-self: start;
+  }
+  .bookingActions > :global(.button) {
     min-height: 44px;
-    padding: 8px 0;
+    padding: 8px 10px;
   }
   .bookingContent {
     gap: 4px;

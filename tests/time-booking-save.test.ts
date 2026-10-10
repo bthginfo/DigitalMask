@@ -13,7 +13,7 @@ vi.mock("@/platform/events", () => ({
   scheduleEvents: vi.fn(),
 }));
 vi.mock("@/modules/records/workspace", () => ({ invalidateWorkspace: mock.invalidate }));
-import { saveRecord } from "@/modules/records/service";
+import { deleteRecord, saveRecord } from "@/modules/records/service";
 
 const context = (role: "admin" | "user" = "user") =>
   ({ user: { id: "owner", role }, organizationId: "theatre", departmentId: "makeup" }) as Context;
@@ -30,6 +30,7 @@ const payload = (): RecordData => ({
 function fixture() {
   const rows: (typeof records.$inferSelect)[] = [];
   const writes = vi.fn();
+  const deletions = vi.fn();
   const dialect = new PgDialect();
   const result = (values: Pick<typeof records.$inferSelect, "data">[]) => ({
     then: Promise.resolve(values).then.bind(Promise.resolve(values)),
@@ -42,8 +43,7 @@ function fixture() {
       from: () => ({
         where: (condition: SQL) => {
           const { params } = dialect.sqlToQuery(condition);
-          if (params.includes("categories"))
-            return result([{ data: { key: "other" } }]);
+          if (params.includes("categories")) return result([{ data: { key: "other" } }]);
           if (params[0] && rows.some((row) => row.id === params[0]))
             return result(rows.filter((row) => row.id === params[0]));
           if (params.includes("time") && params.includes("manual:receipt"))
@@ -87,9 +87,18 @@ function fixture() {
         }),
       }),
     }),
+    delete: () => ({
+      where: async (condition: SQL) => {
+        const { params } = dialect.sqlToQuery(condition);
+        const removed = rows.filter((row) => params.includes(row.id));
+        deletions(removed.map((row) => row.id));
+        for (let index = rows.length - 1; index >= 0; index--)
+          if (params.includes(rows[index].id)) rows.splice(index, 1);
+      },
+    }),
   };
   mock.transaction.mockImplementation(async (callback) => callback(tx));
-  return { rows, writes };
+  return { rows, writes, deletions };
 }
 
 describe("manual attendance receipts in the actual save service", () => {
@@ -150,4 +159,39 @@ describe("manual attendance receipts in the actual save service", () => {
       data: { userId: "colleague", pauseSeconds: 900, durationSeconds: 27900 },
     });
   });
+
+  it.each(["attendance", "time"] as const)(
+    "lets a normal member edit and delete their own %s while protecting ownership and newer versions",
+    async (kind) => {
+      const { rows, deletions } = fixture();
+      const first = await saveRecord(context(), kind, {
+        ...payload(),
+        ...(kind === "time" ? { title: "Perücke vorbereiten", category: "other" } : {}),
+      });
+      const changed = await saveRecord(context(), kind, { pauseSeconds: 900 }, first.id, 1);
+      expect(changed).toMatchObject({
+        version: 2,
+        data: { userId: "owner", pauseSeconds: 900, durationSeconds: 27900 },
+      });
+      await expect(deleteRecord(context(), kind, first.id, { version: 1 })).rejects.toMatchObject({
+        status: 409,
+      });
+      const colleague = { ...context(), user: { ...context().user, id: "colleague" } };
+      await expect(deleteRecord(colleague, kind, first.id, { version: 2 })).rejects.toMatchObject({
+        status: 403,
+      });
+      expect(deletions).not.toHaveBeenCalled();
+      expect(rows).toHaveLength(1);
+      await deleteRecord(context(), kind, first.id, { version: 2 });
+      expect(rows).toHaveLength(0);
+      expect(deletions).toHaveBeenCalledOnce();
+      expect(mock.audit).toHaveBeenLastCalledWith(
+        expect.anything(),
+        context(),
+        `${kind}.deleted`,
+        first.id,
+      );
+      expect(mock.invalidate).toHaveBeenLastCalledWith("makeup");
+    },
+  );
 });

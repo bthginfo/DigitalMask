@@ -171,6 +171,10 @@ export function Section({
     </section>
   );
 }
+// Nested confirmations may close with their editor; unlock scrolling after the last modal.
+let openModalCount = 0;
+let modalPreviousOverflow = "";
+
 export function Modal({
   title,
   children,
@@ -190,11 +194,13 @@ export function Modal({
     const el = ref.current;
     const previousFocus = document.activeElement;
     el?.showModal();
-    const previous = document.body.style.overflow;
+    if (openModalCount === 0) modalPreviousOverflow = document.body.style.overflow;
+    openModalCount++;
     document.body.style.setProperty("overflow", "hidden");
     return () => {
       el?.close();
-      document.body.style.setProperty("overflow", previous);
+      openModalCount--;
+      if (openModalCount === 0) document.body.style.setProperty("overflow", modalPreviousOverflow);
       if (previousFocus instanceof HTMLElement && previousFocus.isConnected) previousFocus.focus();
     };
   }, []);
@@ -238,7 +244,7 @@ export function Modal({
     >
       <header className="dialog-heading">
         <h2 id={titleId}>{title}</h2>
-        <button className="icon-button" onClick={onClose} aria-label="Schließen">
+        <button type="button" className="icon-button" onClick={onClose} aria-label="Schließen">
           <X size={20} />
         </button>
       </header>

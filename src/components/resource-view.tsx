@@ -44,6 +44,7 @@ import portraitStyles from "@/modules/ensemble/components/actor-portrait.module.
 import { initialPeriod, teamTaskSeason } from "@/shared/period-filter";
 import { useViewState } from "@/shared/view-state";
 import { MaterialReservations } from "@/modules/reservations/components/material-reservations";
+import { TimeBookingDelete } from "@/modules/time-tracking/components/time-booking-delete";
 
 function recordTitle(record: DomainRecord, workspace: Workspace) {
   if (record.kind === "looks") return lookTitle(record.data, workspace.records.actors);
@@ -186,12 +187,14 @@ function GenericRecordDetail({
               "timesheets",
               "messages",
             ].includes(current.kind) && <ExportButton onClick={() => setExporting(true)} />}
-            {canEdit && (
+            {canEdit && (current.kind === "time" || current.kind === "attendance") ? (
+              <TimeBookingDelete record={current} onDeleted={onClose} />
+            ) : canEdit ? (
               <Button variant="danger-ghost" disabled={busy} onClick={deleteRecord}>
                 <Trash2 size={15} />
                 Löschen
               </Button>
-            )}
+            ) : null}
           </div>
           <dl className="detail-grid">
             {(fields[current.kind] || [])

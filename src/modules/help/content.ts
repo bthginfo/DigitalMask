@@ -202,7 +202,7 @@ export const helpArticles: HelpArticle[] = [
       "Nachtragen öffnet das Buchungsfenster immer mit dem heutigen Datum, auch wenn du gerade eine ältere Woche ansiehst. Du kannst das Datum ändern. Wenn du einen bestimmten Tag anklickst, wird stattdessen dessen Datum übernommen. Bei Produktionsstunden geht das auch über den Tagesbalken. Abbrechen lässt deine Wochenauswahl unverändert; nach dem Speichern siehst du die Woche der neuen Buchung. Tag kennzeichnen ist nur für ABF, Ruhetag und andere freie Tage gedacht.",
       "Am Smartphone bleiben beide Timer kompakt sichtbar. Öffne die Angaben, wenn du die Tätigkeit, Produktion oder Kategorie ändern möchtest. Ein laufender Timer bleibt auch bei geschlossenen Angaben erkennbar.",
       "Pausiere den Timer bei Bedarf. Stoppen & buchen legt die Zeitbuchung an. Timer verwerfen entfernt einen ungebuchten Lauf nach Bestätigung.",
-      "Wähle bei einer Buchung Bearbeiten, um Datum, Dauer, Beginn, Ende oder Pause zu korrigieren. Alle Rollen können eigene Zeiten ändern; Admins auch Zeiten anderer Teammitglieder. Die Änderung wird direkt gespeichert.",
+      "Bei jeder Buchung findest du Bearbeiten und Löschen, auch in aufgeklappten früheren Wochen. Mit Bearbeiten korrigierst du Datum, Dauer, Beginn, Ende oder Pause. Mit Löschen entfernst du eine falsche Buchung nach Bestätigung; die Stundensummen werden angepasst. Löschen findest du auch in den Buchungsdetails und im Bearbeitungsfenster. Alle Rollen können eigene Anwesenheiten und Produktionsstunden ändern oder löschen; Admins auch Zeiten anderer Teammitglieder.",
       "Unter Wochenverlauf stehen frühere Wochen mit Kalenderwoche, Datum und Stundensumme. Klappe eine Woche auf, um die einzelnen Buchungen zu lesen oder zu bearbeiten. Anwesenheit und Produktionsarbeit haben jeweils ihren eigenen Verlauf.",
       "Mit der Wochenauswahl wechselst du auch zu leeren oder älteren Wochen. Für Einträge aus früheren Spielzeiten öffnest du Zeitraum auswählen und wählst die passende oder Alle Spielzeiten. Die Filter für Person und Produktion gelten auch im Verlauf.",
       "Als Admin kannst du unter Produktionsstunden bei Person die Auswahl Alle wählen. Du siehst die Stunden des gesamten Teams, nach Personen aufgeteilt. Das gilt auch für frühere Wochen und für den Export. Mit einer einzelnen Person grenzt du die Ansicht wieder ein.",
@@ -427,8 +427,8 @@ export const helpFaq = [
     "Speichere zuerst Figur, Besetzung, Schauspieler oder Aufschrieb. Öffne danach die Galerie und wähle über Hochladen mehrere Dateien.",
   ],
   [
-    "Kann ich gespeicherte Zeiten nachträglich korrigieren?",
-    "Ja. Wähle Bearbeiten bei der Buchung und passe Datum, Dauer, Beginn, Ende oder Pause an. Deine Änderung wird direkt gespeichert. Das geht sowohl für Anwesenheit als auch für Produktionsarbeit. Eine Wochenfreigabe ist nicht erforderlich.",
+    "Kann ich gespeicherte Zeiten nachträglich bearbeiten oder löschen?",
+    "Ja. Wähle Bearbeiten bei der Buchung und passe Datum, Dauer, Beginn, Ende oder Pause an. Mit Löschen entfernst du eine falsche Buchung nach Bestätigung, auch aus einer früheren Woche. Beides geht für deine Anwesenheit und Produktionsstunden. Die Stundensummen werden direkt angepasst; eine Wochenfreigabe ist nicht erforderlich.",
   ],
   [
     "Wo finde ich meine Stunden aus früheren Wochen?",

@@ -5,10 +5,12 @@ import { ChevronDown, ChevronLeft, ChevronRight, Pencil } from "lucide-react";
 import type { DomainRecord } from "@/shared/contracts";
 import { dateLabel, hours, num, shiftDate, value, weekStart } from "@/shared/client-api";
 import { categoryName } from "@/shared/domain-categories";
+import { canManageRecord } from "@/shared/record-permissions";
 import { Button } from "@/components/ui";
 import { useWorkspace } from "@/components/workspace-context";
 import { groupBookingPeople, isoWeek, type BookingWeek, type BookingWeekEntry } from "../history";
 import { WeekDayOverview } from "./week-day-overview";
+import { TimeBookingDelete } from "./time-booking-delete";
 import styles from "./time-history.module.css";
 
 export function WeekNavigator({
@@ -129,9 +131,14 @@ export function BookingList({
               )}
             </div>
             <strong className={styles.bookingHours}>{hours(seconds)} h</strong>
-            <Button variant="ghost" onClick={() => onEdit(record)}>
-              <Pencil size={15} /> Bearbeiten
-            </Button>
+            {canManageRecord(workspace.user, kind, record) && (
+              <div className={styles.bookingActions}>
+                <Button variant="ghost" onClick={() => onEdit(record)}>
+                  <Pencil size={15} /> Bearbeiten
+                </Button>
+                <TimeBookingDelete record={record} />
+              </div>
+            )}
           </li>
         );
       })}
@@ -174,7 +181,7 @@ export function WeeklyHistory({
       <header className={styles.sectionHeading}>
         <div>
           <h2>Wochenverlauf</h2>
-          <p className="small muted">Woche aufklappen, Buchungen prüfen und bearbeiten.</p>
+          <p className="small muted">Woche aufklappen, Buchungen bearbeiten oder löschen.</p>
         </div>
         {filtered && <Button onClick={onAllSeasons}>Alle Spielzeiten ansehen</Button>}
       </header>
