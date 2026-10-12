@@ -2,7 +2,7 @@ import type { DomainRecord } from "@/shared/contracts";
 import { shiftDate, timeAllocations } from "@/shared/client-api";
 import { currentWorkingSchedule, type WorkingTimeSettings } from "@/shared/working-time";
 import { calendarCategoryCreditsTime } from "@/shared/calendar-categories";
-import { localDay, splitAcrossDays } from "./rules";
+import { localDay } from "./rules";
 import { timeDayMarkers } from "./day-markers";
 
 export interface AttendanceBalance {
@@ -60,23 +60,9 @@ export function calculateAttendanceBalance({
   const actual = new Map<string, number>();
   for (const record of attendance) {
     if (record.kind !== "attendance" || record.data.userId !== userId) continue;
-    let allocations = timeAllocations(record.data);
-    const intervalStart = new Date(String(record.data.start || "")).getTime();
-    const intervalEnd = new Date(String(record.data.end || "")).getTime();
-    if (
-      Number.isFinite(intervalStart) &&
-      Number.isFinite(intervalEnd) &&
-      intervalEnd > now.getTime()
-    ) {
-      if (intervalStart >= now.getTime()) continue;
-      const pause = Math.max(0, Number(record.data.pauseSeconds) || 0);
-      if (pause >= (now.getTime() - intervalStart) / 1000) continue;
-      allocations = splitAcrossDays(
-        new Date(intervalStart).toISOString(),
-        now.toISOString(),
-        pause,
-      );
-    }
+    // Saving a booking confirms its net duration; today counts as a complete day.
+    // For overnight bookings, only allocations through today enter the balance.
+    const allocations = timeAllocations(record.data);
     for (const day of allocations) {
       if (day.date < first || day.date > last || !Number.isFinite(day.seconds) || day.seconds <= 0)
         continue;

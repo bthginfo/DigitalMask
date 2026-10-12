@@ -70,10 +70,10 @@ export function AttendanceBalanceCard({
         })
       : undefined;
   const seconds = balance?.balanceSeconds || 0;
-  const provisional = Boolean(balance && balance.from <= balance.to && balance.to === today);
+  const includesToday = Boolean(balance && balance.from <= balance.to && balance.to === today);
   const closedThrough = shiftDate(weekStart(), -1);
   const completed =
-    settings && configured && period === "total" && provisional
+    settings && configured && period === "total" && includesToday
       ? calculateAttendanceBalance({
           userId: selected,
           settings,
@@ -88,13 +88,7 @@ export function AttendanceBalanceCard({
   const weeklyTarget = settings
     ? currentWorkingSchedule(settings, today)?.weeklyMinutes
     : undefined;
-  const status = provisional
-    ? "Vorläufiger Zwischenstand"
-    : seconds > 0
-      ? "Plusstunden"
-      : seconds < 0
-        ? "Minusstunden"
-        : "Ausgeglichen";
+  const status = seconds > 0 ? "Plusstunden" : seconds < 0 ? "Minusstunden" : "Ausgeglichen";
   const tone = seconds > 0 ? styles.positive : seconds < 0 ? styles.negative : "";
   const breakdown = balance && (
     <dl className={styles.breakdown}>
@@ -107,7 +101,7 @@ export function AttendanceBalanceCard({
         <dd>{hours(balance.creditSeconds)} h</dd>
       </div>
       <div>
-        <dt>{provisional ? "Sollzeit bis heute" : "Sollzeit"}</dt>
+        <dt>{includesToday ? "Sollzeit bis heute" : "Sollzeit"}</dt>
         <dd>{hours(balance.targetSeconds)} h</dd>
       </div>
       {period === "total" && (
@@ -217,8 +211,9 @@ export function AttendanceBalanceCard({
                     {signedHours(seconds)} <small>h</small>
                   </strong>
                   <span>
-                    {status}
-                    {period === "total" ? " gesamt" : " im Zeitraum"}
+                    {includesToday
+                      ? "Saldo bis heute"
+                      : `${status}${period === "total" ? " gesamt" : " im Zeitraum"}`}
                   </span>
                 </div>
                 <p className={styles.range}>
@@ -232,10 +227,10 @@ export function AttendanceBalanceCard({
                     <strong>{signedHours(completed.balanceSeconds)} h</strong>
                   </p>
                 )}
-                {provisional && weeklyTarget !== undefined && (
+                {includesToday && weeklyTarget !== undefined && (
                   <p className="small muted">
                     Wochen-Sollzeit: {hours(weeklyTarget * 60)} h. Die aktuelle Woche läuft noch;
-                    der Zwischenstand berücksichtigt erst die anteilige Sollzeit bis heute.
+                    die Sollzeit zählt bis einschließlich heute.
                   </p>
                 )}
                 {compact ? (
@@ -243,8 +238,8 @@ export function AttendanceBalanceCard({
                     <summary>Berechnung anzeigen</summary>
                     {breakdown}
                     <p>
-                      Gespeicherte Anwesenheit plus Tagesgutschriften. Zeiten, deren Ende noch in
-                      der Zukunft liegt, zählen erst bis zum jetzigen Zeitpunkt.
+                      Gespeicherte Anwesenheiten bis einschließlich heute zählen vollständig, auch
+                      vor ihrer Endzeit. Laufende Timer zählen erst nach dem Buchen.
                     </p>
                   </details>
                 ) : (
@@ -255,8 +250,9 @@ export function AttendanceBalanceCard({
                       Feiertagsausgleich und Krank mit oder ohne Attest geben je eingetragenem
                       Solltag Wochenstunden ÷ 6 zusätzlich zur Anwesenheit. Mehrere Kennzeichen am
                       selben Tag zählen nur einmal. ABF, Ruhetag und halber freier Tag geben keine
-                      Gutschrift. Zeiten, deren Ende noch in der Zukunft liegt, zählen erst bis zum
-                      jetzigen Zeitpunkt.
+                      Gutschrift. Gespeicherte Anwesenheiten bis einschließlich heute zählen
+                      vollständig, auch vor ihrer Endzeit. Laufende Timer zählen erst nach dem
+                      Buchen.
                     </p>
                   </>
                 )}

@@ -252,7 +252,7 @@ describe("saved attendance balance and dated weekly targets", () => {
       balanceSeconds: -12 * 3600,
     });
   });
-  it("clips future parts of saved intervals, preserves pauses and avoids pre-contract deficits", () => {
+  it("counts saved attendance today in full, preserves pauses and avoids pre-contract deficits", () => {
     const result = calculate({
       from: "2026-10-07",
       attendance: [
@@ -266,7 +266,7 @@ describe("saved attendance balance and dated weekly targets", () => {
       ],
     });
     expect(result).toMatchObject({
-      attendanceSeconds: 2.5 * 3600,
+      attendanceSeconds: 7.5 * 3600,
       targetSeconds: 7 * 3600,
       openingBalanceSeconds: 0,
     });
@@ -280,6 +280,45 @@ describe("saved attendance balance and dated weekly targets", () => {
     ).toMatchObject({ targetSeconds: 0, openingBalanceSeconds: 0, balanceSeconds: 0 });
     expect(signedHours(9000)).toBe("+2,5");
     expect(signedHours(-3600)).toBe("−1");
+  });
+  it("counts saved bookings starting later today but excludes future dates", () => {
+    const result = calculate({
+      from: "2026-10-07",
+      attendance: [
+        record("evening-today", "attendance", {
+          start: "2026-10-07T18:00:00+02:00",
+          end: "2026-10-07T22:00:00+02:00",
+          date: "2026-10-07",
+          durationSeconds: 4 * 3600,
+        }),
+        attendance("tomorrow", "2026-10-08", 9),
+      ],
+    });
+    expect(result.attendanceSeconds).toBe(4 * 3600);
+    expect(result.targetSeconds).toBe(7 * 3600);
+  });
+  it("counts today's complete overnight allocation without including tomorrow's hours", () => {
+    const booking = record("overnight", "attendance", {
+      start: "2026-10-07T22:00:00+02:00",
+      end: "2026-10-08T02:00:00+02:00",
+      date: "2026-10-07",
+      pauseSeconds: 1800,
+      durationSeconds: 3.5 * 3600,
+      dayAllocations: [
+        { date: "2026-10-07", seconds: 1.75 * 3600 },
+        { date: "2026-10-08", seconds: 1.75 * 3600 },
+      ],
+    });
+    expect(calculate({ from: "2026-10-07", attendance: [booking] }).attendanceSeconds).toBe(
+      1.75 * 3600,
+    );
+    expect(
+      calculate({
+        from: "2026-10-07",
+        attendance: [booking],
+        now: new Date("2026-10-08T01:00:00+02:00"),
+      }).attendanceSeconds,
+    ).toBe(3.5 * 3600);
   });
   it("keeps colleague targets private for ordinary users and validates explicit update inputs", () => {
     expect(visibleWorkingTime(settings, "mara", "nora", "user")).toBeUndefined();

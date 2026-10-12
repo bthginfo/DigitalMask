@@ -99,7 +99,7 @@ test("personal calendar credits appear separately in the mobile time account and
   );
   await expect(account.locator("dl > div").filter({ hasText: "Sollzeit" })).toContainText("20 h");
   await expect(account).toContainText("+1,67 h");
-  await expect(account).toContainText("Vorläufiger Zwischenstand");
+  await expect(account).toContainText("Saldo bis heute");
   await account.getByLabel("Zeitraum des Zeitkontos").selectOption("custom");
   await account.getByLabel("Zeitkonto von", { exact: true }).fill("2026-10-06");
   await account.getByLabel("Zeitkonto bis", { exact: true }).fill("2026-10-06");
@@ -108,7 +108,7 @@ test("personal calendar credits appear separately in the mobile time account and
     "6,67 h",
   );
   await expect(account).toContainText("Ausgeglichen im Zeitraum");
-  // Four completed 15-hour weeks must remain separate from a partly elapsed booking today.
+  // Today's saved booking counts in full, separately from four completed 15-hour weeks.
   workspace.user.preferences!.workingTime = {
     version: 1,
     openingBalanceSeconds: 0,
@@ -143,15 +143,15 @@ test("personal calendar credits appear separately in the mobile time account and
   ];
   await page.clock.setFixedTime(new Date("2026-10-12T18:00:00+02:00"));
   await page.reload();
-  await expect(account).toContainText("Vorläufiger Zwischenstand gesamt");
+  await expect(account).toContainText("Saldo bis heute");
   await expect(account).toContainText("Wochen-Sollzeit: 15 h");
   await expect(account.locator("p").filter({ hasText: "Abgeschlossene Wochen" })).toContainText(
     "+6,75 h",
   );
   await expect(account.locator("dl > div").filter({ hasText: "Anwesenheit" })).toContainText(
-    "69,75 h",
+    "73,25 h",
   );
-  await expect(account).toContainText("+7,25 h");
+  await expect(account).toContainText("+10,75 h");
   await expect(account).not.toContainText("Plusstunden");
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
