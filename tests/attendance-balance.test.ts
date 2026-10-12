@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { DomainRecord } from "../src/shared/contracts";
 import { visibleWorkingTime, type WorkingTimeSettings } from "../src/shared/working-time";
-import { calculateAttendanceBalance, signedHours } from "../src/modules/time-tracking/balance";
+import {
+  attendanceMonthRange,
+  calculateAttendanceBalance,
+  signedHours,
+} from "../src/modules/time-tracking/balance";
 import { startOfLocalDay } from "../src/modules/time-tracking/rules";
 import { shiftDate } from "../src/shared/client-api";
 import { profileUpdateSchema } from "../src/modules/profile/schema";
@@ -50,7 +54,7 @@ const calculate = (input: Partial<Parameters<typeof calculateAttendanceBalance>[
   });
 
 describe("saved attendance balance and dated weekly targets", () => {
-  it("uses six target days, stops at today and keeps production work separate", () => {
+  it("uses the full weekly quota, counts attendance through today and keeps production work separate", () => {
     const result = calculate({
       attendance: [
         attendance("mon", "2026-10-05", 8),
@@ -63,12 +67,12 @@ describe("saved attendance balance and dated weekly targets", () => {
         }),
       ],
     });
-    expect(result.targetSeconds).toBe(21 * 3600);
+    expect(result.targetSeconds).toBe(42 * 3600);
     expect(result).toMatchObject({
       attendanceSeconds: 8 * 3600,
-      targetSeconds: 21 * 3600,
+      targetSeconds: 42 * 3600,
       openingBalanceSeconds: 2 * 3600,
-      balanceSeconds: -11 * 3600,
+      balanceSeconds: -32 * 3600,
       to: "2026-10-07",
     });
   });
@@ -88,11 +92,11 @@ describe("saved attendance balance and dated weekly targets", () => {
     expect(result).toMatchObject({
       attendanceSeconds: 16 * 3600,
       creditSeconds: 14 * 3600,
-      targetSeconds: 21 * 3600,
-      balanceSeconds: 11 * 3600,
+      targetSeconds: 42 * 3600,
+      balanceSeconds: -10 * 3600,
     });
   });
-  it("does not credit ABF, rest, half-free days or non-target Sundays", () => {
+  it("does not credit ABF, rest or half-free days but credits a personally marked Sunday", () => {
     const result = calculate({
       events: [
         absence("abf", "2026-10-05", "abf"),
@@ -102,7 +106,7 @@ describe("saved attendance balance and dated weekly targets", () => {
       ],
       now: new Date("2026-10-11T23:00:00+02:00"),
     });
-    expect(result.creditSeconds).toBe(0);
+    expect(result.creditSeconds).toBe(7 * 3600);
     expect(result.targetSeconds).toBe(42 * 3600);
   });
   it.each([
@@ -186,8 +190,8 @@ describe("saved attendance balance and dated weekly targets", () => {
         }),
       ],
     });
-    // Oct 5/9/10 use 42÷6; Oct 11 is not a target day; Oct 12 uses 36÷6.
-    expect(result.creditSeconds).toBe((7 * 3 + 6) * 3600);
+    // Oct 5/9/10/11 use 42÷6, independently of weekdays; Oct 12 uses 36÷6.
+    expect(result.creditSeconds).toBe((7 * 4 + 6) * 3600);
   });
   it("keeps Bavarian holiday date labels separate from personal time credits", () => {
     const result = calculate({
@@ -197,7 +201,7 @@ describe("saved attendance balance and dated weekly targets", () => {
       },
       now: new Date("2026-10-03T20:00:00+02:00"),
     });
-    expect(result.targetSeconds).toBe(21 * 3600);
+    expect(result.targetSeconds).toBe(24 * 3600);
     expect(result.creditSeconds).toBe(0);
   });
   it("recognizes category keys and names but keeps explicit unpaid categories unpaid", () => {
@@ -238,7 +242,7 @@ describe("saved attendance balance and dated weekly targets", () => {
       ],
     };
     const result = calculate({ settings: changed, now: new Date("2026-10-13T20:00:00+02:00") });
-    expect(result.targetSeconds).toBe(54 * 3600);
+    expect(result.targetSeconds).toBe(78 * 3600);
     expect(
       calculate({
         settings: changed,
@@ -247,9 +251,9 @@ describe("saved attendance balance and dated weekly targets", () => {
         now: new Date("2026-10-13T20:00:00+02:00"),
       }),
     ).toMatchObject({
-      targetSeconds: 12 * 3600,
+      targetSeconds: 36 * 3600,
       openingBalanceSeconds: 0,
-      balanceSeconds: -12 * 3600,
+      balanceSeconds: -36 * 3600,
     });
   });
   it("counts saved attendance today in full, preserves pauses and avoids pre-contract deficits", () => {
@@ -267,7 +271,7 @@ describe("saved attendance balance and dated weekly targets", () => {
     });
     expect(result).toMatchObject({
       attendanceSeconds: 7.5 * 3600,
-      targetSeconds: 7 * 3600,
+      targetSeconds: 42 * 3600,
       openingBalanceSeconds: 0,
     });
     expect(
@@ -295,7 +299,7 @@ describe("saved attendance balance and dated weekly targets", () => {
       ],
     });
     expect(result.attendanceSeconds).toBe(4 * 3600);
-    expect(result.targetSeconds).toBe(7 * 3600);
+    expect(result.targetSeconds).toBe(42 * 3600);
   });
   it("counts today's complete overnight allocation without including tomorrow's hours", () => {
     const booking = record("overnight", "attendance", {
@@ -344,5 +348,170 @@ describe("saved attendance balance and dated weekly targets", () => {
     expect(profileUpdateSchema.safeParse({ memberId: "nora", accentPalette: "sky" }).success).toBe(
       false,
     );
+  });
+
+  it("does not apply a retained opening balance while no weekly contract is configured", () => {
+    const result = calculate({ settings: { ...settings, schedules: [] } });
+    expect(result).toMatchObject({
+      openingBalanceSeconds: 0,
+      balanceSeconds: 0,
+      weeks: [],
+      completed: { openingBalanceSeconds: 0, balanceSeconds: 0 },
+    });
+  });
+
+  it.each([15, 20, 39])(
+    "allows freely distributed work and computes overtime against %i hours",
+    (weeklyHours) => {
+      const result = calculate({
+        settings: {
+          ...settings,
+          openingBalanceSeconds: 0,
+          schedules: [{ ...settings.schedules[0], weeklyMinutes: weeklyHours * 60 }],
+        },
+        attendance: [
+          attendance("mon", "2026-10-05", weeklyHours * 0.4),
+          attendance("thu", "2026-10-08", weeklyHours * 0.35),
+          attendance("sun", "2026-10-11", weeklyHours * 0.25 + 7.75),
+        ],
+        now: new Date("2026-10-11T12:00:00+02:00"),
+      });
+      expect(result.targetSeconds).toBe(weeklyHours * 3600);
+      expect(result.balanceSeconds).toBe(7.75 * 3600);
+      expect(result.completed.balanceSeconds).toBe(7.75 * 3600);
+    },
+  );
+
+  it.each([
+    [15, 2.5],
+    [10, -2.5],
+  ])("matches Lena's example: %i worked hours plus one holiday gives %f", (worked, balance) => {
+    const result = calculate({
+      settings: {
+        ...settings,
+        openingBalanceSeconds: 0,
+        schedules: [{ ...settings.schedules[0], weeklyMinutes: 900 }],
+      },
+      attendance: [attendance("worked", "2026-10-05", worked)],
+      events: [absence("holiday", "2026-10-06", "holiday")],
+      now: new Date("2026-10-11T12:00:00+02:00"),
+    });
+    expect(result.creditSeconds).toBe(2.5 * 3600);
+    expect(result.completed.balanceSeconds).toBe(balance * 3600);
+  });
+
+  it.each([15, 20, 39])(
+    "adds exactly a sixth of %i weekly hours for a personally marked holiday",
+    (weeklyHours) => {
+      const result = calculate({
+        settings: {
+          ...settings,
+          openingBalanceSeconds: 0,
+          schedules: [{ ...settings.schedules[0], weeklyMinutes: weeklyHours * 60 }],
+        },
+        attendance: [
+          attendance("worked-mon", "2026-10-05", weeklyHours / 2),
+          attendance("worked-fri", "2026-10-09", weeklyHours / 2),
+        ],
+        events: [absence("holiday", "2026-10-09", "holiday")],
+        now: new Date("2026-10-11T12:00:00+02:00"),
+      });
+      expect(result.completed.balanceSeconds).toBe((weeklyHours * 3600) / 6);
+    },
+  );
+
+  it("keeps the weekly quota constant during the week and separates the unfinished week", () => {
+    const input = {
+      settings: {
+        ...settings,
+        openingBalanceSeconds: 0,
+        schedules: [{ ...settings.schedules[0], weeklyMinutes: 900 }],
+      },
+      attendance: [attendance("done", "2026-10-05", 15)],
+    };
+    for (const day of ["2026-10-05", "2026-10-07", "2026-10-11"]) {
+      const result = calculate({ ...input, now: new Date(`${day}T12:00:00+02:00`) });
+      expect(result.targetSeconds).toBe(15 * 3600);
+      expect(result.balanceSeconds).toBe(0);
+      expect(result.weeks[0].completed).toBe(day === "2026-10-11");
+    }
+  });
+
+  it("sums completed weeks with the start balance and keeps today's full saved hours in the open week", () => {
+    const result = calculate({
+      settings: {
+        ...settings,
+        openingBalanceSeconds: 2 * 3600,
+        schedules: [{ ...settings.schedules[0], weeklyMinutes: 900 }],
+      },
+      attendance: [
+        attendance("last-week", "2026-10-05", 19),
+        attendance("today", "2026-10-12", 6.5),
+      ],
+      now: new Date("2026-10-12T12:00:00+02:00"),
+    });
+    expect(result.completed).toMatchObject({
+      attendanceSeconds: 19 * 3600,
+      targetSeconds: 15 * 3600,
+      balanceSeconds: 6 * 3600,
+    });
+    expect(result.weeks[1]).toMatchObject({
+      completed: false,
+      attendanceSeconds: 6.5 * 3600,
+      targetSeconds: 15 * 3600,
+      balanceSeconds: -8.5 * 3600,
+    });
+    expect(result.balanceSeconds).toBe(-2.5 * 3600);
+    const retroactive = calculate({
+      ...{
+        settings: { ...settings, schedules: [{ ...settings.schedules[0], weeklyMinutes: 900 }] },
+        now: new Date("2026-10-12T12:00:00+02:00"),
+      },
+      attendance: [
+        attendance("last-week", "2026-10-05", 20),
+        attendance("today", "2026-10-12", 6.5),
+      ],
+    });
+    expect(retroactive.completed.balanceSeconds).toBe(7 * 3600);
+  });
+
+  it("assigns whole weeks to their Monday's month without overlapping neighboring months", () => {
+    expect(attendanceMonthRange("2026-10")).toEqual({ from: "2026-10-05", to: "2026-11-01" });
+    const november = attendanceMonthRange("2026-11");
+    expect(november).toEqual({ from: "2026-11-02", to: "2026-12-06" });
+    expect(attendanceMonthRange("2026-12").from).toBe(shiftDate(november.to, 1));
+    expect(attendanceMonthRange("2026-12").to).toBe("2027-01-03");
+  });
+
+  it("expands custom dates to whole weeks instead of assigning a daily quota", () => {
+    const result = calculate({
+      from: "2026-10-07",
+      to: "2026-10-07",
+      attendance: [attendance("monday", "2026-10-05", 8)],
+      now: new Date("2026-10-12T12:00:00+02:00"),
+    });
+    expect(result).toMatchObject({
+      from: "2026-10-05",
+      to: "2026-10-11",
+      attendanceSeconds: 8 * 3600,
+      targetSeconds: 42 * 3600,
+      openingBalanceSeconds: 0,
+    });
+    expect(result.weeks[0].completed).toBe(true);
+  });
+
+  it("only prorates an account start or dated contract change inside a week, never elapsed time", () => {
+    const result = calculate({
+      settings: {
+        ...settings,
+        schedules: [
+          { ...settings.schedules[0], effectiveFrom: "2026-10-07" },
+          { ...settings.schedules[0], effectiveFrom: "2026-10-15", weeklyMinutes: 35 * 60 },
+        ],
+      },
+      now: new Date("2026-10-12T12:00:00+02:00"),
+    });
+    expect(result.weeks.map((row) => row.targetSeconds)).toEqual([30 * 3600, 38 * 3600]);
+    expect(result.targetSeconds).toBe(68 * 3600);
   });
 });

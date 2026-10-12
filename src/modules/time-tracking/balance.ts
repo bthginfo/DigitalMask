@@ -1,13 +1,12 @@
 import type { DomainRecord } from "@/shared/contracts";
 import { shiftDate, timeAllocations } from "@/shared/client-api";
-import { currentWorkingSchedule, type WorkingTimeSettings } from "@/shared/working-time";
+import type { WorkingTimeSettings } from "@/shared/working-time";
 import { calendarCategoryCreditsTime } from "@/shared/calendar-categories";
 import { localDay } from "./rules";
 import { timeDayMarkers } from "./day-markers";
+import { isoWeek } from "./history";
 
-export interface AttendanceBalance {
-  from: string;
-  to: string;
+export interface AttendanceBalanceAmounts {
   attendanceSeconds: number;
   creditSeconds: number;
   targetSeconds: number;
@@ -15,7 +14,41 @@ export interface AttendanceBalance {
   balanceSeconds: number;
 }
 
-/** A dated target and saved attendance are enough; no timer, polling or project hours needed. */
+export interface AttendanceBalanceWeek extends AttendanceBalanceAmounts {
+  start: string;
+  end: string;
+  number: number;
+  year: number;
+  completed: boolean;
+}
+
+export interface AttendanceBalance extends AttendanceBalanceAmounts {
+  from: string;
+  to: string;
+  weeks: AttendanceBalanceWeek[];
+  completed: AttendanceBalanceAmounts;
+}
+
+const emptyAmounts = (): AttendanceBalanceAmounts => ({
+  attendanceSeconds: 0,
+  creditSeconds: 0,
+  targetSeconds: 0,
+  openingBalanceSeconds: 0,
+  balanceSeconds: 0,
+});
+
+/** Assign each whole week to its Monday's month, without overlapping adjacent months. */
+export function attendanceMonthRange(month: string) {
+  const firstDay = `${month}-01`;
+  let first = isoWeek(firstDay).start;
+  if (first < firstDay) first = shiftDate(first, 7);
+  const lastDay = new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5)), 0))
+    .toISOString()
+    .slice(0, 10);
+  return { from: first, to: isoWeek(lastDay).end };
+}
+
+/** Compare complete weekly quotas with saved attendance; never prorate for elapsed days. */
 export function calculateAttendanceBalance({
   userId,
   settings,
@@ -44,17 +77,21 @@ export function calculateAttendanceBalance({
   );
   const start = schedules[0]?.effectiveFrom || localDay(now);
   const today = localDay(now);
-  const first = from && from > start ? from : start;
-  const last = to && to < today ? to : today;
+  const requestedFirst = from ? isoWeek(from).start : start;
+  const first = requestedFirst > start ? requestedFirst : start;
+  const requestedLast = isoWeek(to || today).end;
+  const last = requestedLast < today ? requestedLast : today;
+  const openingBalanceSeconds =
+    schedules.length && includeOpeningBalance && first <= start && last >= start
+      ? settings.openingBalanceSeconds
+      : 0;
   const result: AttendanceBalance = {
+    ...emptyAmounts(),
     from: first,
     to: last,
-    attendanceSeconds: 0,
-    creditSeconds: 0,
-    targetSeconds: 0,
-    openingBalanceSeconds:
-      includeOpeningBalance && first <= start && last >= start ? settings.openingBalanceSeconds : 0,
-    balanceSeconds: 0,
+    openingBalanceSeconds,
+    weeks: [],
+    completed: { ...emptyAmounts(), openingBalanceSeconds, balanceSeconds: openingBalanceSeconds },
   };
   if (!schedules.length || first > last) return result;
   const actual = new Map<string, number>();
@@ -93,28 +130,49 @@ export function calculateAttendanceBalance({
       to: last,
     }).map((marker) => marker.date),
   );
-  for (let date = first; date <= last; date = shiftDate(date, 1)) {
-    const schedule = currentWorkingSchedule({ ...settings, schedules }, date);
-    const weekday = new Date(`${date}T12:00:00Z`).getUTCDay();
-    const target = schedule?.workingDays.includes(weekday)
-      ? (schedule.weeklyMinutes * 60) / schedule.workingDays.length
-      : 0;
-    const attended = actual.get(date) || 0;
-    result.attendanceSeconds += attended;
-    result.targetSeconds += target;
-    // A marked paid day contributes a sixth of that date's contractual weekly hours.
-    // It is independent of attendance; overlapping markers credit the date only once.
-    if (paidDays.has(date) && schedule?.workingDays.includes(weekday))
-      result.creditSeconds += (schedule.weeklyMinutes * 60) / 6;
+  let scheduleIndex = -1;
+  for (
+    let weekStart = isoWeek(first).start;
+    weekStart <= last;
+    weekStart = shiftDate(weekStart, 7)
+  ) {
+    const identity = isoWeek(weekStart);
+    const week: AttendanceBalanceWeek = {
+      ...identity,
+      ...emptyAmounts(),
+      completed: identity.end <= today,
+    };
+    // Seven calendar-day shares only handle an account start or contract change
+    // within a week. A regular week always gets its full quota, even on Monday.
+    for (let date = identity.start; date <= identity.end; date = shiftDate(date, 1)) {
+      while (schedules[scheduleIndex + 1] && schedules[scheduleIndex + 1].effectiveFrom <= date)
+        scheduleIndex++;
+      const schedule = schedules[scheduleIndex];
+      if (!schedule || date < first) continue;
+      week.targetSeconds += (schedule.weeklyMinutes * 60) / 7;
+      if (date > last) continue;
+      week.attendanceSeconds += actual.get(date) || 0;
+      // Flexible workdays: a personal paid date counts once, including Sundays.
+      // The six-day divisor is independent of weekday choices and actual work.
+      if (paidDays.has(date)) week.creditSeconds += (schedule.weeklyMinutes * 60) / 6;
+    }
+    week.attendanceSeconds = Math.round(week.attendanceSeconds);
+    week.creditSeconds = Math.round(week.creditSeconds);
+    week.targetSeconds = Math.round(week.targetSeconds);
+    week.balanceSeconds = week.attendanceSeconds + week.creditSeconds - week.targetSeconds;
+    result.weeks.push(week);
+    for (const summary of week.completed ? [result, result.completed] : [result]) {
+      summary.attendanceSeconds += week.attendanceSeconds;
+      summary.creditSeconds += week.creditSeconds;
+      summary.targetSeconds += week.targetSeconds;
+    }
   }
-  result.attendanceSeconds = Math.round(result.attendanceSeconds);
-  result.targetSeconds = Math.round(result.targetSeconds);
-  result.creditSeconds = Math.round(result.creditSeconds);
-  result.balanceSeconds =
-    result.openingBalanceSeconds +
-    result.attendanceSeconds +
-    result.creditSeconds -
-    result.targetSeconds;
+  for (const summary of [result, result.completed])
+    summary.balanceSeconds =
+      summary.openingBalanceSeconds +
+      summary.attendanceSeconds +
+      summary.creditSeconds -
+      summary.targetSeconds;
   return result;
 }
 

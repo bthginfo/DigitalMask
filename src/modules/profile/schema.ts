@@ -20,7 +20,7 @@ export const workingTimeUpdateSchema = z
       .array(z.number().int().min(0).max(6))
       .min(1)
       .max(7)
-      .refine((days) => new Set(days).size === days.length, "Wähle jeden Soll-Tag nur einmal."),
+      .refine((days) => new Set(days).size === days.length, "Wähle jeden Wochentag nur einmal."),
     openingBalanceSeconds: z.number().int().min(-360000000).max(360000000),
     expectedVersion: z.number().int().min(0),
   })

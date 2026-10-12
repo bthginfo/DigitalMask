@@ -91,23 +91,28 @@ test("personal calendar credits appear separately in the mobile time account and
   });
   await page.goto("/?module=time");
   const account = page.getByRole("region", { name: `Zeitkonto von ${workspace.user.name}` });
-  await expect(account.locator("dl > div").filter({ hasText: "Anwesenheit" })).toContainText(
+  const current = account.getByRole("region", { name: "Laufende Woche", exact: true });
+  await expect(current.locator("dl > div").filter({ hasText: "Anwesenheit" })).toContainText(
     "15 h",
   );
-  await expect(account.locator("dl > div").filter({ hasText: "Tagesgutschriften" })).toContainText(
+  await expect(current.locator("dl > div").filter({ hasText: "Tagesgutschriften" })).toContainText(
     "6,67 h",
   );
-  await expect(account.locator("dl > div").filter({ hasText: "Sollzeit" })).toContainText("20 h");
-  await expect(account).toContainText("+1,67 h");
-  await expect(account).toContainText("Saldo bis heute");
+  await expect(current.locator("dl > div").filter({ hasText: "Wochensoll" })).toContainText("40 h");
+  await expect(current).toContainText("21,67 / 40 h");
+  await expect(current).toContainText("Noch 18,33 h bis zum Wochensoll");
+  await expect(account).not.toContainText("Minusstunden");
   await account.getByLabel("Zeitraum des Zeitkontos").selectOption("custom");
   await account.getByLabel("Zeitkonto von", { exact: true }).fill("2026-10-06");
   await account.getByLabel("Zeitkonto bis", { exact: true }).fill("2026-10-06");
-  await expect(account.locator("dl > div").filter({ hasText: "Anwesenheit" })).toContainText("0 h");
-  await expect(account.locator("dl > div").filter({ hasText: "Tagesgutschriften" })).toContainText(
+  await expect(current.locator("dl > div").filter({ hasText: "Anwesenheit" })).toContainText(
+    "15 h",
+  );
+  await expect(current.locator("dl > div").filter({ hasText: "Tagesgutschriften" })).toContainText(
     "6,67 h",
   );
-  await expect(account).toContainText("Ausgeglichen im Zeitraum");
+  await expect(account).toContainText("Der Zeitraum umfasst ganze Kalenderwochen");
+  await expect(current).toContainText("Noch 18,33 h bis zum Wochensoll");
   // Today's saved booking counts in full, separately from four completed 15-hour weeks.
   workspace.user.preferences!.workingTime = {
     version: 1,
@@ -143,16 +148,31 @@ test("personal calendar credits appear separately in the mobile time account and
   ];
   await page.clock.setFixedTime(new Date("2026-10-12T18:00:00+02:00"));
   await page.reload();
-  await expect(account).toContainText("Saldo bis heute");
-  await expect(account).toContainText("Wochen-Sollzeit: 15 h");
-  await expect(account.locator("p").filter({ hasText: "Abgeschlossene Wochen" })).toContainText(
-    "+6,75 h",
+  await expect(account).toContainText("Plusstunden gesamt");
+  await expect(account).toContainText("+6,75 h");
+  await expect(account.locator('dl[aria-label="Berechnung abgeschlossener Wochen"]')).toContainText(
+    "66,75 h",
   );
-  await expect(account.locator("dl > div").filter({ hasText: "Anwesenheit" })).toContainText(
-    "73,25 h",
+  await expect(account.locator('dl[aria-label="Berechnung abgeschlossener Wochen"]')).toContainText(
+    "60 h",
   );
-  await expect(account).toContainText("+10,75 h");
-  await expect(account).not.toContainText("Plusstunden");
+  await expect(current).toContainText("6,5 / 15 h");
+  await expect(current).toContainText("Noch 8,5 h bis zum Wochensoll");
+  await expect(current.locator("dl > div").filter({ hasText: "Anwesenheit" })).toContainText(
+    "6,5 h",
+  );
+  await account.getByLabel("Zeitraum des Zeitkontos").selectOption("week");
+  await account.getByLabel("Woche für Zeitkonto").fill("2026-10-05");
+  await expect(account).toContainText("+4 h");
+  await expect(account).toContainText("Plusstunden im Zeitraum");
+  await expect(current).toHaveCount(0);
+  await account.getByLabel("Zeitraum des Zeitkontos").selectOption("month");
+  await expect(account).toContainText("+4 h");
+  await expect(current).toContainText("6,5 / 15 h");
+  await expect(account).toContainText("Ganze Kalenderwochen mit Wochenbeginn in diesem Monat");
+  await account.getByText("Wochenübersicht anzeigen", { exact: true }).click();
+  await expect(account).toContainText("KW 41 / 2026");
+  await expect(account).toContainText("19 h von 15 h");
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );

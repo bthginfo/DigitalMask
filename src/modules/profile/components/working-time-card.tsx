@@ -8,7 +8,6 @@ import { numberDraft, parseNumberDraft } from "@/shared/number-draft";
 import {
   currentWorkingSchedule,
   defaultWorkingDays,
-  workingDayLabels,
   type WorkingTimeSchedule,
 } from "@/shared/working-time";
 import { useWorkspace } from "@/components/workspace-context";
@@ -89,7 +88,7 @@ function WorkingTimeForm({
   const [weeklyHours, setWeeklyHours] = useState(
     schedule ? numberDraft(schedule.weeklyMinutes / 60) : "",
   );
-  const [days, setDays] = useState(schedule?.workingDays || [...defaultWorkingDays]);
+  const days = schedule?.workingDays || [...defaultWorkingDays];
   const [effectiveFrom, setEffectiveFrom] = useState(configured ? localDate() : weekStart());
   const [openingHours, setOpeningHours] = useState(
     numberDraft((saved?.openingBalanceSeconds || 0) / 3600),
@@ -127,7 +126,6 @@ function WorkingTimeForm({
               min: -100000,
               max: 100000,
             })!;
-            if (!days.length) throw new Error("Wähle mindestens einen Soll-Tag pro Woche.");
             await action("profile-update", undefined, {
               ...(member.id !== workspace.user.id ? { memberId: member.id } : {}),
               workingTime: {
@@ -145,8 +143,9 @@ function WorkingTimeForm({
         }}
       >
         <p className="small muted">
-          Die Anwesenheit wird mit deinen Sollstunden verglichen. Produktionsbuchungen werden dafür
-          nicht zusätzlich gezählt.
+          Deine Anwesenheit und Tagesgutschriften werden je Kalenderwoche mit deinen Wochenstunden
+          verglichen. Du kannst die Arbeitsstunden frei auf die Tage verteilen. Produktionsbuchungen
+          zählen nicht zusätzlich.
         </p>
         <div className="form-grid">
           <label>
@@ -157,7 +156,7 @@ function WorkingTimeForm({
               max={168}
               step="any"
               required
-              placeholder="z. B. 40"
+              placeholder="z. B. 15, 20 oder 39"
               value={weeklyHours}
               onChange={(event) => setWeeklyHours(event.target.value)}
             />
@@ -174,32 +173,11 @@ function WorkingTimeForm({
             />
           </label>
         </div>
-        <fieldset className={styles.days}>
-          <legend>
-            Soll-Tage pro Woche · {days.length} {days.length === 1 ? "Tag" : "Tage"}
-          </legend>
-          <div>
-            {[1, 2, 3, 4, 5, 6, 0].map((day) => (
-              <label key={day}>
-                <input
-                  type="checkbox"
-                  checked={days.includes(day)}
-                  onChange={(event) =>
-                    setDays((previous) =>
-                      event.target.checked
-                        ? [...previous, day]
-                        : previous.filter((value) => value !== day),
-                    )
-                  }
-                />
-                {workingDayLabels[day]}
-              </label>
-            ))}
-          </div>
-        </fieldset>
         <p className="small muted">
-          Standard: 6 Tage, Montag bis Samstag. Deine Wochenstunden verteilen sich gleichmäßig auf
-          die ausgewählten Tage. Soll zählt nur bis einschließlich heute.
+          Es gibt kein tägliches Stundensoll. Das Plus-/Minuskonto enthält abgeschlossene Wochen;
+          die laufende Woche zeigt separat, wie viel vom gesamten Wochensoll schon erfüllt ist.
+          Beginnt das Konto oder ändert sich die Wochenstundenzahl mitten in einer Woche, wird nur
+          diese Übergangswoche anteilig berechnet.
         </p>
         <label>
           Startsaldo in Stunden
@@ -219,9 +197,10 @@ function WorkingTimeForm({
         </p>
         <p className={styles.creditNote}>
           Urlaub, Feiertag, Feiertagsausgleich und Krank mit oder ohne Attest geben je eingetragenem
-          Solltag Wochenstunden ÷ 6 zusätzlich zur Anwesenheit. Es zählen persönliche
-          Kalendereinträge, höchstens eine Gutschrift pro Tag. ABF, Ruhetag und halber freier Tag
-          geben keine Gutschrift.
+          Kalendertag Wochenstunden ÷ 6 zusätzlich zur Anwesenheit. Bei 15 Wochenstunden sind das
+          2,5 Stunden, bei 20 Stunden 3 Stunden 20 Minuten, bei 39 Stunden 6,5 Stunden. Es zählen
+          persönliche Kalendereinträge, höchstens eine Gutschrift pro Tag. ABF, Ruhetag und halber
+          freier Tag geben keine Gutschrift.
         </p>
         {saved && configured && (
           <details className={styles.history}>
@@ -233,10 +212,7 @@ function WorkingTimeForm({
                 <li key={row.effectiveFrom}>
                   <div className={styles.historyInfo}>
                     <strong>Ab {dateLabel(row.effectiveFrom)}</strong>
-                    <span>
-                      {hours(row.weeklyMinutes * 60)} h / Woche ·{" "}
-                      {row.workingDays.map((day) => workingDayLabels[day]).join(", ")}
-                    </span>
+                    <span>{hours(row.weeklyMinutes * 60)} h / Woche · frei einteilbar</span>
                   </div>
                   {admin && (
                     <Button

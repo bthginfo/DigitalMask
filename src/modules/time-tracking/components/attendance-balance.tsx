@@ -1,12 +1,23 @@
 "use client";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Scale } from "lucide-react";
 import { useWorkspace } from "@/components/workspace-context";
 import { Button } from "@/components/ui";
-import { dateLabel, hours, localDate, shiftDate, weekStart } from "@/shared/client-api";
-import { currentWorkingSchedule } from "@/shared/working-time";
-import { calculateAttendanceBalance, signedHours } from "../balance";
+import {
+  dateLabel,
+  hours,
+  instantDate,
+  localDate,
+  shiftDate,
+  weekStart,
+} from "@/shared/client-api";
+import {
+  attendanceMonthRange,
+  calculateAttendanceBalance,
+  signedHours,
+  type AttendanceBalanceAmounts,
+} from "../balance";
 import { isoWeek } from "../history";
 import styles from "./attendance-balance.module.css";
 
@@ -40,77 +51,61 @@ export function AttendanceBalanceCard({
   const [to, setTo] = useState(localDate());
   const today = localDate();
   const validMonth = /^\d{4}-(0[1-9]|1[0-2])$/.test(month);
-  const monthEnd = validMonth
-    ? new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5)), 0))
-        .toISOString()
-        .slice(0, 10)
-    : today;
-  const range =
+  const range: { from?: string; to?: string } =
     period === "week"
       ? { from: week, to: shiftDate(week, 6) }
       : period === "month"
-        ? { from: `${validMonth ? month : today.slice(0, 7)}-01`, to: monthEnd }
+        ? attendanceMonthRange(validMonth ? month : today.slice(0, 7))
         : period === "custom"
           ? { from, to }
           : {};
+  const { from: rangeFrom, to: rangeTo } = range;
   const invalidRange =
     period === "custom" &&
     (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to) || from > to);
-  const balance =
-    settings && configured && !invalidRange
-      ? calculateAttendanceBalance({
-          userId: selected,
-          settings,
-          attendance: workspace.records.attendance,
-          events: workspace.records.events,
-          calendarCategories: workspace.records.calendarCategories,
-          leave: workspace.records.leave,
-          ...range,
-          includeOpeningBalance: period === "total",
-        })
-      : undefined;
-  const seconds = balance?.balanceSeconds || 0;
-  const includesToday = Boolean(balance && balance.from <= balance.to && balance.to === today);
-  const closedThrough = shiftDate(weekStart(), -1);
-  const completed =
-    settings && configured && period === "total" && includesToday
-      ? calculateAttendanceBalance({
-          userId: selected,
-          settings,
-          attendance: workspace.records.attendance,
-          events: workspace.records.events,
-          calendarCategories: workspace.records.calendarCategories,
-          leave: workspace.records.leave,
-          to: closedThrough,
-          includeOpeningBalance: true,
-        })
-      : undefined;
-  const weeklyTarget = settings
-    ? currentWorkingSchedule(settings, today)?.weeklyMinutes
-    : undefined;
+  const balance = useMemo(
+    () =>
+      settings && configured && !invalidRange
+        ? calculateAttendanceBalance({
+            userId: selected,
+            settings,
+            attendance: workspace.records.attendance,
+            events: workspace.records.events,
+            calendarCategories: workspace.records.calendarCategories,
+            leave: workspace.records.leave,
+            from: rangeFrom,
+            to: rangeTo,
+            now: instantDate(today),
+            includeOpeningBalance: period === "total",
+          })
+        : undefined,
+    [
+      settings,
+      configured,
+      invalidRange,
+      selected,
+      workspace.records.attendance,
+      workspace.records.events,
+      workspace.records.calendarCategories,
+      workspace.records.leave,
+      rangeFrom,
+      rangeTo,
+      period,
+      today,
+    ],
+  );
+  const openWeek = balance?.weeks.find((row) => !row.completed);
+  const completedWeeks = balance?.weeks.filter((row) => row.completed) || [];
+  const seconds = balance?.completed.balanceSeconds || 0;
+  const showCompleted = completedWeeks.length > 0 || seconds !== 0 || !openWeek;
   const status = seconds > 0 ? "Plusstunden" : seconds < 0 ? "Minusstunden" : "Ausgeglichen";
   const tone = seconds > 0 ? styles.positive : seconds < 0 ? styles.negative : "";
-  const breakdown = balance && (
-    <dl className={styles.breakdown}>
-      <div>
-        <dt>Anwesenheit</dt>
-        <dd>{hours(balance.attendanceSeconds)} h</dd>
-      </div>
-      <div>
-        <dt>Tagesgutschriften</dt>
-        <dd>{hours(balance.creditSeconds)} h</dd>
-      </div>
-      <div>
-        <dt>{includesToday ? "Sollzeit bis heute" : "Sollzeit"}</dt>
-        <dd>{hours(balance.targetSeconds)} h</dd>
-      </div>
-      {period === "total" && (
-        <div>
-          <dt>Startsaldo</dt>
-          <dd>{signedHours(balance.openingBalanceSeconds)} h</dd>
-        </div>
-      )}
-    </dl>
+  const breakdown = balance && showCompleted && (
+    <BalanceBreakdown
+      amounts={balance.completed}
+      opening={period === "total"}
+      label="Berechnung abgeschlossener Wochen"
+    />
   );
   return (
     <section
@@ -206,32 +201,76 @@ export function AttendanceBalanceCard({
           ) : (
             balance && (
               <>
-                <div className={`${styles.total} ${tone}`} aria-live="polite">
-                  <strong className={styles.value}>
-                    {signedHours(seconds)} <small>h</small>
-                  </strong>
-                  <span>
-                    {includesToday
-                      ? "Saldo bis heute"
-                      : `${status}${period === "total" ? " gesamt" : " im Zeitraum"}`}
-                  </span>
-                </div>
+                {showCompleted && (
+                  <div className={`${styles.total} ${tone}`} aria-live="polite">
+                    <strong className={styles.value}>
+                      {signedHours(seconds)} <small>h</small>
+                    </strong>
+                    <span>
+                      {status}
+                      {period === "total" ? " gesamt" : " im Zeitraum"}
+                    </span>
+                    <span>
+                      {completedWeeks.length
+                        ? `Abgeschlossene Wochen bis ${dateLabel(completedWeeks.at(-1)!.end)}`
+                        : "Startsaldo · noch keine abgeschlossene Woche"}
+                    </span>
+                  </div>
+                )}
                 <p className={styles.range}>
                   {balance.from > balance.to
                     ? `Beginnt am ${dateLabel(balance.from)}`
                     : `${dateLabel(balance.from)} – ${dateLabel(balance.to)}`}
                 </p>
-                {completed && completed.from <= completed.to && (
+                {period === "month" && (
                   <p className="small muted">
-                    Abgeschlossene Wochen bis {dateLabel(completed.to)}:{" "}
-                    <strong>{signedHours(completed.balanceSeconds)} h</strong>
+                    Ganze Kalenderwochen mit Wochenbeginn in diesem Monat.
                   </p>
                 )}
-                {includesToday && weeklyTarget !== undefined && (
-                  <p className="small muted">
-                    Wochen-Sollzeit: {hours(weeklyTarget * 60)} h. Die aktuelle Woche läuft noch;
-                    die Sollzeit zählt bis einschließlich heute.
-                  </p>
+                {period === "custom" && (
+                  <p className="small muted">Der Zeitraum umfasst ganze Kalenderwochen.</p>
+                )}
+                {openWeek && (
+                  <section
+                    className={styles.openWeek}
+                    aria-label="Laufende Woche"
+                    aria-live="polite"
+                  >
+                    <span>KW {openWeek.number} · laufende Woche</span>
+                    <strong>
+                      {hours(openWeek.attendanceSeconds + openWeek.creditSeconds)} /{" "}
+                      {hours(openWeek.targetSeconds)} h
+                    </strong>
+                    <progress
+                      aria-label="Erfülltes Wochensoll"
+                      max={openWeek.targetSeconds || 1}
+                      value={Math.min(
+                        openWeek.attendanceSeconds + openWeek.creditSeconds,
+                        openWeek.targetSeconds,
+                      )}
+                    />
+                    <p>
+                      {openWeek.balanceSeconds < 0
+                        ? `Noch ${hours(-openWeek.balanceSeconds)} h bis zum Wochensoll.`
+                        : openWeek.balanceSeconds > 0
+                          ? `${signedHours(openWeek.balanceSeconds)} h über dem Wochensoll.`
+                          : "Wochensoll erfüllt."}
+                    </p>
+                    {compact ? (
+                      <details className={styles.details}>
+                        <summary>Wochenberechnung anzeigen</summary>
+                        <BalanceBreakdown
+                          amounts={openWeek}
+                          label="Berechnung der laufenden Woche"
+                        />
+                      </details>
+                    ) : (
+                      <BalanceBreakdown amounts={openWeek} label="Berechnung der laufenden Woche" />
+                    )}
+                    <p className="small muted">
+                      Der Wochenstand geht am Sonntag ins Plus-/Minuskonto ein.
+                    </p>
+                  </section>
                 )}
                 {compact ? (
                   <details className={styles.details}>
@@ -246,15 +285,43 @@ export function AttendanceBalanceCard({
                   <>
                     {breakdown}
                     <p className="small muted">
-                      Sollzeiten zählen bis einschließlich heute. Urlaub, Feiertag,
-                      Feiertagsausgleich und Krank mit oder ohne Attest geben je eingetragenem
-                      Solltag Wochenstunden ÷ 6 zusätzlich zur Anwesenheit. Mehrere Kennzeichen am
-                      selben Tag zählen nur einmal. ABF, Ruhetag und halber freier Tag geben keine
-                      Gutschrift. Gespeicherte Anwesenheiten bis einschließlich heute zählen
-                      vollständig, auch vor ihrer Endzeit. Laufende Timer zählen erst nach dem
-                      Buchen.
+                      Jede Kalenderwoche zählt mit ihrem gesamten Wochensoll. Du kannst deine
+                      Stunden frei auf die Tage verteilen. Urlaub, Feiertag, Feiertagsausgleich und
+                      Krank mit oder ohne Attest geben je eingetragenem Kalendertag Wochenstunden ÷
+                      6 zusätzlich zur Anwesenheit. Mehrere Kennzeichen am selben Tag zählen nur
+                      einmal. ABF, Ruhetag und halber freier Tag geben keine Gutschrift.
+                      Gespeicherte Anwesenheiten bis einschließlich heute zählen vollständig, auch
+                      vor ihrer Endzeit. Laufende Timer zählen erst nach dem Buchen.
                     </p>
                   </>
+                )}
+                {!compact && balance.weeks.length > 1 && (
+                  <details className={styles.details}>
+                    <summary>Wochenübersicht anzeigen</summary>
+                    <ul className={styles.weekList}>
+                      {[...balance.weeks].reverse().map((row) => (
+                        <li key={row.start}>
+                          <div>
+                            <strong>
+                              KW {row.number} / {row.year}
+                            </strong>
+                            <span>
+                              {dateLabel(row.start)} – {dateLabel(row.end)}
+                            </span>
+                          </div>
+                          <div>
+                            <span>
+                              {hours(row.attendanceSeconds + row.creditSeconds)} h von{" "}
+                              {hours(row.targetSeconds)} h
+                            </span>
+                            <strong>
+                              {signedHours(row.balanceSeconds)} h{row.completed ? "" : " · offen"}
+                            </strong>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
                 )}
               </>
             )
@@ -262,6 +329,39 @@ export function AttendanceBalanceCard({
         </>
       )}
     </section>
+  );
+}
+
+function BalanceBreakdown({
+  amounts,
+  opening = false,
+  label,
+}: {
+  amounts: AttendanceBalanceAmounts;
+  opening?: boolean;
+  label: string;
+}) {
+  return (
+    <dl className={styles.breakdown} aria-label={label}>
+      <div>
+        <dt>Anwesenheit</dt>
+        <dd>{hours(amounts.attendanceSeconds)} h</dd>
+      </div>
+      <div>
+        <dt>Tagesgutschriften</dt>
+        <dd>{hours(amounts.creditSeconds)} h</dd>
+      </div>
+      <div>
+        <dt>Wochensoll</dt>
+        <dd>{hours(amounts.targetSeconds)} h</dd>
+      </div>
+      {opening && (
+        <div>
+          <dt>Startsaldo</dt>
+          <dd>{signedHours(amounts.openingBalanceSeconds)} h</dd>
+        </div>
+      )}
+    </dl>
   );
 }
 

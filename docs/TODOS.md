@@ -1,5 +1,14 @@
 # Umsetzungsstand
 
+## Zeitkonto nach frei einteilbarem Wochensoll
+
+- [x] Je Kalenderwoche Anwesenheit plus persönliche Tagesgutschriften minus volles Wochensoll rechnen, ohne tägliche Sollzeiten oder Kürzung während der laufenden Woche.
+- [x] Abgeschlossene Wochen für das Plus-/Minuskonto summieren; laufende Woche mit erfüllten Stunden und offenem Wochensoll separat anzeigen.
+- [x] Tagesgutschriften mit Wochenstunden ÷ 6 zusätzlich zur Arbeit zählen; Datum deduplizieren, ABF/Ruhetag/HFT ausschließen. Gespeicherte Anwesenheit heute vollständig berücksichtigen.
+- [x] Wochenübersicht, Monatszuordnung ohne doppelte Wochen sowie Profil- und Hilfetexte anpassen. Vorhandene Wochenstunden und Buchungen erhalten.
+
+49 Fachtests, Typprüfung, bereichsbezogenes Lint und eine Mobilprüfung mit simulierten API-Daten sind bestanden. Die Wochenstunden der aktiven Teammitglieder wurden lesend kontrolliert. Die Berechnung verwendet ausschließlich den vorhandenen Workspace; neue Datenbankabfragen, Migrationen oder Änderungen an Buchungen sind nicht erforderlich.
+
 ## Drucknachbesserung: Maskenplan und Monatskalender
 
 - [x] Konkrete Uhrzeiten im Maskenplan-PDF und -Excel fett darstellen; relative Minuten behalten die normale Schriftstärke.
@@ -28,7 +37,7 @@ Fachprüfungen, Typprüfung und bereichsbezogenes Lint sind bestanden. Die erzeu
 - [x] Eingegebene Weblinks in Chats, Detailfeldern, Aufschrieben, Notizen und weiteren Lesebereichen sicher anklickbar machen.
 - [x] Excel-Formeln bei gemeinsamem Bearbeiten und Herunterladen erhalten; geteilte Formeln und besondere Array-/Spill-Funktionen berücksichtigen, statt alte Ergebnisse als neue Berechnung auszugeben.
 - [x] Bayerische Feiertage für Ingolstadt dezent in allen Kalenderansichten anzeigen; kein Blockieren, kein zusätzlicher Termineintrag und keine automatische Zeitgutschrift.
-- [x] Wochenstunden und sechs Solltage im Profil hinterlegen, für Admins auch bei Kolleginnen. Startsaldo und datierte Solländerungen berücksichtigen.
+- [x] Wochenstunden im Profil hinterlegen, für Admins auch bei Kolleginnen. Frei verteilbare Wochenstunden, Startsaldo und datierte Solländerungen berücksichtigen; Tagesgutschriften verwenden die Sechstagewoche.
 - [x] Stundenkonto aus Anwesenheit separat von Produktionszeiten berechnen; Urlaub/Krank anteilig anrechnen, ABF/Ruhetag/halben freien Tag nicht. Gesamt, Woche, Monat und Zeitraum anzeigen.
 - [x] Fokussierte Druck-/Mobilprüfung, Typprüfung, Lint und 64 Fachtests bestehen; additive Migration 0013 einspielen und das Release für GitHub/Vercel vorbereiten.
 

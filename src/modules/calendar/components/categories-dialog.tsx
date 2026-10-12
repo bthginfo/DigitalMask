@@ -66,8 +66,8 @@ function CategoryEditor({ record, onClose }: { record?: DomainRecord; onClose: (
         </p>
         {allDay && calendarCategoryCreditsTime(value(record?.data || {}, "key"), { name }) && (
           <p className="small muted">
-            Zeitkonto: Diese Art gibt an einem Solltag Wochenstunden ÷ 6 zusätzlich zur Anwesenheit,
-            wenn sie im persönlichen Kalender eingetragen ist.
+            Zeitkonto: Diese Art gibt je eingetragenem Kalendertag Wochenstunden ÷ 6 zusätzlich zur
+            Anwesenheit, wenn sie im persönlichen Kalender eingetragen ist.
           </p>
         )}
         <ErrorMessage message={error} />
@@ -123,7 +123,7 @@ export function CalendarCategoriesDialog({ onClose }: { onClose: () => void }) {
                     </Badge>
                     {record.data.allDay === true &&
                       calendarCategoryCreditsTime(value(record.data, "key"), record.data) && (
-                        <p className="small muted">Zeitkonto: Wochenstunden ÷ 6 pro Solltag</p>
+                        <p className="small muted">Zeitkonto: Wochenstunden ÷ 6 pro Kalendertag</p>
                       )}
                   </div>
                   <button

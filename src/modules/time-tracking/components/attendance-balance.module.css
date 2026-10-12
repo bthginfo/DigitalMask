@@ -127,6 +127,54 @@
   font-variant-numeric: tabular-nums;
   color: var(--text);
 }
+.openWeek {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-soft, var(--surface));
+  font-size: 12px;
+}
+.openWeek > span {
+  color: var(--muted);
+}
+.openWeek > strong {
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+}
+.openWeek progress {
+  width: 100%;
+  height: 7px;
+  accent-color: var(--accent);
+}
+.openWeek p {
+  margin: 0;
+  line-height: 1.5;
+}
+.weekList {
+  list-style: none;
+  padding: 0;
+  margin: 6px 0;
+  max-height: 300px;
+  overflow-y: auto;
+}
+.weekList li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  font-variant-numeric: tabular-nums;
+}
+.weekList li > div {
+  display: grid;
+  gap: 4px;
+}
+.weekList strong {
+  color: var(--text);
+}
 .unconfigured {
   display: grid;
   gap: 8px;

@@ -148,7 +148,7 @@ describe("admin deletion of dated working-time schedules", () => {
       now: new Date("2026-07-02T12:00:00Z"),
     });
     expect(balance.from).toBe("2026-07-01");
-    expect(balance.targetSeconds).toBe(19200);
+    expect(balance.targetSeconds).toBe(Math.round((32 * 3600 * 5) / 7));
   });
 
   it("retains the version and start balance after deleting the last entry, allowing a new first start", async () => {
