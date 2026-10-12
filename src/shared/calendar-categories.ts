@@ -30,6 +30,34 @@ const halfDayNames = new Set(["halfdayoff", "halberfreiertag"]);
 const absenceKeys = new Set(["absence", "sick", "abf", "rest", "vacation"]);
 export type CalendarBackground = "service" | "hint" | undefined;
 
+const paidDayNames = new Set([
+  "vacation",
+  "urlaub",
+  "sick",
+  "krank",
+  "krankmitattest",
+  "krankohneattest",
+  "krankmitohneattest",
+  "krankmitoderohneattest",
+  "sickwithcertificate",
+  "sickwithoutcertificate",
+  "holiday",
+  "publicholiday",
+  "feiertag",
+  "holidaycompensation",
+  "feiertagsausgleich",
+]);
+const unpaidDayNames = new Set(["abf", "rest", "ruhetag", "halfdayoff", "halberfreiertag", "hft"]);
+
+/** Custom category IDs stay unchanged; named paid days use the same six-day credit rule. */
+export function calendarCategoryCreditsTime(key: string, definition: RecordData = {}) {
+  const names = [key, textValue(definition.name)].map((name) =>
+    normalizedCategory(name).replace(/[^a-z0-9]/g, ""),
+  );
+  if (names.some((name) => unpaidDayNames.has(name))) return false;
+  return names.some((name) => paidDayNames.has(name));
+}
+
 /** Recognizes existing named categories without rewriting their records or stored events. */
 export function calendarCategoryBehavior(key: string, definition: RecordData = {}) {
   const names = [normalizedCategory(key), normalizedCategory(textValue(definition.name))];

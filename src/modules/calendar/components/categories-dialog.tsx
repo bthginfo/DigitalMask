@@ -3,7 +3,10 @@ import { useState } from "react";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import type { DomainRecord } from "@/shared/contracts";
 import { value } from "@/shared/client-api";
-import { calendarCategoryBehavior } from "@/shared/calendar-categories";
+import {
+  calendarCategoryBehavior,
+  calendarCategoryCreditsTime,
+} from "@/shared/calendar-categories";
 import { useWorkspace } from "@/components/workspace-context";
 import { Badge, Button, Empty, ErrorMessage, Modal } from "@/components/ui";
 function CategoryEditor({ record, onClose }: { record?: DomainRecord; onClose: () => void }) {
@@ -61,6 +64,12 @@ function CategoryEditor({ record, onClose }: { record?: DomainRecord; onClose: (
           Bei bereits verwendeten Arten bleiben der Zeitmodus und bestehende Termine erhalten. Name
           und Farbe lassen sich ändern, solange die Bedeutung erhalten bleibt.
         </p>
+        {allDay && calendarCategoryCreditsTime(value(record?.data || {}, "key"), { name }) && (
+          <p className="small muted">
+            Zeitkonto: Diese Art gibt an einem Solltag Wochenstunden ÷ 6 zusätzlich zur Anwesenheit,
+            wenn sie im persönlichen Kalender eingetragen ist.
+          </p>
+        )}
         <ErrorMessage message={error} />
         <footer className="dialog-footer">
           <Button onClick={onClose}>Abbrechen</Button>
@@ -112,6 +121,10 @@ export function CalendarCategoriesDialog({ onClose }: { onClose: () => void }) {
                           ? " · Hinweis"
                           : ""}
                     </Badge>
+                    {record.data.allDay === true &&
+                      calendarCategoryCreditsTime(value(record.data, "key"), record.data) && (
+                        <p className="small muted">Zeitkonto: Wochenstunden ÷ 6 pro Solltag</p>
+                      )}
                   </div>
                   <button
                     className="icon-button"

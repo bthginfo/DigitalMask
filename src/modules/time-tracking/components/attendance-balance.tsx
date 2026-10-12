@@ -78,7 +78,7 @@ export function AttendanceBalanceCard({
         <dd>{hours(balance.attendanceSeconds)} h</dd>
       </div>
       <div>
-        <dt>Urlaub / Krank</dt>
+        <dt>Tagesgutschriften</dt>
         <dd>{hours(balance.creditSeconds)} h</dd>
       </div>
       <div>
@@ -205,15 +205,19 @@ export function AttendanceBalanceCard({
                   <details className={styles.details}>
                     <summary>Berechnung anzeigen</summary>
                     {breakdown}
-                    <p>Nur gespeicherte Anwesenheit; Sollzeit zählt bis heute.</p>
+                    <p>
+                      Gespeicherte Anwesenheit plus Tagesgutschriften; Sollzeit zählt bis heute.
+                    </p>
                   </details>
                 ) : (
                   <>
                     {breakdown}
                     <p className="small muted">
-                      Sollzeiten zählen bis einschließlich heute. Urlaub und Krank füllen höchstens
-                      die noch fehlende Tages-Sollzeit auf; Anwesenheit wird dabei nicht doppelt
-                      gezählt.
+                      Sollzeiten zählen bis einschließlich heute. Urlaub, Feiertag,
+                      Feiertagsausgleich und Krank mit oder ohne Attest geben je eingetragenem
+                      Solltag Wochenstunden ÷ 6 zusätzlich zur Anwesenheit. Mehrere Kennzeichen am
+                      selben Tag zählen nur einmal. ABF, Ruhetag und halber freier Tag geben keine
+                      Gutschrift.
                     </p>
                   </>
                 )}

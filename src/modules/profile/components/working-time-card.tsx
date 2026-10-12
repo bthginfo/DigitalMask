@@ -218,8 +218,10 @@ function WorkingTimeForm({
           Gesamtstand.
         </p>
         <p className={styles.creditNote}>
-          Urlaub und Krank füllen die Sollzeit eines Soll-Tages auf. ABF, Ruhetag, halber freier Tag
-          und Feiertage erhalten keine automatische Gutschrift.
+          Urlaub, Feiertag, Feiertagsausgleich und Krank mit oder ohne Attest geben je eingetragenem
+          Solltag Wochenstunden ÷ 6 zusätzlich zur Anwesenheit. Es zählen persönliche
+          Kalendereinträge, höchstens eine Gutschrift pro Tag. ABF, Ruhetag und halber freier Tag
+          geben keine Gutschrift.
         </p>
         {saved && configured && (
           <details className={styles.history}>

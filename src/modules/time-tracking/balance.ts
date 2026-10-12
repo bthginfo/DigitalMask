@@ -1,6 +1,7 @@
 import type { DomainRecord } from "@/shared/contracts";
 import { shiftDate, timeAllocations } from "@/shared/client-api";
 import { currentWorkingSchedule, type WorkingTimeSettings } from "@/shared/working-time";
+import { calendarCategoryCreditsTime } from "@/shared/calendar-categories";
 import { localDay, splitAcrossDays } from "./rules";
 import { timeDayMarkers } from "./day-markers";
 
@@ -87,11 +88,17 @@ export function calculateAttendanceBalance({
       .filter((record) => record.data.userId === userId && record.data.status === "approved")
       .map((record) => record.id),
   );
+  const categoryDefinitions = new Map(
+    calendarCategories.map((category) => [String(category.data.key), category.data]),
+  );
   const paidDays = new Set(
     timeDayMarkers({
       events: events.filter(
         (event) =>
-          ["vacation", "sick"].includes(String(event.data.category)) &&
+          calendarCategoryCreditsTime(
+            String(event.data.category),
+            categoryDefinitions.get(String(event.data.category)),
+          ) &&
           (!event.data.leaveId || approvedLeave.has(String(event.data.leaveId))),
       ),
       calendarCategories,
@@ -109,7 +116,10 @@ export function calculateAttendanceBalance({
     const attended = actual.get(date) || 0;
     result.attendanceSeconds += attended;
     result.targetSeconds += target;
-    if (paidDays.has(date)) result.creditSeconds += Math.max(0, target - attended);
+    // A marked paid day contributes a sixth of that date's contractual weekly hours.
+    // It is independent of attendance; overlapping markers credit the date only once.
+    if (paidDays.has(date) && schedule?.workingDays.includes(weekday))
+      result.creditSeconds += (schedule.weeklyMinutes * 60) / 6;
   }
   result.attendanceSeconds = Math.round(result.attendanceSeconds);
   result.targetSeconds = Math.round(result.targetSeconds);

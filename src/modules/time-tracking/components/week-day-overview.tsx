@@ -45,7 +45,7 @@ export function WeekDayOverview({
             <p className="small muted">
               {onBookDay
                 ? "Wähle einen Tag, um Zeiten nachzutragen. Freie Tage trägst du über „Tag kennzeichnen“ ein."
-                : "ABF, Ruhetag und Abwesenheiten bleiben Kalenderkennzeichen ohne Stunden."}
+                : "Die Stunden zeigen gebuchte Zeiten. Tagesgutschriften aus dem Kalender findest du separat im Zeitkonto."}
             </p>
           </div>
           {canMark && (

@@ -5,6 +5,7 @@ import { calculateAttendanceBalance, signedHours } from "../src/modules/time-tra
 import { startOfLocalDay } from "../src/modules/time-tracking/rules";
 import { shiftDate } from "../src/shared/client-api";
 import { profileUpdateSchema } from "../src/modules/profile/schema";
+import { calendarCategoryCreditsTime } from "../src/shared/calendar-categories";
 
 const settings: WorkingTimeSettings = {
   version: 1,
@@ -71,7 +72,7 @@ describe("saved attendance balance and dated weekly targets", () => {
       to: "2026-10-07",
     });
   });
-  it("caps paid absence to missing daily target and never credits the same day twice", () => {
+  it("adds paid days to saved attendance and never credits the same day twice", () => {
     const result = calculate({
       attendance: [
         attendance("mon", "2026-10-05", 8),
@@ -80,30 +81,138 @@ describe("saved attendance balance and dated weekly targets", () => {
       ],
       events: [
         absence("vacation", "2026-10-06", "vacation"),
-        absence("vacation-duplicate", "2026-10-06", "vacation"),
+        absence("holiday-overlap", "2026-10-06", "holiday"),
         absence("sick", "2026-10-07", "sick"),
       ],
     });
     expect(result).toMatchObject({
       attendanceSeconds: 16 * 3600,
-      creditSeconds: 6 * 3600,
+      creditSeconds: 14 * 3600,
       targetSeconds: 21 * 3600,
-      balanceSeconds: 3 * 3600,
+      balanceSeconds: 11 * 3600,
     });
   });
-  it("does not credit ABF, rest, half-free days, holidays or non-target Sundays", () => {
+  it("does not credit ABF, rest, half-free days or non-target Sundays", () => {
     const result = calculate({
       events: [
         absence("abf", "2026-10-05", "abf"),
         absence("rest", "2026-10-06", "rest"),
         absence("half", "2026-10-07", "half-day-off"),
-        absence("holiday", "2026-10-07", "holiday"),
         absence("sun", "2026-10-11", "vacation"),
       ],
       now: new Date("2026-10-11T23:00:00+02:00"),
     });
     expect(result.creditSeconds).toBe(0);
     expect(result.targetSeconds).toBe(42 * 3600);
+  });
+  it.each([
+    "Urlaub",
+    "Krank",
+    "Krank mit Attest",
+    "Krank ohne Attest",
+    "Krank (mit/ohne Attest)",
+    "Feiertag",
+    "Feiertagsausgleich",
+  ])("credits the existing custom calendar category %s without rewriting its key", (name) => {
+    const category = record("custom-type", "calendarCategories", {
+      key: "category-existing-uuid",
+      name,
+      allDay: true,
+    });
+    const result = calculate({
+      calendarCategories: [category],
+      events: [absence("marked-day", "2026-10-05", String(category.data.key))],
+    });
+    expect(result.creditSeconds).toBe(7 * 3600);
+    expect(category.data.key).toBe("category-existing-uuid");
+  });
+  it.each(["ABF", "Ruhetag", "HFT", "Halber freier Tag", "Feiertagsprobe", "Sonstiges"])(
+    "keeps the custom calendar category %s without a time credit",
+    (name) => {
+      const result = calculate({
+        calendarCategories: [
+          record("unpaid-type", "calendarCategories", { key: "custom-unpaid", name, allDay: true }),
+        ],
+        events: [absence("marked-day", "2026-10-05", "custom-unpaid")],
+      });
+      expect(result.creditSeconds).toBe(0);
+    },
+  );
+  it("uses contractual hours divided by six and credits only personal all-day calendar entries", () => {
+    const result = calculate({
+      settings: {
+        ...settings,
+        openingBalanceSeconds: 0,
+        schedules: [
+          { effectiveFrom: "2026-10-05", weeklyMinutes: 40 * 60, workingDays: [1, 2, 3, 4, 5] },
+        ],
+      },
+      attendance: [attendance("actual-hours", "2026-10-05", 15)],
+      calendarCategories: [
+        record("timed-type", "calendarCategories", {
+          key: "timed-sick",
+          name: "Krank ohne Attest",
+          allDay: false,
+        }),
+      ],
+      events: [
+        absence("holiday", "2026-10-05", "holiday"),
+        absence("other-person", "2026-10-06", "sick", { participantIds: ["nora"] }),
+        absence("unassigned", "2026-10-06", "vacation", { participantIds: [] }),
+        absence("timed", "2026-10-06", "timed-sick", { allDay: false }),
+        absence("future", "2026-10-08", "vacation"),
+      ],
+    });
+    expect(result.attendanceSeconds).toBe(15 * 3600);
+    expect(result.creditSeconds).toBe(24000);
+    expect(result.attendanceSeconds + result.creditSeconds).toBe(21 * 3600 + 40 * 60);
+  });
+  it("uses the weekly hours applicable on each date, including recurring and multi-day entries", () => {
+    const result = calculate({
+      settings: {
+        ...settings,
+        schedules: [
+          ...settings.schedules,
+          { effectiveFrom: "2026-10-12", weeklyMinutes: 36 * 60, workingDays: [1, 2, 3, 4, 5, 6] },
+        ],
+      },
+      now: new Date("2026-10-13T20:00:00+02:00"),
+      events: [
+        absence("recurring-holiday-compensation", "2026-10-05", "holiday-compensation", {
+          recurrence: "weekly",
+        }),
+        absence("multi-day-vacation", "2026-10-09", "vacation", {
+          end: startOfLocalDay("2026-10-12").toISOString(),
+        }),
+      ],
+    });
+    // Oct 5/9/10 use 42÷6; Oct 11 is not a target day; Oct 12 uses 36÷6.
+    expect(result.creditSeconds).toBe((7 * 3 + 6) * 3600);
+  });
+  it("keeps Bavarian holiday date labels separate from personal time credits", () => {
+    const result = calculate({
+      settings: {
+        ...settings,
+        schedules: [{ ...settings.schedules[0], effectiveFrom: "2026-10-01" }],
+      },
+      now: new Date("2026-10-03T20:00:00+02:00"),
+    });
+    expect(result.targetSeconds).toBe(21 * 3600);
+    expect(result.creditSeconds).toBe(0);
+  });
+  it("recognizes category keys and names but keeps explicit unpaid categories unpaid", () => {
+    for (const key of [
+      "vacation",
+      "sick",
+      "sick-with-certificate",
+      "sick-without-certificate",
+      "holiday",
+      "holiday-compensation",
+    ])
+      expect(calendarCategoryCreditsTime(key)).toBe(true);
+    expect(calendarCategoryCreditsTime("rest", { name: "Feiertag" })).toBe(false);
+    expect(calendarCategoryCreditsTime("custom", { name: " KRANK (ohne Attest) " })).toBe(true);
+    expect(calendarCategoryCreditsTime("custom", { name: "Feiertags-Probe" })).toBe(false);
   });
   it("requires approval for calendar absences linked to a leave request", () => {
     const events = [
