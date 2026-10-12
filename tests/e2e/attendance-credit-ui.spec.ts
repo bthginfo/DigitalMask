@@ -99,6 +99,7 @@ test("personal calendar credits appear separately in the mobile time account and
   );
   await expect(account.locator("dl > div").filter({ hasText: "Sollzeit" })).toContainText("20 h");
   await expect(account).toContainText("+1,67 h");
+  await expect(account).toContainText("Vorläufiger Zwischenstand");
   await account.getByLabel("Zeitraum des Zeitkontos").selectOption("custom");
   await account.getByLabel("Zeitkonto von", { exact: true }).fill("2026-10-06");
   await account.getByLabel("Zeitkonto bis", { exact: true }).fill("2026-10-06");
@@ -107,6 +108,51 @@ test("personal calendar credits appear separately in the mobile time account and
     "6,67 h",
   );
   await expect(account).toContainText("Ausgeglichen im Zeitraum");
+  // Four completed 15-hour weeks must remain separate from a partly elapsed booking today.
+  workspace.user.preferences!.workingTime = {
+    version: 1,
+    openingBalanceSeconds: 0,
+    schedules: [
+      { effectiveFrom: "2026-09-14", weeklyMinutes: 15 * 60, workingDays: [1, 2, 3, 4, 5, 6] },
+    ],
+  };
+  workspace.records.events = [];
+  workspace.records.attendance = [
+    ...[
+      ["2026-09-14", 15.5],
+      ["2026-09-21", 15.25],
+      ["2026-09-28", 17],
+      ["2026-10-05", 19],
+    ].map(([date, duration]) =>
+      row(String(date), "attendance", {
+        userId: workspace.user.id,
+        title: "Anwesenheit",
+        date,
+        durationSeconds: Number(duration) * 3600,
+      }),
+    ),
+    row("today-partly-elapsed", "attendance", {
+      userId: workspace.user.id,
+      title: "Anwesenheit",
+      date: "2026-10-12",
+      start: "2026-10-12T15:00:00+02:00",
+      end: "2026-10-12T21:30:00+02:00",
+      durationSeconds: 6.5 * 3600,
+      pauseSeconds: 0,
+    }),
+  ];
+  await page.clock.setFixedTime(new Date("2026-10-12T18:00:00+02:00"));
+  await page.reload();
+  await expect(account).toContainText("Vorläufiger Zwischenstand gesamt");
+  await expect(account).toContainText("Wochen-Sollzeit: 15 h");
+  await expect(account.locator("p").filter({ hasText: "Abgeschlossene Wochen" })).toContainText(
+    "+6,75 h",
+  );
+  await expect(account.locator("dl > div").filter({ hasText: "Anwesenheit" })).toContainText(
+    "69,75 h",
+  );
+  await expect(account).toContainText("+7,25 h");
+  await expect(account).not.toContainText("Plusstunden");
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );

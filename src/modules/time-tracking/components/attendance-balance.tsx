@@ -5,6 +5,7 @@ import { ArrowRight, Scale } from "lucide-react";
 import { useWorkspace } from "@/components/workspace-context";
 import { Button } from "@/components/ui";
 import { dateLabel, hours, localDate, shiftDate, weekStart } from "@/shared/client-api";
+import { currentWorkingSchedule } from "@/shared/working-time";
 import { calculateAttendanceBalance, signedHours } from "../balance";
 import { isoWeek } from "../history";
 import styles from "./attendance-balance.module.css";
@@ -69,7 +70,31 @@ export function AttendanceBalanceCard({
         })
       : undefined;
   const seconds = balance?.balanceSeconds || 0;
-  const status = seconds > 0 ? "Plusstunden" : seconds < 0 ? "Minusstunden" : "Ausgeglichen";
+  const provisional = Boolean(balance && balance.from <= balance.to && balance.to === today);
+  const closedThrough = shiftDate(weekStart(), -1);
+  const completed =
+    settings && configured && period === "total" && provisional
+      ? calculateAttendanceBalance({
+          userId: selected,
+          settings,
+          attendance: workspace.records.attendance,
+          events: workspace.records.events,
+          calendarCategories: workspace.records.calendarCategories,
+          leave: workspace.records.leave,
+          to: closedThrough,
+          includeOpeningBalance: true,
+        })
+      : undefined;
+  const weeklyTarget = settings
+    ? currentWorkingSchedule(settings, today)?.weeklyMinutes
+    : undefined;
+  const status = provisional
+    ? "Vorläufiger Zwischenstand"
+    : seconds > 0
+      ? "Plusstunden"
+      : seconds < 0
+        ? "Minusstunden"
+        : "Ausgeglichen";
   const tone = seconds > 0 ? styles.positive : seconds < 0 ? styles.negative : "";
   const breakdown = balance && (
     <dl className={styles.breakdown}>
@@ -82,7 +107,7 @@ export function AttendanceBalanceCard({
         <dd>{hours(balance.creditSeconds)} h</dd>
       </div>
       <div>
-        <dt>Sollzeit</dt>
+        <dt>{provisional ? "Sollzeit bis heute" : "Sollzeit"}</dt>
         <dd>{hours(balance.targetSeconds)} h</dd>
       </div>
       {period === "total" && (
@@ -201,12 +226,25 @@ export function AttendanceBalanceCard({
                     ? `Beginnt am ${dateLabel(balance.from)}`
                     : `${dateLabel(balance.from)} – ${dateLabel(balance.to)}`}
                 </p>
+                {completed && completed.from <= completed.to && (
+                  <p className="small muted">
+                    Abgeschlossene Wochen bis {dateLabel(completed.to)}:{" "}
+                    <strong>{signedHours(completed.balanceSeconds)} h</strong>
+                  </p>
+                )}
+                {provisional && weeklyTarget !== undefined && (
+                  <p className="small muted">
+                    Wochen-Sollzeit: {hours(weeklyTarget * 60)} h. Die aktuelle Woche läuft noch;
+                    der Zwischenstand berücksichtigt erst die anteilige Sollzeit bis heute.
+                  </p>
+                )}
                 {compact ? (
                   <details className={styles.details}>
                     <summary>Berechnung anzeigen</summary>
                     {breakdown}
                     <p>
-                      Gespeicherte Anwesenheit plus Tagesgutschriften; Sollzeit zählt bis heute.
+                      Gespeicherte Anwesenheit plus Tagesgutschriften. Zeiten, deren Ende noch in
+                      der Zukunft liegt, zählen erst bis zum jetzigen Zeitpunkt.
                     </p>
                   </details>
                 ) : (
@@ -217,7 +255,8 @@ export function AttendanceBalanceCard({
                       Feiertagsausgleich und Krank mit oder ohne Attest geben je eingetragenem
                       Solltag Wochenstunden ÷ 6 zusätzlich zur Anwesenheit. Mehrere Kennzeichen am
                       selben Tag zählen nur einmal. ABF, Ruhetag und halber freier Tag geben keine
-                      Gutschrift.
+                      Gutschrift. Zeiten, deren Ende noch in der Zukunft liegt, zählen erst bis zum
+                      jetzigen Zeitpunkt.
                     </p>
                   </>
                 )}
