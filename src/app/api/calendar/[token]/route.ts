@@ -9,6 +9,7 @@ import {
   user,
 } from "@/platform/db/schema";
 import { getWorkspace } from "@/modules/records/workspace";
+import { calendarProductionRecords } from "@/shared/calendar-access";
 import { buildExport } from "@/modules/exports";
 import { route, HttpError } from "@/platform/http";
 import { listValue } from "@/shared/contracts";
@@ -61,7 +62,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
         listValue(e.data.participantIds).includes(row.user.id),
       ),
       members: workspace.members,
-      references: workspace.records,
+      references: { ...workspace.records, productions: calendarProductionRecords(workspace) },
       organization: row.organization.name,
       department: row.department.name,
     });

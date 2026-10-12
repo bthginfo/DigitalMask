@@ -22,7 +22,7 @@ export async function uploadFile(
 ) {
   const linked = await findRecord(context, recordId, recordKind);
   await assertRead(context, linked);
-  assertWrite(context, recordKind, linked);
+  await assertWrite(context, recordKind, linked);
   if (file.size <= 0 || file.size > 4_000_000)
     throw new HttpError(
       413,
@@ -65,7 +65,7 @@ export async function uploadFile(
     const result = await db.transaction(async (tx) => {
       const current = await findRecord(context, recordId, recordKind, tx, true);
       await assertRead(context, current, tx);
-      assertWrite(context, recordKind, current);
+      await assertWrite(context, recordKind, current, tx);
       const [row] = await tx
         .insert(records)
         .values({
@@ -133,7 +133,7 @@ export async function deleteFile(context: Context, id: string) {
     if (row.data.pendingDeletionOperation)
       throw new HttpError(409, "Diese Datei wurde bereits entfernt.");
     await assertRead(context, linked, tx);
-    assertWrite(context, linked.kind, linked);
+    await assertWrite(context, linked.kind, linked, tx);
     const field = linked.kind === "messages" ? "attachmentIds" : "imageIds";
     const data = { ...linked.data, [field]: listValue(linked.data[field]).filter((x) => x !== id) };
     if (linked.kind === "actors" && linked.data.portraitFileId === id) {

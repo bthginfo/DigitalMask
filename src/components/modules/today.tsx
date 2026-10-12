@@ -26,6 +26,7 @@ import { Badge, Button, Empty, PageHeader, Section } from "../ui";
 import { RecordDetail } from "../resource-view";
 import { TimerPanel } from "./time";
 import { expandEvents } from "./calendar";
+import { calendarProductionRecords } from "@/shared/calendar-access";
 import { statusLabels } from "../resource-fields";
 import { initialPeriod, recordMatchesPeriod } from "@/shared/period-filter";
 import { unreadNotifications } from "@/modules/notifications/unread";
@@ -57,7 +58,7 @@ export function TodayModule({ navigate }: { navigate: (module: string) => void }
     ),
     `${today}T00:00:00`,
     new Date(now + 7 * 86400000).toISOString(),
-    workspace.records.productions,
+    calendarProductionRecords(workspace),
     workspace.records.calendarCategories,
   )
     .sort((a, b) => a.start.localeCompare(b.start))

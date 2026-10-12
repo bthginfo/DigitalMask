@@ -48,7 +48,7 @@ async function documentAccess(context: Context, id: string) {
     canEdit = conversation?.data.archived !== true;
   } else {
     try {
-      assertWrite(context, parent.kind, parent);
+      await assertWrite(context, parent.kind, parent);
     } catch (error) {
       if (error instanceof HttpError && error.status === 403) canEdit = false;
       else throw error;

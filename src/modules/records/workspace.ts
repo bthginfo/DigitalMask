@@ -21,6 +21,7 @@ import { serialize, projectVisible } from "./repository";
 import { scheduleLiveChange } from "@/platform/realtime";
 import { canReadShiftSwap } from "@/modules/shift-swaps/rules";
 import { visibleWorkingTime } from "@/shared/working-time";
+import { calendarProductionReference } from "@/shared/calendar-access";
 export function invalidateWorkspace(departmentId: string, broadcast = true) {
   revalidateTag(scopeTag(departmentId), { expire: 0 });
   if (broadcast) scheduleLiveChange(departmentId);
@@ -95,7 +96,8 @@ export async function getWorkspace(context: Context): Promise<Workspace> {
       continue;
     const pid = String(row.data.productionId || "");
     if (row.kind === "productions" && !visibleProjects.has(row.id)) continue;
-    if (pid && !visibleProjects.has(pid)) continue;
+    // The department calendar is shared independently of production membership.
+    if (pid && row.kind !== "events" && !visibleProjects.has(pid)) continue;
     if (row.kind === "time" && pid)
       projectHours[pid] = (projectHours[pid] || 0) + Number(row.data.durationSeconds || 0);
     if (
@@ -194,6 +196,9 @@ export async function getWorkspace(context: Context): Promise<Workspace> {
       };
     }),
     records: grouped,
+    calendarProductions: rows
+      .filter((row) => row.kind === "productions")
+      .map(calendarProductionReference),
     timer: personalTimers.find((timer) => timer.kind === "time") || null,
     attendanceTimer: personalTimers.find((timer) => timer.kind === "attendance") || null,
     projectHours,

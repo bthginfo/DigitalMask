@@ -85,6 +85,8 @@ export interface Workspace {
   department: { id: string; name: string };
   members: Member[];
   records: Record<RecordKind, DomainRecord[]>;
+  /** Display-only production references for the shared department calendar. */
+  calendarProductions?: DomainRecord[];
   timer: { id: string; data: RecordData } | null;
   attendanceTimer?: { id: string; data: RecordData } | null;
   projectHours: Record<string, number>;

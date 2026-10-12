@@ -48,7 +48,7 @@ export async function assertRead(
   row: typeof records.$inferSelect,
   tx: Transaction | typeof db = db,
 ) {
-  await assertProject(context, row.data.productionId, tx);
+  if (row.kind !== "events") await assertProject(context, row.data.productionId, tx);
   if (row.kind === "conversations") await assertConversation(context, row.id, tx);
   else await assertConversation(context, row.data.conversationId, tx);
   if (
@@ -79,10 +79,11 @@ export async function assertRead(
   )
     throw new HttpError(403, "Diese Diensttauschanfrage ist privat.");
 }
-export function assertWrite(
+export async function assertWrite(
   context: Context,
   kind: RecordKind,
   existing?: typeof records.$inferSelect,
+  tx: Transaction | typeof db = db,
 ) {
   if (
     kind === "messages" &&
@@ -115,6 +116,8 @@ export function assertWrite(
     )
       throw new HttpError(403, "Du kannst nur eigene Einträge bearbeiten.");
   }
+  // Shared calendar read access never grants production write access.
+  if (kind === "events" && existing) await assertProject(context, existing.data.productionId, tx);
 }
 async function validateRelations(
   context: Context,
@@ -327,7 +330,7 @@ export async function saveRecord(
   } = {},
 ) {
   let eventQueued = false;
-  assertWrite(context, kind);
+  await assertWrite(context, kind);
   const write = async (tx: Transaction) => {
     await acquireWorkflowLock(context, kind, tx);
     // Same lock order as approval/linking and consolidation, before locking any production.
@@ -336,7 +339,7 @@ export async function saveRecord(
         sql`select pg_advisory_xact_lock(hashtext(${`people:${context.departmentId}`}))`,
       );
     const existing = existingId ? await findRecord(context, existingId, kind, tx, true) : undefined;
-    assertWrite(context, kind, existing);
+    await assertWrite(context, kind, existing, tx);
     if (existing) await assertRead(context, existing, tx);
     const data = validateRecord(
       kind,
@@ -630,7 +633,7 @@ export async function deleteRecord(
     const row = await findRecord(context, id, kind, tx, true);
     if (options.version !== undefined && row.version !== options.version)
       throw new HttpError(409, "Der Eintrag wurde inzwischen geändert. Bitte öffne ihn neu.");
-    assertWrite(context, kind, row);
+    await assertWrite(context, kind, row, tx);
     await assertRead(context, row, tx);
     await validateWorkflowDelete(context, kind, row, tx);
     if (kind === "calendarCategories")

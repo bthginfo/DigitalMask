@@ -124,6 +124,58 @@ async function mock(page: Page, role: "admin" | "user" = "admin", dark = false) 
   await page.clock.install({ time: new Date("2026-10-01T10:00:00Z") });
   return { workspace, reads: () => reads, exports };
 }
+
+for (const width of [390, 1440]) {
+  test(`shared calendar production outside own team ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 });
+    const state = await mock(page, "user");
+    const production = state.workspace.records.productions[0];
+    state.workspace.calendarProductions = [
+      {
+        ...production,
+        data: { title: "Sommernacht", season: "2026/27", color: "#c79bdb", premiere: "2026-10-01" },
+      },
+    ];
+    // The viewer is not a production member and has no access to its full record.
+    state.workspace.records.productions = [];
+    const event = state.workspace.records.events.find((row) => row.id === "group")!;
+    Object.assign(event.data, {
+      title: "",
+      category: "ama",
+      start: "2026-10-01T09:00:00+02:00",
+      end: "2026-10-01T13:00:00+02:00",
+    });
+    state.workspace.records.calendarCategories.push({
+      ...event,
+      id: "ama-category",
+      kind: "calendarCategories",
+      data: { key: "ama", name: "AMA", color: "#336699", allDay: false },
+    });
+    await page.goto("/?module=calendar");
+    await expect(page.locator(".fc-daygrid-event").filter({ hasText: "Sommernacht" })).toHaveCount(
+      0,
+    );
+    await page.getByRole("button", { name: "Team", exact: true }).click();
+    for (const span of ["Teamwoche", "Teammonat"]) {
+      await page.getByRole("button", { name: span, exact: true }).click();
+      const events = page.locator(".team-event").filter({ hasText: "Sommernacht – AMA" });
+      await expect(events).toHaveCount(2);
+      await expect(events.first()).toHaveCSS("background-color", "rgb(199, 155, 219)");
+      await events.first().click();
+      const detail = page.getByRole("dialog", { name: "Sommernacht – AMA", exact: true });
+      await expect(detail.locator(".event-detail-grid")).toContainText("Sommernacht");
+      await expect(detail.getByRole("button", { name: "Bearbeiten", exact: true })).toHaveCount(0);
+      await expect(detail.getByRole("button", { name: "Löschen", exact: true })).toHaveCount(0);
+      await expect(detail.getByRole("link", { name: "Sommernacht", exact: true })).toHaveCount(0);
+      await detail.getByRole("button", { name: "Schließen", exact: true }).last().click();
+    }
+    await page.getByRole("button", { name: "Monat", exact: true }).click();
+    await expect(page.locator(".fc-daygrid-event").filter({ hasText: "Sommernacht" })).toHaveCount(
+      0,
+    );
+    expect(state.reads()).toBe(1);
+  });
+}
 test("mobile day details preserve own-calendar planning and personal selection", async ({
   page,
 }) => {

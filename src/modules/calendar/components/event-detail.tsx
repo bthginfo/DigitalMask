@@ -10,7 +10,11 @@ import { Badge, Button, ErrorMessage, ExportButton, Modal } from "@/components/u
 import { ExportDialog } from "@/components/export-dialog";
 import { TimeBookingEditor } from "@/modules/time-tracking/components/time-booking-editor";
 import { EventEditor } from "./event-editor";
-import { canManageRecord } from "@/shared/record-permissions";
+import {
+  calendarProductionRecords,
+  canAccessCalendarProduction,
+  canEditCalendarEvent,
+} from "@/shared/calendar-access";
 import { RecordLink } from "@/components/record-link";
 export function EventDetail({
   record,
@@ -27,13 +31,17 @@ export function EventDetail({
     [exporting, setExporting] = useState(false),
     [error, setError] = useState("");
   const current = workspace.records.events.find((row) => row.id === record.id) || record;
+  const calendarProductions = calendarProductionRecords(workspace);
   const presentation = calendarPresentation(
     current,
-    workspace.records.productions,
+    calendarProductions,
     workspace.records.calendarCategories,
   );
-  const canEdit = canManageRecord(workspace.user, "events", current);
+  const canEdit = canEditCalendarEvent(workspace, current);
   const production = workspace.records.productions.find(
+    (row) => row.id === current.data.productionId,
+  );
+  const calendarProduction = calendarProductions.find(
     (row) => row.id === current.data.productionId,
   );
   const endDay = shiftDate(localDate(instantDate(value(current.data, "end"))), -1);
@@ -96,6 +104,8 @@ export function EventDetail({
                   <RecordLink record={production} from={current} onNavigate={onNavigate}>
                     {value(production.data, "title")}
                   </RecordLink>
+                ) : calendarProduction ? (
+                  value(calendarProduction.data, "title")
                 ) : (
                   "Ohne Produktion"
                 )}
@@ -149,9 +159,10 @@ export function EventDetail({
           )}
           <ErrorMessage message={error} />
           <footer className="dialog-footer">
-            {workspace.user.role !== "superadmin" && (
-              <Button onClick={() => setBooking(true)}>Tatsächliche Arbeitszeit buchen</Button>
-            )}
+            {workspace.user.role !== "superadmin" &&
+              canAccessCalendarProduction(workspace, current) && (
+                <Button onClick={() => setBooking(true)}>Tatsächliche Arbeitszeit buchen</Button>
+              )}
             <Button onClick={onClose}>Schließen</Button>
           </footer>
         </Modal>

@@ -9,6 +9,7 @@ import { records } from "@/platform/db/schema";
 import { buildExport, selectExportRecords } from "@/modules/exports";
 import { recordKinds, listValue } from "@/shared/contracts";
 import { workflowMatchesExportPeriod } from "@/modules/workflows/export-period";
+import { calendarProductionRecords } from "@/shared/calendar-access";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 export async function GET(request: Request) {
@@ -18,6 +19,10 @@ export async function GET(request: Request) {
     const format = z.enum(["pdf", "xlsx", "csv", "ics", "json"]).parse(query.get("format"));
     const context = await requireContext();
     const workspace = await getWorkspace(context);
+    const references =
+      kind === "events"
+        ? { ...workspace.records, productions: calendarProductionRecords(workspace) }
+        : workspace.records;
     let selected = workspace.records[kind];
     const conversationId = query.get("conversationId");
     if (conversationId) {
@@ -81,7 +86,7 @@ export async function GET(request: Request) {
       productionId: productionId || undefined,
       year,
       season,
-      references: workspace.records,
+      references,
     });
     if (userId)
       selected = selected.filter((r) =>
@@ -149,7 +154,7 @@ export async function GET(request: Request) {
       from,
       to,
       view: query.get("view") || undefined,
-      references: workspace.records,
+      references,
       images,
       teamOnly,
       generalOnly,

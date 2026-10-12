@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import type { DomainRecord, Member } from "@/shared/contracts";
 import { canManageRecord } from "@/shared/record-permissions";
+import { calendarProductionRecords, canEditCalendarEvent } from "@/shared/calendar-access";
 import {
   dateLabel,
   ids,
@@ -80,6 +81,7 @@ export function expandEvents(
   productions: DomainRecord[] = [],
   categories?: DomainRecord[],
   member?: Member,
+  editableProductionIds?: ReadonlySet<string>,
 ) {
   return records.flatMap((record) => {
     if (
@@ -102,13 +104,21 @@ export function expandEvents(
         !record.data.leaveId &&
         !presentation.background &&
         (!record.data.recurrence || record.data.recurrence === "none") &&
-        (!member || canManageRecord(member, "events", record)),
+        (!member || canManageRecord(member, "events", record)) &&
+        (!editableProductionIds ||
+          !record.data.productionId ||
+          editableProductionIds.has(value(record.data, "productionId"))),
       extendedProps: { record },
     }));
   });
 }
 export function CalendarModule({ productionId = "" }: { productionId?: string }) {
   const { workspace, save, action, busy } = useWorkspace();
+  const calendarProductions = calendarProductionRecords(workspace);
+  const editableProductionIds = useMemo(
+    () => new Set(workspace.records.productions.map((row) => row.id)),
+    [workspace.records.productions],
+  );
   const admin = workspace.user.role !== "user";
   const calendar = useRef<FullCalendar>(null);
   const calendarRoot = useRef<HTMLDivElement>(null);
@@ -125,7 +135,7 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
   }, []);
   const scope = `calendar:${productionId || "all"}`;
   const [period, setPeriod] = useViewState<PeriodFilter>(workspace.user.id, scope, "period", () =>
-    initialPeriod(workspace.records.productions, productionId),
+    initialPeriod(calendarProductions, productionId),
   );
   const [view, setView] = useViewState(workspace.user.id, scope, "view", "month");
   const [teamSpan, setTeamSpan] = useViewState(workspace.user.id, scope, "teamSpan", "week");
@@ -157,8 +167,8 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
     [workspace.members],
   );
   const productions = useMemo(
-    () => sortProductionsByPremiere(workspace.records.productions),
-    [workspace.records.productions],
+    () => sortProductionsByPremiere(calendarProductions),
+    [calendarProductions],
   );
   const visiblePeople = useMemo(
     () =>
@@ -224,13 +234,13 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
       workspace.records.events.filter(
         (x) =>
           (!project || x.data.productionId === project) &&
-          recordMatchesPeriod(x, { season: period.season }, workspace.records.productions) &&
+          recordMatchesPeriod(x, { season: period.season }, calendarProductions) &&
           (!category || x.data.category === category) &&
           calendarEventSelected(x.data, visiblePeople, showAll),
       ),
     [
       workspace.records.events,
-      workspace.records.productions,
+      calendarProductions,
       project,
       period.season,
       category,
@@ -246,9 +256,10 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
         filtered,
         expansionStart,
         expansionEnd,
-        workspace.records.productions,
+        calendarProductions,
         workspace.records.calendarCategories,
         workspace.user,
+        editableProductionIds,
       ).filter((event) => {
         const bounds = seasonBounds(period.season);
         return (
@@ -261,9 +272,10 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
       filtered,
       expansionStart,
       expansionEnd,
-      workspace.records.productions,
+      calendarProductions,
       workspace.records.calendarCategories,
       workspace.user,
+      editableProductionIds,
       period.season,
     ],
   );
@@ -545,7 +557,7 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
           <PeriodPicker
             compact
             records={workspace.records.events}
-            productions={workspace.records.productions}
+            productions={calendarProductions}
             value={period}
             onChange={(next) => {
               setPeriod(next);
@@ -680,9 +692,9 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
               month={teamSpan === "month"}
               mobile={mobile}
               canPlan={(person) => admin || person === workspace.user.id}
-              productions={workspace.records.productions}
+              productions={calendarProductions}
               suspended={!!detail || !!editor}
-              canEdit={(record) => canManageRecord(workspace.user, "events", record)}
+              canEdit={(record) => canEditCalendarEvent(workspace, record)}
               onOpen={setDetail}
               onEdit={(record) => setEditor({ kind: "events", record })}
               onCreate={(defaults) => setEditor({ kind: "events", defaults })}
@@ -909,7 +921,7 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
                   events={expanded}
                   day={mobileDay}
                   members={workspace.members}
-                  productions={workspace.records.productions}
+                  productions={calendarProductions}
                   contextLabel={
                     showAll
                       ? "Gesamtes Team"
@@ -924,7 +936,7 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
                       participantIds: admin ? visiblePeople : [workspace.user.id],
                     },
                   ]}
-                  canEdit={(record) => canManageRecord(workspace.user, "events", record)}
+                  canEdit={(record) => canEditCalendarEvent(workspace, record)}
                   onSelect={setMobileDay}
                   onClose={() => setMobileDaySheetOpen(false)}
                   onRestoreFocus={() =>
