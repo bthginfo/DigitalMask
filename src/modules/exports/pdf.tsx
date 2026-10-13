@@ -40,6 +40,8 @@ import { calendarRange, localDay } from "./calendar";
 import type { Column, ExportInput, ExportRow } from "./types";
 import { addPageNumbers } from "./page-numbers";
 import { TeamCalendarPdf, CalendarLegendPdf } from "./team-calendar-pdf";
+import { TeamMonthCalendarPdf } from "./team-month-calendar-pdf";
+import { teamMonthPrintLayouts } from "./team-month-print-layout";
 import { eventTimeLabel } from "./team-calendar";
 import { durationSummary } from "./duration-summary";
 import { TimeWeeklyPdf } from "./time-weekly-pdf";
@@ -58,22 +60,38 @@ Font.register({
   ],
 });
 Font.registerHyphenationCallback((word) => [word]);
-let fontsReady: Promise<void> | undefined;
-export function prepareFonts() {
+Font.register({
+  family: "NotoCondensed",
+  fonts: [
+    {
+      src: path.join(process.cwd(), "src/modules/exports/assets/NotoSans-ExtraCondensed.ttf"),
+      fontWeight: 400,
+    },
+    {
+      src: path.join(process.cwd(), "src/modules/exports/assets/NotoSans-ExtraCondensedBold.ttf"),
+      fontWeight: 700,
+    },
+  ],
+});
+const preparedFonts = new Map<string, Promise<void>>();
+export function prepareFonts(fontFamily: "Noto" | "NotoCondensed" = "Noto") {
   // Fontkit caches component glyphs with empty codePoints while subsetting. If a
   // later PDF first uses that glyph as text, its ToUnicode map would be empty.
   // Seed the Unicode glyphs once before any layout/subset work; preserve the
   // shared parsed fonts without per-request file reads or global font resets.
-  fontsReady ??= Promise.all(
+  let ready = preparedFonts.get(fontFamily);
+  if (ready) return ready;
+  ready = Promise.all(
     [400, 700].map(async (fontWeight) => {
-      const source = Font.getFont({ fontFamily: "Noto", fontWeight });
+      const source = Font.getFont({ fontFamily, fontWeight });
       await source.load();
       const font = source.data;
       if (!font) throw new Error("Die PDF-Schrift konnte nicht geladen werden.");
       for (const codePoint of font.characterSet) font.glyphForCodePoint(codePoint);
     }),
   ).then(() => undefined);
-  return fontsReady;
+  preparedFonts.set(fontFamily, ready);
+  return ready;
 }
 const colors = {
   ink: "#233932",
@@ -148,8 +166,15 @@ const styles = StyleSheet.create({
   fieldText: { fontSize: 10, lineHeight: 1.5 },
   image: { maxHeight: 280, maxWidth: "100%", objectFit: "contain" },
 });
-function headerLines(text: string, width: number, size: number, weight: number, spacing = 0) {
-  const font = Font.getFont({ fontFamily: "Noto", fontWeight: weight }).data;
+function headerLines(
+  text: string,
+  width: number,
+  size: number,
+  weight: number,
+  spacing = 0,
+  fontFamily = "Noto",
+) {
+  const font = Font.getFont({ fontFamily, fontWeight: weight }).data;
   if (!font) throw new Error("Die PDF-Schrift ist noch nicht vorbereitet.");
   const measure = (value: string) =>
     Array.from(value).reduce(
@@ -181,6 +206,8 @@ function headerLines(text: string, width: number, size: number, weight: number, 
   }
   return lines;
 }
+const monthPrintLines = (text: string, width: number, size: number, weight: number) =>
+  headerLines(text, width, size, weight, 0, "NotoCondensed");
 function headerLayout(input: ExportInput, label?: string, landscape = false) {
   const width = (landscape ? 841.89 : 595.28) - 64;
   const brand = headerLines(`DIGITALMASK / ${input.department.toUpperCase()}`, width, 9, 700, 1);
@@ -358,8 +385,9 @@ const previewTitle = (row: ExportRow, limit = 46) => {
 };
 const weekdays = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
 function CalendarPreview({ input }: { input: ExportInput }) {
-  if (["team", "team-month"].includes(input.view ?? ""))
-    return <TeamCalendarPdf input={input} wrapLines={headerLines} />;
+  if (input.view === "team-month")
+    return <TeamMonthCalendarPdf layouts={teamMonthPrintLayouts(input, monthPrintLines)} />;
+  if (input.view === "team") return <TeamCalendarPdf input={input} wrapLines={headerLines} />;
   const range = calendarRange(input),
     rows = exportRows(input),
     lookup = new Map(rows.map((row) => [row.id, row]));
@@ -575,7 +603,8 @@ function AttendanceSummary({ input, rows }: { input: ExportInput; rows: ExportRo
   );
 }
 export async function buildPdf(input: ExportInput): Promise<Uint8Array> {
-  await prepareFonts();
+  const calendar = input.kind === "events" || input.kind === "calendar";
+  await prepareFonts(calendar && input.view === "team-month" ? "NotoCondensed" : "Noto");
   if (["looks", "handovers", "characters", "casting"].includes(input.kind) && input.images) {
     const normalizedImages: Record<string, Uint8Array> = {};
     const ids = [
@@ -600,8 +629,18 @@ export async function buildPdf(input: ExportInput): Promise<Uint8Array> {
         );
     input = { ...input, images: normalizedImages };
   }
-  const calendar = input.kind === "events" || input.kind === "calendar";
-  if (calendar && ["team", "team-month"].includes(input.view ?? "")) {
+  if (calendar && input.view === "team-month") {
+    // Validate physical fit before React rendering so the caller retains a useful error.
+    const layouts = teamMonthPrintLayouts(input, monthPrintLines);
+    return new Uint8Array(
+      await renderToBuffer(
+        <Document title="Teamkalender" author="DigitalMask" language="de-DE">
+          <TeamMonthCalendarPdf layouts={layouts} />
+        </Document>,
+      ),
+    );
+  }
+  if (calendar && input.view === "team") {
     return new Uint8Array(
       await renderToBuffer(
         <Document title="Teamkalender" author="DigitalMask" language="de-DE">

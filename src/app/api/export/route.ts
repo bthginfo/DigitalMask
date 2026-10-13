@@ -10,6 +10,7 @@ import { buildExport, selectExportRecords } from "@/modules/exports";
 import { recordKinds, listValue } from "@/shared/contracts";
 import { workflowMatchesExportPeriod } from "@/modules/workflows/export-period";
 import { calendarProductionRecords } from "@/shared/calendar-access";
+import { CalendarPrintFitError } from "@/modules/exports/team-month-print-layout";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 export async function GET(request: Request) {
@@ -163,6 +164,9 @@ export async function GET(request: Request) {
       year,
       season,
       performanceTime,
+    }).catch((error: unknown) => {
+      if (error instanceof CalendarPrintFitError) throw new HttpError(422, error.message);
+      throw error;
     });
     return new Response(Buffer.from(result.bytes), {
       headers: {

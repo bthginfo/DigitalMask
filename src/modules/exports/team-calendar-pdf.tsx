@@ -55,7 +55,7 @@ function printLayout(
     return {
       ...row,
       slots: Math.max(
-        input.view === "team-month" ? 1 : row.slots,
+        row.slots,
         Math.ceil(
           (wrapLines(row.member.name, nameWidth - 6, metrics.nameFontSize * density, 700).length *
             metrics.nameFontSize *
@@ -78,7 +78,7 @@ function printLayout(
   );
   const pages: (typeof rows)[] = [[]];
   let used = 0;
-  for (const row of input.view === "team-month" ? [] : rows) {
+  for (const row of rows) {
     let offset = 0;
     while (offset < row.slots) {
       const remaining = maxSlots - used;
@@ -121,38 +121,7 @@ type CalendarLayout = ReturnType<typeof printLayout>;
 
 function calendarPages(input: ExportInput, wrapLines: WrapLines) {
   const layouts = teamCalendarBlocks(input).map((block) => printLayout(input, block, wrapLines));
-  if (input.view !== "team-month")
-    return layouts.flatMap((layout) => layout.pages.map((rows) => [{ ...layout, rows }]));
-  const months = new Map<string, CalendarLayout[]>();
-  for (const layout of layouts) {
-    const month = layout.block.key.slice(0, 7);
-    const group = months.get(month) || [];
-    group.push(layout);
-    months.set(month, group);
-  }
-  return [...months.values()].map((month) => {
-    const available = pageHeight - 2 * verticalMargin - (month.length - 1) * 12 - 3;
-    const heightOf = (layouts: CalendarLayout[]) =>
-      layouts.reduce((sum, layout) => sum + layout.height * layout.scale, 0);
-    const height = heightOf(month);
-    if (height <= available) return month;
-    // Keep the complete column width and reflow text as fonts/rows become denser.
-    // Bounded refinement finds a readable fit without shrinking the whole table horizontally.
-    const atDensity = (density: number) =>
-      month.map((layout) => printLayout(input, layout.block, wrapLines, density));
-    let lower = (available / height) * 0.98,
-      upper = 1,
-      fitted = atDensity(lower);
-    for (let attempt = 0; attempt < 7; attempt++) {
-      const density = (lower + upper) / 2;
-      const candidate = atDensity(density);
-      if (heightOf(candidate) <= available) {
-        lower = density;
-        fitted = candidate;
-      } else upper = density;
-    }
-    return fitted;
-  });
+  return layouts.flatMap((layout) => layout.pages.map((rows) => [{ ...layout, rows }]));
 }
 
 function CalendarMatrix({ layout }: { layout: CalendarLayout }) {
@@ -279,7 +248,7 @@ function CalendarMatrix({ layout }: { layout: CalendarLayout }) {
   );
 }
 
-/** Complete coloured matrices: both month halves and every person fit on one A4 page. */
+/** Monthly pages keep every person together; weekly pagination retains the existing template. */
 export function TeamCalendarPdf({
   input,
   wrapLines,

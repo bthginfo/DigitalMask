@@ -1,0 +1,12 @@
+{
+  "NotoSans-ExtraCondensed.ttf": {
+    "source": "https://github.com/notofonts/noto-fonts/blob/ffebf8c1ee449e544955a7e813c54f9b73848eac/hinted/ttf/NotoSans/NotoSans-ExtraCondensed.ttf",
+    "sha256": "a6b9af9148d7dbe722f564565189cf502fec049c0f1c70729d3c0f5045218638",
+    "license": "NotoSans-Condensed-OFL.txt"
+  },
+  "NotoSans-ExtraCondensedBold.ttf": {
+    "source": "https://github.com/notofonts/noto-fonts/blob/ffebf8c1ee449e544955a7e813c54f9b73848eac/hinted/ttf/NotoSans/NotoSans-ExtraCondensedBold.ttf",
+    "sha256": "3e85ead117c54a66465a4985bdc5883271c9b7c11418cb4fd1b9c17ddc899c64",
+    "license": "NotoSans-Condensed-OFL.txt"
+  }
+}

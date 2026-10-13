@@ -136,6 +136,7 @@ async function inspectPdf(bytes: Uint8Array, name: string, footer = true) {
   }).promise;
   const texts: string[] = [],
     canvases: Canvas[] = [];
+  const fontSizes: number[] = [];
   const raster = process.env.EXPORT_RENDER_QA === "1";
   if (raster) {
     qaDirectory ??= await mkdtemp(path.join(tmpdir(), "digitalmask-attendance-calendar-"));
@@ -155,12 +156,14 @@ async function inspectPdf(bytes: Uint8Array, name: string, footer = true) {
     else expect(text).not.toContain("Seite ");
     for (const item of content.items)
       if ("str" in item && item.str.trim()) {
+        fontSizes.push(Math.abs(item.transform[3]));
         expect(item.transform[4]).toBeGreaterThanOrEqual(0);
         expect(item.transform[4] + item.width).toBeLessThanOrEqual(viewport.width + 1);
         expect(item.transform[5]).toBeGreaterThanOrEqual(0);
         expect(item.transform[5]).toBeLessThanOrEqual(viewport.height);
         // Footer is deliberately stamped at y20; all other text stays above its reserved band.
-        if (item.transform[5] > 40) expect(item.transform[5]).toBeGreaterThanOrEqual(47);
+        if (footer && item.transform[5] > 40) expect(item.transform[5]).toBeGreaterThanOrEqual(47);
+        if (!footer) expect(item.transform[5]).toBeGreaterThanOrEqual(17);
       }
     if (raster) {
       const canvas = createCanvas(
@@ -209,7 +212,7 @@ async function inspectPdf(bytes: Uint8Array, name: string, footer = true) {
   }
   const count = pdf.numPages;
   await pdf.cleanup();
-  return { pages: count, texts, text: texts.join(" ") };
+  return { pages: count, texts, text: texts.join(" "), fontSizes };
 }
 
 describe("attendance and configurable calendar exports", () => {
@@ -354,22 +357,43 @@ describe("attendance and configurable calendar exports", () => {
     }
     expect(workbook.worksheets.map((sheet) => sheet.name)).toEqual(["Team 2026-10"]);
   });
-  it("fits the whole month and all 13 staff on one A4 page without dropping dense entries", async () => {
-    const pdf = await inspectPdf((await buildExport(calendar("pdf"))).bytes, "team-month", false);
-    expect(pdf.pages).toBe(1);
-    for (let i = 1; i < 13; i++) expect(pdf.text).toContain(`Fiktive Person ${i + 1}`);
-    expect(pdf.text).toContain("31.10.");
-    const letters = pdf.text.replace(/\s/g, "");
-    for (const member of members) expect(letters).toContain(member.name.replace(/\s/g, ""));
-    expect(letters).toContain("Gäste/Aushilfen");
-    expect(letters).toContain("TITELENDE");
-    expect(letters).toContain("MEHRDIENSTENDE4");
-    expect(letters).toContain("ÄnderungsfreierSonderdienst");
-    expect(pdf.text).toContain("Halber freier Tag");
-    expect(pdf.text).not.toContain("Agenda");
-    expect(pdf.text).not.toContain("DIGITALMASK /");
-    expect(pdf.text).not.toContain("Personengruppe");
+  it("prints every staff row on both A4 month pages at a physical 10-point size", async () => {
+    const input = calendar("pdf");
+    input.references = {
+      ...input.references,
+      productions: [{ ...production, data: { title: "Zauberwald", color: "#88aa44" } }],
+    };
+    input.records = events.slice(0, 31).map((event) => ({
+      ...event,
+      data: {
+        ...event.data,
+        category: "performance",
+        productionId: "p",
+        title: "OMIT_PERFORMANCE_TITLE",
+      },
+    }));
+    const pdf = await inspectPdf((await buildExport(input)).bytes, "team-month", false);
+    expect(pdf.pages).toBe(2);
+    expect(pdf.texts[0].replace(/\s/g, "")).toContain("14.10.");
+    expect(pdf.texts[0].replace(/\s/g, "")).not.toContain("15.10.");
+    expect(pdf.texts[1].replace(/\s/g, "")).toContain("15.10.");
+    expect(pdf.texts[1].replace(/\s/g, "")).toContain("31.10.");
+    for (const text of pdf.texts) {
+      const letters = text.replace(/\s/g, "");
+      for (const member of members) expect(letters).toContain(member.name.replace(/\s/g, ""));
+      expect(letters).toContain("Gäste/Aushilfen");
+      expect(letters).toContain("Zauberwald");
+      expect(text).not.toMatch(
+        /OMIT_PERFORMANCE_TITLE|Vorstellung|Agenda|DIGITALMASK|Personengruppe|09:00|15:30/,
+      );
+    }
+    expect(Math.min(...pdf.fontSizes)).toBeCloseTo(10, 3);
   }, 60000);
+  it("rejects an impossible 10-point two-page month instead of clipping rows or shrinking fonts", async () => {
+    await expect(buildExport(calendar("pdf"))).rejects.toThrow(
+      "zwei lesbare A4-Seiten mit 10-Punkt-Schrift",
+    );
+  });
   it("uses uniform rows for the two month halves and preserves all coloured entries", async () => {
     const staff = members.slice(1, 6);
     const short = staff.flatMap((member, index) =>
@@ -403,7 +427,7 @@ describe("attendance and configurable calendar exports", () => {
       to: "2026-10-18",
     };
     const pdf = await inspectPdf((await buildExport(input)).bytes, "team-two-weeks", false);
-    expect(pdf.pages).toBe(1);
+    expect(pdf.pages).toBe(2);
     expect(pdf.text).toContain("Oktober 2026");
     for (const member of staff) expect(pdf.text).toContain(member.name);
     expect(pdf.text).toContain("ENDE1");
@@ -414,7 +438,7 @@ describe("attendance and configurable calendar exports", () => {
       "team-two-months",
       false,
     );
-    expect(twoMonths.pages).toBe(2);
+    expect(twoMonths.pages).toBe(4);
     for (const text of twoMonths.texts)
       for (const member of staff) expect(text).toContain(member.name);
     const workbook = new ExcelJS.Workbook();

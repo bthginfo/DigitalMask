@@ -2,6 +2,7 @@ import { calendarEventPaint } from "../../shared/calendar-paint";
 import { eventDisplay } from "./calendar-presentation";
 import { eventTimeLabel, memberDayEvents } from "./team-calendar";
 import type { DomainRecord } from "../../shared/contracts";
+import { textValue } from "../../shared/contracts";
 import type { ExportInput } from "./types";
 
 /** Complete cell entries shared by the printable PDF and Excel matrices. */
@@ -18,6 +19,8 @@ export function teamPrintEntries(input: ExportInput, day: string, memberId: stri
 
 export function calendarPrintEntry(record: DomainRecord, input: ExportInput) {
   const display = eventDisplay(record, input);
+  const monthlyPrint = input.view === "team-month" && input.format === "pdf";
+  const compact = monthlyPrint ? monthlyPrintLabel(record, input) : undefined;
   const original = /^#[0-9a-f]{6}$/i.test(display.color) ? display.color : "#77818e";
   // Absences remain lighter, but the entire printed entry carries its colour.
   const color = display.allDay
@@ -32,9 +35,59 @@ export function calendarPrintEntry(record: DomainRecord, input: ExportInput) {
   const paint = calendarEventPaint(color, false);
   return {
     id: record.id,
-    title: display.title,
-    time: display.allDay ? "" : eventTimeLabel(record, input),
+    title: compact?.title ?? display.title,
+    time:
+      display.allDay || compact?.performance
+        ? ""
+        : monthlyPrint
+          ? eventTimeLabel(record, input)
+              .replace(/\b0(\d):/g, "$1:")
+              .replace(/:00\b/g, "")
+              .replace(/\s*–\s*/g, "–")
+          : eventTimeLabel(record, input),
     color,
     textColor: paint.textColor,
+  };
+}
+
+/** Print abbreviations never rename categories, productions or stored events. */
+export function monthlyPrintLabel(record: DomainRecord, input: ExportInput) {
+  const display = eventDisplay(record, input);
+  const normalize = (name: string) =>
+    name
+      .normalize("NFKD")
+      .replace(/\p{M}/gu, "")
+      .toLowerCase()
+      .replace(/[\s._-]+/g, "");
+  const names = [textValue(record.data.category), display.categoryName].map(normalize);
+  const production = input.references?.productions?.find(
+    (row) => row.id === record.data.productionId,
+  );
+  const productionTitle = textValue(production?.data.title).trim();
+  const customTitle = textValue(record.data.title).trim();
+  const performance = names.some((name) =>
+    ["performance", "vorstellung", "vorstellungen"].includes(name),
+  );
+  if (performance)
+    return { title: productionTitle || customTitle || display.categoryName, performance };
+  const aliases = [
+    { label: "HFT", names: ["halfdayoff", "halberfreiertag", "hft"] },
+    { label: "TG", names: ["service", "dienst", "tagesdienst", "td", "tg"] },
+    { label: "Konzi", names: ["konzeption", "conception", "konzi"] },
+  ].find((alias) => names.some((name) => alias.names.includes(name)));
+  const abbreviation = aliases?.label;
+  if (!abbreviation) return { title: display.title, performance };
+  const automaticTitle = productionTitle
+    ? `${productionTitle} – ${display.categoryName}`
+    : display.categoryName;
+  const extra =
+    customTitle &&
+    ![productionTitle, automaticTitle, display.categoryName, abbreviation].includes(customTitle) &&
+    !aliases?.names.includes(normalize(customTitle))
+      ? ` · ${customTitle}`
+      : "";
+  return {
+    title: `${productionTitle ? `${productionTitle} – ` : ""}${abbreviation}${extra}`,
+    performance,
   };
 }
