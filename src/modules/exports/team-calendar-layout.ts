@@ -1,9 +1,8 @@
-import { addDays, addMonths, endOfMonth, format, parseISO, startOfMonth } from "date-fns";
-import { de } from "date-fns/locale";
-import { calendarRange } from "./calendar";
+import { format, parseISO } from "date-fns";
 import { teamCalendarMembers, teamCalendarWeeks } from "./team-calendar";
 import { teamPrintEntries } from "./team-calendar-print";
 import type { ExportInput } from "./types";
+import { teamMonthPrintBlocks } from "./team-month-print-layout";
 
 /** Dimensions taken from the team's October 2026 Excel print template. */
 export const teamCalendarPrintStyle = {
@@ -23,30 +22,12 @@ export const teamCalendarPrintStyle = {
 } as const;
 
 export function teamCalendarBlocks(input: ExportInput) {
-  if (input.view !== "team-month")
-    return teamCalendarWeeks(input).map((week) => ({
-      key: week.key,
-      title: `KW ${format(parseISO(week.key), "II")}`,
-      days: week.days,
-    }));
-  const range = calendarRange(input);
-  const blocks: { key: string; title: string; days: string[] }[] = [];
-  for (
-    let month = startOfMonth(parseISO(range.from));
-    month <= parseISO(range.to);
-    month = addMonths(month, 1)
-  ) {
-    const days = Array.from({ length: endOfMonth(month).getDate() }, (_, index) =>
-      format(addDays(month, index), "yyyy-MM-dd"),
-    );
-    for (const [index, half] of [days.slice(0, 16), days.slice(16)].entries())
-      blocks.push({
-        key: `${format(month, "yyyy-MM")}-${index + 1}`,
-        title: `${format(month, "MMMM yyyy", { locale: de })} · ${index ? "17" : "1"}–${index ? days.length : 16}`,
-        days: [...half, ...Array(16 - half.length).fill("")],
-      });
-  }
-  return blocks;
+  if (input.view === "team-month") return teamMonthPrintBlocks(input);
+  return teamCalendarWeeks(input).map((week) => ({
+    key: week.key,
+    title: `KW ${format(parseISO(week.key), "II")}`,
+    days: week.days,
+  }));
 }
 
 export type CalendarPrintCell = ReturnType<typeof teamPrintEntries>[number] & { text: string };

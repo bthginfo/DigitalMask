@@ -129,6 +129,12 @@ export function ExportDialog({
           <input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
         </label>
       </div>
+      {kind === "events" && view === "team-month" && format === "xlsx" && (
+        <p className="muted">
+          Jeder Monat hat zwei Druckblätter: 1.–14. und 15.–Monatsende. Wähle in Excel „Gesamte
+          Arbeitsmappe drucken“, um beide Seiten auszudrucken.
+        </p>
+      )}
       <ErrorMessage message={error} />
       <footer className="dialog-footer">
         <Button onClick={onClose}>Schließen</Button>

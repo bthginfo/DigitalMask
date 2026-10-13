@@ -15,6 +15,8 @@ export const teamMonthPrintMetrics = {
   titleHeight: 16,
   headingHeight: 24,
   padding: 1,
+  horizontalPadding: 1,
+  columnQuantum: 0,
   border: 0.5,
   entryGap: 0.4,
   minRowHeight: 24,
@@ -25,6 +27,7 @@ export type PrintWrapLines = (
   size: number,
   weight: number,
 ) => string[];
+export type TeamMonthPrintMetrics = { [K in keyof typeof teamMonthPrintMetrics]: number };
 
 export class CalendarPrintFitError extends Error {
   constructor(
@@ -61,21 +64,44 @@ export function teamMonthPrintBlocks(input: ExportInput) {
 }
 
 /** Two complete pages per month, with fixed physical typography and indivisible person rows. */
-export function teamMonthPrintLayouts(input: ExportInput, wrapLines: PrintWrapLines) {
-  const m = teamMonthPrintMetrics;
+export function teamMonthPrintLayouts(
+  input: ExportInput,
+  wrapLines: PrintWrapLines,
+  metrics: TeamMonthPrintMetrics = teamMonthPrintMetrics,
+) {
+  const m = metrics;
   const width = m.pageWidth - 2 * m.margin;
   const availableHeight =
     m.pageHeight - 2 * m.margin - m.titleHeight - m.headingHeight - 2 * m.border - 1;
   const members = teamCalendarMembers(input);
   const layouts = teamMonthPrintBlocks(input).map((block) => {
-    const dayWidth = (width - m.nameWidth) / block.days.length;
+    const rawDayWidth = (width - m.nameWidth) / block.days.length;
+    const dayWidth = m.columnQuantum
+      ? Math.floor(rawDayWidth / m.columnQuantum) * m.columnQuantum
+      : rawDayWidth;
     const rows = members.map((member) => {
-      const nameLines = wrapLines(member.name, m.nameWidth - 2 * m.padding - 1, m.fontSize, 700);
+      const nameLines = wrapLines(
+        member.name,
+        m.nameWidth - 2 * m.horizontalPadding - 1,
+        m.fontSize,
+        700,
+      );
       const cells = block.days.map((day) =>
         teamPrintEntries(input, day, member.id).map((entry) => {
-          const lines = [entry.time, entry.title]
-            .filter(Boolean)
-            .flatMap((text) => wrapLines(text, dayWidth - 2 * m.padding - 1, m.fontSize, 400));
+          const inline = wrapLines(
+            [entry.time, entry.title].filter(Boolean).join(" · "),
+            dayWidth - 2 * m.horizontalPadding - 1,
+            m.fontSize,
+            400,
+          );
+          const lines =
+            inline.length === 1
+              ? inline
+              : [entry.time, entry.title]
+                  .filter(Boolean)
+                  .flatMap((text) =>
+                    wrapLines(text, dayWidth - 2 * m.horizontalPadding - 1, m.fontSize, 400),
+                  );
           return { ...entry, lines, height: lines.length * m.lineHeight + 2 * m.padding };
         }),
       );
@@ -97,7 +123,7 @@ export function teamMonthPrintLayouts(input: ExportInput, wrapLines: PrintWrapLi
     return {
       block,
       dayWidth,
-      width,
+      width: m.nameWidth + dayWidth * block.days.length,
       requiredHeight,
       rows: rows.map((row) => ({ ...row, height: row.height + extra })),
     };

@@ -9,6 +9,7 @@ import {
   teamCalendarPrintStyle as metrics,
 } from "./team-calendar-layout";
 import type { ExportInput } from "./types";
+import { calendarPrintDayBackground } from "./team-calendar-print";
 
 type PrintPage = React.ComponentType<{
   input: ExportInput;
@@ -222,7 +223,8 @@ function CalendarMatrix({ layout }: { layout: CalendarLayout }) {
                         height: metrics.rowHeight * verticalScale,
                         paddingVertical: 2 * verticalScale,
                         paddingHorizontal: (block.days.length > 7 ? 0.75 : 2) * verticalScale,
-                        backgroundColor: entry?.color || "#ffffff",
+                        backgroundColor:
+                          entry?.color || calendarPrintDayBackground(row.cells[dayIndex]),
                       }}
                     >
                       {entry && (

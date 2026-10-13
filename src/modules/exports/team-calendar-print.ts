@@ -19,7 +19,7 @@ export function teamPrintEntries(input: ExportInput, day: string, memberId: stri
 
 export function calendarPrintEntry(record: DomainRecord, input: ExportInput) {
   const display = eventDisplay(record, input);
-  const monthlyPrint = input.view === "team-month" && input.format === "pdf";
+  const monthlyPrint = input.view === "team-month" && ["pdf", "xlsx"].includes(input.format);
   const compact = monthlyPrint ? monthlyPrintLabel(record, input) : undefined;
   const original = /^#[0-9a-f]{6}$/i.test(display.color) ? display.color : "#77818e";
   // Absences remain lighter, but the entire printed entry carries its colour.
@@ -35,6 +35,7 @@ export function calendarPrintEntry(record: DomainRecord, input: ExportInput) {
   const paint = calendarEventPaint(color, false);
   return {
     id: record.id,
+    allDay: display.allDay,
     title: compact?.title ?? display.title,
     time:
       display.allDay || compact?.performance
@@ -48,6 +49,11 @@ export function calendarPrintEntry(record: DomainRecord, input: ExportInput) {
     color,
     textColor: paint.textColor,
   };
+}
+
+/** An all-day entry paints the whole person/day area underneath timed appointments. */
+export function calendarPrintDayBackground(entries: ReturnType<typeof calendarPrintEntry>[]) {
+  return entries.find((entry) => entry.allDay)?.color ?? "#ffffff";
 }
 
 /** Print abbreviations never rename categories, productions or stored events. */

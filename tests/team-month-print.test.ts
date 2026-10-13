@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { calendarPrintEntry } from "@/modules/exports/team-calendar-print";
+import {
+  calendarPrintEntry,
+  calendarPrintDayBackground,
+} from "@/modules/exports/team-calendar-print";
 import { teamMonthPrintBlocks } from "@/modules/exports/team-month-print-layout";
 import type { DomainRecord } from "@/shared/contracts";
 import type { ExportInput } from "@/modules/exports/types";
@@ -55,7 +58,7 @@ const event = (data: DomainRecord["data"]) =>
   });
 
 describe("team-month print labels", () => {
-  it("prints only the production title for performances without changing other formats", () => {
+  it("uses the same compact production title for PDF and XLSX while keeping data exports intact", () => {
     const record = event({
       category: "performance",
       productionId: "gym",
@@ -66,7 +69,11 @@ describe("team-month print labels", () => {
       time: "",
       color: "#aabbcc",
     });
-    expect(calendarPrintEntry(record, { ...input, format: "xlsx" }).title).toContain("Vorstellung");
+    expect(calendarPrintEntry(record, { ...input, format: "xlsx" })).toMatchObject({
+      title: "Gym",
+      time: "",
+    });
+    expect(calendarPrintEntry(record, { ...input, format: "csv" }).title).toContain("Vorstellung");
     expect(calendarPrintEntry(record, { ...input, view: "team" }).time).toContain("09:00");
     expect(record.data.title).toBe("Erste Vorstellung");
     expect(
@@ -94,6 +101,20 @@ describe("team-month print labels", () => {
       calendarPrintEntry(event({ category: "rehearsal", title: "Probe, alle Szenen" }), input)
         .title,
     ).toBe("Probe, alle Szenen");
+  });
+});
+
+describe("all-day print backgrounds", () => {
+  it("extends an all-day category's lightened colour behind timed appointments only for that person/day", () => {
+    const free = calendarPrintEntry(event({ category: "half" }), input);
+    const appointment = calendarPrintEntry(
+      event({ category: "performance", productionId: "gym" }),
+      input,
+    );
+    expect(free).toMatchObject({ allDay: true, color: "#bbc0c7" });
+    expect(calendarPrintDayBackground([appointment, free])).toBe(free.color);
+    expect(calendarPrintDayBackground([appointment])).toBe("#ffffff");
+    expect(appointment.color).toBe("#aabbcc");
   });
 });
 

@@ -9,6 +9,7 @@ import {
 import { safeSpreadsheetText } from "./spreadsheet";
 import type { ExportInput } from "./types";
 import { bavarianHoliday } from "@/shared/bavarian-holidays";
+import { calendarPrintDayBackground } from "./team-calendar-print";
 
 function calendarBlock(sheet: Worksheet, input: ExportInput, days: string[], startRow: number) {
   const compact = days.length > 7;
@@ -50,7 +51,9 @@ function calendarBlock(sheet: Worksheet, input: ExportInput, days: string[], sta
         cell.fill = {
           type: "pattern",
           pattern: "solid",
-          fgColor: { argb: entry ? `FF${entry.color.slice(1).toUpperCase()}` : "FFFFFFFF" },
+          fgColor: {
+            argb: `FF${(entry?.color ?? calendarPrintDayBackground(cells[dayIndex])).slice(1).toUpperCase()}`,
+          },
         };
         cell.font = {
           name: "Calibri",
@@ -116,20 +119,18 @@ function matrixSheet(workbook: Workbook, name: string, days: number) {
 
 /** Match the department's fixed-height, full-colour Excel print template. */
 export async function buildTeamCalendarXlsx(input: ExportInput) {
+  if (input.view === "team-month") {
+    const { buildTeamMonthCalendarXlsx } = await import("./team-month-calendar-xlsx");
+    return buildTeamMonthCalendarXlsx(input);
+  }
   const { default: ExcelJS } = await import("exceljs");
   const workbook = new ExcelJS.Workbook();
   workbook.creator = "DigitalMask";
   const blocks = teamCalendarBlocks(input);
-  for (let index = 0; index < blocks.length; index++) {
-    const block = blocks[index];
-    const monthly = input.view === "team-month";
-    const sheet = matrixSheet(
-      workbook,
-      monthly ? `Team ${block.key.slice(0, 7)}` : `Team ${block.key}`,
-      monthly ? 16 : 7,
-    );
+  for (const block of blocks) {
+    const sheet = matrixSheet(workbook, `Team ${block.key}`, 7);
     const write = (part: typeof block, row: number) => {
-      sheet.mergeCells(row, 1, row, monthly ? 17 : 8);
+      sheet.mergeCells(row, 1, row, 8);
       const title = sheet.getCell(row, 1);
       title.value = safeSpreadsheetText(part.title);
       title.font = {
@@ -147,12 +148,8 @@ export async function buildTeamCalendarXlsx(input: ExportInput) {
       sheet.getRow(row).height = metrics.titleHeight;
       return calendarBlock(sheet, input, part.days, row + 1);
     };
-    let endRow = write(block, 1);
-    if (monthly && blocks[index + 1]?.key.slice(0, 7) === block.key.slice(0, 7)) {
-      sheet.getRow(endRow - 1).addPageBreak();
-      endRow = write(blocks[++index], endRow);
-    }
-    sheet.pageSetup.printArea = `A1:${monthly ? "Q" : "H"}${endRow - 1}`;
+    const endRow = write(block, 1);
+    sheet.pageSetup.printArea = `A1:H${endRow - 1}`;
   }
   return new Uint8Array(await workbook.xlsx.writeBuffer());
 }

@@ -333,29 +333,30 @@ describe("attendance and configurable calendar exports", () => {
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(new Uint8Array((await buildExport(input)).bytes).buffer);
     const grids = workbook.worksheets.filter((sheet) => sheet.name.startsWith("Team "));
-    expect(grids).toHaveLength(1);
-    for (const grid of grids) {
-      expect(grid.columnCount).toBe(17);
+    expect(grids).toHaveLength(2);
+    for (const [index, grid] of grids.entries()) {
+      expect(grid.columnCount).toBe(index ? 18 : 15);
       expect(grid.views[0]).toMatchObject({ xSplit: 1, ySplit: 2 });
-      expect(grid.pageSetup.scale).toBe(74);
+      expect(grid.pageSetup.scale).toBe(100);
       expect(grid.pageSetup.margins).toMatchObject({
-        left: 0.7,
-        right: 0.7,
-        top: 0.75,
-        bottom: 0.75,
+        left: 14.25 / 72,
+        right: 14.25 / 72,
+        top: 14.25 / 72,
+        bottom: 14.25 / 72,
       });
-      expect(grid.getRow(3).height).toBe(35);
-      expect(grid.getCell("A3").font.size).toBe(12);
-      expect(grid.getCell("B3").font.size).toBe(9);
-      expect(grid.getCell("A3").border.left?.style).toBe("medium");
-      expect(grid.getCell("A3").value).toBe("Fiktive Person 2");
+      expect(grid.getCell("A3").font.size).toBe(10);
+      expect(grid.getCell("B3").font.size).toBe(10);
+      expect(String(grid.getCell("A3").value).replace(/\s+/g, " ")).toBe("Fiktive Person 2");
       const text = grid.getSheetValues().flat().join(" ");
-      expect(text).toContain("01.10.");
-      expect(text).toContain("31.10.");
+      expect(text).toContain(index ? "15.10." : "01.10.");
+      expect(text).toContain(index ? "31.10." : "14.10.");
       expect(text).not.toContain("NOT_STAFF");
       expect(text).not.toContain("NOT_ACTIVE");
     }
-    expect(workbook.worksheets.map((sheet) => sheet.name)).toEqual(["Team 2026-10"]);
+    expect(workbook.worksheets.map((sheet) => sheet.name)).toEqual([
+      "Team 2026-10 1-14",
+      "Team 2026-10 15-31",
+    ]);
   });
   it("prints every staff row on both A4 month pages at a physical 10-point size", async () => {
     const input = calendar("pdf");
@@ -390,9 +391,10 @@ describe("attendance and configurable calendar exports", () => {
     expect(Math.min(...pdf.fontSizes)).toBeCloseTo(10, 3);
   }, 60000);
   it("rejects an impossible 10-point two-page month instead of clipping rows or shrinking fonts", async () => {
-    await expect(buildExport(calendar("pdf"))).rejects.toThrow(
-      "zwei lesbare A4-Seiten mit 10-Punkt-Schrift",
-    );
+    for (const format of ["pdf", "xlsx"] as const)
+      await expect(buildExport(calendar(format))).rejects.toThrow(
+        "zwei lesbare A4-Seiten mit 10-Punkt-Schrift",
+      );
   });
   it("uses uniform rows for the two month halves and preserves all coloured entries", async () => {
     const staff = members.slice(1, 6);
@@ -449,26 +451,122 @@ describe("attendance and configurable calendar exports", () => {
       ).buffer,
     );
     const sheet = workbook.worksheets[0];
-    const text = sheet.getSheetValues().flat().join(" ");
-    expect(text).toContain("Probe M4D13");
+    const text = workbook.worksheets
+      .map((sheet) => sheet.getSheetValues().flat().join(" "))
+      .join(" ");
+    expect(text.replace(/\s+/g, " ")).toContain("Probe M4D13");
     expect(text).toContain("ENDE1");
     let coloured = 0;
-    sheet.eachRow((row) =>
-      row.eachCell((cell) => {
-        if (String(cell.value ?? "").includes("Probe M")) {
-          expect(cell.fill.type).toBe("pattern");
-          if (cell.fill.type === "pattern") expect(cell.fill.pattern).toBe("solid");
-          coloured++;
-        }
-      }),
-    );
+    for (const sheet of workbook.worksheets)
+      sheet.eachRow((row) =>
+        row.eachCell((cell) => {
+          if (
+            String(cell.value ?? "")
+              .replace(/\s+/g, " ")
+              .includes("Probe M")
+          ) {
+            expect(cell.fill.type).toBe("pattern");
+            if (cell.fill.type === "pattern") expect(cell.fill.pattern).toBe("solid");
+            coloured++;
+          }
+        }),
+      );
     expect(coloured).toBeGreaterThanOrEqual(70);
     expect(sheet.pageSetup).toMatchObject({
       paperSize: 9,
       orientation: "landscape",
-      scale: 74,
+      scale: 100,
     });
   }, 60000);
+  it("colours the full all-day person/day area in Excel without hiding a timed appointment or colouring another person", async () => {
+    const staff = members.slice(1, 3);
+    const free = record("calendarCategories", "green-free", {
+      key: "green-free",
+      name: "Ruhetag",
+      allDay: true,
+      color: "#91bb76",
+    });
+    const input: ExportInput = {
+      ...calendar("xlsx"),
+      members: staff,
+      references: {
+        productions: [{ ...production, data: { title: "Gym", color: "#4e85b4" } }],
+        calendarCategories: [free],
+      },
+      records: [
+        record("events", "two-free-days", {
+          category: "green-free",
+          participantIds: [staff[0].id],
+          start: iso("2026-10-01", "00:00:00"),
+          end: iso("2026-10-03", "00:00:00"),
+        }),
+        record("events", "performance-on-free-day", {
+          category: "performance",
+          productionId: "p",
+          title: "OMIT_CUSTOM_TITLE",
+          participantIds: [staff[0].id],
+          start: iso("2026-10-01", "19:00:00"),
+          end: iso("2026-10-01", "21:00:00"),
+        }),
+      ],
+    };
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(new Uint8Array((await buildExport(input)).bytes).buffer);
+    const sheet = workbook.worksheets[0];
+    let nextPerson = 3;
+    const firstDayColors: string[] = [];
+    while (nextPerson <= sheet.rowCount && sheet.getCell(nextPerson, 1).master.address === "A3") {
+      const first = sheet.getCell(nextPerson, 2).fill;
+      const second = sheet.getCell(nextPerson, 3).fill;
+      const third = sheet.getCell(nextPerson, 4).fill;
+      expect(second).toMatchObject({
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFC8DDBB" },
+      });
+      expect(third).toMatchObject({ type: "pattern", fgColor: { argb: "FFFFFFFF" } });
+      if (first.type === "pattern") firstDayColors.push(first.fgColor?.argb ?? "");
+      nextPerson++;
+    }
+    expect(firstDayColors).toContain("FF4E85B4");
+    expect(firstDayColors.at(-1)).toBe("FFC8DDBB");
+    expect(sheet.getCell(nextPerson, 3).fill).toMatchObject({ fgColor: { argb: "FFFFFFFF" } });
+    const text = sheet.getSheetValues().flat().join(" ");
+    expect(text).toContain("Gym");
+    expect(text).not.toContain("OMIT_CUSTOM_TITLE");
+  });
+  it("keeps two distinct complete Excel print sheets for February and every later selected month", async () => {
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(
+      new Uint8Array(
+        (
+          await buildExport({
+            ...calendar("xlsx"),
+            records: [],
+            members: members.slice(1, 3),
+            from: "2026-02-01",
+            to: "2026-03-31",
+          })
+        ).bytes,
+      ).buffer,
+    );
+    expect(workbook.worksheets.map((sheet) => sheet.name)).toEqual([
+      "Team 2026-02 1-14",
+      "Team 2026-02 15-28",
+      "Team 2026-03 1-14",
+      "Team 2026-03 15-31",
+    ]);
+    for (const sheet of workbook.worksheets) {
+      expect(sheet.pageSetup).toMatchObject({
+        orientation: "landscape",
+        paperSize: 9,
+        scale: 100,
+        fitToPage: false,
+      });
+      expect(String(sheet.getCell("A3").value).replace(/\s+/g, " ")).toBe("Fiktive Person 2");
+      expect(sheet.getCell("A3").font.size).toBe(10);
+    }
+  });
   it("prints multipage attendance with separate person/day/week totals and no production headings", async () => {
     const records = Array.from({ length: 29 }, (_, i) =>
       record("attendance", `presence${i}`, {

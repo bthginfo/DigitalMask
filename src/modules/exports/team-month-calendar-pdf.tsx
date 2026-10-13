@@ -3,6 +3,7 @@ import { Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 import { format, getDay, parseISO } from "date-fns";
 import { de } from "date-fns/locale";
 import { teamMonthPrintLayouts, teamMonthPrintMetrics as m } from "./team-month-print-layout";
+import { calendarPrintDayBackground } from "./team-calendar-print";
 
 const styles = StyleSheet.create({
   page: {
@@ -84,6 +85,7 @@ export function TeamMonthCalendarPdf({
                     key={block.days[day]}
                     style={{
                       width: dayWidth,
+                      backgroundColor: calendarPrintDayBackground(entries),
                       borderLeftWidth: m.border,
                       borderLeftColor: "#b4c0b8",
                     }}
