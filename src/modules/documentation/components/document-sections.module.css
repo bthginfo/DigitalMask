@@ -1,0 +1,38 @@
+.content:global(.document-content) {
+  min-width: 0;
+  gap: 16px;
+}
+
+.sectionCard:global(.document-read-section) {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-soft);
+}
+
+.sectionCard > h3 {
+  margin: 0 0 16px;
+}
+
+.sectionCard > div > .entryLabel {
+  margin: 0 0 4px;
+  font-size: inherit;
+  font-weight: 700;
+  line-height: inherit;
+  overflow-wrap: anywhere;
+}
+
+.labelInput {
+  font-weight: 700;
+}
+
+@media (max-width: 760px) {
+  .content:global(.document-content) {
+    gap: 12px;
+  }
+
+  .sectionCard:global(.document-read-section) {
+    padding: 12px;
+  }
+}

@@ -5,6 +5,7 @@ import { sectionName } from "@/shared/document-sections";
 import { categoriesFor } from "@/shared/domain-categories";
 import { useWorkspace } from "@/components/workspace-context";
 import { Button, Empty } from "@/components/ui";
+import styles from "./document-sections.module.css";
 export function SectionFields({
   kind,
   sections,
@@ -52,6 +53,7 @@ export function SectionFields({
                   <label className="entry-label">
                     Kurzes Label (optional)
                     <input
+                      className={kind === "looks" ? styles.labelInput : undefined}
                       value={entry.label || ""}
                       maxLength={200}
                       onChange={(event) =>

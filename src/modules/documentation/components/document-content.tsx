@@ -3,25 +3,34 @@ import type { DomainRecord } from "@/shared/contracts";
 import { LinkedText } from "@/components/linked-text";
 import { documentSections, pieceDuration, sectionName } from "@/shared/document-sections";
 import { useWorkspace } from "@/components/workspace-context";
+import styles from "./document-sections.module.css";
 export function DocumentContent({ record }: { record: DomainRecord }) {
   const { workspace } = useWorkspace();
   const kind = record.kind === "handovers" ? "handovers" : "looks",
     sections = documentSections(record.data, kind);
   const duration = pieceDuration(record.data, workspace.records.productions);
   return (
-    <div className="document-content">
+    <div className={`document-content ${kind === "looks" ? styles.content : ""}`}>
       {record.kind === "looks" && !!duration && (
         <p className="document-duration">
           Stückdauer: <strong>{duration} Minuten</strong>
         </p>
       )}
       {sections.map((section) => (
-        <section className="document-read-section" key={section.key}>
+        <section
+          className={`document-read-section ${kind === "looks" ? styles.sectionCard : ""}`}
+          aria-label={sectionName(section.key, kind, workspace.records.categories)}
+          key={section.key}
+        >
           <h3>{sectionName(section.key, kind, workspace.records.categories)}</h3>
           {section.entries.length ? (
             section.entries.map((entry) => (
               <div key={entry.id}>
-                {entry.label && <h4>{entry.label}</h4>}
+                {entry.label && (
+                  <h4 className={kind === "looks" ? styles.entryLabel : undefined}>
+                    {entry.label}
+                  </h4>
+                )}
                 <p>
                   <LinkedText>{entry.text || "Noch kein Text eingetragen."}</LinkedText>
                 </p>
