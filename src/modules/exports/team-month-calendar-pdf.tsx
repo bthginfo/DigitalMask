@@ -2,23 +2,26 @@ import React from "react";
 import { Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 import { format, getDay, parseISO } from "date-fns";
 import { de } from "date-fns/locale";
-import { teamMonthPrintLayouts, teamMonthPrintMetrics as m } from "./team-month-print-layout";
+import {
+  teamMonthPrintLayouts,
+  teamMonthPrintMetrics as defaults,
+} from "./team-month-print-layout";
 import { calendarPrintDayBackground } from "./team-calendar-print";
 
 const styles = StyleSheet.create({
   page: {
-    minHeight: m.pageHeight,
-    maxHeight: m.pageHeight,
-    padding: m.margin,
+    minHeight: defaults.pageHeight,
+    maxHeight: defaults.pageHeight,
+    padding: defaults.margin,
     fontFamily: "NotoCondensed",
-    fontSize: m.fontSize,
+    fontSize: defaults.fontSize,
     color: "#172a22",
   },
-  title: { height: m.titleHeight, fontSize: 10, lineHeight: 1.08, fontWeight: 700 },
-  matrix: { borderWidth: m.border, borderColor: "#1e3129" },
+  title: { lineHeight: 1.08, fontWeight: 700 },
+  matrix: { borderColor: "#1e3129" },
   row: { flexDirection: "row" },
-  heading: { fontSize: m.fontSize, fontWeight: 700, lineHeight: 1.08, textAlign: "center" },
-  text: { fontSize: m.fontSize, lineHeight: 1.08 },
+  heading: { fontWeight: 700, lineHeight: 1.08, textAlign: "center" },
+  text: { lineHeight: 1.08 },
 });
 
 export function TeamMonthCalendarPdf({
@@ -28,10 +31,18 @@ export function TeamMonthCalendarPdf({
 }) {
   return (
     <>
-      {layouts.map(({ block, rows, width, dayWidth }) => (
-        <Page key={block.key} size="A4" orientation="landscape" style={styles.page} wrap={false}>
-          <Text style={styles.title}>{block.title}</Text>
-          <View style={{ ...styles.matrix, width }} wrap={false}>
+      {layouts.map(({ block, rows, width, dayWidth, metrics: m }) => (
+        <Page
+          key={block.key}
+          size="A4"
+          orientation="landscape"
+          style={{ ...styles.page, padding: m.margin, fontSize: m.fontSize }}
+          wrap={false}
+        >
+          <Text style={{ ...styles.title, fontSize: m.fontSize, height: m.titleHeight }}>
+            {block.title}
+          </Text>
+          <View style={{ ...styles.matrix, borderWidth: m.border, width }} wrap={false}>
             <View
               style={{
                 ...styles.row,
@@ -43,7 +54,7 @@ export function TeamMonthCalendarPdf({
               <View
                 style={{ width: m.nameWidth, justifyContent: "center", backgroundColor: "#edf1ef" }}
               >
-                <Text style={styles.heading}>Person</Text>
+                <Text style={{ ...styles.heading, fontSize: m.fontSize }}>Person</Text>
               </View>
               {block.days.map((day) => (
                 <View
@@ -56,7 +67,7 @@ export function TeamMonthCalendarPdf({
                     backgroundColor: [0, 6].includes(getDay(parseISO(day))) ? "#e2e8e3" : "#edf1ef",
                   }}
                 >
-                  <Text style={styles.heading}>
+                  <Text style={{ ...styles.heading, fontSize: m.fontSize }}>
                     {format(parseISO(day), "EEE", { locale: de })}
                     {"\n"}
                     {format(parseISO(day), "dd.MM.")}
@@ -76,7 +87,7 @@ export function TeamMonthCalendarPdf({
                 wrap={false}
               >
                 <View style={{ width: m.nameWidth, padding: m.padding, justifyContent: "center" }}>
-                  <Text style={{ ...styles.text, fontWeight: 700 }}>
+                  <Text style={{ ...styles.text, fontSize: m.fontSize, fontWeight: 700 }}>
                     {row.nameLines.join("\n")}
                   </Text>
                 </View>
@@ -101,9 +112,24 @@ export function TeamMonthCalendarPdf({
                         }}
                         wrap={false}
                       >
-                        <Text style={{ ...styles.text, color: entry.textColor }}>
-                          {entry.lines.join("\n")}
-                        </Text>
+                        {/* Keep measured lines separate so fixed-height cells cannot reflow/truncate a final paragraph. */}
+                        {entry.lines.map((line, lineIndex) => (
+                          <Text
+                            key={lineIndex}
+                            style={{
+                              ...styles.text,
+                              position: "absolute",
+                              left: m.padding,
+                              right: m.padding,
+                              top: m.padding + lineIndex * m.lineHeight,
+                              height: m.lineHeight + m.textSafety,
+                              fontSize: m.fontSize,
+                              color: entry.textColor,
+                            }}
+                          >
+                            {line}
+                          </Text>
+                        ))}
                       </View>
                     ))}
                   </View>

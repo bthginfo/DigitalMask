@@ -17,6 +17,8 @@ export const teamMonthPrintMetrics = {
   padding: 1,
   horizontalPadding: 1,
   columnQuantum: 0,
+  rowQuantum: 0,
+  textSafety: 0.25,
   border: 0.5,
   entryGap: 0.4,
   minRowHeight: 24,
@@ -28,18 +30,6 @@ export type PrintWrapLines = (
   weight: number,
 ) => string[];
 export type TeamMonthPrintMetrics = { [K in keyof typeof teamMonthPrintMetrics]: number };
-
-export class CalendarPrintFitError extends Error {
-  constructor(
-    public requiredHeight = 0,
-    public availableHeight = 0,
-  ) {
-    super(
-      "Der Teammonat enthält zu viel Text für zwei lesbare A4-Seiten mit 10-Punkt-Schrift. Bitte kürze lange Termintitel oder nutze für diesen Monat die Teamwochen-Druckansicht. Es wurden keine Einträge abgeschnitten.",
-    );
-    this.name = "CalendarPrintFitError";
-  }
-}
 
 export function teamMonthPrintBlocks(input: ExportInput) {
   const range = calendarRange(input);
@@ -63,73 +53,135 @@ export function teamMonthPrintBlocks(input: ExportInput) {
   return blocks;
 }
 
-/** Two complete pages per month, with fixed physical typography and indivisible person rows. */
+/** Two complete pages per month: tighten spacing before reducing the uniform font size. */
 export function teamMonthPrintLayouts(
   input: ExportInput,
   wrapLines: PrintWrapLines,
   metrics: TeamMonthPrintMetrics = teamMonthPrintMetrics,
 ) {
-  const m = metrics;
-  const width = m.pageWidth - 2 * m.margin;
-  const availableHeight =
-    m.pageHeight - 2 * m.margin - m.titleHeight - m.headingHeight - 2 * m.border - 1;
   const members = teamCalendarMembers(input);
-  const layouts = teamMonthPrintBlocks(input).map((block) => {
-    const rawDayWidth = (width - m.nameWidth) / block.days.length;
-    const dayWidth = m.columnQuantum
-      ? Math.floor(rawDayWidth / m.columnQuantum) * m.columnQuantum
-      : rawDayWidth;
-    const rows = members.map((member) => {
-      const nameLines = wrapLines(
-        member.name,
-        m.nameWidth - 2 * m.horizontalPadding - 1,
-        m.fontSize,
-        700,
-      );
-      const cells = block.days.map((day) =>
-        teamPrintEntries(input, day, member.id).map((entry) => {
-          const inline = wrapLines(
-            [entry.time, entry.title].filter(Boolean).join(" · "),
-            dayWidth - 2 * m.horizontalPadding - 1,
-            m.fontSize,
-            400,
-          );
-          const lines =
-            inline.length === 1
-              ? inline
-              : [entry.time, entry.title]
-                  .filter(Boolean)
-                  .flatMap((text) =>
-                    wrapLines(text, dayWidth - 2 * m.horizontalPadding - 1, m.fontSize, 400),
-                  );
-          return { ...entry, lines, height: lines.length * m.lineHeight + 2 * m.padding };
-        }),
-      );
-      const height =
-        Math.max(
-          m.minRowHeight,
-          nameLines.length * m.lineHeight + 2 * m.padding,
-          ...cells.map(
-            (entries) =>
-              entries.reduce((sum, entry) => sum + entry.height, 0) +
-              Math.max(0, entries.length - 1) * m.entryGap,
-          ),
-        ) + m.border;
-      return { member, nameLines, cells, height };
+  // Resolve/filter entries once; font fitting only reflows in-memory text.
+  const source = teamMonthPrintBlocks(input).map((block) => ({
+    block,
+    rows: members.map((member) => ({
+      member,
+      cells: block.days.map((day) => teamPrintEntries(input, day, member.id)),
+    })),
+  }));
+  const calculate = (m: TeamMonthPrintMetrics) => {
+    const width = m.pageWidth - 2 * m.margin;
+    const availableHeight =
+      m.pageHeight - 2 * m.margin - m.titleHeight - m.headingHeight - 2 * m.border - 1;
+    const roundUp = (height: number) =>
+      m.rowQuantum ? Math.ceil((height - 1e-8) / m.rowQuantum) * m.rowQuantum : height;
+    return source.map(({ block, rows: records }) => {
+      const rawDayWidth = (width - m.nameWidth) / block.days.length;
+      const dayWidth = m.columnQuantum
+        ? Math.floor(rawDayWidth / m.columnQuantum) * m.columnQuantum
+        : rawDayWidth;
+      const rows = records.map(({ member, cells: entries }) => {
+        const nameLines = wrapLines(
+          member.name,
+          m.nameWidth - 2 * m.horizontalPadding - 1,
+          m.fontSize,
+          700,
+        );
+        const cells = entries.map((day) =>
+          day.map((entry) => {
+            const textWidth = dayWidth - 2 * m.horizontalPadding - 1;
+            const inline = wrapLines(
+              [entry.time, entry.title].filter(Boolean).join(" · "),
+              textWidth,
+              m.fontSize,
+              400,
+            );
+            const stacked = [entry.time, entry.title]
+              .filter(Boolean)
+              .flatMap((text) => wrapLines(text, textWidth, m.fontSize, 400));
+            const lines = inline.length <= stacked.length ? inline : stacked;
+            return {
+              ...entry,
+              lines,
+              height: roundUp(lines.length * m.lineHeight + 2 * m.padding + m.textSafety),
+            };
+          }),
+        );
+        const height = roundUp(
+          Math.max(
+            m.minRowHeight,
+            nameLines.length * m.lineHeight + 2 * m.padding + m.textSafety,
+            ...cells.map(
+              (day) =>
+                day.reduce((sum, entry) => sum + entry.height, 0) +
+                Math.max(0, day.length - 1) * m.entryGap,
+            ),
+          ) + m.border,
+        );
+        return { member, nameLines, cells, height };
+      });
+      const requiredHeight = rows.reduce((sum, row) => sum + row.height, 0);
+      const extra = rows.length ? Math.max(0, availableHeight - requiredHeight) / rows.length : 0;
+      return {
+        block,
+        metrics: m,
+        dayWidth,
+        width: m.nameWidth + dayWidth * block.days.length,
+        requiredHeight,
+        availableHeight,
+        requiresPrintScaling: requiredHeight > availableHeight,
+        rows: rows.map((row) => ({ ...row, height: row.height + extra })),
+      };
     });
-    const requiredHeight = rows.reduce((sum, row) => sum + row.height, 0);
-    // Use the hanging plan's full sheet height without scaling the font or hiding entries.
-    const extra = rows.length ? Math.max(0, availableHeight - requiredHeight) / rows.length : 0;
-    return {
-      block,
-      dayWidth,
-      width: m.nameWidth + dayWidth * block.days.length,
-      requiredHeight,
-      rows: rows.map((row) => ({ ...row, height: row.height + extra })),
-    };
-  });
-  const requiredHeight = Math.max(0, ...layouts.map((layout) => layout.requiredHeight));
-  if (requiredHeight > availableHeight)
-    throw new CalendarPrintFitError(requiredHeight, availableHeight);
-  return layouts;
+  };
+  const fits = (layouts: ReturnType<typeof calculate>) =>
+    layouts.every((layout) => !layout.requiresPrintScaling);
+  const regular = calculate(metrics);
+  if (fits(regular)) return regular;
+
+  const compact = {
+    ...metrics,
+    margin: Math.min(metrics.margin, 14.25),
+    titleHeight: Math.min(metrics.titleHeight, 12),
+    // Native Excel's cell insets are fixed; preserve them in the width/height measurement.
+    padding: input.format === "xlsx" ? metrics.padding : Math.min(metrics.padding, 0.25),
+    horizontalPadding:
+      input.format === "xlsx" ? metrics.horizontalPadding : Math.min(metrics.horizontalPadding, 1),
+    entryGap: 0,
+  };
+  const atSize = (fontSize: number) => {
+    const ratio = fontSize / metrics.fontSize;
+    return calculate({
+      ...compact,
+      fontSize,
+      lineHeight: metrics.lineHeight * ratio,
+      padding: input.format === "xlsx" ? compact.padding : compact.padding * ratio,
+      horizontalPadding:
+        input.format === "xlsx" ? compact.horizontalPadding : compact.horizontalPadding * ratio,
+      titleHeight: compact.titleHeight * ratio,
+      headingHeight:
+        input.format === "xlsx" ? compact.headingHeight : compact.headingHeight * ratio,
+      minRowHeight: metrics.minRowHeight * ratio,
+      border: metrics.border * ratio,
+      textSafety: input.format === "xlsx" ? compact.textSafety : compact.textSafety * ratio,
+    });
+  };
+  const tightened = atSize(metrics.fontSize);
+  if (fits(tightened)) return tightened;
+
+  // Quarter-point search keeps both halves consistent and picks the largest fitting font.
+  let lower = 4;
+  let upper = Math.floor(metrics.fontSize * 4) - 1;
+  let result = atSize(1);
+  while (lower <= upper) {
+    const middle = Math.floor((lower + upper) / 2);
+    const candidate = atSize(middle / 4);
+    if (fits(candidate)) {
+      result = candidate;
+      lower = middle + 1;
+    } else upper = middle - 1;
+  }
+  // Native Excel supports fonts from one point; extremely dense sheets use its
+  // whole-sheet print fitting. PDF can reflow smaller without discarding content.
+  if (input.format !== "xlsx") for (let size = 0.5; !fits(result); size /= 2) result = atSize(size);
+  return result;
 }

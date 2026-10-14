@@ -630,7 +630,7 @@ export async function buildPdf(input: ExportInput): Promise<Uint8Array> {
     input = { ...input, images: normalizedImages };
   }
   if (calendar && input.view === "team-month") {
-    // Validate physical fit before React rendering so the caller retains a useful error.
+    // Fit the complete two-page month before rendering, including its uniform typography.
     const layouts = teamMonthPrintLayouts(input, monthPrintLines);
     return new Uint8Array(
       await renderToBuffer(

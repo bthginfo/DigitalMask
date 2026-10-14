@@ -5,7 +5,11 @@ import { bavarianHoliday } from "@/shared/bavarian-holidays";
 import { calendarPrintDayBackground } from "./team-calendar-print";
 import { officePrintFont, officePrintLines } from "./office-print-text";
 import { safeSpreadsheetText } from "./spreadsheet";
-import { teamMonthPrintLayouts, teamMonthPrintMetrics } from "./team-month-print-layout";
+import {
+  teamMonthPrintLayouts,
+  teamMonthPrintMetrics,
+  type TeamMonthPrintMetrics,
+} from "./team-month-print-layout";
 import type { ExportInput } from "./types";
 
 export const teamMonthExcelPrintMetrics = {
@@ -18,6 +22,7 @@ export const teamMonthExcelPrintMetrics = {
   padding: 0.75,
   horizontalPadding: 1.5,
   columnQuantum: 0.75,
+  rowQuantum: 0.75,
   border: 0,
   entryGap: 0,
 };
@@ -27,9 +32,9 @@ const fill = (color: string): Fill => ({
   pattern: "solid",
   fgColor: { argb: `FF${color.replace("#", "").toUpperCase()}` },
 });
-const font = (color = "#172a22", bold = false) => ({
+const font = (color = "#172a22", bold = false, size: number = metrics.fontSize) => ({
   name: officePrintFont,
-  size: metrics.fontSize,
+  size,
   color: { argb: `FF${color.replace("#", "").toUpperCase()}` },
   bold,
 });
@@ -49,7 +54,7 @@ function writeMonthPage(
   workbook: Workbook,
   layout: ReturnType<typeof teamMonthPrintLayouts>[number],
 ) {
-  const { block, rows, dayWidth } = layout;
+  const { block, rows, dayWidth, metrics, requiresPrintScaling } = layout;
   const firstDay = Number(block.days[0].slice(-2));
   const lastDay = Number(block.days.at(-1)!.slice(-2));
   const sheet = workbook.addWorksheet(`Team ${block.key.slice(0, 7)} ${firstDay}-${lastDay}`, {
@@ -58,7 +63,8 @@ function writeMonthPage(
       paperSize: 9,
       orientation: "landscape",
       scale: 100,
-      fitToPage: false,
+      fitToPage: requiresPrintScaling,
+      ...(requiresPrintScaling ? { fitToWidth: 1, fitToHeight: 1 } : {}),
       blackAndWhite: false,
       horizontalCentered: true,
       margins: {
@@ -87,7 +93,7 @@ function writeMonthPage(
   heading.height = metrics.headingHeight;
   heading.eachCell((cell, index) => {
     const day = block.days[index - 2];
-    cell.font = font(undefined, true);
+    cell.font = font(undefined, true, metrics.fontSize);
     cell.fill = fill(day && [0, 6].includes(getDay(parseISO(day))) ? "#e2e8e3" : "#edf1ef");
     cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
     borders(cell, true);
@@ -98,8 +104,9 @@ function writeMonthPage(
   for (const row of rows)
     rowIndex = writePerson(
       sheet,
-      { ...row, height: Math.floor(row.height / 0.75) * 0.75 },
+      { ...row, height: Math.floor((row.height + 1e-8) / 0.75) * 0.75 },
       rowIndex,
+      metrics,
     );
   sheet.pageSetup.printArea = `A2:${sheet.getColumn(lastColumn).letter}${rowIndex - 1}`;
   return sheet;
@@ -110,6 +117,7 @@ function writePerson(
   sheet: Worksheet,
   person: ReturnType<typeof teamMonthPrintLayouts>[number]["rows"][number],
   firstRow: number,
+  metrics: TeamMonthPrintMetrics,
 ) {
   const starts = person.cells.map((entries) => {
     let offset = 0;
@@ -135,7 +143,7 @@ function writePerson(
     for (let column = 1; column <= person.cells.length + 1; column++) {
       const cell = row.getCell(column);
       cell.value = "";
-      cell.font = font();
+      cell.font = font(undefined, false, metrics.fontSize);
       cell.fill = fill(
         column === 1 ? "#ffffff" : calendarPrintDayBackground(person.cells[column - 2]),
       );
@@ -145,7 +153,7 @@ function writePerson(
   if (rowCount > 1) sheet.mergeCells(firstRow, 1, firstRow + rowCount - 1, 1);
   const name = sheet.getCell(firstRow, 1);
   name.value = safeSpreadsheetText(person.nameLines.join("\n"));
-  name.font = font(undefined, true);
+  name.font = font(undefined, true, metrics.fontSize);
   name.alignment = { wrapText: true, vertical: "middle" };
   for (let day = 0; day < starts.length; day++) {
     for (const { entry, start, end } of starts[day]) {
@@ -154,7 +162,7 @@ function writePerson(
       if (bottom > top) sheet.mergeCells(top, day + 2, bottom, day + 2);
       const cell = sheet.getCell(top, day + 2);
       cell.value = safeSpreadsheetText(entry.lines.join("\n"));
-      cell.font = font(entry.textColor);
+      cell.font = font(entry.textColor, false, metrics.fontSize);
       cell.fill = fill(entry.color);
       cell.alignment = { wrapText: true, vertical: "top" };
     }

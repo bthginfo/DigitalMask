@@ -36,6 +36,7 @@ const input: ExportInput = {
     productions: [row("productions", { title: "Gym", color: "#aabbcc" }, "gym")],
     calendarCategories: [
       row("calendarCategories", { key: "planning", name: "Konzeption", color: "#77818e" }, "konzi"),
+      row("calendarCategories", { key: "show", name: "Vorstellungen", color: "#77818e" }, "show"),
       row(
         "calendarCategories",
         { key: "day-service", name: "Tagesdienst", color: "#77818e" },
@@ -58,7 +59,7 @@ const event = (data: DomainRecord["data"]) =>
   });
 
 describe("team-month print labels", () => {
-  it("uses the same compact production title for PDF and XLSX while keeping data exports intact", () => {
+  it("prints the performance start and compact production title in PDF and XLSX while keeping data exports intact", () => {
     const record = event({
       category: "performance",
       productionId: "gym",
@@ -66,12 +67,12 @@ describe("team-month print labels", () => {
     });
     expect(calendarPrintEntry(record, input)).toMatchObject({
       title: "Gym",
-      time: "",
+      time: "09:00",
       color: "#aabbcc",
     });
     expect(calendarPrintEntry(record, { ...input, format: "xlsx" })).toMatchObject({
       title: "Gym",
-      time: "",
+      time: "09:00",
     });
     expect(calendarPrintEntry(record, { ...input, format: "csv" }).title).toContain("Vorstellung");
     expect(calendarPrintEntry(record, { ...input, view: "team" }).time).toContain("09:00");
@@ -80,6 +81,35 @@ describe("team-month print labels", () => {
       calendarPrintEntry(event({ category: "performance", title: "Gastspiel" }), input).title,
     ).toBe("Gastspiel");
   });
+  it.each(["pdf", "xlsx"] as const)(
+    "keeps the start of administrator-defined performances in Berlin time in %s across DST",
+    (format) => {
+      for (const [date, time] of [
+        ["2026-10-24", "19:30"],
+        ["2026-10-26", "18:30"],
+      ]) {
+        const record = event({
+          category: "show",
+          productionId: "gym",
+          start: `${date}T17:30:00Z`,
+          end: `${date}T20:00:00Z`,
+        });
+        expect(calendarPrintEntry(record, { ...input, format })).toMatchObject({
+          title: "Gym",
+          time,
+        });
+        expect(
+          calendarPrintEntry(
+            { ...record, data: { ...record.data, allDay: true } },
+            {
+              ...input,
+              format,
+            },
+          ).time,
+        ).toBe("");
+      }
+    },
+  );
   it("abbreviates standard and administrator-defined categories while preserving colors and extra titles", () => {
     for (const category of ["half-day-off", "half"]) {
       expect(calendarPrintEntry(event({ category }), input)).toMatchObject({

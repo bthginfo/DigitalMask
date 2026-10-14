@@ -39,9 +39,12 @@ export function memberDayEvents(input: ExportInput, day: string, memberId: strin
     );
   });
 }
+export function eventStartTimeLabel(record: DomainRecord): string {
+  return formatInTimeZone(new Date(String(record.data.start)), "Europe/Berlin", "HH:mm");
+}
 export function eventTimeLabel(record: DomainRecord, input: ExportInput): string {
   if (eventDisplay(record, input).allDay) return "Ganztägig";
-  return `${formatInTimeZone(new Date(String(record.data.start)), "Europe/Berlin", "HH:mm")} – ${formatInTimeZone(new Date(String(record.data.end)), "Europe/Berlin", "HH:mm")}`;
+  return `${eventStartTimeLabel(record)} – ${formatInTimeZone(new Date(String(record.data.end)), "Europe/Berlin", "HH:mm")}`;
 }
 export function eventCalendarLabel(record: DomainRecord, input: ExportInput): string {
   const display = eventDisplay(record, input);

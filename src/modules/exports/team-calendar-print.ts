@@ -1,6 +1,6 @@
 import { calendarEventPaint } from "../../shared/calendar-paint";
 import { eventDisplay } from "./calendar-presentation";
-import { eventTimeLabel, memberDayEvents } from "./team-calendar";
+import { eventStartTimeLabel, eventTimeLabel, memberDayEvents } from "./team-calendar";
 import type { DomainRecord } from "../../shared/contracts";
 import { textValue } from "../../shared/contracts";
 import type { ExportInput } from "./types";
@@ -37,9 +37,10 @@ export function calendarPrintEntry(record: DomainRecord, input: ExportInput) {
     id: record.id,
     allDay: display.allDay,
     title: compact?.title ?? display.title,
-    time:
-      display.allDay || compact?.performance
-        ? ""
+    time: display.allDay
+      ? ""
+      : compact?.performance
+        ? eventStartTimeLabel(record)
         : monthlyPrint
           ? eventTimeLabel(record, input)
               .replace(/\b0(\d):/g, "$1:")

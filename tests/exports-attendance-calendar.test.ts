@@ -384,18 +384,49 @@ describe("attendance and configurable calendar exports", () => {
       for (const member of members) expect(letters).toContain(member.name.replace(/\s/g, ""));
       expect(letters).toContain("Gäste/Aushilfen");
       expect(letters).toContain("Zauberwald");
+      expect(letters).toContain("09:00");
       expect(text).not.toMatch(
-        /OMIT_PERFORMANCE_TITLE|Vorstellung|Agenda|DIGITALMASK|Personengruppe|09:00|15:30/,
+        /OMIT_PERFORMANCE_TITLE|Vorstellung|Agenda|DIGITALMASK|Personengruppe|15:30/,
       );
     }
     expect(Math.min(...pdf.fontSizes)).toBeCloseTo(10, 3);
   }, 60000);
-  it("rejects an impossible 10-point two-page month instead of clipping rows or shrinking fonts", async () => {
-    for (const format of ["pdf", "xlsx"] as const)
-      await expect(buildExport(calendar(format))).rejects.toThrow(
-        "zwei lesbare A4-Seiten mit 10-Punkt-Schrift",
-      );
-  });
+  it("automatically fits a dense month on two complete pages with a uniform smaller font", async () => {
+    const pdf = await inspectPdf(
+      (await buildExport(calendar("pdf"))).bytes,
+      "dense-team-month",
+      false,
+    );
+    expect(pdf.pages).toBe(2);
+    const sizes = [...new Set(pdf.fontSizes.map((size) => Math.round(size * 100) / 100))];
+    expect(sizes).toHaveLength(1);
+    expect(sizes[0]).toBeGreaterThan(0);
+    expect(sizes[0]).toBeLessThan(10);
+    const pdfText = pdf.texts.join(" ").replace(/\s/g, "");
+    expect(pdfText).toContain("TITELENDE");
+    for (let index = 0; index < 5; index++) expect(pdfText).toContain(`MEHRDIENSTENDE${index}`);
+    for (const text of pdf.texts)
+      for (const member of members)
+        expect(text.replace(/\s/g, "")).toContain(member.name.replace(/\s/g, ""));
+
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(new Uint8Array((await buildExport(calendar("xlsx"))).bytes).buffer);
+    expect(workbook.worksheets).toHaveLength(2);
+    const officeSizes = new Set<number>();
+    const officeText = workbook.worksheets
+      .map((sheet) => sheet.getSheetValues().flat().join(" "))
+      .join(" ")
+      .replace(/\s/g, "");
+    expect(officeText).toContain("TITELENDE");
+    for (let index = 0; index < 5; index++) expect(officeText).toContain(`MEHRDIENSTENDE${index}`);
+    for (const sheet of workbook.worksheets) {
+      const text = sheet.getSheetValues().flat().join(" ").replace(/\s/g, "");
+      for (const member of members) expect(text).toContain(member.name.replace(/\s/g, ""));
+      sheet.eachRow((row) => row.eachCell((cell) => officeSizes.add(cell.font.size!)));
+    }
+    expect(officeSizes.size).toBe(1);
+    expect([...officeSizes][0]).toBeLessThan(10);
+  }, 60000);
   it("uses uniform rows for the two month halves and preserves all coloured entries", async () => {
     const staff = members.slice(1, 6);
     const short = staff.flatMap((member, index) =>
@@ -533,6 +564,8 @@ describe("attendance and configurable calendar exports", () => {
     expect(sheet.getCell(nextPerson, 3).fill).toMatchObject({ fgColor: { argb: "FFFFFFFF" } });
     const text = sheet.getSheetValues().flat().join(" ");
     expect(text).toContain("Gym");
+    expect(text).toContain("19:00");
+    expect(text).not.toContain("21:00");
     expect(text).not.toContain("OMIT_CUSTOM_TITLE");
   });
   it("keeps two distinct complete Excel print sheets for February and every later selected month", async () => {
