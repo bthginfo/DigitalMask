@@ -4,8 +4,14 @@ import { records } from "@/platform/db/schema";
 import type { Context } from "@/platform/context";
 import type { DomainRecord, RecordKind } from "@/shared/contracts";
 import { HttpError } from "@/platform/http";
+import { neutralCalendarData } from "@/shared/calendar-categories";
 export function serialize(row: typeof records.$inferSelect): DomainRecord {
-  return { ...row, createdAt: row.createdAt.toISOString(), updatedAt: row.updatedAt.toISOString() };
+  return {
+    ...row,
+    data: neutralCalendarData(row.kind, row.data),
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
 }
 export async function findRecord(
   context: Context,

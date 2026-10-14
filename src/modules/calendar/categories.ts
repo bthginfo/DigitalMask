@@ -5,7 +5,19 @@ import type { Context } from "@/platform/context";
 import type { RecordData } from "@/shared/contracts";
 import { HttpError } from "@/platform/http";
 import { localDay, startOfLocalDay } from "@/modules/time-tracking/rules";
-import { calendarCategoryBehavior } from "@/shared/calendar-categories";
+import {
+  calendarCategoryBehavior,
+  calendarCategoryKey,
+  neutralCalendarData,
+} from "@/shared/calendar-categories";
+
+function categoryMatches(field: "key" | "category", key: string) {
+  const storedKey =
+    field === "key" ? sql`${records.data}->>'key'` : sql`${records.data}->>'category'`;
+  return calendarCategoryKey(key) === "absent"
+    ? sql`${storedKey} in ('absent', 'sick')`
+    : sql`${storedKey}=${key}`;
+}
 
 export async function validateCalendarCategory(
   context: Context,
@@ -13,10 +25,11 @@ export async function validateCalendarCategory(
   tx: Transaction,
   existing?: typeof records.$inferSelect,
 ) {
+  Object.assign(data, neutralCalendarData("calendarCategories", data));
   await tx.execute(
     sql`select pg_advisory_xact_lock(hashtext(${context.departmentId + ":calendar"}))`,
   );
-  if (existing && existing.data.key !== data.key)
+  if (existing && calendarCategoryKey(String(existing.data.key)) !== data.key)
     throw new HttpError(400, "Der Kategoriencode kann nicht geändert werden.");
   const [duplicate] = await tx
     .select({ id: records.id })
@@ -25,7 +38,7 @@ export async function validateCalendarCategory(
       and(
         eq(records.departmentId, context.departmentId),
         eq(records.kind, "calendarCategories"),
-        sql`${records.data}->>'key'=${String(data.key)}`,
+        categoryMatches("key", String(data.key)),
         existing ? ne(records.id, existing.id) : undefined,
       ),
     )
@@ -51,7 +64,7 @@ export async function assertUnusedCategory(context: Context, key: string, tx: Tr
       and(
         eq(records.departmentId, context.departmentId),
         eq(records.kind, "events"),
-        sql`${records.data}->>'category'=${key}`,
+        categoryMatches("category", key),
       ),
     )
     .limit(1);
@@ -63,6 +76,7 @@ export async function assertUnusedCategory(context: Context, key: string, tx: Tr
 }
 
 export async function normalizeEventCategory(context: Context, data: RecordData, tx: Transaction) {
+  Object.assign(data, neutralCalendarData("events", data));
   const [category] = await tx
     .select({ data: records.data })
     .from(records)
@@ -70,7 +84,7 @@ export async function normalizeEventCategory(context: Context, data: RecordData,
       and(
         eq(records.departmentId, context.departmentId),
         eq(records.kind, "calendarCategories"),
-        sql`${records.data}->>'key'=${String(data.category)}`,
+        categoryMatches("key", String(data.category)),
       ),
     )
     .limit(1);
@@ -80,5 +94,5 @@ export async function normalizeEventCategory(context: Context, data: RecordData,
     data.start = startOfLocalDay(localDay(String(data.start))).toISOString();
     data.end = startOfLocalDay(localDay(String(data.end))).toISOString();
   }
-  return String(category.data.name);
+  return String(neutralCalendarData("calendarCategories", category.data).name);
 }

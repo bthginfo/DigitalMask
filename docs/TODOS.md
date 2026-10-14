@@ -1,5 +1,11 @@
 # Umsetzungsstand
 
+## Neutrale Kalenderkategorie Absent
+
+- [x] Standardkategorie mit Name und Code „Absent“ / `absent` führen; vorhandene Kalenderzuordnungen und automatisch erzeugte Hinweise in der Datenbank umstellen.
+- [x] Alte offene Formulare kompatibel speichern, Hilfetexte und Exporte anpassen. Persönliche Freitexte, Datenbezüge und die Stundengutschrift von Wochenstunden ÷ 6 unverändert lassen.
+- [x] Weitere Datenschutzvorbereitungen bleiben zurückgestellt.
+
 ## Zeitkonto nach frei einteilbarem Wochensoll
 
 - [x] Je Kalenderwoche Anwesenheit plus persönliche Tagesgutschriften minus volles Wochensoll rechnen, ohne tägliche Sollzeiten oder Kürzung während der laufenden Woche.
@@ -38,7 +44,7 @@ Fachprüfungen, Typprüfung und bereichsbezogenes Lint sind bestanden. Die erzeu
 - [x] Excel-Formeln bei gemeinsamem Bearbeiten und Herunterladen erhalten; geteilte Formeln und besondere Array-/Spill-Funktionen berücksichtigen, statt alte Ergebnisse als neue Berechnung auszugeben.
 - [x] Bayerische Feiertage für Ingolstadt dezent in allen Kalenderansichten anzeigen; kein Blockieren, kein zusätzlicher Termineintrag und keine automatische Zeitgutschrift.
 - [x] Wochenstunden im Profil hinterlegen, für Admins auch bei Kolleginnen. Frei verteilbare Wochenstunden, Startsaldo und datierte Solländerungen berücksichtigen; Tagesgutschriften verwenden die Sechstagewoche.
-- [x] Stundenkonto aus Anwesenheit separat von Produktionszeiten berechnen; Urlaub/Krank anteilig anrechnen, ABF/Ruhetag/halben freien Tag nicht. Gesamt, Woche, Monat und Zeitraum anzeigen.
+- [x] Stundenkonto aus Anwesenheit separat von Produktionszeiten berechnen; Urlaub/Absent anteilig anrechnen, ABF/Ruhetag/halben freien Tag nicht. Gesamt, Woche, Monat und Zeitraum anzeigen.
 - [x] Fokussierte Druck-/Mobilprüfung, Typprüfung, Lint und 64 Fachtests bestehen; additive Migration 0013 einspielen und das Release für GitHub/Vercel vorbereiten.
 
 Die unabhängige Prüfung auf Handy und Desktop ist bestanden. Wochen-/Monatsdruckpläne und vier Maskenplan-Kopien wurden als echte A4-PDFs geprüft und visuell kontrolliert. Migration 0013 ergänzt ausschließlich die Profileinstellungen um die Wochenstunden. Produktionsbuild und Live-Domain werden nach dem Push gegen den veröffentlichten Commit geprüft.
@@ -182,7 +188,7 @@ Das Releasepaket enthält die Nutzerergänzungen vom 30. September 2026. Die Mod
 
 - [x] Teamraster zwischen Woche und Monat umschalten, mit Person, Datum, Tätigkeit, Produktion/Ort und zugänglichen Details.
 - [x] Kategorien von Admins anlegen, bearbeiten und löschen; verwendete Kategorien vor versehentlichem Datenverlust schützen.
-- [x] Standardmäßig zusätzlich Krank, ABF, Ruhetag, halber freier Tag und Urlaub als ganztägige Kategorien ohne Uhrzeiten bereitstellen.
+- [x] Standardmäßig zusätzlich Absent, ABF, Ruhetag, halber freier Tag und Urlaub als ganztägige Kategorien ohne Uhrzeiten bereitstellen.
 - [x] Termintitel optional: Produktion als Titel, andernfalls Kategorie als sichtbarer Titel.
 - [x] Monats-Teamübersicht und neue Kategorien in den Druck-/Datenexporten berücksichtigen.
 

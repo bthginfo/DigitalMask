@@ -102,7 +102,7 @@ export function TimeWeeklyPdf({
                 );
               })}
               <Text style={{ fontSize: 9, color: "#53645e", marginTop: 16, lineHeight: 1.5 }}>
-                Kalenderkennzeichen wie ABF, Ruhetag, Urlaub oder Krank sind keine Anwesenheits-
+                Kalenderkennzeichen wie ABF, Ruhetag, Urlaub oder Absent sind keine Anwesenheits-
                 oder Arbeitsstunden. Ungeprüfte geplante Dienste sind nicht Teil dieses Nachweises.
               </Text>
             </Page>

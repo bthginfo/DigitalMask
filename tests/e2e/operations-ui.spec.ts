@@ -288,10 +288,10 @@ for (const mobile of [false, true])
       await page.getByRole("button", { name: "Schließen", exact: true }).last().click();
       const picker = page.getByLabel("Als Kalenderart");
       await expect(picker).toHaveValue("vacation");
-      await picker.selectOption("sick");
+      await picker.selectOption("absent");
       await page.getByRole("button", { name: "Genehmigen", exact: true }).click();
       expect(state.writes.find((write) => write.action === "leave-decide")!.data.category).toBe(
-        "sick",
+        "absent",
       );
     });
     test("private chat isolation, own edit, participant creation and archival", async ({

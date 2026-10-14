@@ -67,7 +67,7 @@ test("calendar category lifecycle and private chat/file permissions", async () =
       ).toBe(200);
     }
     const defaults = (await (await root.get("/api/workspace")).json()).records.calendarCategories;
-    for (const key of ["sick", "abf", "rest", "half-day-off", "vacation"])
+    for (const key of ["absent", "abf", "rest", "half-day-off", "vacation"])
       expect(
         defaults.find((row: { data: { key: string } }) => row.data.key === key)?.data.allDay,
       ).toBe(true);

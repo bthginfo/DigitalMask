@@ -62,6 +62,7 @@ describe("calendar working-time backgrounds and hints", () => {
     });
     for (const key of [
       "absence",
+      "absent",
       "sick",
       "abf",
       "rest",

@@ -9,7 +9,11 @@ import { emit, auditChange, scheduleEvents } from "@/platform/events";
 import { HttpError } from "@/platform/http";
 import { startOfLocalDay } from "@/modules/time-tracking/rules";
 import { occurrences } from "./occurrences";
-import { calendarPresentation, calendarCategoryBlocksTime } from "@/shared/calendar-categories";
+import {
+  calendarPresentation,
+  calendarCategoryBlocksTime,
+  calendarCategoryKey,
+} from "@/shared/calendar-categories";
 export async function decideLeave(
   context: Context,
   id: string,
@@ -40,11 +44,15 @@ export async function decideLeave(
             inArray(records.kind, ["events", "productions", "calendarCategories"]),
           ),
         );
-      const categories = planning.filter(
-        (item) => item.kind === "calendarCategories" && item.data.allDay === true,
-      );
+      const categories = planning
+        .filter((item) => item.kind === "calendarCategories" && item.data.allDay === true)
+        .map(serialize);
       const category = categoryKey
-        ? categories.find((item) => item.data.key === categoryKey)
+        ? categories.find(
+            (item) =>
+              calendarCategoryKey(String(item.data.key)) ===
+              calendarCategoryKey(String(categoryKey)),
+          )
         : categories.find((item) => item.data.key === "absence") ||
           categories.find((item) => item.data.key === "vacation");
       if (!category)
@@ -99,7 +107,7 @@ export async function decideLeave(
             title: "",
             start: start.toISOString(),
             end: end.toISOString(),
-            category: category.data.key,
+            category: calendarCategoryKey(String(category.data.key)),
             allDay: true,
             productionId: "",
             participantIds: [row.data.userId],

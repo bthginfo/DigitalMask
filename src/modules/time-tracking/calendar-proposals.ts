@@ -25,7 +25,15 @@ type PlannedInterval = Interval & {
   background: boolean;
   adjusted?: boolean;
 };
-const absenceKeys = new Set(["absence", "sick", "abf", "rest", "half-day-off", "vacation"]);
+const absenceKeys = new Set([
+  "absence",
+  "absent",
+  "sick",
+  "abf",
+  "rest",
+  "half-day-off",
+  "vacation",
+]);
 
 function union(ranges: Interval[]): Interval[] {
   const merged: Interval[] = [];

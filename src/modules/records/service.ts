@@ -252,7 +252,7 @@ async function validateRelations(
     throw new HttpError(400, "Bitte prüfe den Zeitraum.");
   if (kind === "events") {
     const categoryName = await normalizeEventCategory(context, data, tx);
-    eventTitle ||= textValue(production?.data.title) || categoryName;
+    eventTitle = textValue(data.title) || textValue(production?.data.title) || categoryName;
     if (new Date(String(data.end)) <= new Date(String(data.start)))
       throw new HttpError(400, "Das Ende muss nach dem Beginn liegen.");
     if (data.until && String(data.until) < localDay(String(data.start)))

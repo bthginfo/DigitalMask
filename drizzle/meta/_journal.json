@@ -99,6 +99,13 @@
       "when": 1791397458854,
       "tag": "0013_working_time_profiles",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1791988453982,
+      "tag": "0014_absent_calendar_category",
+      "breakpoints": true
     }
   ]
 }

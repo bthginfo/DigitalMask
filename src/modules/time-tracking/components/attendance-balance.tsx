@@ -287,11 +287,11 @@ export function AttendanceBalanceCard({
                     <p className="small muted">
                       Jede Kalenderwoche zählt mit ihrem gesamten Wochensoll. Du kannst deine
                       Stunden frei auf die Tage verteilen. Urlaub, Feiertag, Feiertagsausgleich und
-                      Krank mit oder ohne Attest geben je eingetragenem Kalendertag Wochenstunden ÷
-                      6 zusätzlich zur Anwesenheit. Mehrere Kennzeichen am selben Tag zählen nur
-                      einmal. ABF, Ruhetag und halber freier Tag geben keine Gutschrift.
-                      Gespeicherte Anwesenheiten bis einschließlich heute zählen vollständig, auch
-                      vor ihrer Endzeit. Laufende Timer zählen erst nach dem Buchen.
+                      Absent geben je eingetragenem Kalendertag Wochenstunden ÷ 6 zusätzlich zur
+                      Anwesenheit. Mehrere Kennzeichen am selben Tag zählen nur einmal. ABF, Ruhetag
+                      und halber freier Tag geben keine Gutschrift. Gespeicherte Anwesenheiten bis
+                      einschließlich heute zählen vollständig, auch vor ihrer Endzeit. Laufende
+                      Timer zählen erst nach dem Buchen.
                     </p>
                   </>
                 )}

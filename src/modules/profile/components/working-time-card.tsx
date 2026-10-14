@@ -196,11 +196,11 @@ function WorkingTimeForm({
           Gesamtstand.
         </p>
         <p className={styles.creditNote}>
-          Urlaub, Feiertag, Feiertagsausgleich und Krank mit oder ohne Attest geben je eingetragenem
-          Kalendertag Wochenstunden ÷ 6 zusätzlich zur Anwesenheit. Bei 15 Wochenstunden sind das
-          2,5 Stunden, bei 20 Stunden 3 Stunden 20 Minuten, bei 39 Stunden 6,5 Stunden. Es zählen
-          persönliche Kalendereinträge, höchstens eine Gutschrift pro Tag. ABF, Ruhetag und halber
-          freier Tag geben keine Gutschrift.
+          Urlaub, Feiertag, Feiertagsausgleich und Absent geben je eingetragenem Kalendertag
+          Wochenstunden ÷ 6 zusätzlich zur Anwesenheit. Bei 15 Wochenstunden sind das 2,5 Stunden,
+          bei 20 Stunden 3 Stunden 20 Minuten, bei 39 Stunden 6,5 Stunden. Es zählen persönliche
+          Kalendereinträge, höchstens eine Gutschrift pro Tag. ABF, Ruhetag und halber freier Tag
+          geben keine Gutschrift.
         </p>
         {saved && configured && (
           <details className={styles.history}>

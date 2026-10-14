@@ -753,10 +753,10 @@
       },
       {
         "kind": "calendarCategories",
-        "id": "qa-sick",
+        "id": "qa-absent",
         "data": {
-          "key": "sick",
-          "name": "Krank",
+          "key": "absent",
+          "name": "Absent",
           "color": "#b86d73",
           "allDay": true
         },

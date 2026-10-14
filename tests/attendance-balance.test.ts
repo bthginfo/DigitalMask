@@ -86,7 +86,7 @@ describe("saved attendance balance and dated weekly targets", () => {
       events: [
         absence("vacation", "2026-10-06", "vacation"),
         absence("holiday-overlap", "2026-10-06", "holiday"),
-        absence("sick", "2026-10-07", "sick"),
+        absence("absent", "2026-10-07", "absent"),
       ],
     });
     expect(result).toMatchObject({
@@ -111,6 +111,7 @@ describe("saved attendance balance and dated weekly targets", () => {
   });
   it.each([
     "Urlaub",
+    "Absent",
     "Krank",
     "Krank mit Attest",
     "Krank ohne Attest",
@@ -208,6 +209,7 @@ describe("saved attendance balance and dated weekly targets", () => {
     for (const key of [
       "vacation",
       "sick",
+      "absent",
       "sick-with-certificate",
       "sick-without-certificate",
       "holiday",
