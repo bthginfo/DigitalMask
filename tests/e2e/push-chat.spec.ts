@@ -75,6 +75,8 @@ async function mock(page: Page, mode = "supported", dark = false) {
   let reads = 0,
     active = false;
   const actions: string[] = [];
+  const readRequests: string[][] = [];
+  let nextArrival: DomainRecord | null = null;
   await page.route("**/api/**", async (route) => {
     const pathname = new URL(route.request().url()).pathname;
     if (pathname === "/api/workspace") {
@@ -98,6 +100,16 @@ async function mock(page: Page, mode = "supported", dark = false) {
     if (pathname === "/api/actions") {
       const { action, data } = route.request().postDataJSON();
       actions.push(action);
+      if (action === "notifications-read") {
+        readRequests.push(data.ids);
+        for (const notice of workspace.records.notifications)
+          if (notice.data.userId === workspace.user.id && data.ids.includes(notice.id))
+            notice.data.read = true;
+        if (nextArrival) {
+          workspace.records.notifications.push(nextArrival);
+          nextArrival = null;
+        }
+      }
       if (action === "chat-notifications-read")
         for (const notice of workspace.records.notifications) {
           if (
@@ -173,9 +185,90 @@ async function mock(page: Page, mode = "supported", dark = false) {
     },
     { mode, dark },
   );
-  return { reads: () => reads, actions };
+  return {
+    reads: () => reads,
+    actions,
+    readRequests,
+    workspace,
+    addNotice: (id: string) =>
+      workspace.records.notifications.push(
+        record("notifications", id, {
+          type: "TaskAssignedV1",
+          userId: workspace.user.id,
+          read: false,
+          title: "Neue Aufgabe",
+        }),
+      ),
+    queueArrival: () => {
+      nextArrival = record("notifications", "later-arrival", {
+        type: "TaskAssignedV1",
+        userId: workspace.user.id,
+        read: false,
+        title: "Spätere Mitteilung",
+      });
+    },
+  };
 }
 for (const width of [1440, 390]) {
+  test(`notification read controls ${width}px`, async ({ page }, info) => {
+    await page.setViewportSize({ width, height: 900 });
+    const state = await mock(page);
+    await page.goto("/");
+    const allRead = page.getByRole("button", { name: "Alle als gelesen markieren", exact: true });
+    const bulkBounds = await allRead.boundingBox();
+    expect(bulkBounds!.height).toBeGreaterThanOrEqual(44);
+    expect(bulkBounds!.x + bulkBounds!.width).toBeLessThanOrEqual(width);
+    await allRead.click();
+    await expect(page.locator(".today-notifications .notification-row")).toHaveCount(0);
+    await expect(page.locator(".notification-button")).toHaveAttribute(
+      "aria-label",
+      "0 ungelesene Mitteilungen",
+    );
+    expect(state.readRequests).toHaveLength(1);
+    expect(state.readRequests[0]).toHaveLength(7);
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const metrics = (window as unknown as { dmPushMetrics: { badges: number[] } })
+            .dmPushMetrics;
+          return metrics?.badges.at(-1);
+        }),
+      )
+      .toBe(0);
+
+    state.addNotice("open-first");
+    state.addNotice("open-second");
+    state.queueArrival();
+    await page.reload();
+    await expect(page.locator(".notification-button")).toHaveAttribute(
+      "aria-label",
+      "2 ungelesene Mitteilungen",
+    );
+    await page.locator(".notification-button").click();
+    const dialog = page.getByRole("dialog", { name: "Mitteilungen" });
+    await expect(dialog.locator(".notification-row")).toHaveCount(3);
+    await expect(dialog.getByText("Gelesen", { exact: true })).toHaveCount(2);
+    await expect(page.locator(".notification-button")).toHaveAttribute(
+      "aria-label",
+      "1 ungelesene Mitteilungen",
+    );
+    expect(state.readRequests[1]).toEqual(["open-first", "open-second"]);
+    await dialog.getByRole("button", { name: "Alle als gelesen markieren", exact: true }).click();
+    await expect(dialog.getByText("Gelesen", { exact: true })).toHaveCount(3);
+    await expect(dialog.locator(".notification-row")).toHaveCount(3);
+    expect(state.readRequests[2]).toEqual(["later-arrival"]);
+    await page.screenshot({ path: info.outputPath("notifications.png") });
+    const dialogBounds = await dialog.boundingBox();
+    expect(dialogBounds!.x).toBeGreaterThanOrEqual(0);
+    expect(dialogBounds!.x + dialogBounds!.width).toBeLessThanOrEqual(width);
+    expect(
+      await dialog.evaluate((element) => element.scrollWidth - element.clientWidth),
+    ).toBeLessThanOrEqual(1);
+    await dialog.getByRole("button", { name: "Schließen", exact: true }).click();
+    await page.locator(".notification-button").click();
+    await expect(dialog.locator(".notification-row")).toHaveCount(0);
+    expect(state.readRequests).toHaveLength(3);
+  });
   test(`channel groups persist, reveal search and keep unread accessible ${width}px`, async ({
     page,
   }) => {

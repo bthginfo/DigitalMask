@@ -41,6 +41,7 @@ import { initials, post, value } from "@/shared/client-api";
 import { useWorkspace } from "./workspace-context";
 import { stopPushOnLogout } from "@/modules/notifications/client";
 import { chatUnreadCounts, unreadNotifications } from "@/modules/notifications/unread";
+import { MarkAllReadButton } from "@/modules/notifications/components/mark-all-read";
 import { Badge, Empty, Modal } from "./ui";
 import { ThemeSwitch } from "./theme-switch";
 import { LiveStatus } from "./live-status";
@@ -97,7 +98,10 @@ export function WorkspaceShell() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [detail, setDetail] = useState<DomainRecord | null>(null);
-  const [notificationOpen, setNotificationOpen] = useState(false);
+  const [notificationSnapshot, setNotificationSnapshot] = useState<{
+    items: DomainRecord[];
+    knownIds: Set<string>;
+  } | null>(null);
   const [tourRequested, setTourRequested] = useState(false);
   const needsTour =
     workspace.user.preferences !== undefined &&
@@ -213,6 +217,22 @@ export function WorkspaceShell() {
     }
   };
   const unread = unreadNotifications(workspace.records.notifications, workspace.user.id);
+  const notificationsById = notificationSnapshot
+    ? new Map(workspace.records.notifications.map((item) => [item.id, item]))
+    : null;
+  const notificationItems = notificationSnapshot
+    ? [
+        ...notificationSnapshot.items.map((item) => notificationsById?.get(item.id) ?? item),
+        ...workspace.records.notifications.filter(
+          (item) =>
+            item.data.userId === workspace.user.id && !notificationSnapshot.knownIds.has(item.id),
+        ),
+      ].sort(
+        (a, b) =>
+          (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdAt) || 0) ||
+          a.id.localeCompare(b.id),
+      )
+    : [];
   const chatUnread = chatUnreadCounts(workspace.records.notifications, workspace.user.id).total;
   const results =
     search.length >= 2
@@ -460,7 +480,18 @@ export function WorkspaceShell() {
             <ThemeSwitch />
             <button
               className="icon-button notification-button"
-              onClick={() => setNotificationOpen(true)}
+              onClick={() => {
+                setNotificationSnapshot({
+                  items: unread,
+                  knownIds: new Set(workspace.records.notifications.map((item) => item.id)),
+                });
+                if (unread.length && online)
+                  void action("notifications-read", undefined, {
+                    ids: unread.map((item) => item.id),
+                  }).catch((error) =>
+                    notify(error instanceof Error ? error.message : "Aktion fehlgeschlagen"),
+                  );
+              }}
               aria-label={`${unread.length} ungelesene Mitteilungen`}
             >
               <Bell size={19} />
@@ -583,18 +614,19 @@ export function WorkspaceShell() {
           )}
         </Modal>
       )}
-      {notificationOpen && (
-        <Modal title="Mitteilungen" onClose={() => setNotificationOpen(false)}>
-          {unread.length ? (
+      {notificationSnapshot && (
+        <Modal title="Mitteilungen" onClose={() => setNotificationSnapshot(null)}>
+          <MarkAllReadButton />
+          {notificationItems.length ? (
             <div className="list">
-              {unread.map((item) => (
+              {notificationItems.map((item) => (
                 <button
                   className="notification-row"
                   key={item.id}
                   onClick={async () => {
                     try {
-                      await action("notification-read", item.id);
-                      setNotificationOpen(false);
+                      if (!item.data.read) await action("notification-read", item.id);
+                      setNotificationSnapshot(null);
                       const link = value(item.data, "link");
                       if (link.startsWith("/") && !link.startsWith("//")) {
                         const next = new URL(link, location.origin);
@@ -614,6 +646,12 @@ export function WorkspaceShell() {
                   <span className={item.data.read ? "notice-dot read" : "notice-dot"} />
                   <div>
                     <strong>{value(item.data, "title")}</strong>
+                    {Boolean(item.data.read) && (
+                      <>
+                        {" "}
+                        <Badge>Gelesen</Badge>
+                      </>
+                    )}
                     <p className="small muted">{value(item.data, "body")}</p>
                   </div>
                 </button>

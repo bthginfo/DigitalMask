@@ -30,6 +30,7 @@ import { calendarProductionRecords } from "@/shared/calendar-access";
 import { statusLabels } from "../resource-fields";
 import { initialPeriod, recordMatchesPeriod } from "@/shared/period-filter";
 import { unreadNotifications } from "@/modules/notifications/unread";
+import { MarkAllReadButton } from "@/modules/notifications/components/mark-all-read";
 import {
   AttendanceBalanceCard,
   attendanceBalanceStyles,
@@ -148,6 +149,7 @@ export function TodayModule({ navigate }: { navigate: (module: string) => void }
         <div className="today-main">
           <div className="today-notifications">
             <Section title="Neu für dich" meta={`${notices.length} ungelesene Mitteilungen`}>
+              <MarkAllReadButton />
               {notices.length ? (
                 <div className="list">
                   {notices.slice(0, 6).map((notice) => (

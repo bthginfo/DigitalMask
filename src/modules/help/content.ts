@@ -253,7 +253,7 @@ export const helpArticles: HelpArticle[] = [
       "Unter Android findest du die Freigabe in den Handy-Einstellungen unter Apps → DigitalMask → Benachrichtigungen. Wenn der Empfang über Chrome läuft, prüfe auch Chrome → Einstellungen → Website-Einstellungen → Benachrichtigungen. Die Namen der Menüs können je nach Handy abweichen.",
       "Mit Testmitteilung prüfst du den Empfang. Deaktivieren schaltet Mitteilungen auf diesem Gerät aus. Beim Abmelden wird die Verbindung dieses Geräts ebenfalls beendet.",
       "Der Punkt oder Zähler am App-Symbol zeigt ungelesene Mitteilungen. Er wird beim Empfang und Öffnen der App aktualisiert; beim Lesen sinkt er. Auf anderen gerade geschlossenen Geräten kann der Zähler bis zur nächsten Mitteilung oder zum Öffnen der App abweichen.",
-      "Die Glocke und Neu für dich zeigen nur deine ungelesenen Mitteilungen, die neueste ganz oben. Öffnest du eine Mitteilung oder liest den zugehörigen Chat, verschwindet sie nach dem Lesen aus diesen Listen.",
+      "Die Glocke und Neu für dich zeigen deine ungelesenen Mitteilungen, die neueste ganz oben. Beim Öffnen der Glocke werden die angezeigten Mitteilungen als gelesen markiert. Sie bleiben im offenen Fenster sichtbar und anklickbar; nach dem Schließen erscheinen sie dort nicht mehr. Mit Alle als gelesen markieren kannst du auch im Überblick alle aktuellen Mitteilungen auf einmal abhaken. Neue Mitteilungen, die danach eintreffen, bleiben zunächst ungelesen.",
       "Falls Mitteilungen ausbleiben, prüfe die Geräte- oder Browser-Einstellungen, den Fokusmodus und die Verbindung. Android entscheidet je nach Launcher, ob ein Punkt oder eine Zahl angezeigt wird. Nachrichteninhalte und persönliche Planungsangaben erscheinen erst nach dem Öffnen der App.",
     ],
   },

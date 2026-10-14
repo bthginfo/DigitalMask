@@ -1,0 +1,16 @@
+.toolbar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 8px 16px;
+}
+
+.toolbar button {
+  min-height: 44px;
+  max-width: 100%;
+  white-space: normal;
+  text-align: left;
+}
+
+.toolbar svg {
+  flex-shrink: 0;
+}
