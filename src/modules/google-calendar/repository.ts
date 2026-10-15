@@ -4,16 +4,24 @@ import { googleCalendarConnections } from "@/platform/db/schema";
 import type { Context } from "@/platform/context";
 import { HttpError } from "@/platform/http";
 import { openGoogleSecret, sealGoogleSecret } from "./crypto";
-import { GoogleCalendarClient, refreshGoogleTokens, type GoogleTokens } from "./provider";
+import {
+  GoogleCalendarClient,
+  GoogleCalendarError,
+  googleCalendarErrorMessage,
+  refreshGoogleTokens,
+  type GoogleTokens,
+} from "./provider";
 import { googleCalendarConfigured } from "./config";
 import type { GoogleCalendarStatus } from "./contracts";
+import { googleConnectionTargets } from "./targets";
+import { googleRetryDelay } from "./retry";
 
 export type GoogleConnection = typeof googleCalendarConnections.$inferSelect;
 export const googleTokenPurpose = (row: Pick<GoogleConnection, "id" | "userId" | "departmentId">) =>
   `google-calendar-tokens:${row.departmentId}:${row.userId}:${row.id}`;
 
-export async function findGoogleConnection(context: Context) {
-  const [row] = await db
+export async function listGoogleConnections(context: Context) {
+  return db
     .select()
     .from(googleCalendarConnections)
     .where(
@@ -22,25 +30,45 @@ export async function findGoogleConnection(context: Context) {
         eq(googleCalendarConnections.departmentId, context.departmentId),
       ),
     )
-    .limit(1);
-  return row;
+    .orderBy(googleCalendarConnections.createdAt, googleCalendarConnections.id);
+}
+
+export async function findGoogleConnection(context: Context, connectionId?: string) {
+  const rows = await listGoogleConnections(context);
+  if (connectionId) return rows.find((row) => row.id === connectionId);
+  if (rows.length > 1)
+    throw new HttpError(
+      400,
+      "Bitte öffne die Google-Verbindung neu und wähle das Google-Konto aus.",
+    );
+  return rows[0];
 }
 
 export async function googleCalendarStatus(context: Context): Promise<GoogleCalendarStatus> {
-  if (!googleCalendarConfigured()) return { configured: false, connection: null };
-  const row = await findGoogleConnection(context);
-  return publicGoogleCalendarStatus(row);
+  if (!googleCalendarConfigured()) return { configured: false, connections: [], connection: null };
+  return publicGoogleCalendarStatus(await listGoogleConnections(context));
 }
 
-export function publicGoogleCalendarStatus(row?: GoogleConnection): GoogleCalendarStatus {
+export function publicGoogleCalendarStatus(rows: GoogleConnection[] = []): GoogleCalendarStatus {
+  const row = rows[0];
+  const first = row && googleConnectionTargets(row)[0];
   return {
     configured: true,
+    connections: rows.map((account) => ({
+      id: account.id,
+      email: account.email,
+      calendars: googleConnectionTargets(account),
+      status: account.status,
+      lastSyncedAt: account.lastSyncedAt?.toISOString() || null,
+      retryAfter: account.retryAfter?.toISOString() || null,
+      error: account.lastError,
+    })),
     connection: row
       ? {
           email: row.email,
-          calendarId: row.calendarId,
-          calendarName: row.calendarName,
-          selection: row.selection,
+          calendarId: first?.calendarId || null,
+          calendarName: first?.calendarName || null,
+          selection: first?.selection || row.selection,
           status: row.status,
           lastSyncedAt: row.lastSyncedAt?.toISOString() || null,
           error: row.lastError,
@@ -76,13 +104,44 @@ export async function withGoogleConnection<T>(
       409,
       "Der Google-Abgleich läuft gerade. Bitte versuche es in einem Moment erneut.",
     );
+  let cooldown:
+    | {
+        retryAfter: Date | null;
+        retryCount: number;
+        lastError: string;
+        status?: GoogleConnection["status"];
+      }
+    | undefined;
   try {
     return await run(row, token);
+  } catch (error) {
+    if (
+      error instanceof GoogleCalendarError &&
+      ["quota", "unavailable"].includes(error.code) &&
+      (!row.retryAfter || +row.retryAfter <= Date.now())
+    ) {
+      const delay = googleRetryDelay(row.retryCount, error.retryAfterMs);
+      cooldown = {
+        retryAfter: new Date(Date.now() + delay),
+        retryCount: row.retryCount + 1,
+        lastError: googleCalendarErrorMessage(error),
+      };
+      error.retryAfterMs = delay;
+    }
+    if (error instanceof GoogleCalendarError && ["reconnect", "permission"].includes(error.code)) {
+      cooldown = {
+        status: "reconnect",
+        retryAfter: null,
+        retryCount: 0,
+        lastError: googleCalendarErrorMessage(error),
+      };
+    }
+    throw error;
   } finally {
     try {
       await db
         .update(googleCalendarConnections)
-        .set({ lockToken: null, lockedUntil: null })
+        .set({ lockToken: null, lockedUntil: null, ...cooldown })
         .where(
           and(eq(googleCalendarConnections.id, id), eq(googleCalendarConnections.lockToken, token)),
         );
@@ -99,6 +158,8 @@ export function googleConnectionTokens(row: GoogleConnection) {
 
 /** Call while holding the connection lease. A refresh is needed at most once per hour. */
 export async function googleConnectionClient(row: GoogleConnection) {
+  if (row.retryAfter && +row.retryAfter > Date.now())
+    throw new GoogleCalendarError("quota", 429, +row.retryAfter - Date.now(), "cooldown");
   let tokens = googleConnectionTokens(row);
   if (tokens.expiresAt <= Date.now() + 60000) {
     tokens = await refreshGoogleTokens(tokens);

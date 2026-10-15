@@ -7,23 +7,35 @@ import {
   records,
   user,
 } from "@/platform/db/schema";
+import { HttpError } from "@/platform/http";
 import { serialize } from "@/modules/records/repository";
 import { googleCalendarConfigured } from "./config";
-import { googleCalendarErrorMessage, GoogleCalendarError } from "./provider";
+import { GoogleCalendarError } from "./provider";
 import { buildGoogleEvent, googleEventFingerprint, matchesGoogleSelection } from "./presentation";
-import { googleConnectionClient, withGoogleConnection, type GoogleConnection } from "./repository";
+import { googleConnectionClient, withGoogleConnection } from "./repository";
 import {
   newGoogleEventId,
   removeMappedGoogleEvent,
   upsertMappedGoogleEvent,
   type GoogleEventMapping,
 } from "./reconcile";
+import { googleConnectionTargets } from "./targets";
 
-/** Loads the department once per outbox batch; fingerprints avoid unchanged Google writes. */
-export async function syncGoogleCalendars(departmentId: string, deadline = Date.now() + 170000) {
-  if (!googleCalendarConfigured()) return false;
+export type GoogleSyncProgress = { more: boolean; nextAt?: number };
+const mappingKey = (calendarId: string, recordId: string) => JSON.stringify([calendarId, recordId]);
+
+/** One department snapshot and one lease per Google account, shared by all its calendars. */
+export async function syncGoogleCalendars(
+  departmentId: string,
+  deadline = Date.now() + 170000,
+): Promise<GoogleSyncProgress> {
+  if (!googleCalendarConfigured()) return { more: false };
   const connections = await db
-    .select({ id: googleCalendarConnections.id })
+    .select({
+      id: googleCalendarConnections.id,
+      retryAfter: googleCalendarConnections.retryAfter,
+      retryCount: googleCalendarConnections.retryCount,
+    })
     .from(googleCalendarConnections)
     .innerJoin(
       memberships,
@@ -39,7 +51,22 @@ export async function syncGoogleCalendars(departmentId: string, deadline = Date.
         eq(googleCalendarConnections.status, "active"),
       ),
     );
-  if (!connections.length) return false;
+  if (!connections.length) return { more: false };
+  let nextAt: number | undefined;
+  let more = false;
+  const defer = (time: number) => {
+    more = true;
+    nextAt = Math.min(nextAt ?? Infinity, time);
+  };
+  const ready = connections.filter((connection) => {
+    if (connection.retryAfter && +connection.retryAfter > Date.now()) {
+      more = true;
+      if (connection.retryCount < 5) defer(+connection.retryAfter);
+      return false;
+    }
+    return true;
+  });
+  if (!ready.length) return { more, nextAt };
   const [rows, members] = await Promise.all([
     db
       .select()
@@ -63,57 +90,69 @@ export async function syncGoogleCalendars(departmentId: string, deadline = Date.
     members,
   };
   const events = snapshot.filter((row) => row.kind === "events");
-  let incomplete = false;
   let failure: unknown;
-  for (const connection of connections) {
-    if (Date.now() >= deadline) {
-      incomplete = true;
+  for (const connection of ready) {
+    if (Date.now() >= deadline - 10000) {
+      defer(Date.now());
       break;
     }
     try {
-      const more = await withGoogleConnection(connection.id, async (row) => {
-        // The lease is acquired before taking a fresh snapshot of the selection.
+      const unfinished = await withGoogleConnection(connection.id, async (row) => {
         if (row.status !== "active") return false;
-        const selected = events.filter((event) =>
-          matchesGoogleSelection(event, row.selection, row.userId),
-        );
-        const desired = new Map(
-          selected.map((event) => {
-            const body = buildGoogleEvent(event, row.id, references);
-            return [event.id, { body, fingerprint: googleEventFingerprint(body) }] as const;
-          }),
-        );
+        const desired = new Map<
+          string,
+          {
+            recordId: string;
+            calendarId: string;
+            body: ReturnType<typeof buildGoogleEvent>;
+            fingerprint: string;
+          }
+        >();
+        const bodies = new Map<string, ReturnType<typeof buildGoogleEvent>>();
+        for (const target of googleConnectionTargets(row))
+          for (const event of events) {
+            if (!matchesGoogleSelection(event, target.selection, row.userId)) continue;
+            let body = bodies.get(event.id);
+            if (!body) {
+              body = buildGoogleEvent(event, row.id, references);
+              bodies.set(event.id, body);
+            }
+            desired.set(mappingKey(target.calendarId, event.id), {
+              recordId: event.id,
+              calendarId: target.calendarId,
+              body,
+              fingerprint: googleEventFingerprint(body),
+            });
+          }
         const mappings = await db
           .select()
           .from(googleCalendarEvents)
           .where(eq(googleCalendarEvents.connectionId, row.id));
-        const byRecord = new Map(
-          mappings
-            .filter((item) => item.calendarId === row.calendarId)
-            .map((item) => [item.recordId, item]),
+        const byKey = new Map(
+          mappings.map((item) => [mappingKey(item.calendarId, item.recordId), item]),
         );
         const obsolete = mappings.filter(
-          (item) => item.calendarId !== row.calendarId || !desired.has(item.recordId),
+          (item) => !desired.has(mappingKey(item.calendarId, item.recordId)),
         );
         const changed = [...desired].filter(
-          ([id, target]) => byRecord.get(id)?.fingerprint !== target.fingerprint,
+          ([key, target]) => byKey.get(key)?.fingerprint !== target.fingerprint,
         );
-        const removals = obsolete.slice(0, 100);
-        const updates = row.calendarId ? changed.slice(0, 100 - removals.length) : [];
+        const removals = obsolete.slice(0, 40);
+        const updates = changed.slice(0, 40 - removals.length);
         const added: GoogleEventMapping[] = updates
-          .filter(([id]) => !byRecord.has(id))
-          .map(([recordId]) => ({
+          .filter(([key]) => !byKey.has(key))
+          .map(([, target]) => ({
             id: crypto.randomUUID(),
             connectionId: row.id,
-            recordId,
-            calendarId: row.calendarId!,
+            recordId: target.recordId,
+            calendarId: target.calendarId,
             googleEventId: newGoogleEventId(),
             fingerprint: "",
             etag: null,
           }));
         if (added.length) {
           await db.insert(googleCalendarEvents).values(added);
-          for (const item of added) byRecord.set(item.recordId, item);
+          for (const item of added) byKey.set(mappingKey(item.calendarId, item.recordId), item);
         }
         const client =
           removals.length || updates.length ? await googleConnectionClient(row) : undefined;
@@ -125,8 +164,8 @@ export async function syncGoogleCalendars(departmentId: string, deadline = Date.
             await removeMappedGoogleEvent(client!, item);
             removed.push(item.id);
           }),
-          ...updates.map(([id, target]) => async () => {
-            const item = byRecord.get(id)!;
+          ...updates.map(([key, target]) => async () => {
+            const item = byKey.get(key)!;
             const remote = await upsertMappedGoogleEvent(
               client!,
               item,
@@ -142,17 +181,19 @@ export async function syncGoogleCalendars(departmentId: string, deadline = Date.
             written.push({ ...item, fingerprint: target.fingerprint, etag: remote.etag || null });
           }),
         ];
-        const connectionDeadline = Math.min(deadline, Date.now() + 60000);
+        const connectionDeadline = Math.min(deadline - 10000, Date.now() + 45000);
         let completed = 0;
-        // Three independent calls at a time, below normal per-user API quotas.
-        for (let i = 0; i < work.length; i += 3) {
+        // Deliberately sequential: the client also spaces every API request by 650 ms.
+        for (const run of work) {
           if (Date.now() >= connectionDeadline) break;
-          const results = await Promise.allSettled(work.slice(i, i + 3).map((run) => run()));
-          completed += results.length;
-          for (const result of results) if (result.status === "rejected") error ||= result.reason;
-          if (error) break;
+          try {
+            await run();
+            completed++;
+          } catch (cause) {
+            error = cause;
+            break;
+          }
         }
-        // Keep successful progress even if a later Google request fails.
         if (removed.length)
           await db
             .delete(googleCalendarEvents)
@@ -171,35 +212,45 @@ export async function syncGoogleCalendars(departmentId: string, deadline = Date.
               set: { fingerprint: sql`excluded.fingerprint`, etag: sql`excluded.etag` },
             });
         if (error) throw error;
-        const more =
+        const remaining =
           obsolete.length > removals.length ||
           changed.length > updates.length ||
           completed < work.length;
-        if (!more) {
-          await db
-            .update(googleCalendarConnections)
-            .set({ lastSyncedAt: new Date(), lastError: null })
-            .where(eq(googleCalendarConnections.id, row.id));
-        }
-        return more;
-      });
-      incomplete ||= more;
-    } catch (error) {
-      if (error instanceof GoogleCalendarError) {
         await db
           .update(googleCalendarConnections)
           .set({
-            lastError: googleCalendarErrorMessage(error),
-            ...(["reconnect", "permission"].includes(error.code)
-              ? { status: "reconnect" as GoogleConnection["status"] }
-              : {}),
+            lastError: null,
+            retryAfter: null,
+            retryCount: 0,
+            ...(!remaining ? { lastSyncedAt: new Date() } : {}),
           })
-          .where(eq(googleCalendarConnections.id, connection.id));
-        if (["reconnect", "permission"].includes(error.code)) continue;
+          .where(eq(googleCalendarConnections.id, row.id));
+        return remaining;
+      });
+      if (unfinished) defer(Date.now());
+    } catch (error) {
+      if (error instanceof HttpError && error.status === 409) {
+        defer(Date.now() + 45000);
+        continue;
+      }
+      if (error instanceof GoogleCalendarError) {
+        if (["reconnect", "permission"].includes(error.code)) {
+          continue;
+        }
+        if (["quota", "unavailable"].includes(error.code)) {
+          more = true;
+          if (connection.retryCount < 4) defer(Date.now() + Math.max(error.retryAfterMs, 15000));
+          console.warn("Google calendar sync paused", {
+            code: error.code,
+            status: error.status,
+            reason: error.reason,
+          });
+          continue;
+        }
       }
       failure ||= error;
     }
   }
   if (failure) throw failure;
-  return incomplete;
+  return { more, nextAt };
 }

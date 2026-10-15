@@ -19,11 +19,22 @@ export function PUT(request: Request) {
   return route(() =>
     googleCalendarOperation(async () => {
       const input = z
-        .object({ calendarId: z.string().min(1).max(1024), selection: z.unknown() })
+        .object({
+          calendarId: z.string().min(1).max(1024),
+          selection: z.unknown(),
+          connectionId: z.string().min(1).max(128).optional(),
+          previousCalendarId: z.string().min(1).max(1024).optional(),
+        })
         .parse(await readJson(request));
       const context = await requireContext(true);
       return NextResponse.json(
-        await saveGoogleCalendar(context, input.calendarId, input.selection),
+        await saveGoogleCalendar(
+          context,
+          input.calendarId,
+          input.selection,
+          input.connectionId,
+          input.previousCalendarId,
+        ),
         noStore,
       );
     }),
@@ -32,10 +43,17 @@ export function PUT(request: Request) {
 export function DELETE(request: Request) {
   return route(() =>
     googleCalendarOperation(async () => {
-      await readJson(request);
+      const input = z
+        .object({
+          connectionId: z.string().min(1).max(128).optional(),
+          calendarId: z.string().min(1).max(1024).optional(),
+        })
+        .parse(await readJson(request));
       const context = await requireContext(true);
-      await disconnectGoogleCalendar(context);
-      return NextResponse.json({ configured: true, connection: null }, noStore);
+      return NextResponse.json(
+        await disconnectGoogleCalendar(context, input.connectionId, input.calendarId),
+        noStore,
+      );
     }),
   );
 }

@@ -13,11 +13,13 @@ import { openGoogleSecret, sealGoogleSecret } from "./crypto";
 import { exchangeGoogleCode, getGoogleIdentity, GoogleCalendarError } from "./provider";
 import {
   findGoogleConnection,
+  listGoogleConnections,
   googleConnectionTokens,
   googleTokenPurpose,
   withGoogleConnection,
 } from "./repository";
 import { queueGoogleCalendarSync } from "./queue";
+import { googleConnectionTargets } from "./targets";
 
 const cookieName = "digitalmask-google-calendar-oauth";
 const cookieOptions = {
@@ -32,18 +34,26 @@ type OAuthState = {
   verifier: string;
   expiresAt: number;
   returnTo: "calendar" | "settings";
+  connectionId?: string;
 };
 const purpose = (context: Context) =>
   `google-calendar-oauth:${context.departmentId}:${context.user.id}`;
 
-export async function startGoogleCalendar(context: Context, returnTo: "calendar" | "settings") {
+export async function startGoogleCalendar(
+  context: Context,
+  returnTo: "calendar" | "settings",
+  connectionId?: string,
+) {
   const config = googleCalendarConfig();
-  const current = await findGoogleConnection(context);
+  const current = connectionId ? await findGoogleConnection(context, connectionId) : undefined;
+  if (connectionId && !current)
+    throw new HttpError(404, "Diese Google-Verbindung ist nicht mehr vorhanden.");
   const state: OAuthState = {
     state: randomBytes(32).toString("hex"),
     verifier: randomBytes(32).toString("base64url"),
     expiresAt: Date.now() + 600000,
     returnTo,
+    ...(current ? { connectionId: current.id } : {}),
   };
   const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
   url.search = new URLSearchParams({
@@ -70,6 +80,7 @@ export async function finishGoogleCalendar(request: Request) {
   const config = googleCalendarConfig();
   let returnTo: OAuthState["returnTo"] = "settings";
   let outcome = "failed";
+  let connectedId = "";
   try {
     const context = await requireContext(true);
     const encoded = (await cookies()).get(cookieName)?.value;
@@ -91,12 +102,20 @@ export async function finishGoogleCalendar(request: Request) {
     )
       throw new HttpError(400, "expired");
     returnTo = state.returnTo === "calendar" ? "calendar" : "settings";
-    if (url.searchParams.has("error")) throw new HttpError(400, "cancelled");
+    if (url.searchParams.has("error"))
+      throw new HttpError(
+        400,
+        url.searchParams.get("error") === "rate_limit_exceeded" ? "limited" : "cancelled",
+      );
     const code = url.searchParams.get("code") || "";
     if (!code || code.length > 4096) throw new HttpError(400, "expired");
     const tokens = await exchangeGoogleCode(code, state.verifier);
     const identity = await getGoogleIdentity(tokens.accessToken);
-    const existing = await findGoogleConnection(context);
+    const accounts = await listGoogleConnections(context);
+    const existing = state.connectionId
+      ? accounts.find((row) => row.id === state.connectionId)
+      : accounts.find((row) => row.googleSubject === identity.subject);
+    if (state.connectionId && !existing) throw new HttpError(400, "expired");
     if (existing && existing.googleSubject !== identity.subject)
       throw new HttpError(409, "account");
     if (existing) {
@@ -112,8 +131,10 @@ export async function finishGoogleCalendar(request: Request) {
               .set({
                 email: identity.email,
                 credentials: sealGoogleSecret({ ...tokens, refreshToken }, googleTokenPurpose(row)),
-                status: row.calendarId ? "active" : "connected",
+                status: googleConnectionTargets(row).length ? "active" : "connected",
                 lastError: null,
+                retryAfter: null,
+                retryCount: 0,
                 updatedAt: new Date(),
               })
               .where(
@@ -123,12 +144,13 @@ export async function finishGoogleCalendar(request: Request) {
                   eq(googleCalendarConnections.departmentId, context.departmentId),
                 ),
               );
-            if (row.calendarId) await queueGoogleCalendarSync(tx, context);
+            if (googleConnectionTargets(row).length) await queueGoogleCalendarSync(tx, context);
           });
         },
         context,
       );
-      if (existing.calendarId) scheduleEvents();
+      connectedId = existing.id;
+      if (googleConnectionTargets(existing).length) scheduleEvents();
     } else {
       if (!tokens.refreshToken) throw new GoogleCalendarError("reconnect");
       const row = {
@@ -136,26 +158,34 @@ export async function finishGoogleCalendar(request: Request) {
         userId: context.user.id,
         departmentId: context.departmentId,
       };
-      await db
-        .insert(googleCalendarConnections)
-        .values({
-          ...row,
-          googleSubject: identity.subject,
-          email: identity.email,
-          credentials: sealGoogleSecret(tokens, googleTokenPurpose(row)),
-          selection: { mode: "mine", memberIds: [context.user.id] },
-        });
+      await db.insert(googleCalendarConnections).values({
+        ...row,
+        googleSubject: identity.subject,
+        email: identity.email,
+        credentials: sealGoogleSecret(tokens, googleTokenPurpose(row)),
+        selection: { mode: "mine", memberIds: [context.user.id] },
+        calendars: [],
+      });
+      connectedId = row.id;
     }
     outcome = "connected";
   } catch (error) {
-    if (error instanceof HttpError && ["expired", "cancelled", "account"].includes(error.message))
+    if (
+      error instanceof HttpError &&
+      ["expired", "cancelled", "account", "limited"].includes(error.message)
+    )
       outcome = error.message;
     else if (error instanceof GoogleCalendarError && error.code === "permission")
       outcome = "permissions";
+    else if (error instanceof GoogleCalendarError && error.code === "quota") outcome = "limited";
     // Do not log authorization codes, provider responses, state or credentials.
   }
   const target = new URL("/", config.origin);
-  target.search = new URLSearchParams({ module: returnTo, googleCalendar: outcome }).toString();
+  target.search = new URLSearchParams({
+    module: returnTo,
+    googleCalendar: outcome,
+    ...(connectedId ? { googleConnection: connectedId } : {}),
+  }).toString();
   const response = NextResponse.redirect(target, {
     status: 303,
     headers: { "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" },

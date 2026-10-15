@@ -7,6 +7,7 @@ import { invalidateWorkspace } from "@/modules/records/workspace";
 import type { RecordData } from "@/shared/contracts";
 import { listValue } from "@/shared/contracts";
 import { deliverNotifications } from "@/modules/notifications/service";
+import { enqueueGoogleCalendarWork } from "@/modules/google-calendar/queue";
 export async function emit(
   tx: Transaction,
   context: Context,
@@ -47,20 +48,34 @@ export function scheduleEvents() {
   });
 }
 /** Drain bounded continuations in the same invocation, without a recurring database poll. */
-export async function drainEvents() {
-  const deadline = Date.now() + 220000;
+export async function drainEvents(deadline = Date.now() + 220000) {
   let processed = 0;
+  let nextGoogleAt: number | undefined;
   for (let pass = 0; pass < 8 && Date.now() < deadline - 10000; pass++) {
     const result = await processEvents(deadline);
     processed += result.processed;
+    nextGoogleAt = result.nextGoogleAt;
     if (!result.continuation && result.processed < 20) break;
+    if (nextGoogleAt && nextGoogleAt > Date.now()) {
+      const delay = nextGoogleAt - Date.now();
+      if (delay > 45000 || Date.now() + delay > deadline - 20000) break;
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+  if (nextGoogleAt !== undefined) {
+    const { continueGoogleCalendarSync } = await import("@/modules/google-calendar/continuation");
+    await continueGoogleCalendarSync(nextGoogleAt);
   }
   return { processed };
 }
 export async function processEvents(deadline = Date.now() + 170000) {
   const changedDepartments = new Set<string>();
-  const calendarBatches = new Map<string, Promise<boolean>>();
+  const calendarBatches = new Map<
+    string,
+    Promise<import("@/modules/google-calendar/sync").GoogleSyncProgress>
+  >();
   const calendarContinuations = new Set<string>();
+  let nextGoogleAt: number | undefined;
   const due = await db.transaction(async (tx) => {
     const list = await tx
       .select()
@@ -85,7 +100,11 @@ export async function processEvents(deadline = Date.now() + 170000) {
         .where(eq(outbox.id, event.id));
     return list;
   });
-  for (const event of due) {
+  for (const event of [...due].sort(
+    (a, b) =>
+      Number(a.type === "GoogleCalendarSyncRequestedV1") -
+      Number(b.type === "GoogleCalendarSyncRequestedV1"),
+  )) {
     try {
       const noticeIds: string[] = [];
       if (event.type === "GoogleCalendarSyncRequestedV1") {
@@ -96,16 +115,16 @@ export async function processEvents(deadline = Date.now() + 170000) {
             syncGoogleCalendars(event.departmentId, deadline),
           );
         }
-        const more = await calendarBatches.get(event.departmentId)!;
-        if (more && !calendarContinuations.has(event.departmentId)) {
-          await db
-            .insert(outbox)
-            .values({
-              id: crypto.randomUUID(),
-              departmentId: event.departmentId,
-              type: event.type,
-              payload: event.payload,
-            });
+        const progress = await calendarBatches.get(event.departmentId)!;
+        if (progress.nextAt !== undefined)
+          nextGoogleAt = Math.min(nextGoogleAt ?? Infinity, progress.nextAt);
+        if (progress.more && !calendarContinuations.has(event.departmentId)) {
+          await enqueueGoogleCalendarWork(
+            db,
+            event.departmentId,
+            event.payload,
+            new Date(progress.nextAt ?? Date.now() + 1800000),
+          );
           calendarContinuations.add(event.departmentId);
         }
         await db.update(outbox).set({ status: "done" }).where(eq(outbox.id, event.id));
@@ -268,6 +287,26 @@ export async function processEvents(deadline = Date.now() + 170000) {
       await deliverNotifications(event.departmentId, event.type, noticeIds);
       await db.update(outbox).set({ status: "done" }).where(eq(outbox.id, event.id));
     } catch (error) {
+      if (event.type === "GoogleCalendarSyncRequestedV1") {
+        await db.transaction(async (tx) => {
+          await tx
+            .update(outbox)
+            .set({ status: event.attempts >= 5 ? "failed" : "done" })
+            .where(eq(outbox.id, event.id));
+          if (event.attempts < 5)
+            await enqueueGoogleCalendarWork(
+              tx,
+              event.departmentId,
+              event.payload,
+              new Date(Date.now() + Math.min(3600000, 60000 * 2 ** event.attempts)),
+              event.attempts + 1,
+            );
+        });
+        console.error("Google sync delivery failed", {
+          name: error instanceof Error ? error.name : "unknown",
+        });
+        continue;
+      }
       await db
         .update(outbox)
         .set({
@@ -283,5 +322,5 @@ export async function processEvents(deadline = Date.now() + 170000) {
     }
   }
   for (const departmentId of changedDepartments) invalidateWorkspace(departmentId);
-  return { processed: due.length, continuation: calendarContinuations.size > 0 };
+  return { processed: due.length, continuation: calendarContinuations.size > 0, nextGoogleAt };
 }

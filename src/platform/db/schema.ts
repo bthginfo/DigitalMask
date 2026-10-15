@@ -14,7 +14,10 @@ import { sql } from "drizzle-orm";
 import type { AccentPalette, DomainRecord, RecordData, RecordKind, Role } from "@/shared/contracts";
 import type { DocumentFormat, DocumentMetadata } from "@/modules/documents/contracts";
 import type { WorkingTimeSettings } from "@/shared/working-time";
-import type { GoogleCalendarSelection } from "@/modules/google-calendar/contracts";
+import type {
+  GoogleCalendarSelection,
+  GoogleCalendarTarget,
+} from "@/modules/google-calendar/contracts";
 export const user = pgTable("app_user", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
@@ -315,6 +318,9 @@ export const googleCalendarConnections = pgTable(
     calendarId: text("calendar_id"),
     calendarName: text("calendar_name"),
     selection: jsonb("selection").$type<GoogleCalendarSelection>().notNull(),
+    calendars: jsonb("calendars").$type<GoogleCalendarTarget[]>(),
+    retryAfter: timestamp("retry_after", { withTimezone: true }),
+    retryCount: integer("retry_count").notNull().default(0),
     status: text("status")
       .$type<"connected" | "active" | "reconnect">()
       .notNull()
@@ -326,7 +332,9 @@ export const googleCalendarConnections = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [uniqueIndex("google_calendar_user_scope_idx").on(t.departmentId, t.userId)],
+  (t) => [
+    uniqueIndex("google_calendar_user_account_idx").on(t.departmentId, t.userId, t.googleSubject),
+  ],
 );
 /** Only these mapped events can ever be changed or removed by the Google integration. */
 export const googleCalendarEvents = pgTable(

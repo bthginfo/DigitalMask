@@ -6,9 +6,12 @@ import { requireGoogleCalendarConfigured } from "@/modules/google-calendar/servi
 export function POST(request: Request) {
   return route(async () => {
     const input = z
-      .object({ returnTo: z.enum(["calendar", "settings"]) })
+      .object({
+        returnTo: z.enum(["calendar", "settings"]),
+        connectionId: z.string().min(1).max(128).optional(),
+      })
       .parse(await readJson(request));
     requireGoogleCalendarConfigured();
-    return startGoogleCalendar(await requireContext(true), input.returnTo);
+    return startGoogleCalendar(await requireContext(true), input.returnTo, input.connectionId);
   });
 }

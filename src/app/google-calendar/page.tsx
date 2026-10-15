@@ -16,7 +16,8 @@ export default function GoogleCalendarInformation() {
       <p>
         Die Verbindung ist freiwillig. Du kannst DigitalMask vollständig ohne Google-Konto nutzen.
         Mit der Verbindung überträgst du ausgewählte DigitalMask-Termine in einen bestehenden
-        eigenen Google-Kalender.
+        eigenen Google-Kalender. Du kannst mehrere Google-Konten und je Konto mehrere eigene
+        Kalender verbinden. Für jeden Zielkalender legst du die Termin-Auswahl getrennt fest.
       </p>
       <section>
         <h2>Welche Daten werden verwendet?</h2>
@@ -82,6 +83,11 @@ export default function GoogleCalendarInformation() {
           </a>{" "}
           widerrufen. Danach ist kein weiterer Zugriff möglich; zum Entfernen der lokalen Zuordnung
           nutze zusätzlich Verbindung trennen in DigitalMask.
+        </p>
+        <p>
+          Du kannst einen einzelnen Zielkalender trennen, ohne die anderen Kalender zu verändern.
+          Google-Konto trennen widerruft den Zugriff für dieses Konto und entfernt alle seine
+          lokalen Kalenderzuordnungen. Andere verbundene Google-Konten bleiben erhalten.
         </p>
         <p>
           Fragen oder Probleme kannst du über den Hilfebereich von DigitalMask an den Superadmin

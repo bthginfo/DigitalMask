@@ -42,6 +42,13 @@
   gap: 12px;
   padding-block: 4px;
 }
+.accountPicker {
+  display: grid;
+  gap: 12px;
+}
+.accountPicker > button {
+  justify-self: start;
+}
 .account > div {
   display: grid;
   gap: 4px;

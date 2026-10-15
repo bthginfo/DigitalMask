@@ -1,6 +1,7 @@
 import { googleCalendarConfig, googleCalendarScopes } from "./config";
 import type { GoogleCalendarDestination } from "./contracts";
 import type { GoogleEventBody } from "./presentation";
+import { googleRetryAfter } from "./retry";
 
 export type GoogleTokens = { accessToken: string; refreshToken: string; expiresAt: number };
 export type GoogleRemoteEvent = {
@@ -22,6 +23,8 @@ export class GoogleCalendarError extends Error {
       | "changed"
       | "ownership",
     public status = 0,
+    public retryAfterMs = 0,
+    public reason = "",
   ) {
     super(`GoogleCalendar:${code}`);
     this.name = `GoogleCalendar:${code}`;
@@ -38,7 +41,7 @@ export function googleCalendarErrorMessage(error: unknown) {
   if (error.code === "ownership")
     return "Ein zugeordneter Google-Termin gehört nicht mehr zu DigitalMask. Er wurde zur Sicherheit nicht verändert.";
   if (error.code === "quota")
-    return "Google begrenzt gerade die Anfragen. Deine DigitalMask-Termine sind gespeichert; der Abgleich wird später erneut versucht.";
+    return "Google begrenzt gerade die Anfragen. Dein Google-Konto bleibt verbunden. Deine Termine sind gespeichert; DigitalMask setzt den Abgleich nach einer Pause fort.";
   return "Google konnte den Abgleich gerade nicht abschließen. Deine DigitalMask-Termine sind gespeichert.";
 }
 
@@ -61,8 +64,13 @@ async function tokenRequest(body: URLSearchParams) {
   const data = (await response.json().catch(() => ({}))) as Record<string, unknown>;
   if (!response.ok)
     throw new GoogleCalendarError(
-      data.error === "invalid_grant" ? "reconnect" : "unavailable",
+      data.error === "invalid_grant"
+        ? "reconnect"
+        : response.status === 429
+          ? "quota"
+          : "unavailable",
       response.status,
+      googleRetryAfter(response.headers.get("Retry-After")),
     );
   if (
     typeof data.access_token !== "string" ||
@@ -144,7 +152,22 @@ export async function revokeGoogleTokens(tokens: GoogleTokens) {
 }
 
 export class GoogleCalendarClient {
-  constructor(private accessToken: string) {}
+  private nextRequestAt = 0;
+  private slots = Promise.resolve();
+  constructor(
+    private accessToken: string,
+    private intervalMs = 650,
+  ) {}
+
+  private async waitForSlot() {
+    const slot = this.slots.then(async () => {
+      const delay = this.nextRequestAt - Date.now();
+      if (delay > 0) await new Promise((resolve) => setTimeout(resolve, delay));
+      this.nextRequestAt = Date.now() + this.intervalMs;
+    });
+    this.slots = slot.catch(() => {});
+    await slot;
+  }
 
   private async request<T>(
     path: string,
@@ -152,6 +175,7 @@ export class GoogleCalendarClient {
     body?: unknown,
     etag?: string,
   ): Promise<T> {
+    await this.waitForSlot();
     let response: Response;
     try {
       response = await fetch(`https://www.googleapis.com/calendar/v3/${path}`, {
@@ -173,9 +197,15 @@ export class GoogleCalendarClient {
       const data = (await response.json().catch(() => ({}))) as {
         error?: { errors?: { reason?: string }[] };
       };
-      const limited = data.error?.errors?.some((item) =>
-        ["rateLimitExceeded", "userRateLimitExceeded", "quotaExceeded"].includes(item.reason || ""),
-      );
+      const reasons = [
+        "rateLimitExceeded",
+        "userRateLimitExceeded",
+        "quotaExceeded",
+        "calendarUsageLimitsExceeded",
+      ];
+      const limited = data.error?.errors?.find((item) =>
+        reasons.includes(item.reason || ""),
+      )?.reason;
       throw new GoogleCalendarError(
         response.status === 401
           ? "reconnect"
@@ -191,6 +221,8 @@ export class GoogleCalendarClient {
                     ? "changed"
                     : "unavailable",
         response.status,
+        googleRetryAfter(response.headers.get("Retry-After")),
+        limited || "",
       );
     }
     return response.status === 204 ? (undefined as T) : ((await response.json()) as T);
