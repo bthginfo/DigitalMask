@@ -1,0 +1,163 @@
+.dialog:global(.dialog)[open] {
+  display: flex;
+  flex-direction: column;
+  max-width: 560px;
+  max-height: min(90dvh, calc(var(--dialog-viewport-height, 100dvh) - 16px));
+  padding: 0;
+  overflow: hidden;
+}
+.dialog > :global(.dialog-heading) {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 16px 20px;
+}
+.dialog > :global(.dialog-footer) {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 12px 20px max(12px, env(safe-area-inset-bottom));
+}
+.content {
+  display: grid;
+  gap: 20px;
+  padding: 24px;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scroll-padding-block: 20px;
+}
+.content p {
+  margin: 0;
+  line-height: 1.6;
+}
+.content a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.account {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-block: 4px;
+}
+.account > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.form {
+  display: grid;
+  gap: 20px;
+}
+.disclosure {
+  display: grid;
+  gap: 12px;
+}
+.people {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.people legend {
+  font-weight: 600;
+  padding: 0;
+  margin-bottom: 12px;
+}
+.modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+.modes label,
+.members label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  cursor: pointer;
+}
+.modes input,
+.members input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  flex-shrink: 0;
+  accent-color: var(--accent);
+}
+.members {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px 16px;
+  margin-top: 12px;
+}
+.filters {
+  border-block: 1px solid var(--border);
+  padding-block: 12px;
+}
+.filters summary {
+  cursor: pointer;
+  line-height: 1.5;
+  min-height: 32px;
+}
+.filterFields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  padding-top: 12px;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.disconnect {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+}
+@media (max-width: 600px) {
+  .dialog:global(.dialog)[open] {
+    width: calc(100% - 16px);
+    max-height: calc(var(--dialog-viewport-height, 100dvh) - 16px);
+    inset: calc(var(--dialog-viewport-top, 0px) + 8px) 0 auto;
+    margin: 0 auto;
+  }
+  .dialog > :global(.dialog-heading) {
+    padding: 10px 12px 10px 16px;
+  }
+  .dialog > :global(.dialog-footer) {
+    padding-inline: 16px;
+    gap: 8px;
+  }
+  .dialog > :global(.dialog-footer) > :global(.button) {
+    flex: 1;
+    min-height: 44px;
+    padding-inline: 10px;
+  }
+  .content {
+    padding: 16px;
+    gap: 16px;
+  }
+  .members,
+  .filterFields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .account {
+    align-items: flex-start;
+  }
+  .modes {
+    display: grid;
+    gap: 4px;
+  }
+  .actions > button {
+    flex: 1 1 auto;
+  }
+}

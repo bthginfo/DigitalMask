@@ -9,6 +9,7 @@ import { organizationAction } from "@/modules/organization/actions";
 import { copyProduction } from "@/modules/productions/copy";
 import { updateProfile } from "@/modules/profile/service";
 import { readChatNotifications, readNotifications } from "@/modules/notifications/read";
+export const maxDuration = 300;
 export async function POST(request: Request) {
   return route(async () => {
     const {

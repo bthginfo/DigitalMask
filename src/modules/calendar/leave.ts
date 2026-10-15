@@ -9,6 +9,7 @@ import { emit, auditChange, scheduleEvents } from "@/platform/events";
 import { HttpError } from "@/platform/http";
 import { startOfLocalDay } from "@/modules/time-tracking/rules";
 import { occurrences } from "./occurrences";
+import { queueGoogleCalendarSync } from "@/modules/google-calendar/queue";
 import {
   calendarPresentation,
   calendarCategoryBlocksTime,
@@ -144,6 +145,7 @@ export async function decideLeave(
       link: "/?module=calendar",
     });
     await auditChange(tx, context, "leave.decided", id);
+    await queueGoogleCalendarSync(tx, context);
     return serialize(updated);
   });
   invalidateWorkspace(context.departmentId);

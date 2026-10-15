@@ -4,6 +4,7 @@ import { requireContext } from "@/platform/context";
 import { readJson, route } from "@/platform/http";
 import { recordKinds } from "@/shared/contracts";
 import { saveRecord } from "@/modules/records/service";
+export const maxDuration = 300;
 export async function POST(request: Request, { params }: { params: Promise<{ kind: string }> }) {
   return route(async () => {
     const kind = z.enum(recordKinds).parse((await params).kind);

@@ -38,7 +38,7 @@ export async function auditChange(
 }
 export function scheduleEvents() {
   after(async () => {
-    await processEvents().catch((error) =>
+    await drainEvents().catch((error) =>
       console.error("Event processing failed", {
         name: error instanceof Error ? error.name : "unknown",
         code: (error as { cause?: { code?: string } })?.cause?.code || "unknown",
@@ -46,8 +46,21 @@ export function scheduleEvents() {
     );
   });
 }
-export async function processEvents() {
+/** Drain bounded continuations in the same invocation, without a recurring database poll. */
+export async function drainEvents() {
+  const deadline = Date.now() + 220000;
+  let processed = 0;
+  for (let pass = 0; pass < 8 && Date.now() < deadline - 10000; pass++) {
+    const result = await processEvents(deadline);
+    processed += result.processed;
+    if (!result.continuation && result.processed < 20) break;
+  }
+  return { processed };
+}
+export async function processEvents(deadline = Date.now() + 170000) {
   const changedDepartments = new Set<string>();
+  const calendarBatches = new Map<string, Promise<boolean>>();
+  const calendarContinuations = new Set<string>();
   const due = await db.transaction(async (tx) => {
     const list = await tx
       .select()
@@ -63,13 +76,41 @@ export async function processEvents() {
     for (const event of list)
       await tx
         .update(outbox)
-        .set({ status: "processing", availableAt: new Date(Date.now() + 120000) })
+        .set({
+          status: "processing",
+          availableAt: new Date(
+            Date.now() + (event.type === "GoogleCalendarSyncRequestedV1" ? 300000 : 120000),
+          ),
+        })
         .where(eq(outbox.id, event.id));
     return list;
   });
   for (const event of due) {
     try {
       const noticeIds: string[] = [];
+      if (event.type === "GoogleCalendarSyncRequestedV1") {
+        if (!calendarBatches.has(event.departmentId)) {
+          const { syncGoogleCalendars } = await import("@/modules/google-calendar/sync");
+          calendarBatches.set(
+            event.departmentId,
+            syncGoogleCalendars(event.departmentId, deadline),
+          );
+        }
+        const more = await calendarBatches.get(event.departmentId)!;
+        if (more && !calendarContinuations.has(event.departmentId)) {
+          await db
+            .insert(outbox)
+            .values({
+              id: crypto.randomUUID(),
+              departmentId: event.departmentId,
+              type: event.type,
+              payload: event.payload,
+            });
+          calendarContinuations.add(event.departmentId);
+        }
+        await db.update(outbox).set({ status: "done" }).where(eq(outbox.id, event.id));
+        continue;
+      }
       if (event.type === "RecordDeletionFinalizedV1") {
         const { finalizeRecordDeletion } = await import("@/modules/files/legacy-deletion-cleanup");
         await finalizeRecordDeletion(event.departmentId, event.payload);
@@ -242,5 +283,5 @@ export async function processEvents() {
     }
   }
   for (const departmentId of changedDepartments) invalidateWorkspace(departmentId);
-  return { processed: due.length };
+  return { processed: due.length, continuation: calendarContinuations.size > 0 };
 }

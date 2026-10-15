@@ -4,6 +4,7 @@ import { requireContext } from "@/platform/context";
 import { readJson, route, assertOrigin } from "@/platform/http";
 import { recordKinds } from "@/shared/contracts";
 import { saveRecord, deleteRecord } from "@/modules/records/service";
+export const maxDuration = 300;
 type Props = { params: Promise<{ kind: string; id: string }> };
 export async function PATCH(request: Request, { params }: Props) {
   return route(async () => {

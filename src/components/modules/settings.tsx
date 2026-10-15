@@ -7,12 +7,17 @@ import { AppearanceCard } from "@/modules/profile/components/appearance-card";
 import { WorkingTimeCard } from "@/modules/profile/components/working-time-card";
 import { PushCard } from "@/modules/notifications/components/push-card";
 import { PasswordInput } from "../password-input";
+import {
+  GoogleCalendarDialog,
+  returnedFromGoogleCalendar,
+} from "@/modules/google-calendar/components/google-calendar-dialog";
 export function SettingsModule({ navigate }: { navigate?: (module: string) => void }) {
   const { workspace, action, busy } = useWorkspace();
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [url, setUrl] = useState("");
   const [reset, setReset] = useState<{ name: string; code: string } | null>(null);
+  const [googleCalendarOpen, setGoogleCalendarOpen] = useState(returnedFromGoogleCalendar);
   const admin = workspace.user.role !== "user";
   const run = async (fn: () => Promise<unknown>) => {
     setError("");
@@ -115,6 +120,18 @@ export function SettingsModule({ navigate }: { navigate?: (module: string) => vo
               Passwort speichern
             </Button>
           </form>
+        </Section>
+        <Section title="Google Kalender">
+          <div className="panel-content">
+            <p className="muted">
+              Übertrage deine Termine oder die Teamplanung automatisch in einen bestehenden
+              Google-Kalender. Du wählst die Personen und den Zielkalender selbst aus.
+            </p>
+            <Button onClick={() => setGoogleCalendarOpen(true)}>
+              <LinkIcon size={16} />
+              Google Kalender verbinden / verwalten
+            </Button>
+          </div>
         </Section>
         <Section title="Outlook & andere Kalender">
           <div className="panel-content">
@@ -289,6 +306,9 @@ export function SettingsModule({ navigate }: { navigate?: (module: string) => vo
             </table>
           </div>
         </section>
+      )}
+      {googleCalendarOpen && (
+        <GoogleCalendarDialog returnTo="settings" onClose={() => setGoogleCalendarOpen(false)} />
       )}
       {reset && (
         <Modal title={`Passwort zurücksetzen · ${reset.name}`} onClose={() => setReset(null)}>

@@ -6,7 +6,7 @@ import { recordKinds } from "@/shared/contracts";
 import { saveRecord } from "@/modules/records/service";
 import { invalidateWorkspace } from "@/modules/records/workspace";
 import { scheduleEvents } from "@/platform/events";
-export const maxDuration = 60;
+export const maxDuration = 300;
 export async function POST(request: Request) {
   return route(async () => {
     const context = await requireContext(true);
@@ -32,7 +32,12 @@ export async function POST(request: Request) {
     }
     if (imported) {
       invalidateWorkspace(context.departmentId);
-      if (["tasks", "events", "looks", "messages"].includes(body.kind)) scheduleEvents();
+      if (
+        ["tasks", "events", "looks", "messages", "productions", "calendarCategories"].includes(
+          body.kind,
+        )
+      )
+        scheduleEvents();
     }
     return NextResponse.json({ imported, errors });
   });

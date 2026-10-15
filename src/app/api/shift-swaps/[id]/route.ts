@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { requireContext } from "@/platform/context";
 import { readJson, route } from "@/platform/http";
 import { decideShiftSwap } from "@/modules/shift-swaps/service";
+export const maxDuration = 300;
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   return route(async () =>

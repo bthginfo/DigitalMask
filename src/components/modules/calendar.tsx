@@ -20,6 +20,7 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Link2,
   Plus,
   SlidersHorizontal,
 } from "lucide-react";
@@ -66,6 +67,10 @@ import calendarStyles from "@/modules/calendar/components/mobile-calendar.module
 import { statusLabels } from "../resource-fields";
 import { useViewState } from "@/shared/view-state";
 import { ShiftSwapPanel } from "@/modules/shift-swaps/components/shift-swap-panel";
+import {
+  GoogleCalendarDialog,
+  returnedFromGoogleCalendar,
+} from "@/modules/google-calendar/components/google-calendar-dialog";
 const calendarClock = (date: Date | null) =>
   date
     ? new Intl.DateTimeFormat("de-DE", {
@@ -206,6 +211,7 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
   const [detail, setDetail] = useState<DomainRecord | null>(null);
   const [error, setError] = useState("");
   const [exporting, setExporting] = useState(false);
+  const [googleCalendarOpen, setGoogleCalendarOpen] = useState(returnedFromGoogleCalendar);
   useEffect(() => {
     if (mobile && !editor && !detail && !exporting && !categoriesOpen) exitFullscreen();
   }, [mobile, editor, detail, exporting, categoriesOpen, exitFullscreen]);
@@ -396,6 +402,10 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
             onToggleFullscreen={presentation.toggleFullscreen}
           />
           <ExportButton onClick={() => setExporting(true)} />
+          <Button onClick={() => setGoogleCalendarOpen(true)}>
+            <Link2 size={16} />
+            Google Kalender
+          </Button>
           {workspace.user.role !== "superadmin" && (
             <Button onClick={() => setEditor({ kind: "leave" })}>Freien Tag wünschen</Button>
           )}
@@ -423,6 +433,15 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
             <ChevronDown size={14} />
           </summary>
           <div className="calendar-action-menu">
+            <Button
+              onClick={() => {
+                actionsMenu.current?.removeAttribute("open");
+                setGoogleCalendarOpen(true);
+              }}
+            >
+              <Link2 size={16} />
+              Google Kalender verbinden
+            </Button>
             <ExportButton
               onClick={() => {
                 actionsMenu.current?.removeAttribute("open");
@@ -1058,6 +1077,22 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
       )}
       <ShiftSwapPanel />
       {detail && <RecordDetail record={detail} onClose={() => setDetail(null)} />}
+      {googleCalendarOpen && (
+        <GoogleCalendarDialog
+          returnTo="calendar"
+          initialSelection={{
+            mode: showAll
+              ? "team"
+              : visiblePeople.length === 1 && visiblePeople[0] === workspace.user.id
+                ? "mine"
+                : "people",
+            memberIds: visiblePeople,
+            ...(project ? { productionId: project } : {}),
+            ...(category ? { category } : {}),
+          }}
+          onClose={() => setGoogleCalendarOpen(false)}
+        />
+      )}
       {exporting && (
         <ExportDialog
           kind="events"

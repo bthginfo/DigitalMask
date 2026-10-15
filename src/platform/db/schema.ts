@@ -14,6 +14,7 @@ import { sql } from "drizzle-orm";
 import type { AccentPalette, DomainRecord, RecordData, RecordKind, Role } from "@/shared/contracts";
 import type { DocumentFormat, DocumentMetadata } from "@/modules/documents/contracts";
 import type { WorkingTimeSettings } from "@/shared/working-time";
+import type { GoogleCalendarSelection } from "@/modules/google-calendar/contracts";
 export const user = pgTable("app_user", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
@@ -297,6 +298,54 @@ export const calendarTokens = pgTable("calendar_tokens", {
     .references(() => departments.id),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+/** Google tokens stay encrypted and are never included in a workspace response. */
+export const googleCalendarConnections = pgTable(
+  "google_calendar_connections",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    departmentId: text("department_id")
+      .notNull()
+      .references(() => departments.id),
+    googleSubject: text("google_subject").notNull(),
+    email: text("email").notNull(),
+    credentials: text("credentials").notNull(),
+    calendarId: text("calendar_id"),
+    calendarName: text("calendar_name"),
+    selection: jsonb("selection").$type<GoogleCalendarSelection>().notNull(),
+    status: text("status")
+      .$type<"connected" | "active" | "reconnect">()
+      .notNull()
+      .default("connected"),
+    lastSyncedAt: timestamp("last_synced_at", { withTimezone: true }),
+    lastError: text("last_error"),
+    lockToken: text("lock_token"),
+    lockedUntil: timestamp("locked_until", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("google_calendar_user_scope_idx").on(t.departmentId, t.userId)],
+);
+/** Only these mapped events can ever be changed or removed by the Google integration. */
+export const googleCalendarEvents = pgTable(
+  "google_calendar_events",
+  {
+    id: text("id").primaryKey(),
+    connectionId: text("connection_id")
+      .notNull()
+      .references(() => googleCalendarConnections.id, { onDelete: "cascade" }),
+    recordId: text("record_id").notNull(),
+    calendarId: text("calendar_id").notNull(),
+    googleEventId: text("google_event_id").notNull(),
+    fingerprint: text("fingerprint").notNull().default(""),
+    etag: text("etag"),
+  },
+  (t) => [
+    uniqueIndex("google_calendar_event_source_idx").on(t.connectionId, t.calendarId, t.recordId),
+  ],
+);
 export const recordHistory = pgTable(
   "record_history",
   {

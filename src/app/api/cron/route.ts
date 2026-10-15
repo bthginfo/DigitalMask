@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { processEvents } from "@/platform/events";
+import { drainEvents } from "@/platform/events";
 import { checkpointDirtyDocuments } from "@/modules/documents/service";
 export const maxDuration = 300;
 export async function GET(request: Request) {
@@ -8,7 +8,7 @@ export async function GET(request: Request) {
     request.headers.get("authorization") !== `Bearer ${process.env.CRON_SECRET}`
   )
     return NextResponse.json({ error: "Keine Berechtigung." }, { status: 401 });
-  const events = await processEvents();
+  const events = await drainEvents();
   const documents = await checkpointDirtyDocuments();
   return NextResponse.json({ ...events, documents });
 }

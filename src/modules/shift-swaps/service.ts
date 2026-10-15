@@ -4,6 +4,7 @@ import { memberships, records } from "@/platform/db/schema";
 import type { Context } from "@/platform/context";
 import { HttpError } from "@/platform/http";
 import { auditChange, emit, scheduleEvents } from "@/platform/events";
+import { queueGoogleCalendarSync } from "@/modules/google-calendar/queue";
 import { findRecord, serialize } from "@/modules/records/repository";
 import { invalidateWorkspace } from "@/modules/records/workspace";
 import { acquireWorkflowLock } from "@/modules/workflows/locks";
@@ -437,6 +438,7 @@ export async function decideShiftSwap(context: Context, id: string, input: unkno
       tx,
     );
     await notifySwap(context, after, tx);
+    if (data.action === "approve") await queueGoogleCalendarSync(tx, context);
     return serialize(after);
   });
   invalidateWorkspace(context.departmentId);

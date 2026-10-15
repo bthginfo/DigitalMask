@@ -5,6 +5,7 @@ import { type Context } from "@/platform/context";
 import { canManageRecord, canSetCalendarParticipants } from "@/shared/record-permissions";
 import { HttpError } from "@/platform/http";
 import { emit, auditChange, scheduleEvents } from "@/platform/events";
+import { queueGoogleCalendarSync } from "@/modules/google-calendar/queue";
 import { localDay } from "@/modules/time-tracking/rules";
 import { validateBooking } from "@/modules/time-tracking/validation";
 import { occurrences } from "@/modules/calendar/occurrences";
@@ -610,6 +611,8 @@ export async function saveRecord(
       });
       eventQueued = true;
     }
+    if (["events", "productions", "calendarCategories"].includes(kind))
+      eventQueued = (await queueGoogleCalendarSync(tx, context)) || eventQueued;
     return serialize(row);
   };
   const result = options.transaction
@@ -695,6 +698,8 @@ export async function deleteRecord(
       .delete(records)
       .where(inArray(records.id, [id, ...attachments.map((file) => file.id)]));
     await auditChange(tx, context, `${kind}.deleted`, id);
+    if (["events", "productions", "calendarCategories"].includes(kind))
+      eventQueued = (await queueGoogleCalendarSync(tx, context)) || eventQueued;
   };
   if (options.transaction) await write(options.transaction);
   else await db.transaction(write);
