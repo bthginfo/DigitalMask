@@ -138,11 +138,11 @@ export async function timerAction(
     await db
       .delete(timerTable)
       .where(and(eq(timerTable.id, result.timerId), eq(timerTable.userId, context.user.id)));
-    invalidateWorkspace(context.departmentId);
+    invalidateWorkspace(context.departmentId, true, [kind]);
     invalidateTimer(context.user.id);
     return booking;
   }
-  invalidateWorkspace(context.departmentId);
+  invalidateWorkspace(context.departmentId, true, [kind]);
   invalidateTimer(context.user.id);
   return result;
 }

@@ -16,6 +16,12 @@ import { subscribeConnectivity } from "@/shared/client-storage";
 import { useRouter } from "next/navigation";
 import { connectLiveSync, type SyncStatus } from "@/shared/live-sync";
 import { syncAppBadge } from "@/modules/notifications/client";
+import {
+  mergeWorkspaceUpdate,
+  partialWorkspaceKinds,
+  recordChangeKinds,
+  type WorkspacePatch,
+} from "@/shared/workspace-sync";
 
 interface Context {
   workspace: Workspace;
@@ -57,38 +63,48 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     () => true,
   );
   const loading = useRef<Promise<void> | null>(null);
-  const reloadAgain = useRef(false);
-  const refresh = useCallback(async () => {
-    if (loading.current) {
-      reloadAgain.current = true;
-      return loading.current;
-    }
-    const run = async () => {
-      do {
-        reloadAgain.current = false;
-        try {
-          const next = await api<Workspace>("/api/workspace");
-          liveAccess.current = next.live;
-          setWorkspace(next);
-          if (statusRef.current === "unavailable" && next.live)
-            setLiveAttempt((attempt) => attempt + 1);
-          setError("");
-          setPending(false);
-        } catch (e) {
-          if (e instanceof ApiFailure && e.status === 401) {
-            router.replace("/login");
-            return;
+  const workspaceRef = useRef<Workspace | null>(null);
+  const queued = useRef({ full: false, kinds: new Set<RecordKind>() });
+  const reload = useCallback(
+    async (kinds?: readonly RecordKind[]) => {
+      const selected = workspaceRef.current ? partialWorkspaceKinds(kinds) : undefined;
+      if (!selected) queued.current.full = true;
+      else for (const kind of selected) queued.current.kinds.add(kind);
+      if (loading.current) return loading.current;
+      const run = async () => {
+        while (queued.current.full || queued.current.kinds.size) {
+          const selected = queued.current.full ? undefined : [...queued.current.kinds];
+          queued.current.full = false;
+          queued.current.kinds.clear();
+          try {
+            const query = selected ? `?${new URLSearchParams({ kinds: selected.join(",") })}` : "";
+            const update = await api<Workspace | WorkspacePatch>(`/api/workspace${query}`);
+            const next = mergeWorkspaceUpdate(workspaceRef.current, update);
+            workspaceRef.current = next;
+            liveAccess.current = next.live;
+            setWorkspace(next);
+            if (statusRef.current === "unavailable" && next.live)
+              setLiveAttempt((attempt) => attempt + 1);
+            setError("");
+            setPending(false);
+          } catch (e) {
+            if (e instanceof ApiFailure && e.status === 401) {
+              router.replace("/login");
+              return;
+            }
+            if (e instanceof ApiFailure && e.status === 403) setPending(true);
+            else setError(e instanceof Error ? e.message : "Verbindung fehlgeschlagen");
           }
-          if (e instanceof ApiFailure && e.status === 403) setPending(true);
-          else setError(e instanceof Error ? e.message : "Verbindung fehlgeschlagen");
         }
-      } while (reloadAgain.current);
-    };
-    loading.current = run().finally(() => {
-      loading.current = null;
-    });
-    return loading.current;
-  }, [router]);
+      };
+      loading.current = run().finally(() => {
+        loading.current = null;
+      });
+      return loading.current;
+    },
+    [router],
+  );
+  const refresh = useCallback(() => reload(), [reload]);
   useEffect(() => {
     void Promise.resolve().then(refresh);
     if ("serviceWorker" in navigator)
@@ -118,15 +134,22 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     }
     let timer: ReturnType<typeof setTimeout> | undefined;
     let disposed = false;
-    const changed = () => {
+    let full = false;
+    const pendingKinds = new Set<RecordKind>();
+    const changed = (kinds?: readonly RecordKind[]) => {
+      if (!kinds) full = true;
+      else for (const kind of kinds) pendingKinds.add(kind);
       clearTimeout(timer);
       timer = setTimeout(() => {
         if (disposed) return;
         if (mutationPending.current) {
-          changed();
+          changed(full ? undefined : [...pendingKinds]);
           return;
         }
-        void refresh();
+        const selected = full ? undefined : [...pendingKinds];
+        full = false;
+        pendingKinds.clear();
+        void reload(selected);
       }, 450);
     };
     const disconnect = connectLiveSync({
@@ -140,13 +163,13 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       clearTimeout(timer);
       disconnect();
     };
-  }, [liveEnabled, departmentId, userId, liveAttempt, refresh]);
-  const mutate = async (run: () => Promise<unknown>) => {
+  }, [liveEnabled, departmentId, userId, liveAttempt, refresh, reload]);
+  const mutate = async (run: () => Promise<unknown>, kinds?: readonly RecordKind[]) => {
     mutationPending.current = true;
     setBusy(true);
     try {
       const result = await run();
-      await refresh();
+      await reload(kinds);
       return result;
     } finally {
       mutationPending.current = false;
@@ -154,13 +177,15 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     }
   };
   const save = async (kind: RecordKind, data: RecordData, record?: DomainRecord) => {
-    return (await mutate(() =>
-      record
-        ? api(`/api/records/${kind}/${record.id}`, {
-            method: "PATCH",
-            body: JSON.stringify({ data, version: record.version }),
-          })
-        : post(`/api/records/${kind}`, { data }),
+    return (await mutate(
+      () =>
+        record
+          ? api(`/api/records/${kind}/${record.id}`, {
+              method: "PATCH",
+              body: JSON.stringify({ data, version: record.version }),
+            })
+          : post(`/api/records/${kind}`, { data }),
+      recordChangeKinds(kind),
     )) as DomainRecord;
   };
   const remove = async (record: DomainRecord) => {
@@ -172,27 +197,40 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     );
   };
   const action = (action: string, id?: string, data?: RecordData) =>
-    mutate(() => post("/api/actions", { action, id, data }));
+    mutate(
+      () => post("/api/actions", { action, id, data }),
+      ["notifications-read", "chat-notifications-read", "notification-read"].includes(action)
+        ? ["notifications"]
+        : action.startsWith("attendance-timer-")
+          ? ["attendance"]
+          : action.startsWith("timer-")
+            ? ["time"]
+            : action === "leave-decide"
+              ? ["events", "leave"]
+              : undefined,
+    );
   const runWorkflow = async <T = unknown,>(url: string, data: RecordData) =>
     (await mutate(() => post<T>(url, data))) as T;
   const removeFile = async (file: DomainRecord) => {
     await mutate(() => api(`/api/files/${file.id}`, { method: "DELETE" }));
   };
-  const mergeMessages = (messages: DomainRecord[]) =>
-    setWorkspace((current) =>
-      current
-        ? {
-            ...current,
-            records: {
-              ...current.records,
-              messages: [
-                ...current.records.messages.filter((x) => !messages.some((m) => m.id === x.id)),
-                ...messages,
-              ],
-            },
-          }
-        : current,
-    );
+  const mergeMessages = (messages: DomainRecord[]) => {
+    const current = workspaceRef.current;
+    const next = current
+      ? {
+          ...current,
+          records: {
+            ...current.records,
+            messages: [
+              ...current.records.messages.filter((x) => !messages.some((m) => m.id === x.id)),
+              ...messages,
+            ],
+          },
+        }
+      : current;
+    workspaceRef.current = next;
+    setWorkspace(next);
+  };
   if (pending)
     return (
       <main className="gate">

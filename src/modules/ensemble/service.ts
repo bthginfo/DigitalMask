@@ -223,7 +223,7 @@ export async function importEnsemble(
     );
     if (unused.length) await del(unused).catch(() => {});
   }
-  if (created || updated) invalidateWorkspace(context.departmentId);
+  if (created || updated) invalidateWorkspace(context.departmentId, true, ["actors", "files"]);
   if (deletionQueued) scheduleEvents();
   return { created, updated, unchanged, images, errors, season };
 }

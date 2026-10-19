@@ -1,5 +1,5 @@
 import { unstable_cache, revalidateTag } from "next/cache";
-import { and, eq, ne, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/platform/db";
 import {
   records,
@@ -22,9 +22,22 @@ import { scheduleLiveChange } from "@/platform/realtime";
 import { canReadShiftSwap } from "@/modules/shift-swaps/rules";
 import { visibleWorkingTime } from "@/shared/working-time";
 import { calendarProductionReference } from "@/shared/calendar-access";
-export function invalidateWorkspace(departmentId: string, broadcast = true) {
-  revalidateTag(scopeTag(departmentId), { expire: 0 });
-  if (broadcast) scheduleLiveChange(departmentId);
+import { workspaceGroups, workspaceKindTag, notificationUserTag } from "@/shared/workspace-sync";
+export function invalidateWorkspace(
+  departmentId: string,
+  broadcast = true,
+  kinds?: readonly RecordKind[],
+) {
+  const tags = kinds?.map((kind) => workspaceKindTag(departmentId, kind)) ?? [
+    scopeTag(departmentId),
+  ];
+  for (const tag of new Set(tags)) revalidateTag(tag, { expire: 0 });
+  if (broadcast) scheduleLiveChange(departmentId, kinds);
+}
+export function invalidateNotifications(departmentId: string, userIds: readonly string[]) {
+  for (const userId of new Set(userIds))
+    revalidateTag(notificationUserTag(departmentId, userId), { expire: 0 });
+  if (userIds.length) scheduleLiveChange(departmentId, ["notifications"]);
 }
 export function invalidateTeam(departmentId: string) {
   revalidateTag(`team:${departmentId}`, { expire: 0 });
@@ -32,13 +45,67 @@ export function invalidateTeam(departmentId: string) {
 export function invalidateTimer(userId: string) {
   revalidateTag(`timers:${userId}`, { expire: 0 });
 }
-async function readScope(departmentId: string) {
+async function readScope(departmentId: string, kinds: readonly RecordKind[]) {
   const rows = await db
     .select()
     .from(records)
-    .where(and(eq(records.departmentId, departmentId), ne(records.kind, "timesheets")))
+    .where(and(eq(records.departmentId, departmentId), inArray(records.kind, [...kinds])))
     .orderBy(records.createdAt);
   return rows.map(serialize);
+}
+async function readWorkspaceRows(context: Context, selected?: readonly RecordKind[]) {
+  const wanted = selected
+    ? new Set<RecordKind>([...selected, "productions", "conversations"])
+    : null;
+  const groups = Object.entries(workspaceGroups).filter(
+    ([, kinds]) => !wanted || kinds.some((kind) => wanted.has(kind)),
+  );
+  const snapshots = await Promise.all(
+    groups.map(([group, kinds]) =>
+      unstable_cache(
+        () => readScope(context.departmentId, kinds),
+        ["department-group-v7", context.departmentId, group],
+        {
+          revalidate: 3600,
+          tags: [
+            scopeTag(context.departmentId),
+            ...kinds.map((kind) => workspaceKindTag(context.departmentId, kind)),
+          ],
+        },
+      )(),
+    ),
+  );
+  const notices =
+    !wanted || wanted.has("notifications")
+      ? await unstable_cache(
+          async () =>
+            (
+              await db
+                .select()
+                .from(records)
+                .where(
+                  and(
+                    eq(records.departmentId, context.departmentId),
+                    eq(records.kind, "notifications"),
+                    eq(records.ownerId, context.user.id),
+                    sql`${records.data}->>'userId' = ${context.user.id}`,
+                    sql`coalesce(${records.data}->>'read','false') <> 'true'`,
+                  ),
+                )
+                .orderBy(records.createdAt)
+            ).map(serialize),
+          ["personal-unread-v1", context.departmentId, context.user.id],
+          {
+            revalidate: 3600,
+            tags: [
+              scopeTag(context.departmentId),
+              workspaceKindTag(context.departmentId, "notifications"),
+              notificationUserTag(context.departmentId, context.user.id),
+            ],
+          },
+        )()
+      : [];
+  return [...snapshots.flat().filter((row) => !wanted || wanted.has(row.kind)), ...notices];
 }
 async function readTeam(departmentId: string) {
   const members = await unstable_cache(
@@ -61,13 +128,12 @@ async function readTeam(departmentId: string) {
   )();
   return members.map((m) => ({ ...m, username: m.username || "" }));
 }
-export async function getWorkspace(context: Context): Promise<Workspace> {
+export async function getWorkspace(
+  context: Context,
+  selected?: readonly RecordKind[],
+): Promise<Workspace> {
   const [rows, members] = await Promise.all([
-    unstable_cache(
-      () => readScope(context.departmentId),
-      ["department-data-v6", context.departmentId],
-      { revalidate: 300, tags: [scopeTag(context.departmentId)] },
-    )(),
+    readWorkspaceRows(context, selected),
     readTeam(context.departmentId),
   ]);
   const visibleProjects = new Set(

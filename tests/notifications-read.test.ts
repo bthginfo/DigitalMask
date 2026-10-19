@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
   invalidate: vi.fn(),
 }));
 vi.mock("@/platform/db", () => ({ db: { update: mocks.update } }));
-vi.mock("@/modules/records/workspace", () => ({ invalidateWorkspace: mocks.invalidate }));
+vi.mock("@/modules/records/workspace", () => ({ invalidateNotifications: mocks.invalidate }));
 vi.mock("@/modules/chat/permissions", () => ({ assertConversation: vi.fn() }));
 vi.mock("@/modules/records/repository", () => ({ findRecord: vi.fn(), projectVisible: vi.fn() }));
 import { readNotifications } from "@/modules/notifications/read";
@@ -48,7 +48,7 @@ describe("notification snapshot acknowledgements", () => {
       expect(query.sql).toContain(`"records"."${field}" =`);
     expect(query.sql).toContain("->>'userId'");
     expect(query.sql).toContain("->>'read'");
-    expect(mocks.invalidate).toHaveBeenCalledWith("makeup", false);
+    expect(mocks.invalidate).toHaveBeenCalledWith("makeup", ["self"]);
   });
   it("does not write for an empty snapshot or invalidate an already read one", async () => {
     await expect(readNotifications(context, { ids: [] })).resolves.toEqual({ read: 0 });

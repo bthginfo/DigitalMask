@@ -11,6 +11,7 @@ import {
 } from "@/shared/calendar-access";
 import { calendarPresentation } from "@/shared/calendar-categories";
 import { buildExport } from "@/modules/exports";
+import { workspaceGroups } from "@/shared/workspace-sync";
 
 const mocks = vi.hoisted(() => ({ select: vi.fn() }));
 vi.mock("@/platform/db", () => ({ db: { select: mocks.select } }));
@@ -91,15 +92,18 @@ beforeEach(() => {
       if (table === records)
         return {
           where: (where: SQL) => {
-            queries.push(new PgDialect().sqlToQuery(where));
+            const query = new PgDialect().sqlToQuery(where);
+            queries.push(query);
             return {
               orderBy: () =>
                 Promise.resolve(
-                  scopeRows.map((record) => ({
-                    ...record,
-                    createdAt: new Date(record.createdAt),
-                    updatedAt: new Date(record.updatedAt),
-                  })),
+                  scopeRows
+                    .filter((record) => query.params.includes(record.kind))
+                    .map((record) => ({
+                      ...record,
+                      createdAt: new Date(record.createdAt),
+                      updatedAt: new Date(record.updatedAt),
+                    })),
                 ),
             };
           },
@@ -143,10 +147,12 @@ describe("department calendar sharing", () => {
       season: "2026/27",
       premiere: "2026-11-01",
     });
-    expect(queries).toHaveLength(1);
-    expect(queries[0].params).toEqual([context.departmentId, "timesheets"]);
-    // Sharing reuses the scope, team and timer reads; there is no separate calendar query.
-    expect(mocks.select).toHaveBeenCalledTimes(4);
+    expect(queries).toHaveLength(Object.keys(workspaceGroups).length + 1);
+    expect(queries.every((query) => query.params[0] === context.departmentId)).toBe(true);
+    expect(queries.every((query) => !query.params.includes("timesheets"))).toBe(true);
+    expect(queries.find((query) => query.params.includes("notifications"))?.params).toContain(
+      context.user.id,
+    );
   });
 
   it("keeps member production access while leaving the shared calendar identical", async () => {

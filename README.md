@@ -31,13 +31,14 @@ Node.js 24, npm und PostgreSQL-Verbindungsdaten benötigt:
 
 ```sh
 npm ci
-# .env.example nach .env.local kopieren und ausfüllen
-npm run db:migrate
-npm run bootstrap
+# .env.example nach .env.development.local kopieren und mit einer separaten Entwicklungsdatenbank ausfüllen
+# DEVELOPMENT_DATABASE_URL und DATABASE_URL müssen auf diese Entwicklungsdatenbank zeigen
+npm run db:migrate:dev
+npm run bootstrap:dev
 npm run dev
 ```
 
-`bootstrap` erstellt einmalig die Organisation, das Gewerk und einen Superadmin. Vorhandene Superadmins werden nicht überschrieben. Generierte Zugangsdaten stehen ausschließlich in `.local/ADMIN-ZUGANG.txt`, das von Git ausgeschlossen ist. Registrierungen erhalten keine Adminrechte; der Superadmin kann diese im Bereich Einstellungen vergeben.
+`bootstrap:dev` erstellt die lokale Organisation und einen Entwicklungs-Superadmin. Die Zugangsdaten stehen in `.local/ADMIN-ZUGANG-DEV.txt`. Produktivmigrationen und die erstmalige Produktiveinrichtung bleiben ausdrücklich `db:migrate` und `bootstrap`; deren Zugangsdaten stehen getrennt in `.local/ADMIN-ZUGANG.txt`. Alle Zugangsdateien sind von Git ausgeschlossen. `next dev` verweigert den Start ohne explizite `DEVELOPMENT_DATABASE_URL` (alternativ `DEV_DATABASE_URL`), damit `.env.local` nicht versehentlich die Produktivdatenbank aktiviert.
 
 Prüfungen:
 
@@ -62,13 +63,13 @@ Die UI-Prüfungen für Passwortfelder und Produktionsnavigation verwenden Dummyw
 - Produktionsbereiche, Kontaktverzeichnis, Spielzeit-/Jahresfilter und Teamboard verwenden denselben geladenen Workspace. Kontaktpersonen und Bilder werden beim Speichern gebündelt validiert; externe Kontakte erzeugen keine Authentifizierungskonten. Kategorien werden einmalig durch Migration bzw. beim Anlegen eines neuen Gewerks bereitgestellt, ohne erneutes Anlegen gelöschter Kategorien beim Lesen.
 - Fachdaten werden pro Gewerk für 300 Sekunden serverseitig gecacht und bei Änderungen invalidiert. Das Team ist unabhängig für eine Stunde gecacht und wird bei Registrierung/Freigabe/Rollenänderung erneuert. Persönliche Timer haben einen eigenen Cachetag; eine Nachricht oder Aufgabenänderung löst keine neue Timerabfrage je Teammitglied aus.
 - Lesende Sitzungs- und Mitgliedschaftsprüfungen sind für 60 Sekunden gecacht. Schreibzugriffe prüfen die Sitzung und aktuellen Rechte unmittelbar in der Datenbank. Entzugene Zugänge können dadurch höchstens innerhalb des kurzen Lese-Cachefensters noch bereits erlaubte Inhalte sehen, aber nichts mehr verändern.
-- Änderungen anderer Personen und Chatnachrichten kommen über eine gemeinsame SSE-Verbindung mit Upstash Redis an. Nur generische Änderungssignale werden übertragen; anschließend wird der autorisierte, gecachte Workspace nachgeladen. Ereignisse werden gebündelt, inaktive Tabs pausiert und Verbindungsabbrüche mit Änderungscursor nachgeholt. Es gibt keinen regelmäßigen Chat- oder Workspace-Poll.
+- Änderungen anderer Personen und Chatnachrichten kommen über eine gemeinsame SSE-Verbindung mit Upstash Redis an. Signale enthalten nur die betroffenen Bereichsnamen und eine Revision. Anschließend werden ausschließlich diese autorisierten Bereiche nachgeladen; Änderungen an Produktions-/Chatberechtigungen ersetzen sicherheitshalber den vollständigen sichtbaren Bestand. Ereignisse werden gebündelt, inaktive Tabs pausiert und Verbindungsabbrüche mit Änderungscursor nachgeholt. Es gibt keinen regelmäßigen Chat- oder Workspace-Poll.
 - Die fünfminütigen Live-Reconnects prüfen ein an die Sitzung gebundenes, signiertes Ticket ohne Neon-Abfrage. Das Ticket gilt eine Stunde; nur bei Ablauf oder fachlichen Änderungen wird erneut autorisiert geladen.
 - Bei der Adminfreigabe eines neuen Teamkontos werden passende freie Maskenkontakte und ihre Produktionszuordnungen verknüpft. Eindeutige Nachnameninitialen und Umlautschreibweisen werden erkannt; mehrdeutige Namen bleiben unverknüpft. Kontaktangaben bleiben gespeichert, verknüpfte Personen erscheinen als Teammitglieder.
 - Nach fachlichen Writes werden nur tatsächlich angelegte Ereignisse verarbeitet. Ein CSV-Import bündelt Cacheinvalidierung und Ereignisverarbeitung. Der tägliche Cron dient ausschließlich der Wiederaufnahme liegengebliebener Aufträge.
 - PostgreSQL-Pool maximal drei Verbindungen je Funktionsinstanz, kurze Idle-Zeit, keine minutenlangen Netzwerktransaktionen. Zeitbuchungen verwenden gezielte Sperren und partielle Eindeutigkeitsindizes.
 
-Der gemeinsame Workspace lädt derzeit den Gewerkbestand einmal pro Cacheerneuerung. Für sehr große Bestände ist eine Aufteilung in zeitlich begrenzte Read-Modelle und zusätzliche Pagination vorgesehen; die aktuelle Architektur vermeidet fortlaufende Abfragen, garantiert aber keinen bestimmten Neon-Tarifverbrauch. Externe ICS-Kalenderapps bestimmen ihr eigenes Abrufintervall; jeder Abruf prüft die Widerrufbarkeit des Zugangs.
+Der Workspace verwendet getrennte, bis zu einer Stunde gültige Fachbereich-Caches mit gezielter sofortiger Invalidierung nach Änderungen. Benachrichtigungen liegen außerhalb der gemeinsamen Snapshots: SQL lädt ausschließlich die eigenen ungelesenen Einträge; Gelesenes bleibt gespeichert, wird aber nicht wiederholt übertragen. Eine Benachrichtigungsänderung invalidiert nur die betroffenen Personen. Kalenderabonnements und Chat-Historie laden nur ihre benötigten Bereiche. Entwicklung verwendet ein eigenes Neon-Projekt und dessen eigenes Kontingent. Für sehr große historische Bestände bleibt zusätzliche Pagination sinnvoll; ein bestimmter Free-Tarifverbrauch wird nicht garantiert. Externe ICS-Kalenderapps bestimmen ihr eigenes Abrufintervall; jeder Abruf prüft die Widerrufbarkeit des Zugangs.
 
 ## Betrieb und Exporte
 

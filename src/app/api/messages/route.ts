@@ -7,6 +7,7 @@ import { requireContext, scopeTag } from "@/platform/context";
 import { route, HttpError } from "@/platform/http";
 import { serialize } from "@/modules/records/repository";
 import { getWorkspace } from "@/modules/records/workspace";
+import { workspaceKindTag } from "@/shared/workspace-sync";
 export async function GET(request: Request) {
   return route(async () => {
     const context = await requireContext();
@@ -21,14 +22,14 @@ export async function GET(request: Request) {
       throw new HttpError(400, "Bitte wähle genau einen Chat.");
     if (
       conversationId &&
-      !(await getWorkspace(context)).records.conversations.some(
+      !(await getWorkspace(context, ["conversations"])).records.conversations.some(
         (chat) => chat.id === conversationId,
       )
     )
       throw new HttpError(403, "Du hast keinen Zugriff auf diesen Chat.");
     if (
       productionId &&
-      !(await getWorkspace(context)).records.productions.some(
+      !(await getWorkspace(context, ["productions"])).records.productions.some(
         (project) => project.id === productionId,
       )
     )
@@ -53,7 +54,10 @@ export async function GET(request: Request) {
           .orderBy(desc(after ? records.updatedAt : records.createdAt))
           .limit(100),
       ["messages-private-v1", context.departmentId, productionId, conversationId, after || ""],
-      { revalidate: 30, tags: [scopeTag(context.departmentId)] },
+      {
+        revalidate: 3600,
+        tags: [scopeTag(context.departmentId), workspaceKindTag(context.departmentId, "messages")],
+      },
     )();
     return NextResponse.json(
       { messages: list.map(serialize).reverse() },

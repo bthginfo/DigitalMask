@@ -81,7 +81,7 @@ describe("attachment deletion without workspace undo", () => {
       fileId: "file",
     });
     expect(mock.audit).toHaveBeenCalledWith(state.tx, context, "file.deleted", "file");
-    expect(mock.invalidate).toHaveBeenCalledWith("makeup");
+    expect(mock.invalidate).toHaveBeenCalledWith("makeup", true, ["files", "actors"]);
     expect(mock.schedule).toHaveBeenCalledOnce();
   });
   it("unlinks a chat attachment without removing the remaining references", async () => {

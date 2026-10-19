@@ -14,7 +14,11 @@ import { requireAdmin, requireSuperadmin, type Context } from "@/platform/contex
 import { HttpError } from "@/platform/http";
 import { auditChange } from "@/platform/events";
 import { findRecord, serialize } from "@/modules/records/repository";
-import { invalidateWorkspace, invalidateTeam } from "@/modules/records/workspace";
+import {
+  invalidateWorkspace,
+  invalidateTeam,
+  invalidateNotifications,
+} from "@/modules/records/workspace";
 import { assertRead } from "@/modules/records/service";
 import type { RecordData } from "@/shared/contracts";
 import { linkApprovedMakeupContacts } from "@/modules/people/link-team-member";
@@ -59,7 +63,7 @@ export async function organizationAction(
       .set({ data: { ...row.data, read: true }, version: row.version + 1 })
       .where(eq(records.id, id))
       .returning();
-    invalidateWorkspace(context.departmentId, false);
+    invalidateNotifications(context.departmentId, [context.user.id]);
     return serialize(updated);
   }
   requireAdmin(context);

@@ -107,7 +107,7 @@ export async function uploadFile(
       await auditChange(tx, context, "file.uploaded", id);
       return serialize(row);
     });
-    invalidateWorkspace(context.departmentId);
+    invalidateWorkspace(context.departmentId, true, ["files", recordKind]);
     if (deletionQueued) scheduleEvents();
     return result;
   } catch (error) {
@@ -125,7 +125,7 @@ export async function getFile(context: Context, id: string) {
   return { row, blob };
 }
 export async function deleteFile(context: Context, id: string) {
-  await db.transaction(async (tx) => {
+  const affectedKind = await db.transaction(async (tx) => {
     let row = await findRecord(context, id, "files", tx);
     await acquireWorkflowLock(context, row.data.recordKind as RecordKind, tx);
     const linked = await findRecord(context, String(row.data.recordId), undefined, tx, true);
@@ -155,7 +155,8 @@ export async function deleteFile(context: Context, id: string) {
       fileId: row.id,
     });
     await auditChange(tx, context, "file.deleted", id);
+    return linked.kind;
   });
-  invalidateWorkspace(context.departmentId);
+  invalidateWorkspace(context.departmentId, true, ["files", affectedKind]);
   scheduleEvents();
 }

@@ -1,7 +1,9 @@
-import nextEnv from "@next/env";
+import { loadScriptEnvironment } from "./environment";
 import { randomBytes } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
-nextEnv.loadEnvConfig(process.cwd());
+const development = process.argv.includes("--development");
+loadScriptEnvironment(development);
+const credentialFile = development ? ".local/ADMIN-ZUGANG-DEV.txt" : ".local/ADMIN-ZUGANG.txt";
 const { db, sqlClient } = await import("../src/platform/db/index");
 const { organizations, departments, memberships, records } =
   await import("../src/platform/db/schema");
@@ -46,11 +48,11 @@ if (existing) {
   });
   await mkdir(".local", { recursive: true });
   await writeFile(
-    ".local/ADMIN-ZUGANG.txt",
+    credentialFile,
     `DigitalMask Superadmin\n\nAdresse: ${process.env.APP_URL || "http://localhost:3000"}\nBenutzername: ${username}\nPasswort: ${password}\n\nBitte nach der ersten Anmeldung in den Einstellungen ändern.\nDiese Datei ist von Git ausgeschlossen.\n`,
     { encoding: "utf8", mode: 0o600 },
   );
-  console.log("Superadmin created. Credentials saved in ignored .local/ADMIN-ZUGANG.txt.");
+  console.log(`Superadmin created. Credentials saved in ignored ${credentialFile}.`);
 }
 if (createdDepartment.length) {
   const [admin] = await db

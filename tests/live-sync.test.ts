@@ -101,10 +101,17 @@ describe("live transport", () => {
     first.send({ type: "ping" });
     first.send({ event: "workspace.changed", channel: "dm:changes:maske", id: "101-0" });
     expect(changed).toHaveBeenCalledTimes(1);
+    first.send({
+      event: "workspace.changed",
+      channel: "dm:changes:maske",
+      id: "102-0",
+      data: { kinds: ["messages", "notifications"] },
+    });
+    expect(changed).toHaveBeenLastCalledWith(["messages", "notifications"]);
     first.send({ type: "reconnect" });
     await vi.advanceTimersByTimeAsync(60);
     expect(renew).not.toHaveBeenCalled();
-    expect(Source.instances[1].url).toContain("101-0");
+    expect(Source.instances[1].url).toContain("102-0");
     expect(status).toHaveBeenCalledWith("live");
     stop();
     expect(Source.instances[1].closed).toBe(true);

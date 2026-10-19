@@ -192,7 +192,8 @@ export async function repairActorPortraits(context: Context, actorIds: string[])
       }
     }
   });
-  if (updated || analyzed || deletionQueued) invalidateWorkspace(context.departmentId);
+  if (updated || analyzed || deletionQueued)
+    invalidateWorkspace(context.departmentId, true, ["actors", "files"]);
   if (deletionQueued) scheduleEvents();
   return { updated, analyzed, errors };
 }

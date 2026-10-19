@@ -276,7 +276,7 @@ export async function createShiftSwap(context: Context, input: unknown) {
     await notifySwap(context, row, tx);
     return serialize(row);
   });
-  invalidateWorkspace(context.departmentId);
+  invalidateWorkspace(context.departmentId, true, ["shiftSwaps", "events"]);
   scheduleEvents();
   return result;
 }
@@ -441,7 +441,7 @@ export async function decideShiftSwap(context: Context, id: string, input: unkno
     if (data.action === "approve") await queueGoogleCalendarSync(tx, context);
     return serialize(after);
   });
-  invalidateWorkspace(context.departmentId);
+  invalidateWorkspace(context.departmentId, true, ["shiftSwaps", "events"]);
   scheduleEvents();
   return result;
 }

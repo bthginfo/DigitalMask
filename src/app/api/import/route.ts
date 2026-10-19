@@ -6,6 +6,7 @@ import { recordKinds } from "@/shared/contracts";
 import { saveRecord } from "@/modules/records/service";
 import { invalidateWorkspace } from "@/modules/records/workspace";
 import { scheduleEvents } from "@/platform/events";
+import { recordChangeKinds } from "@/shared/workspace-sync";
 export const maxDuration = 300;
 export async function POST(request: Request) {
   return route(async () => {
@@ -31,7 +32,7 @@ export async function POST(request: Request) {
       }
     }
     if (imported) {
-      invalidateWorkspace(context.departmentId);
+      invalidateWorkspace(context.departmentId, true, recordChangeKinds(body.kind));
       if (
         ["tasks", "events", "looks", "messages", "productions", "calendarCategories"].includes(
           body.kind,

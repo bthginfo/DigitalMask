@@ -148,7 +148,7 @@ export async function decideLeave(
     await queueGoogleCalendarSync(tx, context);
     return serialize(updated);
   });
-  invalidateWorkspace(context.departmentId);
+  invalidateWorkspace(context.departmentId, true, ["leave", "events"]);
   scheduleEvents();
   return result;
 }

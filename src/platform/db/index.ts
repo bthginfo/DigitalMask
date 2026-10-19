@@ -1,10 +1,11 @@
 import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
 import * as schema from "./schema";
+import { databaseConnectionUrl } from "./environment";
 const globalDb = globalThis as unknown as { digitalMaskSql?: ReturnType<typeof postgres> };
 export const sqlClient =
   globalDb.digitalMaskSql ??
-  postgres(process.env.DATABASE_URL || "postgresql://localhost/digitalmask", {
+  postgres(databaseConnectionUrl(process.env), {
     max: 3,
     idle_timeout: 20,
     connect_timeout: 15,

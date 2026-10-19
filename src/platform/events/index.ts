@@ -3,7 +3,7 @@ import { and, eq, lte, sql, or, ne, inArray } from "drizzle-orm";
 import { db, type Transaction } from "@/platform/db";
 import { outbox, records, audit, memberships } from "@/platform/db/schema";
 import type { Context } from "@/platform/context";
-import { invalidateWorkspace } from "@/modules/records/workspace";
+import { invalidateWorkspace, invalidateNotifications } from "@/modules/records/workspace";
 import type { RecordData } from "@/shared/contracts";
 import { listValue } from "@/shared/contracts";
 import { deliverNotifications } from "@/modules/notifications/service";
@@ -70,6 +70,7 @@ export async function drainEvents(deadline = Date.now() + 220000) {
 }
 export async function processEvents(deadline = Date.now() + 170000) {
   const changedDepartments = new Set<string>();
+  const noticeRecipients = new Map<string, Set<string>>();
   const calendarBatches = new Map<
     string,
     Promise<import("@/modules/google-calendar/sync").GoogleSyncProgress>
@@ -249,6 +250,9 @@ export async function processEvents(deadline = Date.now() + 170000) {
             if (uid === event.payload.actorId) continue;
             const noticeId = `notice:${event.id}:${uid}`;
             noticeIds.push(noticeId);
+            if (!noticeRecipients.has(event.departmentId))
+              noticeRecipients.set(event.departmentId, new Set());
+            noticeRecipients.get(event.departmentId)!.add(uid);
             await tx
               .insert(records)
               .values({
@@ -283,7 +287,7 @@ export async function processEvents(deadline = Date.now() + 170000) {
           }
         }
       });
-      changedDepartments.add(event.departmentId);
+      if (event.type === "RecordDeletionFinalizedV1") changedDepartments.add(event.departmentId);
       await deliverNotifications(event.departmentId, event.type, noticeIds);
       await db.update(outbox).set({ status: "done" }).where(eq(outbox.id, event.id));
     } catch (error) {
@@ -322,5 +326,7 @@ export async function processEvents(deadline = Date.now() + 170000) {
     }
   }
   for (const departmentId of changedDepartments) invalidateWorkspace(departmentId);
+  for (const [departmentId, userIds] of noticeRecipients)
+    invalidateNotifications(departmentId, [...userIds]);
   return { processed: due.length, continuation: calendarContinuations.size > 0, nextGoogleAt };
 }

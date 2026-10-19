@@ -191,7 +191,7 @@ describe("manual attendance receipts in the actual save service", () => {
         `${kind}.deleted`,
         first.id,
       );
-      expect(mock.invalidate).toHaveBeenLastCalledWith("makeup");
+      expect(mock.invalidate).toHaveBeenLastCalledWith("makeup", true, [kind, "files"]);
     },
   );
 });

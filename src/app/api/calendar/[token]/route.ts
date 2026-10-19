@@ -54,7 +54,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
       organizationName: row.organization.name,
       departmentName: row.department.name,
     };
-    const workspace = await getWorkspace(context);
+    const workspace = await getWorkspace(context, ["events", "productions", "calendarCategories"]);
     const result = await buildExport({
       kind: "events",
       format: "ics",

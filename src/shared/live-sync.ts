@@ -1,3 +1,6 @@
+import type { RecordKind } from "./contracts";
+import { parseLiveKinds } from "./workspace-sync";
+
 export type SyncStatus =
   "connecting" | "live" | "reconnecting" | "offline" | "paused" | "unavailable";
 export interface LiveAccess {
@@ -11,7 +14,7 @@ export interface LiveAccess {
 export function connectLiveSync(options: {
   access: () => LiveAccess | null | undefined;
   renew: () => Promise<void>;
-  changed: () => void;
+  changed: (kinds?: RecordKind[]) => void;
   status: (status: SyncStatus) => void;
 }) {
   let source: EventSource | undefined;
@@ -92,7 +95,7 @@ export function connectLiveSync(options: {
             /^\d+-\d+$/.test(event.id)
           ) {
             cursor = event.id;
-            options.changed();
+            options.changed(parseLiveKinds(event.data?.kinds));
           }
         } catch {
           /* Ignore malformed transport messages without touching workspace state. */

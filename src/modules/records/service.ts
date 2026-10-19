@@ -31,6 +31,7 @@ import { validateRecord } from "./schemas";
 import { applySeasonDefaults } from "./season-defaults";
 import { findRecord, assertProject, serialize } from "./repository";
 import { invalidateWorkspace } from "./workspace";
+import { recordChangeKinds } from "@/shared/workspace-sync";
 import { acquireWorkflowLock } from "@/modules/workflows/locks";
 import {
   validateReservation,
@@ -619,7 +620,7 @@ export async function saveRecord(
     ? await write(options.transaction)
     : await db.transaction(write);
   if (!options.deferEffects && !options.transaction) {
-    invalidateWorkspace(context.departmentId);
+    invalidateWorkspace(context.departmentId, true, recordChangeKinds(kind));
     if (eventQueued) scheduleEvents();
   }
   return result;
@@ -704,7 +705,11 @@ export async function deleteRecord(
   if (options.transaction) await write(options.transaction);
   else await db.transaction(write);
   if (!options.transaction) {
-    invalidateWorkspace(context.departmentId);
+    invalidateWorkspace(context.departmentId, true, [
+      kind,
+      "files",
+      ...(kind === "productions" ? ["notifications" as const] : []),
+    ]);
     if (eventQueued) scheduleEvents();
   }
 }

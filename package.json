@@ -14,7 +14,9 @@
     "test:e2e": "playwright test",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/migrate.ts",
-    "bootstrap": "tsx scripts/bootstrap.ts"
+    "db:migrate:dev": "tsx scripts/migrate.ts --development",
+    "bootstrap": "tsx scripts/bootstrap.ts",
+    "bootstrap:dev": "tsx scripts/bootstrap.ts --development"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

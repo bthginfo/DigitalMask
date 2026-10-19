@@ -5,7 +5,7 @@ import { records } from "@/platform/db/schema";
 import type { Context } from "@/platform/context";
 import { assertConversation } from "@/modules/chat/permissions";
 import { findRecord, projectVisible } from "@/modules/records/repository";
-import { invalidateWorkspace } from "@/modules/records/workspace";
+import { invalidateNotifications } from "@/modules/records/workspace";
 import { HttpError } from "@/platform/http";
 
 /** Acknowledge the caller's visible snapshot in one write; later arrivals stay unread. */
@@ -34,7 +34,7 @@ export async function readNotifications(context: Context, input: unknown) {
       ),
     )
     .returning({ id: records.id });
-  if (updated.length) invalidateWorkspace(context.departmentId, false);
+  if (updated.length) invalidateNotifications(context.departmentId, [context.user.id]);
   return { read: updated.length };
 }
 
@@ -73,6 +73,6 @@ export async function readChatNotifications(context: Context, input: unknown) {
       ),
     )
     .returning({ id: records.id });
-  if (updated.length) invalidateWorkspace(context.departmentId, false);
+  if (updated.length) invalidateNotifications(context.departmentId, [context.user.id]);
   return { read: updated.length };
 }
