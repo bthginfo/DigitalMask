@@ -42,6 +42,7 @@ export const helpArticles: HelpArticle[] = [
     intro:
       "Auf den Produktionskarten siehst du bereits die Maskenbetreuung. Standardmäßig stehen die frühesten Premieren zuerst, auch wenn sie schon stattgefunden haben. Stücke ohne Premierendatum stehen am Ende. Über Sortieren nach wechselst du zu Namen oder zuletzt geänderten Stücken.",
     steps: [
+      "In der Produktionsübersicht sehen alle Teammitglieder sämtliche Stücke, auch ohne Zuordnung zum Produktionsteam. Du kannst ihre Produktionsinfos, Premiere und Maskenbetreuung öffnen. Weitere Produktionsbereiche und die Bearbeitung stehen dem jeweiligen Produktionsteam sowie Admins zur Verfügung.",
       "Die Übersicht startet mit der aktuellen Spielzeit von August bis Juli. Über Spielzeit kannst du ältere Stücke oder Alle Spielzeiten anzeigen. Neue Produktionen übernehmen die gewählte Spielzeit als Vorschlag; du kannst sie beim Anlegen ändern.",
       "Am Smartphone öffnest du Jahr und Spielzeit über Zeitraum auswählen. Die aktuelle Auswahl bleibt als kurze Zusammenfassung sichtbar. Zusätzliche Aktionen wie Import und Export findest du unter Mehr.",
       "Öffne Produktionen und wähle ein Stück. Alle freigegebenen Teammitglieder können Produktionen anlegen und zugängliche Produktionen bearbeiten, archivieren oder löschen. Wenn du ein Produktionsteam auswählst, bleibst du als Ersteller automatisch dabei.",

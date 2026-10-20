@@ -2,6 +2,10 @@
   display: none;
 }
 
+.productionPreview > :global(.panel) {
+  margin-bottom: 16px;
+}
+
 .productionToolbar {
   flex-wrap: wrap;
 }

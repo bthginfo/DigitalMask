@@ -22,6 +22,7 @@ import { scheduleLiveChange } from "@/platform/realtime";
 import { canReadShiftSwap } from "@/modules/shift-swaps/rules";
 import { visibleWorkingTime } from "@/shared/working-time";
 import { calendarProductionReference } from "@/shared/calendar-access";
+import { productionOverviewReference } from "@/shared/production-overview";
 import { workspaceGroups, workspaceKindTag, notificationUserTag } from "@/shared/workspace-sync";
 export function invalidateWorkspace(
   departmentId: string,
@@ -265,6 +266,9 @@ export async function getWorkspace(
     calendarProductions: rows
       .filter((row) => row.kind === "productions")
       .map(calendarProductionReference),
+    productionOverview: rows
+      .filter((row) => row.kind === "productions")
+      .map(productionOverviewReference),
     timer: personalTimers.find((timer) => timer.kind === "time") || null,
     attendanceTimer: personalTimers.find((timer) => timer.kind === "attendance") || null,
     projectHours,

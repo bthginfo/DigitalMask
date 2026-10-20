@@ -8,6 +8,8 @@ import { contactsValue } from "@/shared/contracts";
 import { productionContactName } from "@/shared/production-contacts";
 import { productionCastingCounts } from "@/modules/productions/counts";
 import { sortProductionsByPremiere } from "@/shared/production-order";
+import { productionOverviewRecords } from "@/shared/production-overview";
+import { SharedProductionOverview } from "@/modules/productions/components/shared-production-overview";
 import type { Workspace } from "@/shared/contracts";
 import { dateLabel, hours, ids, num, value } from "@/shared/client-api";
 import { useWorkspace } from "../workspace-context";
@@ -49,6 +51,7 @@ export function ProductionsModule({
   onNavigate: (id: string, tab: string) => void;
 }) {
   const { workspace } = useWorkspace();
+  const productions = productionOverviewRecords(workspace);
   const selected = productionId;
   const tab = productionSections.some(([key]) => key === activeTab) ? activeTab : "overview";
   const setSelected = (id: string) => onNavigate(id, "overview");
@@ -58,7 +61,7 @@ export function ProductionsModule({
     "productions",
     "period",
     () => ({
-      season: seasonForDate(workspace.records.productions),
+      season: seasonForDate(productions),
     }),
   );
   const [status, setStatus] = useViewState(workspace.user.id, "productions", "status", "current");
@@ -102,12 +105,12 @@ export function ProductionsModule({
     workspace.records.characters,
     workspace.records.casting,
   );
-  const filteredRecords = workspace.records.productions.filter(
+  const filteredRecords = productions.filter(
     (x) =>
       (status === "all" || status === "archived"
         ? status === "all" || x.data.status === "archived"
         : x.data.status !== "archived") &&
-      recordMatchesPeriod(x, period, workspace.records.productions) &&
+      recordMatchesPeriod(x, period, productions) &&
       value(x.data, "title").toLowerCase().includes(search.toLowerCase()),
   );
   const records =
@@ -124,6 +127,15 @@ export function ProductionsModule({
         });
   const projectHours = (workspace as Workspace & { projectHours?: Record<string, number> })
     .projectHours;
+  const sharedProduction = !production && productions.find((record) => record.id === selected);
+  if (sharedProduction)
+    return (
+      <SharedProductionOverview
+        production={sharedProduction}
+        workspace={workspace}
+        onBack={() => setSelected("")}
+      />
+    );
   if (production)
     return (
       <section className={styles.productionDetail}>
@@ -342,8 +354,8 @@ export function ProductionsModule({
         </Button>
       </PageHeader>
       <PeriodPicker
-        records={workspace.records.productions}
-        productions={workspace.records.productions}
+        records={productions}
+        productions={productions}
         value={period}
         onChange={setPeriod}
       />
@@ -383,6 +395,9 @@ export function ProductionsModule({
       {records.length ? (
         <div className="production-grid">
           {records.map((project, i) => {
+            const accessible = workspace.records.productions.some(
+              (record) => record.id === project.id,
+            );
             const remaining = workspace.records.tasks.filter(
               (x) => x.data.productionId === project.id && x.data.status !== "done",
             ).length;
@@ -405,7 +420,7 @@ export function ProductionsModule({
                 <h2>{value(project.data, "title")}</h2>
                 <p>
                   {value(project.data, "description") ||
-                    "Alle Aufgaben, Figuren und Aufschriebe für dieses Stück."}
+                    "Infos, Maskenbetreuung und Team für dieses Stück."}
                 </p>
                 <div className="production-card-meta">
                   <span>
@@ -427,7 +442,9 @@ export function ProductionsModule({
                   </span>
                 </div>
                 <footer>
-                  <span>{remaining} offene Aufgaben</span>
+                  <span>
+                    {accessible ? `${remaining} offene Aufgaben` : "Produktionsinfos ansehen"}
+                  </span>
                   <ArrowUpRight size={20} />
                 </footer>
               </button>
@@ -449,7 +466,7 @@ export function ProductionsModule({
       {editor && (
         <ResourceEditor
           kind="productions"
-          defaults={{ season: period.season || seasonForDate(workspace.records.productions) }}
+          defaults={{ season: period.season || seasonForDate(productions) }}
           onClose={() => setEditor(false)}
         />
       )}

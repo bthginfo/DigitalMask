@@ -24,6 +24,7 @@ describe("incremental workspace delivery", () => {
       recordKinds.map((kind) => [kind, [record(kind, `old-${kind}`)]]),
     ) as Workspace["records"],
     calendarProductions: [record("productions", "production")],
+    productionOverview: [record("productions", "other-production")],
   } as Workspace;
 
   it("replaces the complete changed slice, preserves unrelated data, and removes read notices", () => {
@@ -34,6 +35,7 @@ describe("incremental workspace delivery", () => {
     expect(merged.records.notifications).toEqual([]);
     expect(merged.records.events).toBe(current.records.events);
     expect(merged.calendarProductions).toBe(current.calendarProductions);
+    expect(merged.productionOverview).toBe(current.productionOverview);
     expect(merged.projectHours).toEqual({ production: 3600 });
   });
 

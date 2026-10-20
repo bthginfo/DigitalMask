@@ -47,8 +47,13 @@ const production = row("productions", "closed-production", {
   season: "2026/27",
   premiere: "2026-11-01",
   memberIds: ["colleague"],
-  description: "INTERNAL DESCRIPTION",
-  contacts: [{ name: "PRIVATE CONTACT" }],
+  description: "Informationen zum Stück",
+  status: "active",
+  contacts: [
+    { id: "lead", role: "Maskenbetreuung", type: "makeup", name: "", memberId: "colleague" },
+  ],
+  internalNotes: "SECRET PRODUCTION CONTENT",
+  attachmentIds: ["SECRET ATTACHMENT"],
 });
 const event = row("events", "colleague-event", {
   productionId: production.id,
@@ -139,6 +144,18 @@ describe("department calendar sharing", () => {
     ] as const)
       expect(workspace.records[kind]).toEqual([]);
     expect(workspace.projectHours).toEqual({});
+    expect(workspace.productionOverview?.map((record) => record.id)).toEqual([production.id]);
+    expect(workspace.productionOverview?.[0].data).toEqual({
+      title: production.data.title,
+      description: production.data.description,
+      color: production.data.color,
+      season: production.data.season,
+      premiere: production.data.premiere,
+      status: "active",
+      memberIds: ["colleague"],
+      durationMinutes: 0,
+      contacts: production.data.contacts,
+    });
     expect(workspace.records.files.map((file) => file.id)).toEqual(["calendar-file"]);
     expect(JSON.stringify(workspace)).not.toMatch(/PRIVATE|INTERNAL|SECRET/);
     expect(workspace.calendarProductions?.[0].data).toEqual({
@@ -161,6 +178,7 @@ describe("department calendar sharing", () => {
     expect(member.records.productions.map((record) => record.id)).toEqual([production.id]);
     expect(member.records.tasks.map((record) => record.id)).toEqual(["private-task"]);
     expect(member.calendarProductions).toEqual(viewer.calendarProductions);
+    expect(member.productionOverview).toEqual(viewer.productionOverview);
     expect(member.records.events.find((row) => row.id === event.id)).toEqual(
       viewer.records.events[0],
     );

@@ -10,6 +10,7 @@ import { buildExport, selectExportRecords } from "@/modules/exports";
 import { recordKinds, listValue } from "@/shared/contracts";
 import { workflowMatchesExportPeriod } from "@/modules/workflows/export-period";
 import { calendarProductionRecords } from "@/shared/calendar-access";
+import { productionOverviewRecords } from "@/shared/production-overview";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 export async function GET(request: Request) {
@@ -23,7 +24,8 @@ export async function GET(request: Request) {
       kind === "events"
         ? { ...workspace.records, productions: calendarProductionRecords(workspace) }
         : workspace.records;
-    let selected = workspace.records[kind];
+    let selected =
+      kind === "productions" ? productionOverviewRecords(workspace) : workspace.records[kind];
     const conversationId = query.get("conversationId");
     if (conversationId) {
       if (kind !== "messages")
