@@ -11,6 +11,8 @@ import { calendarDayIndex } from "./day-details";
 import { MobileDaySheet } from "./mobile-day-sheet";
 import { TeamCalendarScroll } from "./team-calendar-scroll";
 import { HolidayLabel } from "./holiday-label";
+import { TeamTimeAccountBadge } from "./team-time-accounts";
+import type { CalendarTimeAccount } from "../time-accounts";
 import styles from "./mobile-calendar.module.css";
 export type CalendarInstance = {
   id: string;
@@ -60,6 +62,8 @@ export function TeamCalendar({
   onOpen,
   onEdit,
   onCreate,
+  timeAccounts,
+  onOpenAccount,
 }: {
   events: CalendarInstance[];
   members: Member[];
@@ -74,6 +78,8 @@ export function TeamCalendar({
   onOpen: (record: DomainRecord) => void;
   onEdit: (record: DomainRecord) => void;
   onCreate: (data: RecordData) => void;
+  timeAccounts?: ReadonlyMap<string, CalendarTimeAccount>;
+  onOpenAccount?: (person: string) => void;
 }) {
   const [selectedDay, setSelectedDay] = useState(
     days.includes(localDate()) ? localDate() : days[0],
@@ -145,6 +151,10 @@ export function TeamCalendar({
                         team.map((member) => member.name),
                       )}
                     </span>
+                    <TeamTimeAccountBadge
+                      account={timeAccounts?.get(person.id)}
+                      onOpen={onOpenAccount}
+                    />
                   </th>
                   {days.map((date) => (
                     <td key={date} className={day === date ? "selected-day" : ""}>

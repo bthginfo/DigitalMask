@@ -43,7 +43,7 @@ import { sortCalendarStaff } from "@/shared/calendar-team";
 import { bavarianHoliday } from "@/shared/bavarian-holidays";
 import { sortProductionsByPremiere } from "@/shared/production-order";
 import { useWorkspace } from "../workspace-context";
-import { Badge, Button, ErrorMessage, ExportButton, PageHeader } from "../ui";
+import { Badge, Button, ErrorMessage, ExportButton, Modal, PageHeader } from "../ui";
 import { ResourceEditor } from "../resource-editor";
 import { RecordDetail } from "../resource-view";
 import { ExportDialog } from "../export-dialog";
@@ -55,6 +55,9 @@ import {
 } from "@/modules/calendar/components/client-calendar";
 import { CalendarCategoriesDialog } from "@/modules/calendar/components/categories-dialog";
 import { TeamCalendar } from "@/modules/calendar/components/team-calendar";
+import { TeamTimeAccounts } from "@/modules/calendar/components/team-time-accounts";
+import { calendarTimeAccounts } from "@/modules/calendar/time-accounts";
+import { AttendanceBalanceCard } from "@/modules/time-tracking/components/attendance-balance";
 import {
   CalendarPresentationControls,
   useCalendarPresentation,
@@ -125,6 +128,34 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
     [workspace.records.productions],
   );
   const admin = workspace.user.role !== "user";
+  const today = localDate();
+  const timeAccounts = useMemo(
+    () =>
+      calendarTimeAccounts({
+        user: workspace.user,
+        members: workspace.members,
+        attendance: workspace.records.attendance,
+        events: workspace.records.events,
+        calendarCategories: workspace.records.calendarCategories,
+        leave: workspace.records.leave,
+        now: instantDate(today),
+      }),
+    [
+      workspace.user,
+      workspace.members,
+      workspace.records.attendance,
+      workspace.records.events,
+      workspace.records.calendarCategories,
+      workspace.records.leave,
+      today,
+    ],
+  );
+  const accountsByPerson = useMemo(
+    () => new Map(timeAccounts.accounts.map((account) => [account.member.id, account])),
+    [timeAccounts.accounts],
+  );
+  const [accountPerson, setAccountPerson] = useState<string | null>(null);
+  const selectedAccount = accountPerson ? accountsByPerson.get(accountPerson) : undefined;
   const calendar = useRef<FullCalendar>(null);
   const calendarRoot = useRef<HTMLDivElement>(null);
   const presentation = useCalendarPresentation(calendarRoot);
@@ -702,6 +733,14 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
             </div>
           )}
           <ErrorMessage message={error} />
+          {admin && (
+            <TeamTimeAccounts
+              accounts={timeAccounts.accounts}
+              through={timeAccounts.through}
+              mobile={mobile}
+              onOpen={setAccountPerson}
+            />
+          )}
           {view === "team" ? (
             <TeamCalendar
               events={expanded}
@@ -714,6 +753,8 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
               productions={calendarProductions}
               suspended={!!detail || !!editor}
               canEdit={(record) => canEditCalendarEvent(workspace, record)}
+              timeAccounts={admin ? accountsByPerson : undefined}
+              onOpenAccount={setAccountPerson}
               onOpen={setDetail}
               onEdit={(record) => setEditor({ kind: "events", record })}
               onCreate={(defaults) => setEditor({ kind: "events", defaults })}
@@ -1077,6 +1118,17 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
       )}
       <ShiftSwapPanel />
       {detail && <RecordDetail record={detail} onClose={() => setDetail(null)} />}
+      {admin && selectedAccount?.state === "ready" && (
+        <Modal
+          title={`Zeitkonto · ${selectedAccount.member.name}`}
+          onClose={() => setAccountPerson(null)}
+        >
+          <AttendanceBalanceCard
+            key={selectedAccount.member.id}
+            person={selectedAccount.member.id}
+          />
+        </Modal>
+      )}
       {googleCalendarOpen && (
         <GoogleCalendarDialog
           returnTo="calendar"

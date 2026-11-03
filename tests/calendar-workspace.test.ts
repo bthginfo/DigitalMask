@@ -82,6 +82,11 @@ const scopeRows = [
     userId: "colleague",
     durationSeconds: 7200,
   }),
+  row("attendance", "private-attendance", {
+    userId: "colleague",
+    date: "2026-10-26",
+    durationSeconds: 7200,
+  }),
   row("conversations", "private-chat", { participantIds: ["colleague"], mode: "private" }),
   row("events", "private-chat-event", { ...event.data, conversationId: "private-chat" }),
   row("files", "private-file", { recordId: "private-task", path: "SECRET PATH" }),
@@ -120,7 +125,22 @@ beforeEach(() => {
           where: () =>
             Promise.resolve([
               context.user,
-              { ...context.user, id: "colleague", name: "Lena Muster" },
+              {
+                ...context.user,
+                id: "colleague",
+                name: "Lena Muster",
+                workingTime: {
+                  version: 1,
+                  openingBalanceSeconds: 0,
+                  schedules: [
+                    {
+                      effectiveFrom: "2026-10-26",
+                      weeklyMinutes: 900,
+                      workingDays: [1, 2, 3, 4, 5, 6],
+                    },
+                  ],
+                },
+              },
             ]),
         };
         return team;
@@ -131,6 +151,17 @@ beforeEach(() => {
 });
 
 describe("department calendar sharing", () => {
+  it("only sends colleagues' attendance and working-time settings to admins", async () => {
+    const viewer = await getWorkspace(context);
+    expect(viewer.records.attendance).toEqual([]);
+    expect(viewer.members.find((member) => member.id === "colleague")?.preferences).toBeUndefined();
+    const admin = await getWorkspace({ ...context, user: { ...context.user, role: "admin" } });
+    expect(admin.records.attendance.map((record) => record.id)).toEqual(["private-attendance"]);
+    expect(
+      admin.members.find((member) => member.id === "colleague")?.preferences?.workingTime
+        ?.schedules[0].weeklyMinutes,
+    ).toBe(900);
+  });
   it("shares production events with a nonmember while protecting production contents and private chats", async () => {
     const workspace = await getWorkspace(context);
     expect(workspace.records.events.map((record) => record.id)).toEqual([event.id, "own-event"]);
