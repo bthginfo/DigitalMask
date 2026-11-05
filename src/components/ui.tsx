@@ -1,5 +1,13 @@
 "use client";
-import { useEffect, useId, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type KeyboardEventHandler,
+  type ReactNode,
+} from "react";
 import { ArrowUpRight, Download, MoreHorizontal, Plus, X } from "lucide-react";
 import { subscribeMobile } from "@/shared/client-storage";
 import styles from "./ui.module.css";
@@ -181,12 +189,14 @@ export function Modal({
   onClose,
   wide = false,
   className = "",
+  onKeyDown,
 }: {
   title: string;
   children: ReactNode;
   onClose: () => void;
   wide?: boolean;
   className?: string;
+  onKeyDown?: KeyboardEventHandler<HTMLDialogElement>;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
@@ -224,8 +234,10 @@ export function Modal({
       ref={ref}
       aria-labelledby={titleId}
       className={`dialog ${styles.modal} ${wide ? "wide" : ""} ${className}`}
+      onKeyDown={onKeyDown}
       onCancel={(event) => {
         event.preventDefault();
+        event.stopPropagation();
         onClose();
       }}
       onClick={(event) => {

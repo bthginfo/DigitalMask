@@ -26,6 +26,7 @@ import { useChatRead } from "@/modules/notifications/use-chat-read";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { DocumentAttachment } from "@/modules/documents/components/document-attachment";
+import { ImageGallery } from "@/components/image-gallery";
 import { NewDocumentDialog } from "@/modules/documents/components/new-document-dialog";
 import { documentAccept } from "@/modules/documents/components/record-documents";
 import { ChatActionMenu } from "./chat-action-menu";
@@ -284,9 +285,20 @@ export function ChatChannel({
                     <p>
                       <LinkedText>{value(message.data, "text")}</LinkedText>
                     </p>
-                    {attached.map((file) => (
-                      <DocumentAttachment key={file.id} file={file} compact />
-                    ))}
+                    {attached.length > 0 && (
+                      <ImageGallery files={attached}>
+                        {(openImage) =>
+                          attached.map((file) => (
+                            <DocumentAttachment
+                              key={file.id}
+                              file={file}
+                              compact
+                              onOpenImage={openImage}
+                            />
+                          ))
+                        }
+                      </ImageGallery>
+                    )}
                     {attachmentIds
                       .filter((id) => !attached.some((file) => file.id === id))
                       .map((id, index) => (

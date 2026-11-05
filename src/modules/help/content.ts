@@ -150,6 +150,7 @@ export const helpArticles: HelpArticle[] = [
       "Beginne mit Vorbereitung. Danach folgen Makeup, Haare, Perücken und Bärte, Umbau & Wechsel und Einrichten. Mit Textfeld hinzufügen ergänzt du einzelne Einträge; kurze Labels und die Reihenfolge helfen beim Lesen.",
       "Die Stückdauer kommt aus der Produktion. Trage im Aufschrieb nur dann eine eigene Dauer in Minuten ein, wenn sie abweicht. Gemeint ist die Länge des Stücks, nicht die Arbeitszeit in der Maske.",
       "Wähle bei Bedarf eine Vorlage. Sie ergänzt ihre Textfelder, ohne vorhandene Texte zu ersetzen. Ihr pflegt Vorlagen gemeinsam unter Aufschriebe → Vorlagen. Sichtbare Aufschriebe könnt ihr gemeinsam bearbeiten; frühere private Entwürfe bleiben geschützt. Bilder ergänzst du nach dem Speichern in der Galerie.",
+      "Tippe ein Bild an, um es groß zu sehen. Mit den Pfeilen, den Pfeiltasten oder durch Wischen wechselst du zu den anderen Bildern desselben Eintrags. In der Kommunikation gehören die Bilder einer Nachricht zusammen.",
       "Im Versionsverlauf bleiben ältere Stände einsehbar. Historische Szenen- und Zeitbedarfangaben aus alten Aufschrieben bleiben erhalten. PDF ist für lesbare Ausdrucke vorgesehen; Excel, CSV und JSON eignen sich zur Weiterverarbeitung.",
     ],
   },

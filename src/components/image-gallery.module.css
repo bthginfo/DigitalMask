@@ -1,0 +1,89 @@
+.dialog:global(.dialog) {
+  width: min(calc(100% - 24px), 960px);
+  max-width: none;
+  max-height: calc(var(--dialog-viewport-height, 100dvh) - 24px);
+  padding: 0;
+}
+.dialog[open] {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.dialog > :global(.dialog-heading) {
+  position: static;
+  flex: none;
+  margin: 0;
+  padding: 4px 8px 4px 16px;
+}
+.dialog > :global(.dialog-heading) h2 {
+  font-size: 16px;
+}
+.stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: min(68dvh, 680px);
+  min-height: 0;
+  min-width: 0;
+  background: var(--surface-soft);
+  touch-action: pan-y pinch-zoom;
+}
+.photo {
+  object-fit: contain;
+  user-select: none;
+}
+.photo[data-ready="false"] {
+  visibility: hidden;
+}
+.message {
+  padding: 12px;
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+}
+.footer {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px 6px 16px;
+  border-top: 1px solid var(--border);
+}
+.caption {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  gap: 2px;
+  font-size: 13px;
+}
+.caption strong {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.caption span {
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.actions {
+  display: flex;
+  flex: none;
+  gap: 2px;
+}
+.actions > :global(.icon-button) {
+  min-width: 44px;
+  min-height: 44px;
+}
+.trigger {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: var(--surface-soft);
+  cursor: zoom-in;
+}
+.trigger:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -3px;
+}

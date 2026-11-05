@@ -3,6 +3,7 @@ import { useState } from "react";
 import dynamic from "next/dynamic";
 import { FileText, Plus, Trash2, Upload } from "lucide-react";
 import { Button, Empty, ErrorMessage } from "@/components/ui";
+import { ImageGallery } from "@/components/image-gallery";
 import { useWorkspace } from "@/components/workspace-context";
 import { canManageRecord } from "@/shared/record-permissions";
 import type { DomainRecord } from "@/shared/contracts";
@@ -76,43 +77,48 @@ export function RecordDocuments({ record }: { record: DomainRecord }) {
       </header>
       <ErrorMessage message={error} />
       {files.length ? (
-        <div className="record-document-list">
-          {files.map((file) => (
-            <article key={file.id}>
-              <FileText size={20} className="record-document-icon" />
-              <div>
-                <DocumentAttachment file={file} compact />
-                <span className="small muted">
-                  {dateLabel(file.createdAt)} ·{" "}
-                  {value(file.data, "mime").startsWith("image/") ? "Bild" : "Gemeinsame Datei"}
-                </span>
-              </div>
-              {canEdit && (
-                <button
-                  className="icon-button"
-                  aria-label={`${value(file.data, "name")} löschen`}
-                  disabled={busy}
-                  onClick={() => {
-                    if (!confirm("Datei und ihren gemeinsamen Bearbeitungsstand löschen?")) return;
-                    setBusy(true);
-                    setError("");
-                    void removeFile(file)
-                      .catch((exception) =>
-                        setError(
-                          exception instanceof Error
-                            ? exception.message
-                            : "Löschen fehlgeschlagen.",
-                        ),
-                      )
-                      .finally(() => setBusy(false));
-                  }}
-                >
-                  <Trash2 size={16} />
-                </button>
-              )}
-            </article>
-          ))}
-        </div>
+        <ImageGallery files={files}>
+          {(openImage) => (
+            <div className="record-document-list">
+              {files.map((file) => (
+                <article key={file.id}>
+                  <FileText size={20} className="record-document-icon" />
+                  <div>
+                    <DocumentAttachment file={file} compact onOpenImage={openImage} />
+                    <span className="small muted">
+                      {dateLabel(file.createdAt)} ·{" "}
+                      {value(file.data, "mime").startsWith("image/") ? "Bild" : "Gemeinsame Datei"}
+                    </span>
+                  </div>
+                  {canEdit && (
+                    <button
+                      className="icon-button"
+                      aria-label={`${value(file.data, "name")} löschen`}
+                      disabled={busy}
+                      onClick={() => {
+                        if (!confirm("Datei und ihren gemeinsamen Bearbeitungsstand löschen?"))
+                          return;
+                        setBusy(true);
+                        setError("");
+                        void removeFile(file)
+                          .catch((exception) =>
+                            setError(
+                              exception instanceof Error
+                                ? exception.message
+                                : "Löschen fehlgeschlagen.",
+                            ),
+                          )
+                          .finally(() => setBusy(false));
+                      }}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  )}
+                </article>
+              ))}
+            </div>
+          )}
+        </ImageGallery>
       ) : (
         <Empty
           title="Platz für eure gemeinsamen Dokumente."

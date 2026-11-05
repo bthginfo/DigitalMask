@@ -27,7 +27,7 @@ import { categoryName } from "@/shared/domain-categories";
 import { EventDetail } from "@/modules/calendar/components/event-detail";
 import { canManageRecord } from "@/shared/record-permissions";
 import { ExportDialog, ImportDialog } from "./export-dialog";
-import { DocumentAttachment } from "@/modules/documents/components/document-attachment";
+import { AttachmentGrid } from "./attachment-grid";
 import { documentAccept, RecordDocuments } from "@/modules/documents/components/record-documents";
 import { RecordLink } from "./record-link";
 import {
@@ -407,52 +407,27 @@ function GenericRecordDetail({
                 )}
               </header>
               {linkedFiles.length ? (
-                <div className="gallery">
-                  {linkedFiles.map((file) => (
-                    <div key={file.id} className="gallery-item">
-                      {value(file.data, "mime").startsWith("image/") ? (
-                        <a href={`/api/files/${file.id}`} target="_blank" rel="noreferrer">
-                          {current.kind === "actors" ? (
-                            <ActorPortrait
-                              file={file}
-                              className={portraitStyles.detail}
-                              alt={value(current.data, "name")}
-                            />
-                          ) : (
-                            <Image
-                              unoptimized
-                              width={1800}
-                              height={1800}
-                              src={`/api/files/${file.id}`}
-                              alt={value(file.data, "name")}
-                              loading="lazy"
-                            />
-                          )}
-                        </a>
-                      ) : (
-                        <DocumentAttachment file={file} />
-                      )}
-                      <div className="gallery-caption">
-                        <span>{value(file.data, "name")}</span>
-                        {canEdit && (
-                          <button
-                            className="icon-button"
-                            title="Datei löschen"
-                            aria-label={`${value(file.data, "name")} löschen`}
-                            onClick={() => {
-                              if (confirm("Datei löschen?"))
-                                void attempt(async () => {
-                                  await removeFile(file);
-                                });
-                            }}
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <AttachmentGrid
+                  files={linkedFiles}
+                  renderImage={
+                    current.kind === "actors"
+                      ? (file) => (
+                          <ActorPortrait
+                            file={file}
+                            className={portraitStyles.detail}
+                            alt={value(current.data, "name")}
+                          />
+                        )
+                      : undefined
+                  }
+                  onRemove={
+                    canEdit
+                      ? (file) => {
+                          if (confirm("Datei löschen?")) void attempt(() => removeFile(file));
+                        }
+                      : undefined
+                  }
+                />
               ) : (
                 <p className="small muted">
                   <ImageIcon size={15} /> Noch keine Bilder oder Anhänge. Lade Fotos direkt vom
@@ -482,29 +457,7 @@ function GenericRecordDetail({
               {figureFiles.length > 0 && (
                 <>
                   <p className="small muted">Vorhandene Bilder der Figur</p>
-                  <div className="gallery">
-                    {figureFiles.map((file) => (
-                      <div className="gallery-item" key={file.id}>
-                        {value(file.data, "mime").startsWith("image/") ? (
-                          <a href={`/api/files/${file.id}`} target="_blank" rel="noreferrer">
-                            <Image
-                              unoptimized
-                              width={1800}
-                              height={1800}
-                              src={`/api/files/${file.id}`}
-                              alt={value(file.data, "name")}
-                              loading="lazy"
-                            />
-                          </a>
-                        ) : (
-                          <DocumentAttachment file={file} />
-                        )}
-                        <div className="gallery-caption">
-                          <span>{value(file.data, "name")}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  <AttachmentGrid files={figureFiles} />
                 </>
               )}
             </section>
