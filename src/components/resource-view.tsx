@@ -21,6 +21,7 @@ import { Badge, Button, Empty, ErrorMessage, ExportButton, Modal, PageHeader } f
 import browseStyles from "./workspace-browse.module.css";
 import { ResourceEditor } from "./resource-editor";
 import { DocumentContent } from "@/modules/documentation/components/document-content";
+import lookStyles from "@/modules/documentation/components/document-sections.module.css";
 import { lookTitle } from "@/shared/document-sections";
 import { CategoryManager } from "@/modules/categories/components/category-manager";
 import { categoryName } from "@/shared/domain-categories";
@@ -113,6 +114,17 @@ function GenericRecordDetail({
       )
     : [];
   const title = recordTitle(current, workspace);
+  const lookFields =
+    current.kind === "looks"
+      ? [
+          "productionId",
+          "actorId",
+          workspace.records.characters.some((figure) => figure.id === current.data.characterId)
+            ? "characterId"
+            : "characterName",
+          "templateId",
+        ]
+      : undefined;
   const attempt = async (fn: () => Promise<unknown>) => {
     setError("");
     try {
@@ -151,7 +163,12 @@ function GenericRecordDetail({
       {editing ? (
         <ResourceEditor kind={current.kind} record={current} onClose={() => setEditing(false)} />
       ) : (
-        <Modal title={title} onClose={onClose} wide>
+        <Modal
+          title={title}
+          onClose={onClose}
+          wide
+          className={lookFields ? lookStyles.detail : undefined}
+        >
           <div className="detail-actions">
             {navigationReturn() && (
               <Button variant="ghost" onClick={onClose}>
@@ -200,6 +217,7 @@ function GenericRecordDetail({
             {(fields[current.kind] || [])
               .filter(
                 (field) =>
+                  (!lookFields || lookFields.includes(field.key)) &&
                   !["title", "name", "checklist", "imageIds"].includes(field.key) &&
                   current.data[field.key] !== undefined &&
                   current.data[field.key] !== "",

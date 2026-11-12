@@ -6,35 +6,64 @@ import { useWorkspace } from "@/components/workspace-context";
 import styles from "./document-sections.module.css";
 export function DocumentContent({ record }: { record: DomainRecord }) {
   const { workspace } = useWorkspace();
-  const kind = record.kind === "handovers" ? "handovers" : "looks",
-    sections = documentSections(record.data, kind);
+  const kind = record.kind === "handovers" ? "handovers" : "looks";
+  const compact = record.kind === "looks";
+  const allSections = documentSections(record.data, kind);
+  const sections = compact
+    ? allSections
+        .map((section) => ({
+          ...section,
+          entries: section.entries.filter((entry) => entry.label?.trim() || entry.text.trim()),
+        }))
+        .filter((section) => section.entries.length)
+    : allSections;
   return (
-    <div className={`document-content ${kind === "looks" ? styles.content : ""}`}>
-      {sections.map((section) => (
-        <section
-          className={`document-read-section ${kind === "looks" ? styles.sectionCard : ""}`}
-          aria-label={sectionName(section.key, kind, workspace.records.categories)}
-          key={section.key}
-        >
-          <h3>{sectionName(section.key, kind, workspace.records.categories)}</h3>
-          {section.entries.length ? (
-            section.entries.map((entry) => (
-              <div key={entry.id}>
-                {entry.label && (
-                  <h4 className={kind === "looks" ? styles.entryLabel : undefined}>
-                    {entry.label}
-                  </h4>
-                )}
-                <p>
-                  <LinkedText>{entry.text || "Noch kein Text eingetragen."}</LinkedText>
-                </p>
+    <div
+      className={`document-content ${kind === "looks" ? styles.content : ""} ${compact ? styles.compactContent : ""}`}
+    >
+      {compact && !sections.length && <p className="small muted">Noch kein Text im Aufschrieb.</p>}
+      {sections.map((section) => {
+        const name = sectionName(section.key, kind, workspace.records.categories);
+        return (
+          <section
+            className={`document-read-section ${kind === "looks" ? styles.sectionCard : ""}`}
+            aria-label={name}
+            key={section.key}
+          >
+            <h3>{name}</h3>
+            {compact ? (
+              <div className={styles.entries}>
+                {section.entries.map((entry) => (
+                  <p key={entry.id}>
+                    {entry.label?.trim() && (
+                      <>
+                        <strong>{entry.label.trim()}</strong>
+                        {entry.text.trim() && " "}
+                      </>
+                    )}
+                    <LinkedText>{entry.text}</LinkedText>
+                  </p>
+                ))}
               </div>
-            ))
-          ) : (
-            <p className="small muted">Noch kein Text eingetragen.</p>
-          )}
-        </section>
-      ))}
+            ) : section.entries.length ? (
+              section.entries.map((entry) => (
+                <div key={entry.id}>
+                  {entry.label && (
+                    <h4 className={kind === "looks" ? styles.entryLabel : undefined}>
+                      {entry.label}
+                    </h4>
+                  )}
+                  <p>
+                    <LinkedText>{entry.text || "Noch kein Text eingetragen."}</LinkedText>
+                  </p>
+                </div>
+              ))
+            ) : (
+              <p className="small muted">Noch kein Text eingetragen.</p>
+            )}
+          </section>
+        );
+      })}
       {!!(record.data.scene || record.data.durationMinutes || record.data.legacyProductionId) && (
         <details className="document-legacy">
           <summary>Historische Angaben</summary>

@@ -23,6 +23,61 @@
   overflow-wrap: anywhere;
 }
 
+.detail > :global(.dialog-heading) {
+  margin-bottom: 12px;
+  padding-block: 10px;
+}
+
+.detail > :global(.detail-actions) {
+  margin-bottom: 12px;
+}
+
+.detail > :global(.detail-grid) {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
+  gap: 6px 12px;
+}
+
+.detail > :global(.detail-grid) dt {
+  margin-bottom: 2px;
+}
+
+.detail > :global(.detail-section) {
+  margin-top: 16px;
+  padding-top: 12px;
+}
+
+.compactContent:global(.document-content) {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+  align-items: start;
+  gap: 12px;
+  margin: 12px 0 16px;
+}
+
+.compactContent > .sectionCard:global(.document-read-section) {
+  padding: 12px;
+}
+
+.compactContent > .sectionCard > h3 {
+  margin-bottom: 6px;
+  font-size: 0.9375rem;
+}
+
+.compactContent > :global(.document-legacy) {
+  grid-column: 1 / -1;
+  padding: 8px 12px;
+}
+
+.entries {
+  display: grid;
+  gap: 6px;
+  font-size: 0.9375rem;
+  line-height: 1.4;
+}
+
+.entries > p {
+  margin: 0;
+}
+
 .labelInput {
   font-weight: 700;
 }
