@@ -34,6 +34,7 @@ import {
   titles,
 } from "./data";
 import { DocumentPages } from "./document-pdf";
+import { LookPages } from "./look-pdf";
 import { ProductionPages } from "./production-pdf";
 import { MaskPlanPages } from "../mask-plans/pdf";
 import { calendarRange, localDay } from "./calendar";
@@ -649,7 +650,7 @@ export async function buildPdf(input: ExportInput): Promise<Uint8Array> {
       ),
     );
   }
-  const rows = exportRows(input);
+  const rows = input.kind === "looks" ? [] : exportRows(input);
   const agendaColumns = [
     ...columnsFor("events"),
     { key: "description", label: "Hinweise", width: 30 },
@@ -669,7 +670,9 @@ export async function buildPdf(input: ExportInput): Promise<Uint8Array> {
       subject={`${input.organization} · ${input.department}`}
       language="de-DE"
     >
-      {["looks", "handovers"].includes(input.kind) ? (
+      {input.kind === "looks" ? (
+        <LookPages input={input} wrapLines={headerLines} />
+      ) : input.kind === "handovers" ? (
         <DocumentPages input={input} Page={BasePage} Images={RecordImages} />
       ) : input.kind === "productions" ? (
         <ProductionPages input={input} Page={BasePage} />

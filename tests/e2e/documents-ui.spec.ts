@@ -101,6 +101,9 @@ for (const browserName of ["chromium", "webkit"] as const)
       const editor = page.getByRole("dialog", { name: "Aufschrieb bearbeiten" });
       await expect(editor.getByLabel("Schauspielperson auswählen")).toHaveValue("qa-actor");
       await expect(editor.getByLabel("Titel", { exact: true })).toHaveCount(0);
+      const figure = editor.getByLabel("Figur auswählen");
+      await expect(figure).toHaveValue("qa-character");
+      await figure.selectOption({ label: "Puck" });
       await editor
         .getByLabel("Vorbereitung · Text 1", { exact: true })
         .fill("Erste Vorbereitung neu");
@@ -115,7 +118,7 @@ for (const browserName of ["chromium", "webkit"] as const)
       await expect(editor.getByLabel("Vorbereitung · Text 1", { exact: true })).toHaveValue(
         "Erste Vorbereitung neu",
       );
-      await editor.getByLabel("Stückdauer (Minuten, optional abweichend)").fill("");
+      await expect(editor.getByLabel(/Stückdauer/)).toHaveCount(0);
       await page.screenshot({
         path: test.info().outputPath(`documents-editor-${browserName}-light.png`),
         fullPage: true,
@@ -124,7 +127,12 @@ for (const browserName of ["chromium", "webkit"] as const)
       await expect(editor).not.toBeVisible();
       const data = state.writes.find((write) => write.kind === "looks")!.data;
       expect(data.imageIds).toEqual(["qa-photo-5"]);
-      expect(data.productionDurationMinutes).toBeNull();
+      expect(data).toMatchObject({ characterId: "", characterName: "Puck" });
+      expect(data).not.toHaveProperty("productionDurationMinutes");
+      expect(
+        state.workspace.records.looks.find((row) => row.id === "qa-legacy-look")?.data
+          .productionDurationMinutes,
+      ).toBe(150);
       const serialized = JSON.stringify(data.sections);
       expect(serialized).toContain("Zweiter eigener Text");
       expect(serialized).toContain("Legacy Makeup Schritte");
@@ -137,6 +145,7 @@ for (const browserName of ["chromium", "webkit"] as const)
       await expect(page.getByLabel("Vorbereitung · Text 2", { exact: true })).toHaveValue(
         "Zweiter eigener Text",
       );
+      await expect(page.getByLabel("Figur auswählen").locator("option:checked")).toHaveText("Puck");
       await width(page);
     });
     test("production directory and inline casting preserve the parent draft and photos", async ({

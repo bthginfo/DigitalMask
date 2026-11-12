@@ -64,29 +64,14 @@ export function DocumentPages({
   return (
     <>
       {records.map((record) => {
-        const document = documentPresentation(record, input),
-          look = record.kind === "looks";
+        const document = documentPresentation(record, input);
         const shortTitle =
           document.title.length > 28 ? `${document.title.slice(0, 27)}…` : document.title;
         return (
           <Page key={record.id} input={input} label={shortTitle}>
             <View style={style.meta}>
               <Text style={{ fontWeight: 700 }}>{document.title}</Text>
-              {look ? (
-                <>
-                  <Text>
-                    {document.production} · Figur: {document.character}
-                  </Text>
-                  <Text>
-                    Stückdauer:{" "}
-                    {document.productionDurationMinutes
-                      ? `${document.productionDurationMinutes} min`
-                      : "Nicht angegeben"}
-                  </Text>
-                </>
-              ) : (
-                <Text>Allgemeine Übergabe · Erstellt am {dateText(record.createdAt)}</Text>
-              )}
+              <Text>Allgemeine Übergabe · Erstellt am {dateText(record.createdAt)}</Text>
               <Text style={style.minor}>Stand: {dateText(record.updatedAt, true)}</Text>
             </View>
             {document.sections.map((section) => (
@@ -122,26 +107,6 @@ export function DocumentPages({
                     </View>
                     <Text style={{ ...style.text, flex: 1 }}>{item.text || "—"}</Text>
                   </View>
-                ))}
-              </View>
-            )}
-            {!!document.extraNotes && (
-              <View style={style.entry}>
-                <Text style={style.section} minPresenceAhead={45}>
-                  Weitere Hinweise
-                </Text>
-                <Text style={style.text}>{document.extraNotes}</Text>
-              </View>
-            )}
-            {!!document.historicalNotes.length && (
-              <View style={style.entry}>
-                <Text style={style.section} minPresenceAhead={45}>
-                  Historische Zusatznotizen
-                </Text>
-                {document.historicalNotes.map((note, i) => (
-                  <Text key={i} style={{ ...style.text, marginBottom: 6 }}>
-                    {note}
-                  </Text>
                 ))}
               </View>
             )}

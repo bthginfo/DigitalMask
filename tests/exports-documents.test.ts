@@ -213,7 +213,7 @@ async function pdfCheck(bytes: Uint8Array, name: string) {
     standardFontDataUrl: `${process.cwd().replace(/\\/g, "/")}/node_modules/pdfjs-dist/standard_fonts/`,
   }).promise;
   const texts: string[] = [];
-  let images = 0;
+  const imagesByPage: number[] = [];
   const imageOps = new Set(
     Object.entries(OPS)
       .filter(([key]) => key.startsWith("paintImage") || key.includes("ImageMask"))
@@ -228,6 +228,8 @@ async function pdfCheck(bytes: Uint8Array, name: string) {
     const page = await document.getPage(p),
       viewport = page.getViewport({ scale: 1.2 }),
       content = await page.getTextContent();
+    expect(Math.min(viewport.width, viewport.height) / 1.2).toBeCloseTo(595.28, 1);
+    expect(Math.max(viewport.width, viewport.height) / 1.2).toBeCloseTo(841.89, 1);
     const text = content.items.map((item) => ("str" in item ? item.str : "")).join(" ");
     texts.push(text);
     expect(text).toContain(`Seite ${p} von ${document.numPages}`);
@@ -240,7 +242,9 @@ async function pdfCheck(bytes: Uint8Array, name: string) {
         expect(item.transform[5]).toBeLessThanOrEqual(viewport.height / 1.2);
         if (item.transform[5] > 40) expect(item.transform[5]).toBeGreaterThanOrEqual(47);
       }
-    images += (await page.getOperatorList()).fnArray.filter((op) => imageOps.has(op)).length;
+    imagesByPage.push(
+      (await page.getOperatorList()).fnArray.filter((op) => imageOps.has(op)).length,
+    );
     if (raster) {
       const canvas = createCanvas(Math.ceil(viewport.width), Math.ceil(viewport.height));
       await page.render({
@@ -253,7 +257,14 @@ async function pdfCheck(bytes: Uint8Array, name: string) {
   }
   const pages = document.numPages;
   await document.cleanup();
-  return { text: texts.join(" "), pages, images, directory: qaDirectory };
+  return {
+    text: texts.join(" "),
+    texts,
+    pages,
+    images: imagesByPage.reduce((sum, count) => sum + count, 0),
+    imagesByPage,
+    directory: qaDirectory,
+  };
 }
 
 describe("document and contact presentation exports", () => {
@@ -294,15 +305,13 @@ describe("document and contact presentation exports", () => {
           "str" in item &&
           item.height >= 10 &&
           item.height <= 12 &&
-          item.str.startsWith(
-            kind === "productions" ? "Fiktiver sehr langer" : "Fiktive Schauspielerin",
-          ),
+          item.str.startsWith(kind === "productions" ? "Fiktiver sehr langer" : "BODYEND"),
       );
       expect(
         lastHeader && "transform" in lastHeader && firstBody && "transform" in firstBody
           ? lastHeader.transform[5] - firstBody.transform[5]
           : 0,
-      ).toBeGreaterThan(45);
+      ).toBeGreaterThan(kind === "productions" ? 45 : 14);
       await doc.cleanup();
     }
   }, 60000);
@@ -518,8 +527,9 @@ describe("document and contact presentation exports", () => {
       (await buildExport({ ...base("looks", "pdf", [look]), images: pictures() })).bytes,
       "structured-look",
     );
-    expect(result.pages).toBeGreaterThan(3);
-    expect(result.images).toBeGreaterThanOrEqual(2);
+    expect(result.pages).toBeGreaterThan(2);
+    expect(result.imagesByPage.slice(0, -1).every((count) => count === 0)).toBe(true);
+    expect(result.imagesByPage.at(-1)).toBe(2);
     for (const marker of [
       "PREPEND",
       "PROTECTEND",
@@ -531,10 +541,54 @@ describe("document and contact presentation exports", () => {
       "CUSTOMEND",
     ])
       expect(result.text).toContain(marker);
-    expect(result.text).toContain("Stückdauer: 150 min");
+    expect(result.text).toContain("Stückdauer 135 min");
     expect(result.text).toContain("Makeup · individuelle Arbeitsfolge");
     expect(result.text).not.toContain("ALTER TITEL");
     expect(result.text).not.toContain("Veröffentlicht");
+  }, 60000);
+  it("combines an actor's notes into one text sheet and one sheet of up to eight photos", async () => {
+    const imageIds = Array.from({ length: 8 }, (_, index) => `photo-${index}`);
+    const samples = pictures();
+    const first = record("looks", "compact-first", {
+      ...look.data,
+      sections: [{ key: "makeup", entries: [{ id: "one", label: "Teint", text: "TEXTONE" }] }],
+      imageIds: imageIds.slice(0, 5),
+    });
+    const second = record("looks", "compact-second", {
+      ...first.data,
+      characterId: "",
+      characterName: "Zweite Rolle",
+      sections: [{ key: "hair", entries: [{ id: "two", text: "TEXTTWO" }] }],
+      imageIds: imageIds.slice(5),
+    });
+    const third = record("looks", "compact-third", {
+      productionId: "p",
+      actorName: "Zweite Schauspielperson",
+      sections: [{ key: "hair", entries: [{ id: "three", text: "TEXTTHREE" }] }],
+    });
+    const input = base("looks", "pdf", [first, third, second]);
+    const result = await pdfCheck(
+      (
+        await buildExport({
+          ...input,
+          references: {
+            ...input.references,
+            productions: [record("productions", "p", { title: production.data.title })],
+          },
+          images: Object.fromEntries(
+            imageIds.map((id, i) => [id, samples[i % 2 ? "image1" : "image2"]]),
+          ),
+        })
+      ).bytes,
+      "compact-look",
+    );
+    expect(result.imagesByPage).toEqual([0, 8, 0]);
+    expect(result.texts[0]).toContain("TEXTONE");
+    expect(result.texts[0]).toContain("TEXTTWO");
+    expect(result.texts[1]).toContain("Bild 8 · Zweite Rolle");
+    expect(result.texts[2]).toContain("TEXTTHREE");
+    expect(result.texts[0]).toContain("Stückdauer 150 min");
+    expect(result.text.match(/Stückdauer/g)).toHaveLength(1);
   }, 60000);
   it("renders global handovers as separate checklist items with all images and legacy notes once", async () => {
     const legacy = record("handovers", "legacy", {

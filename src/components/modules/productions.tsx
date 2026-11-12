@@ -7,6 +7,7 @@ import { recordMatchesPeriod, seasonForDate, type PeriodFilter } from "@/shared/
 import { contactsValue } from "@/shared/contracts";
 import { productionContactName } from "@/shared/production-contacts";
 import { productionCastingCounts } from "@/modules/productions/counts";
+import { productionLookDuration } from "@/shared/document-sections";
 import { sortProductionsByPremiere } from "@/shared/production-order";
 import { productionOverviewRecords } from "@/shared/production-overview";
 import { SharedProductionOverview } from "@/modules/productions/components/shared-production-overview";
@@ -136,7 +137,8 @@ export function ProductionsModule({
         onBack={() => setSelected("")}
       />
     );
-  if (production)
+  if (production) {
+    const duration = productionLookDuration(production, workspace.records.looks);
     return (
       <section className={styles.productionDetail}>
         <div className="production-breadcrumb">
@@ -155,6 +157,7 @@ export function ProductionsModule({
           <div>
             <p className="eyebrow">{statusLabels[value(production.data, "status")]}</p>
             <h1>{value(production.data, "title")}</h1>
+            {duration > 0 && <p className="small muted">Stückdauer · {duration} Minuten</p>}
           </div>
           <div className="heading-actions">
             <Button onClick={() => setDetails(true)}>Produktion verwalten</Button>
@@ -332,6 +335,7 @@ export function ProductionsModule({
         {details && <RecordDetail record={production} onClose={() => setDetails(false)} />}
       </section>
     );
+  }
   return (
     <section className={styles.productionBrowse}>
       <PageHeader

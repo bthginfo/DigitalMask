@@ -2,7 +2,12 @@
 import { useState } from "react";
 import { FileText, Plus } from "lucide-react";
 import type { DomainRecord } from "@/shared/contracts";
-import { documentSections, sectionName, lookTitle } from "@/shared/document-sections";
+import {
+  documentSections,
+  sectionName,
+  lookTitle,
+  productionLookDuration,
+} from "@/shared/document-sections";
 import { initialPeriod, recordMatchesPeriod, type PeriodFilter } from "@/shared/period-filter";
 import { value } from "@/shared/client-api";
 import { useWorkspace } from "@/components/workspace-context";
@@ -131,6 +136,9 @@ export function DocumentationModule() {
           {groupIds.length ? (
             groupIds.map((id) => {
               const project = workspace.records.productions.find((row) => row.id === id);
+              const duration = project
+                ? productionLookDuration(project, workspace.records.looks)
+                : 0;
               return (
                 <section className="document-folder" key={id || "general"}>
                   <header>
@@ -147,6 +155,9 @@ export function DocumentationModule() {
                           ? value(project?.data || {}, "title") || "Frühere Produktion"
                           : "Allgemeine Aufschriebe"}
                       </h2>
+                      {duration > 0 && (
+                        <p className="small muted">Stückdauer · {duration} Minuten</p>
+                      )}
                     </div>
                     <span className="small muted">
                       {rows.filter((row) => value(row.data, "productionId") === id).length}{" "}

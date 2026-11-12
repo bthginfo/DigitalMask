@@ -10,6 +10,8 @@ import { Button, ErrorMessage, Modal } from "@/components/ui";
 import { ResourceEditor } from "@/components/resource-editor";
 import { RepeatableList } from "@/components/repeatable-list";
 import { CategoryManager } from "@/modules/categories/components/category-manager";
+import { productionFigureOptions, type FigureOption } from "@/modules/productions/figure-options";
+import { personNameKey } from "@/shared/person-identity";
 import { SectionFields } from "./section-fields";
 import { numberDraft, parseNumberDraft } from "@/shared/number-draft";
 export function DocumentEditor({
@@ -31,19 +33,34 @@ export function DocumentEditor({
   const initial = { ...defaults, ...record?.data },
     scope = kind === "handovers" ? "handovers" : "looks";
   const [production, setProduction] = useState(
-      lockedProductionId ?? value(initial, "productionId"),
-    ),
-    [actorId, setActorId] = useState(value(initial, "actorId")),
+    lockedProductionId ?? value(initial, "productionId"),
+  );
+  const figures = productionFigureOptions(
+    production,
+    workspace.records.characters,
+    workspace.records.casting,
+  );
+  const [figure, setFigure] = useState<FigureOption | undefined>(() => {
+    const id = value(initial, "characterId");
+    const name = value(initial, "characterName");
+    if (id)
+      return (
+        figures.find((option) => option.id === id) ?? {
+          key: id,
+          id,
+          name: name || "Verknüpfte Figur",
+        }
+      );
+    const nameKey = personNameKey(name);
+    return figures.find((option) => personNameKey(option.name) === nameKey);
+  });
+  const [actorId, setActorId] = useState(value(initial, "actorId")),
     [actorName, setActorName] = useState(value(initial, "actorName")),
-    [characterId, setCharacterId] = useState(value(initial, "characterId")),
     [characterName, setCharacterName] = useState(value(initial, "characterName")),
     [actorFree, setActorFree] = useState(!!initial.actorName && !initial.actorId),
-    [characterFree, setCharacterFree] = useState(!!initial.characterName && !initial.characterId),
+    [characterFree, setCharacterFree] = useState(!!initial.characterName && !figure),
     [title, setTitle] = useState(value(initial, "title")),
     [templateId, setTemplateId] = useState(value(initial, "templateId")),
-    [duration, setDuration] = useState(
-      initial.productionDurationMinutes == null ? "" : String(initial.productionDurationMinutes),
-    ),
     [version, setVersion] = useState(numberDraft(initial.version, 1)),
     [checklist, setChecklist] = useState<{ text: string; done: boolean }[]>(
       Array.isArray(initial.checklist)
@@ -82,7 +99,7 @@ export function DocumentEditor({
     }
     return next;
   });
-  const selectedProduction = workspace.records.productions.find((row) => row.id === production);
+  if (figure && !figures.some((option) => option.key === figure.key)) figures.push(figure);
   const changeTemplate = (id: string) => {
     setTemplateId(id);
     const template = workspace.records.templates.find((row) => row.id === id);
@@ -147,17 +164,14 @@ export function DocumentEditor({
                       productionId: production,
                       actorId: actorFree ? "" : actorId,
                       actorName: actorFree ? actorName.trim() : "",
-                      characterId: characterFree ? "" : characterId,
-                      characterName: characterFree ? characterName.trim() : "",
+                      characterId: characterFree ? "" : figure?.id || "",
+                      characterName: characterFree ? characterName.trim() : figure?.name || "",
                       templateId,
                       templateVersion: Number(
                         workspace.records.templates.find((row) => row.id === templateId)?.data
                           .version || 1,
                       ),
                       sections,
-                      productionDurationMinutes:
-                        parseNumberDraft(duration, { label: "Stückdauer", min: 0, max: 10000 }) ??
-                        null,
                       imageIds: ids(initial, "imageIds"),
                     }
                   : kind === "templates"
@@ -215,7 +229,7 @@ export function DocumentEditor({
                     value={production}
                     onChange={(event) => {
                       setProduction(event.target.value);
-                      setCharacterId("");
+                      setFigure(undefined);
                     }}
                   >
                     <option value="">Allgemeiner Aufschrieb</option>
@@ -247,11 +261,12 @@ export function DocumentEditor({
                   const actor = key === "actor",
                     free = actor ? actorFree : characterFree,
                     label = actor ? "Schauspielperson" : "Figur",
-                    rows = actor
-                      ? workspace.records.actors
-                      : workspace.records.characters.filter(
-                          (row) => value(row.data, "productionId") === production,
-                        );
+                    options = actor
+                      ? workspace.records.actors.map((row) => ({
+                          key: row.id,
+                          name: value(row.data, "name"),
+                        }))
+                      : figures;
                   return (
                     <fieldset className="casting-choice" key={key}>
                       <legend>
@@ -262,9 +277,14 @@ export function DocumentEditor({
                         <input
                           type="checkbox"
                           checked={free}
-                          onChange={(event) =>
-                            (actor ? setActorFree : setCharacterFree)(event.target.checked)
-                          }
+                          onChange={(event) => {
+                            const checked = event.target.checked;
+                            if (actor) setActorFree(checked);
+                            else {
+                              if (checked && figure) setCharacterName(figure.name);
+                              setCharacterFree(checked);
+                            }
+                          }}
                         />
                         Namen frei eintragen
                       </label>
@@ -286,15 +306,17 @@ export function DocumentEditor({
                             {label} auswählen
                             <select
                               required={actor}
-                              value={actor ? actorId : characterId}
-                              onChange={(event) =>
-                                (actor ? setActorId : setCharacterId)(event.target.value)
-                              }
+                              value={actor ? actorId : figure?.key || ""}
+                              onChange={(event) => {
+                                const key = event.target.value;
+                                if (actor) setActorId(key);
+                                else setFigure(figures.find((option) => option.key === key));
+                              }}
                             >
                               <option value="">{actor ? "Bitte auswählen" : "Keine Figur"}</option>
-                              {rows.map((row) => (
-                                <option key={row.id} value={row.id}>
-                                  {value(row.data, "name")}
+                              {options.map((option) => (
+                                <option key={option.key} value={option.key}>
+                                  {option.name}
                                 </option>
                               ))}
                             </select>
@@ -314,22 +336,6 @@ export function DocumentEditor({
                   );
                 })}
               </div>
-              <label>
-                Stückdauer (Minuten, optional abweichend)
-                <input
-                  type="number"
-                  step="any"
-                  min={0}
-                  max={10000}
-                  value={duration}
-                  placeholder={
-                    selectedProduction?.data.durationMinutes
-                      ? String(selectedProduction.data.durationMinutes)
-                      : "Dauer der Produktion übernehmen"
-                  }
-                  onChange={(event) => setDuration(event.target.value)}
-                />
-              </label>
             </>
           )}
           {kind === "templates" && (
@@ -394,7 +400,7 @@ export function DocumentEditor({
               setActorId(saved.id);
               setActorFree(false);
             } else {
-              setCharacterId(saved.id);
+              setFigure({ key: saved.id, id: saved.id, name: value(saved.data, "name") });
               setCharacterFree(false);
             }
             setCreating(null);

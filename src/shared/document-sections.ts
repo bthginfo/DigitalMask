@@ -78,3 +78,17 @@ export function pieceDuration(data: RecordData, productions: DomainRecord[] = []
   if (typeof data.productionDurationMinutes === "number") return data.productionDurationMinutes;
   return numberValue(productions.find((row) => row.id === data.productionId)?.data.durationMinutes);
 }
+
+export function productionLookDuration(production: DomainRecord, looks: DomainRecord[]) {
+  const duration = numberValue(production.data.durationMinutes);
+  if (duration > 0) return duration;
+
+  // Older notes may be the only place where the duration was entered.
+  const previousDurations = new Set(
+    looks
+      .filter((row) => row.data.productionId === production.id)
+      .map((row) => numberValue(row.data.productionDurationMinutes))
+      .filter((minutes) => minutes > 0),
+  );
+  return previousDurations.size === 1 ? [...previousDurations][0] : 0;
+}

@@ -1,21 +1,15 @@
 ﻿"use client";
 import type { DomainRecord } from "@/shared/contracts";
 import { LinkedText } from "@/components/linked-text";
-import { documentSections, pieceDuration, sectionName } from "@/shared/document-sections";
+import { documentSections, sectionName } from "@/shared/document-sections";
 import { useWorkspace } from "@/components/workspace-context";
 import styles from "./document-sections.module.css";
 export function DocumentContent({ record }: { record: DomainRecord }) {
   const { workspace } = useWorkspace();
   const kind = record.kind === "handovers" ? "handovers" : "looks",
     sections = documentSections(record.data, kind);
-  const duration = pieceDuration(record.data, workspace.records.productions);
   return (
     <div className={`document-content ${kind === "looks" ? styles.content : ""}`}>
-      {record.kind === "looks" && !!duration && (
-        <p className="document-duration">
-          Stückdauer: <strong>{duration} Minuten</strong>
-        </p>
-      )}
       {sections.map((section) => (
         <section
           className={`document-read-section ${kind === "looks" ? styles.sectionCard : ""}`}
