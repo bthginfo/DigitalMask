@@ -31,12 +31,13 @@ import { statusLabels } from "../resource-fields";
 import { initialPeriod, recordMatchesPeriod } from "@/shared/period-filter";
 import { unreadNotifications } from "@/modules/notifications/unread";
 import { MarkAllReadButton } from "@/modules/notifications/components/mark-all-read";
+import { NotificationRow } from "@/modules/notifications/components/notification-row";
 import {
   AttendanceBalanceCard,
   attendanceBalanceStyles,
 } from "@/modules/time-tracking/components/attendance-balance";
 export function TodayModule({ navigate }: { navigate: (module: string) => void }) {
-  const { workspace, action, notify } = useWorkspace();
+  const { workspace } = useWorkspace();
   const showTimer = isStaff(workspace.user);
   const [detail, setDetail] = useState<DomainRecord | null>(null);
   const [now] = useState(Date.now);
@@ -153,25 +154,7 @@ export function TodayModule({ navigate }: { navigate: (module: string) => void }
               {notices.length ? (
                 <div className="list">
                   {notices.slice(0, 6).map((notice) => (
-                    <button
-                      key={notice.id}
-                      className="notification-row"
-                      onClick={async () => {
-                        try {
-                          await action("notification-read", notice.id);
-                          const link = value(notice.data, "link");
-                          if (link.startsWith("/") && !link.startsWith("//")) navigate(link);
-                        } catch (e) {
-                          notify(e instanceof Error ? e.message : "Aktion fehlgeschlagen");
-                        }
-                      }}
-                    >
-                      <span className="notice-dot" />
-                      <div>
-                        <strong>{value(notice.data, "title")}</strong>
-                        <p className="small muted">{value(notice.data, "body")}</p>
-                      </div>
-                    </button>
+                    <NotificationRow key={notice.id} notice={notice} navigate={navigate} />
                   ))}
                 </div>
               ) : (

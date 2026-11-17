@@ -16,6 +16,7 @@ import { subscribeConnectivity } from "@/shared/client-storage";
 import { useRouter } from "next/navigation";
 import { connectLiveSync, type SyncStatus } from "@/shared/live-sync";
 import { syncAppBadge } from "@/modules/notifications/client";
+import { safeNotificationLink } from "@/modules/notifications/links";
 import {
   mergeWorkspaceUpdate,
   partialWorkspaceKinds,
@@ -89,7 +90,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
             setPending(false);
           } catch (e) {
             if (e instanceof ApiFailure && e.status === 401) {
-              router.replace("/login");
+              const next = safeNotificationLink(location.pathname + location.search);
+              router.replace(next === "/" ? "/login" : `/login?${new URLSearchParams({ next })}`);
               return;
             }
             if (e instanceof ApiFailure && e.status === 403) setPending(true);

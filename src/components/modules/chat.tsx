@@ -90,10 +90,12 @@ export function conversationTitle(
 export function ChatModule({
   productionId = "",
   conversationId = "",
+  focusedMessageId = "",
   onNavigate,
 }: {
   productionId?: string;
   conversationId?: string;
+  focusedMessageId?: string;
   onNavigate?: (conversationId: string, productionId?: string) => void;
 }) {
   const { workspace, save, remove, busy, online } = useWorkspace();
@@ -180,6 +182,10 @@ export function ChatModule({
       record.data.mode === "team" || ids(record.data, "participantIds").includes(workspace.user.id),
   );
   const conversation = visibleConversations.find((record) => record.id === selectedConversation);
+  const unavailable = selectedConversation
+    ? !conversation
+    : !!selectedProduction &&
+      !workspace.records.productions.some((row) => row.id === selectedProduction);
   const query = search.trim().toLocaleLowerCase("de");
   const matches = (text: string) => !query || text.toLocaleLowerCase("de").includes(query);
   const productions = workspace.records.productions.filter(
@@ -478,7 +484,7 @@ export function ChatModule({
             </div>
           </aside>
         )}
-        {selectedConversation && !conversation ? (
+        {unavailable ? (
           <section className="chat-unavailable">
             {sidebarToggle}
             <div className="chat-mobile-heading">
@@ -505,6 +511,7 @@ export function ChatModule({
             title={title}
             productionId={selectedProduction}
             conversation={conversation}
+            focusedMessageId={focusedMessageId}
             sidebarToggle={sidebarToggle}
             onManage={
               conversation && canManageRecord(workspace.user, "conversations", conversation)

@@ -37,6 +37,7 @@ const DocumentEditor = dynamic(() => import("@/modules/documents/components/docu
 export function ChatChannel({
   productionId = "",
   conversation,
+  focusedMessageId = "",
   title,
   onManage,
   sidebarToggle,
@@ -46,6 +47,7 @@ export function ChatChannel({
 }: {
   productionId?: string;
   conversation?: DomainRecord;
+  focusedMessageId?: string;
   title: string;
   onManage?: () => void;
   sidebarToggle?: ReactNode;
@@ -70,6 +72,9 @@ export function ChatChannel({
     bottom = useRef<HTMLDivElement>(null),
     nearBottom = useRef(true),
     lastMessage = useRef("");
+  const messageTarget = useRef<HTMLElement>(null);
+  const positionedTarget = useRef("");
+  const [linkedMessage, setLinkedMessage] = useState<{ id: string; record?: DomainRecord }>();
   const messageInput = useRef<HTMLTextAreaElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   useLayoutEffect(() => {
@@ -95,7 +100,7 @@ export function ChatChannel({
     };
   }, [text]);
   useChatRead(conversationId, productionId, bottom);
-  const messages = useMemo(
+  const recentMessages = useMemo(
     () =>
       workspace.records.messages
         .filter((message) =>
@@ -107,15 +112,58 @@ export function ChatChannel({
         .sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
     [workspace.records.messages, conversationId, productionId],
   );
+  const targetInHistory = recentMessages.some((message) => message.id === focusedMessageId);
+  const fetchedTarget =
+    !targetInHistory && linkedMessage?.id === focusedMessageId ? linkedMessage.record : undefined;
   useEffect(() => {
+    if (!focusedMessageId || targetInHistory) return;
+    const controller = new AbortController();
+    void api<DomainRecord>(`/api/records/messages/${encodeURIComponent(focusedMessageId)}`, {
+      signal: controller.signal,
+    })
+      .then((record) => {
+        if (controller.signal.aborted) return;
+        const matchesChannel = conversationId
+          ? record.data.conversationId === conversationId
+          : !value(record.data, "conversationId") &&
+            value(record.data, "productionId") === productionId;
+        setLinkedMessage({
+          id: focusedMessageId,
+          record: record.id === focusedMessageId && matchesChannel ? record : undefined,
+        });
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setLinkedMessage({ id: focusedMessageId });
+      });
+    return () => controller.abort();
+  }, [focusedMessageId, targetInHistory, conversationId, productionId]);
+  const messages = useMemo(
+    () =>
+      fetchedTarget
+        ? [...recentMessages, fetchedTarget].sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+        : recentMessages,
+    [fetchedTarget, recentMessages],
+  );
+  useLayoutEffect(() => {
     const latest = messages.at(-1);
+    const list = messageList.current;
+    const target = messageTarget.current;
+    if (!focusedMessageId) positionedTarget.current = "";
+    if (list && target && positionedTarget.current !== focusedMessageId) {
+      target.focus({ preventScroll: true });
+      const offset = target.getBoundingClientRect().top - list.getBoundingClientRect().top;
+      list.scrollTop += offset - Math.max(0, (list.clientHeight - target.offsetHeight) / 2);
+      nearBottom.current = list.scrollHeight - list.scrollTop - list.clientHeight < 160;
+      positionedTarget.current = focusedMessageId;
+      lastMessage.current = latest?.id || "";
+      return;
+    }
     if (!latest || latest.id === lastMessage.current) return;
     if (!lastMessage.current || latest.data.userId === workspace.user.id || nearBottom.current) {
-      const list = messageList.current;
       if (list) list.scrollTop = list.scrollHeight;
     }
     lastMessage.current = latest.id;
-  }, [messages, workspace.user.id]);
+  }, [messages, workspace.user.id, focusedMessageId]);
   useEffect(() => {
     const list = messageList.current;
     const history = messageHistory.current;
@@ -252,6 +300,13 @@ export function ChatChannel({
           <ExportButton onClick={() => setExporting(true)} />
         </div>
       </header>
+      {!!focusedMessageId && !targetInHistory && !fetchedTarget && (
+        <p className="chat-archived-note" role="status">
+          {linkedMessage?.id === focusedMessageId
+            ? "Die verlinkte Nachricht ist nicht verfügbar."
+            : "Nachricht wird geöffnet …"}
+        </p>
+      )}
       <div
         className="chat-messages"
         ref={messageList}
@@ -271,8 +326,14 @@ export function ChatChannel({
               const attachmentIds = Array.isArray(message.data.attachmentIds)
                 ? (message.data.attachmentIds as string[])
                 : [];
+              const focused = message.id === focusedMessageId;
               return (
-                <article className={`chat-message ${own ? "own" : ""}`} key={message.id}>
+                <article
+                  className={`chat-message${own ? " own" : ""}${focused ? " notification-target" : ""}`}
+                  key={message.id}
+                  ref={focused ? messageTarget : undefined}
+                  tabIndex={focused ? -1 : undefined}
+                >
                   <span className="avatar">{initials(member?.name || "Team")}</span>
                   <div className="message-content">
                     <header>

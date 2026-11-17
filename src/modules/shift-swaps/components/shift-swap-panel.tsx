@@ -142,6 +142,8 @@ export function ShiftSwapPanel() {
             const requester = record.data.requesterId === workspace.user.id;
             return (
               <article
+                id={record.id === focusedId ? `swap-${record.id}` : undefined}
+                tabIndex={record.id === focusedId ? -1 : undefined}
                 className={`${styles.row} ${record.id === focusedId ? styles.focused : ""}`}
                 key={record.id}
               >

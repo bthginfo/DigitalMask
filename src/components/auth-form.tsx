@@ -8,6 +8,7 @@ import { post } from "@/shared/client-api";
 import { Button, ErrorMessage, Modal } from "./ui";
 import { ThemeSwitch } from "./theme-switch";
 import { PasswordInput } from "./password-input";
+import { safeNotificationLink } from "@/modules/notifications/links";
 export function AuthForm({ register = false }: { register?: boolean }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -26,7 +27,7 @@ export function AuthForm({ register = false }: { register?: boolean }) {
         ...(register ? { name: form.get("name") } : {}),
       });
       if (register) setDone(true);
-      else router.replace("/");
+      else router.replace(safeNotificationLink(new URLSearchParams(location.search).get("next")));
     } catch (e) {
       setError(
         e instanceof TypeError

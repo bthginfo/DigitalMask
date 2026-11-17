@@ -42,6 +42,7 @@ import { useWorkspace } from "./workspace-context";
 import { stopPushOnLogout } from "@/modules/notifications/client";
 import { chatUnreadCounts, unreadNotifications } from "@/modules/notifications/unread";
 import { MarkAllReadButton } from "@/modules/notifications/components/mark-all-read";
+import { NotificationRow } from "@/modules/notifications/components/notification-row";
 import { Badge, Empty, Modal } from "./ui";
 import { ThemeSwitch } from "./theme-switch";
 import { LiveStatus } from "./live-status";
@@ -94,6 +95,16 @@ export function WorkspaceShell() {
       : params.get("module") || "today";
   const activeModule = nav.some((item) => item.id === requestedModule) ? requestedModule : "today";
   const recordId = params.get("record") || "";
+  const swapId = activeModule === "calendar" ? params.get("swapId") || "" : "";
+  const leaveId = activeModule === "calendar" ? params.get("leaveId") || "" : "";
+  const leaveSection = activeModule === "calendar" && params.get("section") === "leave";
+  const scrollTarget = swapId
+    ? `swap-${swapId}`
+    : leaveId
+      ? `leave-${leaveId}`
+      : leaveSection
+        ? "leave-requests"
+        : undefined;
   const [mobileMenu, setMobileMenu] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -130,7 +141,7 @@ export function WorkspaceShell() {
       history.scrollRestoration = previous;
     };
   }, [workspace.user.id]);
-  useEffect(() => restoreNavigationScroll(), [query]);
+  useEffect(() => restoreNavigationScroll(scrollTarget), [query, scrollTarget]);
   useEffect(() => {
     const key = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key === "k") {
@@ -222,7 +233,10 @@ export function WorkspaceShell() {
     : null;
   const notificationItems = notificationSnapshot
     ? [
-        ...notificationSnapshot.items.map((item) => notificationsById?.get(item.id) ?? item),
+        ...notificationSnapshot.items.map(
+          (item) =>
+            notificationsById?.get(item.id) ?? { ...item, data: { ...item.data, read: true } },
+        ),
         ...workspace.records.notifications.filter(
           (item) =>
             item.data.userId === workspace.user.id && !notificationSnapshot.knownIds.has(item.id),
@@ -256,11 +270,16 @@ export function WorkspaceShell() {
           )
           .slice(0, 30)
       : [];
-  const queryRecord = recordId
+  const linkedRecord = recordId
     ? Object.values(workspace.records)
         .flat()
-        .find((record) => record.id === recordId && record.kind !== "maskPlans")
+        .find((record) => record.id === recordId)
     : undefined;
+  const queryRecord = linkedRecord?.kind !== "maskPlans" ? linkedRecord : undefined;
+  const missingTarget =
+    (recordId && !linkedRecord) ||
+    (swapId && !workspace.records.shiftSwaps.some((row) => row.id === swapId)) ||
+    (leaveId && !workspace.records.leave.some((row) => row.id === leaveId));
   const closeDetail = () => {
     setDetail(null);
     closeRecordDetail();
@@ -282,7 +301,7 @@ export function WorkspaceShell() {
         }}
       />
     ) : activeModule === "calendar" ? (
-      <CalendarModule />
+      <CalendarModule focusedLeaveId={leaveId} />
     ) : activeModule === "tasks" ? (
       <TasksModule />
     ) : activeModule === "time" ? (
@@ -291,6 +310,7 @@ export function WorkspaceShell() {
       <ChatModule
         conversationId={params.get("conversationId") || ""}
         productionId={params.get("productionId") || ""}
+        focusedMessageId={params.get("messageId") || ""}
         onNavigate={(conversationId, productionId) => {
           const query = new URLSearchParams({
             module: "chat",
@@ -507,6 +527,11 @@ export function WorkspaceShell() {
           </div>
         )}
         <main ref={main} id="main" className="main-content" key={activeModule} tabIndex={-1}>
+          {missingTarget && (
+            <p className="empty-inline" role="status">
+              Dieser Eintrag ist nicht verfügbar.
+            </p>
+          )}
           {screen}
         </main>
         <footer className="workspace-footer">
@@ -620,41 +645,12 @@ export function WorkspaceShell() {
           {notificationItems.length ? (
             <div className="list">
               {notificationItems.map((item) => (
-                <button
-                  className="notification-row"
+                <NotificationRow
                   key={item.id}
-                  onClick={async () => {
-                    try {
-                      if (!item.data.read) await action("notification-read", item.id);
-                      setNotificationSnapshot(null);
-                      const link = value(item.data, "link");
-                      if (link.startsWith("/") && !link.startsWith("//")) {
-                        const next = new URL(link, location.origin);
-                        const productionId = value(item.data, "productionId");
-                        if (next.searchParams.get("module") === "tasks" && productionId) {
-                          next.searchParams.set("module", "productions");
-                          next.searchParams.set("productionId", productionId);
-                          next.searchParams.set("tab", "tasks");
-                        }
-                        navigate(next.pathname + next.search);
-                      }
-                    } catch (e) {
-                      notify(e instanceof Error ? e.message : "Aktion fehlgeschlagen");
-                    }
-                  }}
-                >
-                  <span className={item.data.read ? "notice-dot read" : "notice-dot"} />
-                  <div>
-                    <strong>{value(item.data, "title")}</strong>
-                    {Boolean(item.data.read) && (
-                      <>
-                        {" "}
-                        <Badge>Gelesen</Badge>
-                      </>
-                    )}
-                    <p className="small muted">{value(item.data, "body")}</p>
-                  </div>
-                </button>
+                  notice={item}
+                  navigate={navigate}
+                  onOpen={() => setNotificationSnapshot(null)}
+                />
               ))}
             </div>
           ) : (

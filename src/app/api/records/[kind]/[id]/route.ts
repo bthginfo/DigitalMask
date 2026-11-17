@@ -1,11 +1,24 @@
 import { z } from "zod";
 import { NextResponse } from "next/server";
 import { requireContext } from "@/platform/context";
-import { readJson, route, assertOrigin } from "@/platform/http";
+import { readJson, route, assertOrigin, HttpError } from "@/platform/http";
 import { recordKinds } from "@/shared/contracts";
-import { saveRecord, deleteRecord } from "@/modules/records/service";
+import { assertRead, saveRecord, deleteRecord } from "@/modules/records/service";
+import { findRecord, serialize } from "@/modules/records/repository";
 export const maxDuration = 300;
 type Props = { params: Promise<{ kind: string; id: string }> };
+export async function GET(_request: Request, { params }: Props) {
+  return route(async () => {
+    const { kind, id } = await params;
+    if (kind !== "messages") throw new HttpError(405, "Einzelabruf ist hier nicht verfügbar.");
+    const context = await requireContext();
+    const message = await findRecord(context, id, "messages");
+    await assertRead(context, message);
+    return NextResponse.json(serialize(message), {
+      headers: { "Cache-Control": "private, no-store" },
+    });
+  });
+}
 export async function PATCH(request: Request, { params }: Props) {
   return route(async () => {
     const p = await params;

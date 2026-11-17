@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { isPushEndpoint, subscriptionSchema } from "../src/modules/notifications/schema";
-import { pushPayload, safeNotificationLink } from "../src/modules/notifications/payload";
+import { pushPayload } from "../src/modules/notifications/payload";
+import { notificationHref, safeNotificationLink } from "../src/modules/notifications/links";
 import { chatUnreadCounts } from "../src/modules/notifications/unread";
 import type { DomainRecord } from "../src/shared/contracts";
 
@@ -105,6 +106,52 @@ describe("push consent, boundaries and private payloads", () => {
       "/?module=chat&conversationId=private",
     );
     expect(safeNotificationLink("//evil.invalid")).toBe("/");
+  });
+  it.each([
+    [
+      {
+        type: "TaskAssignedV1",
+        productionId: "stage&1",
+        recordId: "prop#1",
+        link: "/?module=tasks",
+      },
+      "/?module=productions&productionId=stage%261&tab=tasks&record=prop%231",
+    ],
+    [
+      {
+        type: "ServiceChangedV1",
+        productionId: "play",
+        recordId: "shift",
+        link: "/?module=calendar",
+      },
+      "/?module=calendar&record=shift",
+    ],
+    [
+      { type: "LookPublishedV1", productionId: "play", recordId: "look" },
+      "/?module=productions&productionId=play&tab=looks&record=look",
+    ],
+    [
+      {
+        type: "ChatMessageCreatedV1",
+        conversationId: "private",
+        recordId: "message",
+        link: "/?module=chat&productionId=play",
+      },
+      "/?module=chat&conversationId=private&messageId=message",
+    ],
+    [
+      { type: "ChatMessageCreatedV1", productionId: "play", recordId: "message" },
+      "/?module=chat&productionId=play&messageId=message",
+    ],
+    [{ type: "LeaveRequestDecidedV1", recordId: "request" }, "/?module=calendar&leaveId=request"],
+    [
+      { type: "LeaveRequestDecidedV1", link: "/?module=calendar" },
+      "/?module=calendar&section=leave",
+    ],
+    [{ type: "ShiftSwapChangedV1", recordId: "swap" }, "/?module=calendar&swapId=swap"],
+  ])("opens the exact notification target in-app and on the device", (data, href) => {
+    expect(notificationHref(data)).toBe(href);
+    expect(pushPayload(data.type, "notice", "person", 1, data).url).toBe(href);
   });
   it("uses no database reads when push is not configured, and no notice reads without devices", async () => {
     vi.stubEnv("VAPID_PRIVATE_KEY", "");

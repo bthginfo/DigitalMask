@@ -120,7 +120,13 @@ export function expandEvents(
     }));
   });
 }
-export function CalendarModule({ productionId = "" }: { productionId?: string }) {
+export function CalendarModule({
+  productionId = "",
+  focusedLeaveId = "",
+}: {
+  productionId?: string;
+  focusedLeaveId?: string;
+}) {
   const { workspace, save, action, busy } = useWorkspace();
   const calendarProductions = calendarProductionRecords(workspace);
   const editableProductionIds = useMemo(
@@ -1015,7 +1021,9 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
       </div>
       <section className="panel margin-top">
         <header className="panel-heading">
-          <h2>{admin ? "Freiwünsche im Team" : "Meine Freiwünsche"}</h2>
+          <h2 id="leave-requests" tabIndex={-1}>
+            {admin ? "Freiwünsche im Team" : "Meine Freiwünsche"}
+          </h2>
           {workspace.user.role !== "superadmin" && (
             <Button onClick={() => setEditor({ kind: "leave" })}>Antrag stellen</Button>
           )}
@@ -1023,7 +1031,12 @@ export function CalendarModule({ productionId = "" }: { productionId?: string })
         {leaves.length ? (
           <div className="list">
             {leaves.map((leave) => (
-              <div className="list-row" key={leave.id}>
+              <div
+                className={`list-row${leave.id === focusedLeaveId ? " notification-target" : ""}`}
+                id={leave.id === focusedLeaveId ? `leave-${leave.id}` : undefined}
+                tabIndex={leave.id === focusedLeaveId ? -1 : undefined}
+                key={leave.id}
+              >
                 <div>
                   <strong>
                     {workspace.members.find((x) => x.id === leave.data.userId)?.name ||

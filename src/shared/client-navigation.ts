@@ -60,16 +60,20 @@ export function closeRecordDetail() {
 }
 
 /** Restore the actual history entry, including Back from a linked detail dialog. */
-export function restoreNavigationScroll() {
+export function restoreNavigationScroll(targetId?: string) {
   let saved = context().scroll;
-  if (!saved && navigationUser) {
+  if (!saved && !targetId && navigationUser) {
     try {
       saved = JSON.parse(sessionStorage.getItem(scrollKey()) || "null") || undefined;
     } catch {}
   }
-  const frame = requestAnimationFrame(() =>
-    window.scrollTo({ left: saved?.x || 0, top: saved?.y || 0, behavior: "instant" }),
-  );
+  const frame = requestAnimationFrame(() => {
+    const target = !saved && targetId ? document.getElementById(targetId) : null;
+    if (target) {
+      target.focus({ preventScroll: true });
+      target.scrollIntoView({ block: "center", behavior: "instant" });
+    } else window.scrollTo({ left: saved?.x || 0, top: saved?.y || 0, behavior: "instant" });
+  });
   return () => cancelAnimationFrame(frame);
 }
 

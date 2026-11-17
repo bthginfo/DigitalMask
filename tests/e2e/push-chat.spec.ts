@@ -189,6 +189,7 @@ async function mock(page: Page, mode = "supported", dark = false) {
     reads: () => reads,
     actions,
     readRequests,
+    record,
     workspace,
     addNotice: (id: string) =>
       workspace.records.notifications.push(
@@ -209,6 +210,113 @@ async function mock(page: Page, mode = "supported", dark = false) {
     },
   };
 }
+
+test("opens the production task directly even if marking the notice read fails", async ({
+  page,
+}) => {
+  const { workspace, record } = await mock(page);
+  workspace.records.tasks = [
+    record("tasks", "target-task", {
+      productionId: "play",
+      title: "Perücke nacharbeiten",
+      status: "todo",
+    }),
+  ];
+  workspace.records.notifications = [
+    record("notifications", "target-notice", {
+      type: "TaskAssignedV1",
+      title: "Neue Aufgabe · Perücke",
+      userId: workspace.user.id,
+      link: "/?module=tasks",
+      productionId: "play",
+      recordId: "target-task",
+    }),
+  ];
+  await page.route("**/api/actions", (route) => route.fulfill({ status: 503, json: {} }));
+  await page.goto("/");
+  await page.getByRole("link", { name: "Neue Aufgabe · Perücke" }).click();
+  await expect(page).toHaveURL(/module=productions.*tab=tasks.*record=target-task/);
+  await expect(page.getByRole("dialog", { name: "Perücke nacharbeiten" })).toBeVisible();
+});
+
+test("jumps from the mobile bell to a message outside the loaded history", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const { workspace, record } = await mock(page);
+  workspace.records.messages = Array.from({ length: 25 }, (_, i) =>
+    record("messages", `recent-${i}`, {
+      userId: "other",
+      conversationId: "private",
+      text: `Neuere Nachricht ${i}`,
+    }),
+  );
+  const target = {
+    ...record("messages", "older-message", {
+      userId: "other",
+      conversationId: "private",
+      text: "Der gesuchte Hinweis zur Perücke",
+    }),
+    createdAt: "2026-10-01T08:00:00Z",
+  };
+  workspace.records.notifications = [
+    record("notifications", "message-notice", {
+      type: "ChatMessageCreatedV1",
+      title: "Neue private Nachricht",
+      userId: workspace.user.id,
+      conversationId: "private",
+      recordId: target.id,
+      link: "/?module=chat&conversationId=private",
+    }),
+  ];
+  await page.route("**/api/records/messages/older-message", (route) =>
+    route.fulfill({ json: target }),
+  );
+  await page.route("**/api/workspace*", (route) =>
+    route.fulfill({
+      json: {
+        ...workspace,
+        records: {
+          ...workspace.records,
+          notifications: workspace.records.notifications.filter((notice) => !notice.data.read),
+        },
+      },
+    }),
+  );
+  await page.goto("/");
+  await page.getByRole("button", { name: "1 ungelesene Mitteilungen" }).click();
+  const notices = page.getByRole("dialog", { name: "Mitteilungen" });
+  await expect(notices.getByText("Gelesen", { exact: true })).toBeVisible();
+  await notices.getByRole("link", { name: /Neue private Nachricht/ }).click();
+  await expect(page).toHaveURL(/conversationId=private.*messageId=older-message/);
+  const message = page.locator(".chat-message.notification-target");
+  await expect(message).toContainText(target.data.text as string);
+  await expect(message).toBeInViewport();
+  await expect(notices).toHaveCount(0);
+});
+
+test("scrolls from a leave notification to the matching calendar request", async ({ page }) => {
+  const { workspace, record } = await mock(page);
+  workspace.records.leave = [
+    record("leave", "target-request", {
+      userId: workspace.user.id,
+      start: "2026-11-19",
+      end: "2026-11-19",
+      status: "approved",
+      reason: "Freier Tag",
+    }),
+  ];
+  workspace.records.notifications = [
+    record("notifications", "leave-notice", {
+      type: "LeaveRequestDecidedV1",
+      userId: workspace.user.id,
+      recordId: "target-request",
+      title: "Freiwunsch genehmigt",
+    }),
+  ];
+  await page.goto("/");
+  await page.getByRole("link", { name: "Freiwunsch genehmigt" }).click();
+  await expect(page.locator("#leave-target-request")).toBeInViewport({ ratio: 0.8 });
+});
+
 for (const width of [1440, 390]) {
   test(`notification read controls ${width}px`, async ({ page }, info) => {
     await page.setViewportSize({ width, height: 900 });

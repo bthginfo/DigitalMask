@@ -1,16 +1,5 @@
 import type { RecordData } from "@/shared/contracts";
-
-export function safeNotificationLink(link: unknown) {
-  if (typeof link !== "string" || !link.startsWith("/?")) return "/";
-  try {
-    const url = new URL(link, "https://digitalmask.invalid");
-    return url.origin === "https://digitalmask.invalid" && url.pathname === "/"
-      ? url.pathname + url.search
-      : "/";
-  } catch {
-    return "/";
-  }
-}
+import { notificationHref } from "./links";
 export function pushPayload(
   type: string,
   noticeId: string,
@@ -30,7 +19,7 @@ export function pushPayload(
     title: `DigitalMask · ${labels[type] || "Neue Mitteilung"}`,
     // Message contents and personal planning details stay inside the authenticated app.
     body: "Öffne DigitalMask, um die Mitteilung zu lesen.",
-    url: safeNotificationLink(data.link),
+    url: notificationHref(data, type) || "/",
     tag: noticeId,
     userId,
     unreadCount: Math.max(0, Math.floor(count)),

@@ -143,6 +143,7 @@ export async function decideLeave(
       title: status === "approved" ? "Freiwunsch genehmigt" : "Freiwunsch abgelehnt",
       body: `${row.data.start} bis ${row.data.end}`,
       link: "/?module=calendar",
+      recordId: row.id,
     });
     await auditChange(tx, context, "leave.decided", id);
     await queueGoogleCalendarSync(tx, context);
