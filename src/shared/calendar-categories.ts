@@ -26,6 +26,7 @@ const normalizedCategory = (name: string) =>
     .toLowerCase()
     .replace(/[\s._-]+/g, "");
 const serviceNames = new Set(["service", "dienst", "tagesdienst", "td"]);
+const performanceNames = new Set(["performance", "vorstellung", "vorstellungen"]);
 const halfDayNames = new Set(["halfdayoff", "halberfreiertag"]);
 const absenceKeys = new Set(["absence", "absent", "abf", "rest", "vacation"]);
 export type CalendarBackground = "service" | "hint" | undefined;
@@ -56,6 +57,12 @@ const unpaidDayNames = new Set(["abf", "rest", "ruhetag", "halfdayoff", "halberf
 
 export function calendarCategoryKey(key: string) {
   return key === "sick" ? "absent" : key;
+}
+
+export function calendarCategoryIsPerformance(key: string, name: string) {
+  return (
+    performanceNames.has(normalizedCategory(key)) || performanceNames.has(normalizedCategory(name))
+  );
 }
 
 function neutralAbsentLabel(label: string) {

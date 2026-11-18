@@ -126,6 +126,72 @@ async function mock(page: Page, role: "admin" | "user" = "admin", dark = false) 
 }
 
 for (const width of [390, 1440]) {
+  test(`month prioritizes performances and keeps other appointments accessible at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 });
+    const { workspace } = await mock(page, "user");
+    const service = workspace.records.events.find((event) => event.id === "own")!;
+    service.data.title = "Tagesdienst";
+    const performance = width === 390 ? "performance" : "custom-stage-event";
+    if (performance !== "performance")
+      workspace.records.calendarCategories.push({
+        ...service,
+        id: "performances",
+        kind: "calendarCategories",
+        data: { key: performance, name: "Vorstellungen", color: "#ad698b", allDay: false },
+      });
+    const schedule = [
+      {
+        id: "half-day",
+        category: "half-day-off",
+        title: "",
+        allDay: true,
+        start: "2026-10-01T00:00:00+02:00",
+        end: "2026-10-02T00:00:00+02:00",
+      },
+      {
+        id: "rehearsal",
+        category: "rehearsal",
+        title: "Nachmittagsprobe",
+        start: "2026-10-01T16:00:00+02:00",
+        end: "2026-10-01T18:00:00+02:00",
+      },
+      {
+        id: "performance",
+        category: performance,
+        title: "",
+        productionId: "play",
+        start: "2026-10-01T19:30:00+02:00",
+        end: "2026-10-01T22:00:00+02:00",
+      },
+    ];
+    for (const { id, ...data } of schedule)
+      workspace.records.events.push({ ...service, id, data: { ...service.data, ...data } });
+
+    await page.goto("/?module=calendar");
+    const cell = page.locator('.fc-daygrid-day[data-date="2026-10-01"]');
+    const visibleEvents = cell.locator(".fc-daygrid-event:visible");
+    const mobile = width === 390;
+    await expect(visibleEvents).toHaveCount(mobile ? 1 : 3);
+    await expect(visibleEvents.first()).toContainText("Sommernacht – Vorstellung");
+    const more = cell.locator(".fc-daygrid-more-link");
+    await expect(more).toHaveText(`+ weitere ${mobile ? 3 : 1}`);
+    await more.click();
+
+    const day = page.locator(mobile ? "dialog[data-calendar-day-sheet]" : ".fc-more-popover");
+    await expect(day).toContainText("Tagesdienst");
+    await expect(day).toContainText("Halber freier Tag");
+    await expect(day).toContainText("Sommernacht – Vorstellung");
+    await day
+      .locator(mobile ? "button" : ".fc-daygrid-event")
+      .filter({ hasText: "Nachmittagsprobe" })
+      .click();
+    await expect(page.getByRole("dialog", { name: "Nachmittagsprobe", exact: true })).toBeVisible();
+  });
+}
+
+for (const width of [390, 1440]) {
   test(`shared calendar production outside own team ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 1000 });
     const state = await mock(page, "user");

@@ -47,7 +47,11 @@ import { Badge, Button, ErrorMessage, ExportButton, Modal, PageHeader } from "..
 import { ResourceEditor } from "../resource-editor";
 import { RecordDetail } from "../resource-view";
 import { ExportDialog } from "../export-dialog";
-import { calendarPresentation, calendarCategoryBlocksTime } from "@/shared/calendar-categories";
+import {
+  calendarPresentation,
+  calendarCategoryBlocksTime,
+  calendarCategoryIsPerformance,
+} from "@/shared/calendar-categories";
 import {
   calendarCategories,
   monthStart,
@@ -82,6 +86,12 @@ const calendarClock = (date: Date | null) =>
         minute: "2-digit",
       }).format(date)
     : "";
+const calendarViews = {
+  dayGridMonth: {
+    eventOrder: "-performancePriority,start,-duration,allDay,title",
+    eventOrderStrict: true,
+  },
+};
 export function expandEvents(
   records: DomainRecord[],
   rangeStart: string,
@@ -336,6 +346,15 @@ export function CalendarModule({
     () =>
       expanded.map((event) => ({
         ...event,
+        extendedProps: {
+          ...event.extendedProps,
+          performancePriority: Number(
+            calendarCategoryIsPerformance(
+              value(event.extendedProps.record.data, "category"),
+              event.categoryName,
+            ),
+          ),
+        },
         display:
           event.background && !event.allDay && (view === "week" || view === "day")
             ? "background"
@@ -786,6 +805,7 @@ export function CalendarModule({
                         : "dayGridMonth"
                 }
                 locale={deLocale}
+                views={calendarViews}
                 initialDate={calendarDate}
                 timeZone="Europe/Berlin"
                 firstDay={1}

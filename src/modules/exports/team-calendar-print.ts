@@ -1,4 +1,5 @@
 import { calendarEventPaint } from "../../shared/calendar-paint";
+import { calendarCategoryIsPerformance } from "../../shared/calendar-categories";
 import { eventDisplay } from "./calendar-presentation";
 import { eventStartTimeLabel, eventTimeLabel, memberDayEvents } from "./team-calendar";
 import type { DomainRecord } from "../../shared/contracts";
@@ -72,8 +73,9 @@ export function monthlyPrintLabel(record: DomainRecord, input: ExportInput) {
   );
   const productionTitle = textValue(production?.data.title).trim();
   const customTitle = textValue(record.data.title).trim();
-  const performance = names.some((name) =>
-    ["performance", "vorstellung", "vorstellungen"].includes(name),
+  const performance = calendarCategoryIsPerformance(
+    textValue(record.data.category),
+    display.categoryName,
   );
   if (performance)
     return { title: productionTitle || customTitle || display.categoryName, performance };
