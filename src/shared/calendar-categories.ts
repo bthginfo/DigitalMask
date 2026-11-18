@@ -27,6 +27,17 @@ const normalizedCategory = (name: string) =>
     .replace(/[\s._-]+/g, "");
 const serviceNames = new Set(["service", "dienst", "tagesdienst", "td"]);
 const performanceNames = new Set(["performance", "vorstellung", "vorstellungen"]);
+const rehearsalPriorityNames = new Set([
+  "hp1",
+  "hp2",
+  "gp",
+  "ama",
+  "hauptprobe1",
+  "hauptprobe2",
+  "1hauptprobe",
+  "2hauptprobe",
+  "generalprobe",
+]);
 const halfDayNames = new Set(["halfdayoff", "halberfreiertag"]);
 const absenceKeys = new Set(["absence", "absent", "abf", "rest", "vacation"]);
 export type CalendarBackground = "service" | "hint" | undefined;
@@ -63,6 +74,13 @@ export function calendarCategoryIsPerformance(key: string, name: string) {
   return (
     performanceNames.has(normalizedCategory(key)) || performanceNames.has(normalizedCategory(name))
   );
+}
+
+export function calendarMonthPriority(key: string, name: string, title: string) {
+  // Older entries sometimes put the rehearsal type in the title of a generic category.
+  const names = [key, name, title].map(normalizedCategory);
+  if (names.some((name) => performanceNames.has(name) || name === "premiere")) return 2;
+  return Number(names.some((name) => rehearsalPriorityNames.has(name)));
 }
 
 function neutralAbsentLabel(label: string) {

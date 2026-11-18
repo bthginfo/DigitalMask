@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { occurrences } from "../src/modules/calendar/occurrences";
-import { calendarPresentation } from "../src/shared/calendar-categories";
+import { calendarMonthPriority, calendarPresentation } from "../src/shared/calendar-categories";
 import { calendarEventPaint } from "../src/shared/calendar-paint";
 import type { DomainRecord } from "../src/shared/contracts";
 const event = (data: Record<string, unknown>) =>
@@ -71,6 +71,23 @@ describe("calendar titles and colors", () => {
     expect(calendarEventPaint("invalid", false).backgroundColor).toBe("#77818e");
   });
 });
+
+describe("month calendar priority", () => {
+  it.each(["HP1", "HP 2", "GP", "Generalprobe", "AMA", "2. Hauptprobe"])(
+    "shows %s ahead of ordinary appointments by category or legacy title",
+    (label) => {
+      expect(calendarMonthPriority("custom-stage-event", label, "")).toBe(1);
+      expect(calendarMonthPriority("rehearsal", "Probe", label)).toBe(1);
+    },
+  );
+  it("gives performances and premieres the leading slot ahead of rehearsals", () => {
+    expect(calendarMonthPriority("performance", "Vorstellung", "")).toBe(2);
+    expect(calendarMonthPriority("custom-premiere", "Premiere", "")).toBe(2);
+    expect(calendarMonthPriority("rehearsal", "Probe", "Premiere")).toBe(2);
+    expect(calendarMonthPriority("service", "Tagesdienst", "Vorbereitung für Premiere")).toBe(0);
+  });
+});
+
 describe("theatre calendar recurrence", () => {
   it("preserves Berlin wall times across winter time, including overnight shifts", () => {
     const series = event({

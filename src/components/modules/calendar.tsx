@@ -50,7 +50,7 @@ import { ExportDialog } from "../export-dialog";
 import {
   calendarPresentation,
   calendarCategoryBlocksTime,
-  calendarCategoryIsPerformance,
+  calendarMonthPriority,
 } from "@/shared/calendar-categories";
 import {
   calendarCategories,
@@ -88,7 +88,7 @@ const calendarClock = (date: Date | null) =>
     : "";
 const calendarViews = {
   dayGridMonth: {
-    eventOrder: "-performancePriority,start,-duration,allDay,title",
+    eventOrder: "-monthPriority,start,-duration,allDay,title",
     eventOrderStrict: true,
   },
 };
@@ -348,11 +348,10 @@ export function CalendarModule({
         ...event,
         extendedProps: {
           ...event.extendedProps,
-          performancePriority: Number(
-            calendarCategoryIsPerformance(
-              value(event.extendedProps.record.data, "category"),
-              event.categoryName,
-            ),
+          monthPriority: calendarMonthPriority(
+            value(event.extendedProps.record.data, "category"),
+            event.categoryName,
+            value(event.extendedProps.record.data, "title"),
           ),
         },
         display:

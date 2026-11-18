@@ -126,7 +126,7 @@ async function mock(page: Page, role: "admin" | "user" = "admin", dark = false) 
 }
 
 for (const width of [390, 1440]) {
-  test(`month prioritizes performances and keeps other appointments accessible at ${width}px`, async ({
+  test(`month prioritizes stage appointments and keeps other appointments accessible at ${width}px`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height: 900 });
@@ -141,6 +141,12 @@ for (const width of [390, 1440]) {
         kind: "calendarCategories",
         data: { key: performance, name: "Vorstellungen", color: "#ad698b", allDay: false },
       });
+    workspace.records.calendarCategories.push({
+      ...service,
+      id: "main-rehearsal-category",
+      kind: "calendarCategories",
+      data: { key: "main-rehearsal", name: "HP2", color: "#537fba", allDay: false },
+    });
     const schedule = [
       {
         id: "half-day",
@@ -149,6 +155,13 @@ for (const width of [390, 1440]) {
         allDay: true,
         start: "2026-10-01T00:00:00+02:00",
         end: "2026-10-02T00:00:00+02:00",
+      },
+      {
+        id: "ama",
+        category: "rehearsal",
+        title: "AMA",
+        start: "2026-10-01T15:00:00+02:00",
+        end: "2026-10-01T16:00:00+02:00",
       },
       {
         id: "rehearsal",
@@ -165,6 +178,21 @@ for (const width of [390, 1440]) {
         start: "2026-10-01T19:30:00+02:00",
         end: "2026-10-01T22:00:00+02:00",
       },
+      {
+        id: "next-day-service",
+        category: "service",
+        title: "Tagesdienst",
+        start: "2026-10-02T09:00:00+02:00",
+        end: "2026-10-02T15:00:00+02:00",
+      },
+      {
+        id: "hp2",
+        category: "main-rehearsal",
+        title: "",
+        productionId: "play",
+        start: "2026-10-02T18:00:00+02:00",
+        end: "2026-10-02T20:00:00+02:00",
+      },
     ];
     for (const { id, ...data } of schedule)
       workspace.records.events.push({ ...service, id, data: { ...service.data, ...data } });
@@ -175,13 +203,19 @@ for (const width of [390, 1440]) {
     const mobile = width === 390;
     await expect(visibleEvents).toHaveCount(mobile ? 1 : 3);
     await expect(visibleEvents.first()).toContainText("Sommernacht – Vorstellung");
+    if (!mobile) await expect(visibleEvents.nth(1)).toContainText("AMA");
+    const rehearsalDay = page.locator('.fc-daygrid-day[data-date="2026-10-02"]');
+    await expect(rehearsalDay.locator(".fc-daygrid-event:visible").first()).toContainText(
+      "Sommernacht – HP2",
+    );
     const more = cell.locator(".fc-daygrid-more-link");
-    await expect(more).toHaveText(`+ weitere ${mobile ? 3 : 1}`);
+    await expect(more).toHaveText(`+ weitere ${mobile ? 4 : 2}`);
     await more.click();
 
     const day = page.locator(mobile ? "dialog[data-calendar-day-sheet]" : ".fc-more-popover");
     await expect(day).toContainText("Tagesdienst");
     await expect(day).toContainText("Halber freier Tag");
+    await expect(day).toContainText("AMA");
     await expect(day).toContainText("Sommernacht – Vorstellung");
     await day
       .locator(mobile ? "button" : ".fc-daygrid-event")
