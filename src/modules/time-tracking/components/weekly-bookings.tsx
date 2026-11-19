@@ -3,7 +3,15 @@ import { LinkedText } from "@/components/linked-text";
 import { useState } from "react";
 import { ChevronDown, ChevronLeft, ChevronRight, Pencil } from "lucide-react";
 import type { DomainRecord } from "@/shared/contracts";
-import { dateLabel, hours, num, shiftDate, value, weekStart } from "@/shared/client-api";
+import {
+  dateLabel,
+  hours,
+  instantDate,
+  num,
+  shiftDate,
+  value,
+  weekStart,
+} from "@/shared/client-api";
 import { categoryName } from "@/shared/domain-categories";
 import { canManageRecord } from "@/shared/record-permissions";
 import { Button } from "@/components/ui";
@@ -63,12 +71,14 @@ export function BookingList({
   onEdit,
   onDetail,
   groupByPerson = false,
+  showDate = true,
 }: {
   entries: BookingWeekEntry[];
   kind: "time" | "attendance";
   onEdit: (record: DomainRecord) => void;
   onDetail: (record: DomainRecord) => void;
   groupByPerson?: boolean;
+  showDate?: boolean;
 }) {
   const { workspace } = useWorkspace();
   if (groupByPerson)
@@ -102,10 +112,12 @@ export function BookingList({
         return (
           <li key={record.id} className={styles.bookingRow}>
             <div className={styles.bookingContent}>
-              <span className={styles.bookingDate}>
-                {dateLabel(from)}
-                {from !== to ? ` – ${dateLabel(to)}` : ""}
-              </span>
+              {showDate && (
+                <span className={styles.bookingDate}>
+                  {dateLabel(from)}
+                  {from !== to ? ` – ${dateLabel(to)}` : ""}
+                </span>
+              )}
               <button className={styles.detailLink} onClick={() => onDetail(record)}>
                 {value(record.data, "title") || "Anwesenheit"}
               </button>
@@ -126,7 +138,8 @@ export function BookingList({
               )}
               {seconds !== num(record.data, "durationSeconds") && (
                 <span className="small muted">
-                  Anteil im Zeitraum · gesamt {hours(num(record.data, "durationSeconds"))} h
+                  {showDate ? "Anteil im Zeitraum" : "Anteil am Tag"} · gesamt{" "}
+                  {hours(num(record.data, "durationSeconds"))} h
                 </span>
               )}
             </div>
@@ -143,6 +156,88 @@ export function BookingList({
         );
       })}
     </ul>
+  );
+}
+
+const attendanceDate = new Intl.DateTimeFormat("de-DE", {
+  timeZone: "Europe/Berlin",
+  weekday: "long",
+  day: "numeric",
+  month: "short",
+});
+
+export function AttendanceWeekList({
+  week,
+  onEdit,
+  onDetail,
+}: {
+  week: BookingWeek;
+  onEdit: (record: DomainRecord) => void;
+  onDetail: (record: DomainRecord) => void;
+}) {
+  const dates = Array.from({ length: 7 }, (_, offset) => shiftDate(week.end, -offset));
+  return (
+    <ol
+      className={styles.attendanceDays}
+      aria-label="Anwesenheiten und Kalenderkennzeichen nach Tag"
+    >
+      {dates.map((date) => {
+        const entries = week.entries.flatMap((entry) => {
+          const allocations = entry.allocations.filter((allocation) => allocation.date === date);
+          return allocations.length
+            ? [
+                {
+                  ...entry,
+                  allocations,
+                  seconds: allocations.reduce((sum, allocation) => sum + allocation.seconds, 0),
+                },
+              ]
+            : [];
+        });
+        const markers = week.markers.filter((marker) => marker.date === date);
+        const credit = week.creditsByDay.get(date) || 0;
+        if (!entries.length && !markers.length) return null;
+        return (
+          <li key={date} className={styles.attendanceDay}>
+            <h4 className={styles.attendanceDate}>
+              <time dateTime={date}>{attendanceDate.format(instantDate(date))}</time>
+            </h4>
+            {markers.length > 0 && (
+              <div className={styles.attendanceMarkers}>
+                <div className={styles.attendanceLabels}>
+                  {markers.map((marker) => (
+                    <button
+                      key={marker.event.id}
+                      type="button"
+                      className={styles.dayMarker}
+                      title={marker.title || undefined}
+                      onClick={() => onDetail(marker.event)}
+                    >
+                      {marker.label}
+                    </button>
+                  ))}
+                </div>
+                {credit > 0 && (
+                  <span className={styles.attendanceCredit}>
+                    <strong>+{hours(credit)} h</strong>
+                    <small>Tagesgutschrift</small>
+                  </span>
+                )}
+              </div>
+            )}
+            {entries.length > 0 && (
+              <BookingList
+                entries={entries}
+                kind="attendance"
+                showDate={false}
+                onEdit={onEdit}
+                onDetail={onDetail}
+              />
+            )}
+          </li>
+        );
+      })}
+    </ol>
   );
 }
 
@@ -202,22 +297,29 @@ export function WeeklyHistory({
                       : ""}
                   </small>
                 </span>
-                <strong className={styles.historyTotal}>{hours(week.seconds)} h</strong>
+                <strong className={styles.historyTotal}>
+                  {hours(week.seconds + week.creditSeconds)} h
+                </strong>
                 <ChevronDown size={18} />
               </summary>
-              <BookingList
-                entries={week.entries}
-                kind={kind}
-                onEdit={onEdit}
-                onDetail={onDetail}
-                groupByPerson={groupByPerson}
-              />
+              {kind === "attendance" ? (
+                <AttendanceWeekList week={week} onEdit={onEdit} onDetail={onDetail} />
+              ) : (
+                <BookingList
+                  entries={week.entries}
+                  kind={kind}
+                  onEdit={onEdit}
+                  onDetail={onDetail}
+                  groupByPerson={groupByPerson}
+                />
+              )}
               {(week.markers.length > 0 || onBookDay) && (
                 <WeekDayOverview
                   week={week.start}
                   person={person}
                   entries={week.entries}
                   markers={week.markers}
+                  creditsByDay={kind === "attendance" ? week.creditsByDay : undefined}
                   onDetail={onDetail}
                   onBookDay={onBookDay}
                   bookingLabel={kind === "attendance" ? "Anwesenheit" : "Zeit"}

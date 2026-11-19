@@ -1,9 +1,9 @@
-import type { DomainRecord } from "@/shared/contracts";
+import { textValue, type DomainRecord } from "@/shared/contracts";
 import { shiftDate, timeAllocations } from "@/shared/client-api";
-import type { WorkingTimeSettings } from "@/shared/working-time";
+import { currentWorkingSchedule, type WorkingTimeSettings } from "@/shared/working-time";
 import { calendarCategoryCreditsTime } from "@/shared/calendar-categories";
 import { localDay } from "./rules";
-import { timeDayMarkers } from "./day-markers";
+import { timeDayMarkers, type TimeDayMarker } from "./day-markers";
 import { isoWeek } from "./history";
 
 export interface AttendanceBalanceAmounts {
@@ -36,6 +36,42 @@ const emptyAmounts = (): AttendanceBalanceAmounts => ({
   openingBalanceSeconds: 0,
   balanceSeconds: 0,
 });
+
+/** The same personal day credits are used in the time account and attendance history. */
+export function attendanceCreditsByDay({
+  userId,
+  settings,
+  markers,
+  leave,
+  through,
+}: {
+  userId: string;
+  settings?: WorkingTimeSettings;
+  markers: TimeDayMarker[];
+  leave: DomainRecord[];
+  through: string;
+}) {
+  const credits = new Map<string, number>();
+  if (!settings?.schedules.length) return credits;
+  const approvedLeave = new Set(
+    leave
+      .filter((record) => record.data.userId === userId && record.data.status === "approved")
+      .map((record) => record.id),
+  );
+  for (const { date, label, event } of markers) {
+    if (
+      date > through ||
+      credits.has(date) ||
+      (event.data.leaveId && !approvedLeave.has(String(event.data.leaveId))) ||
+      !calendarCategoryCreditsTime(textValue(event.data.category), { name: label })
+    )
+      continue;
+    const schedule = currentWorkingSchedule(settings, date);
+    // A personal paid date counts once, including Sundays, in addition to any attendance.
+    if (schedule?.weeklyMinutes) credits.set(date, (schedule.weeklyMinutes * 60) / 6);
+  }
+  return credits;
+}
 
 /** Assign each whole week to its Monday's month, without overlapping adjacent months. */
 export function attendanceMonthRange(month: string) {
@@ -106,30 +142,27 @@ export function calculateAttendanceBalance({
       actual.set(day.date, (actual.get(day.date) || 0) + day.seconds);
     }
   }
-  const approvedLeave = new Set(
-    leave
-      .filter((record) => record.data.userId === userId && record.data.status === "approved")
-      .map((record) => record.id),
-  );
   const categoryDefinitions = new Map(
     calendarCategories.map((category) => [String(category.data.key), category.data]),
   );
-  const paidDays = new Set(
-    timeDayMarkers({
-      events: events.filter(
-        (event) =>
-          calendarCategoryCreditsTime(
-            String(event.data.category),
-            categoryDefinitions.get(String(event.data.category)),
-          ) &&
-          (!event.data.leaveId || approvedLeave.has(String(event.data.leaveId))),
+  const creditsByDay = attendanceCreditsByDay({
+    userId,
+    settings,
+    leave,
+    through: last,
+    markers: timeDayMarkers({
+      events: events.filter((event) =>
+        calendarCategoryCreditsTime(
+          String(event.data.category),
+          categoryDefinitions.get(String(event.data.category)),
+        ),
       ),
       calendarCategories,
       userId,
       from: first,
       to: last,
-    }).map((marker) => marker.date),
-  );
+    }),
+  });
   let scheduleIndex = -1;
   for (
     let weekStart = isoWeek(first).start;
@@ -152,9 +185,7 @@ export function calculateAttendanceBalance({
       week.targetSeconds += (schedule.weeklyMinutes * 60) / 7;
       if (date > last) continue;
       week.attendanceSeconds += actual.get(date) || 0;
-      // Flexible workdays: a personal paid date counts once, including Sundays.
-      // The six-day divisor is independent of weekday choices and actual work.
-      if (paidDays.has(date)) week.creditSeconds += (schedule.weeklyMinutes * 60) / 6;
+      week.creditSeconds += creditsByDay.get(date) || 0;
     }
     week.attendanceSeconds = Math.round(week.attendanceSeconds);
     week.creditSeconds = Math.round(week.creditSeconds);

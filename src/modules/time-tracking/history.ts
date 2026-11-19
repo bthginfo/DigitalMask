@@ -14,8 +14,10 @@ export interface BookingWeek {
   number: number;
   year: number;
   seconds: number;
+  creditSeconds: number;
   entries: BookingWeekEntry[];
   markers: TimeDayMarker[];
+  creditsByDay: Map<string, number>;
 }
 
 /** ISO week-year follows the Thursday, including weeks that cross New Year's Day. */
@@ -37,14 +39,32 @@ export function groupBookingWeeks(
     productionId = "",
     period = {},
     markers = [],
+    creditsByDay,
   }: {
     userId: string | undefined;
     productionId?: string;
     period?: PeriodFilter;
     markers?: TimeDayMarker[];
+    creditsByDay?: ReadonlyMap<string, number>;
   },
 ): BookingWeek[] {
   const weeks = new Map<string, BookingWeek>();
+  const getWeek = (date: string) => {
+    const identity = isoWeek(date);
+    let week = weeks.get(identity.start);
+    if (!week) {
+      week = {
+        ...identity,
+        seconds: 0,
+        creditSeconds: 0,
+        entries: [],
+        markers: [],
+        creditsByDay: new Map(),
+      };
+      weeks.set(identity.start, week);
+    }
+    return week;
+  };
   for (const record of records) {
     if (
       (userId !== undefined && record.data.userId !== userId) ||
@@ -59,12 +79,7 @@ export function groupBookingWeeks(
         !dateMatchesPeriod(day.date, period)
       )
         continue;
-      const identity = isoWeek(day.date);
-      let week = weeks.get(identity.start);
-      if (!week) {
-        week = { ...identity, seconds: 0, entries: [], markers: [] };
-        weeks.set(identity.start, week);
-      }
+      const week = getWeek(day.date);
       let entry = week.entries.find((row) => row.record.id === record.id);
       if (!entry) {
         entry = { record, seconds: 0, allocations: [] };
@@ -77,13 +92,13 @@ export function groupBookingWeeks(
   }
   for (const marker of markers) {
     if (!dateMatchesPeriod(marker.date, period)) continue;
-    const identity = isoWeek(marker.date);
-    let week = weeks.get(identity.start);
-    if (!week) {
-      week = { ...identity, seconds: 0, entries: [], markers: [] };
-      weeks.set(identity.start, week);
-    }
+    const week = getWeek(marker.date);
     week.markers.push(marker);
+    const creditSeconds = creditsByDay?.get(marker.date);
+    if (creditSeconds && !week.creditsByDay.has(marker.date)) {
+      week.creditsByDay.set(marker.date, creditSeconds);
+      week.creditSeconds += creditSeconds;
+    }
   }
   return [...weeks.values()]
     .sort((a, b) => b.start.localeCompare(a.start))

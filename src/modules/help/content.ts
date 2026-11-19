@@ -216,7 +216,7 @@ export const helpArticles: HelpArticle[] = [
       "Kalenderzeiten prüfen zeigt ungeprüfte Vorschläge aus deinen bereits beendeten Kalenderterminen. Öffne einen Vorschlag, vergleiche ihn mit deiner tatsächlichen Arbeit und korrigiere Beginn, Ende, Pause oder Tätigkeit. Erst dein ausdrückliches Speichern bucht die Zeit. Kalendertermine allein sind keine gebuchten Stunden.",
       "Wenn ein Termin innerhalb eines Tagesdienstes liegt, wird seine Zeit bei den Arbeitsvorschlägen zuerst berücksichtigt. Der Dienst füllt nur die übrige Zeit. So wird derselbe Zeitraum nicht doppelt vorgeschlagen. Die Anwesenheit fasst zusammenhängende geplante Arbeitszeiten zusammen; auch diese musst du selbst prüfen und bestätigen.",
       "Ganztägige freie Tage und Abwesenheiten werden nicht als Arbeitszeit vorgeschlagen. Bereits gebuchte Zeiträume werden berücksichtigt. Prüfe die Vorschläge spätestens beim Rückblick auf die vergangene Woche; Anwesenheit und Tätigkeiten bestätigst du getrennt.",
-      "Die Wochenübersicht zeigt auch ABF, Ruhetag, Urlaub und andere ganztägige Kennzeichnungen aus deinem Kalender. Über Tag kennzeichnen kannst du eine vorhandene Kalenderart für deinen Tag wählen. Diese Kennzeichnungen erzeugen keine Arbeitsstunden. Besprechung, Aufräumen und andere Tätigkeiten lassen sich weiterhin ohne Produktion buchen.",
+      "In der Anwesenheitsliste stehen Wochentage und ganztägige Kalenderkennzeichen wie ABF, Ruhetag und Urlaub. Bei Urlaub, Feiertag, Feiertagsausgleich und Absent zeigt sie die Tagesgutschrift separat und zählt sie zum Wochengesamt. ABF, Ruhetag und halber freier Tag erscheinen als Kennzeichen ohne Gutschrift. Über Tag kennzeichnen wählst du eine vorhandene Kalenderart für deinen Tag.",
       "Beim PDF-Export stehen Kalenderkennzeichen in einer zusätzlichen Wochenübersicht. Im Excel-Export findest du sie auf dem Blatt Kalenderkennzeichen. Die Stundensummen enthalten weiterhin nur tatsächlich gebuchte Zeit.",
       "Die Tages- und Wochensummen berücksichtigen Mitternacht. Der Wochenvergleich zeigt Anwesenheit und Produktionsstunden nebeneinander. In einer Produktion stehen nur ihre Produktionsstunden.",
       "Gespeicherte Zeiten sind sofort eingetragen. Es gibt keine Wochenfreigabe und du musst sie nicht einreichen. Anwesenheit und Produktionsarbeit bleiben getrennt und können jederzeit korrigiert werden.",
@@ -451,7 +451,7 @@ export const helpFaq = [
   ],
   [
     "Wie trage ich ABF oder Ruhetag auf meiner Wochenübersicht ein?",
-    "Nutze Tag kennzeichnen und wähle eine vorhandene ganztägige Kalenderart für deinen Tag. Ein bereits im Kalender markierter Tag erscheint ebenfalls in der Wochenübersicht. Solche Kennzeichnungen erhöhen deine gebuchten Stunden nicht; tatsächliche Arbeit buchst du separat.",
+    "Nutze Tag kennzeichnen und wähle eine vorhandene ganztägige Kalenderart. Ein bereits im Kalender markierter Tag erscheint ebenfalls in der Wochenübersicht. ABF und Ruhetag erscheinen ohne Gutschrift. Deine Anwesenheit buchst du separat.",
   ],
   [
     "Sind Offlineentwürfe schon im Theater gespeichert?",

@@ -17,6 +17,7 @@ export function WeekDayOverview({
   person,
   entries,
   markers,
+  creditsByDay,
   onDetail,
   onBookDay,
   bookingLabel = "Zeit",
@@ -25,6 +26,7 @@ export function WeekDayOverview({
   person: string;
   entries: BookingWeekEntry[];
   markers: TimeDayMarker[];
+  creditsByDay?: ReadonlyMap<string, number>;
   onDetail: (record: DomainRecord) => void;
   onBookDay?: (date: string) => void;
   bookingLabel?: string;
@@ -45,7 +47,9 @@ export function WeekDayOverview({
             <p className="small muted">
               {onBookDay
                 ? "Wähle einen Tag, um Zeiten nachzutragen. Freie Tage trägst du über „Tag kennzeichnen“ ein."
-                : "Die Stunden zeigen gebuchte Zeiten. Tagesgutschriften aus dem Kalender findest du separat im Zeitkonto."}
+                : bookingLabel === "Anwesenheit"
+                  ? "Die Tageswerte enthalten Anwesenheit und anrechenbare Tagesgutschriften."
+                  : "Die Stunden zeigen gebuchte Zeiten. Tagesgutschriften aus dem Kalender findest du im Zeitkonto."}
             </p>
           </div>
           {canMark && (
@@ -58,10 +62,12 @@ export function WeekDayOverview({
           {Array.from({ length: 7 }, (_, index) => {
             const date = shiftDate(week, index);
             const labels = markers.filter((marker) => marker.date === date);
-            const seconds = entries
+            const presence = entries
               .flatMap((entry) => entry.allocations)
               .filter((allocation) => allocation.date === date)
               .reduce((total, allocation) => total + allocation.seconds, 0);
+            const credit = creditsByDay?.get(date) || 0;
+            const seconds = presence + credit;
             const summary = (
               <>
                 <span className={styles.dayDate}>
@@ -69,6 +75,9 @@ export function WeekDayOverview({
                   {dateLabel(date)}
                 </span>
                 <strong className={styles.dayHours}>{seconds ? `${hours(seconds)} h` : "–"}</strong>
+                {credit > 0 && (
+                  <span className={styles.dayCredit}>inkl. {hours(credit)} h Gutschrift</span>
+                )}
               </>
             );
             return (

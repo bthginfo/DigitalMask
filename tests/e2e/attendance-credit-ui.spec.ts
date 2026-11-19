@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { recordKinds, type DomainRecord, type Workspace } from "../../src/shared/contracts";
+import { shiftDate } from "../../src/shared/client-api";
 
 test.use({ serviceWorkers: "block", viewport: { width: 390, height: 844 } });
 
@@ -47,7 +48,13 @@ test("personal calendar credits appear separately in the mobile time account and
       userId: workspace.user.id,
       title: "Anwesenheit",
       date: "2026-10-05",
+      start: "2026-10-05T12:00:00+02:00",
+      end: "2026-10-06T03:00:00+02:00",
       durationSeconds: 15 * 3600,
+      dayAllocations: [
+        { date: "2026-10-05", seconds: 12 * 3600 },
+        { date: "2026-10-06", seconds: 3 * 3600 },
+      ],
     }),
   ];
   workspace.records.calendarCategories = [
@@ -70,18 +77,21 @@ test("personal calendar credits appear separately in the mobile time account and
       color: "#377a68",
     }),
   ];
-  const day = (id: string, category: string) =>
+  const day = (id: string, category: string, date = "2026-10-06") =>
     row(id, "events", {
       category,
       allDay: true,
       participantIds: [workspace.user.id],
-      start: "2026-10-05T22:00:00Z",
-      end: "2026-10-06T22:00:00Z",
+      start: `${date}T00:00:00+02:00`,
+      end: `${shiftDate(date, 1)}T00:00:00+02:00`,
     });
   workspace.records.events = [
     day("holiday", "custom-holiday"),
     day("overlap", "custom-compensation"),
     day("unpaid", "custom-hft"),
+    day("absence", "absent", "2026-10-07"),
+    day("free", "abf", "2026-10-08"),
+    day("future", "vacation", "2026-10-09"),
   ];
   await page.route("**/api/**", (route) => {
     expect(route.request().method()).toBe("GET");
@@ -96,12 +106,30 @@ test("personal calendar credits appear separately in the mobile time account and
     "15 h",
   );
   await expect(current.locator("dl > div").filter({ hasText: "Tagesgutschriften" })).toContainText(
-    "6,67 h",
+    "13,33 h",
   );
   await expect(current.locator("dl > div").filter({ hasText: "Wochensoll" })).toContainText("40 h");
-  await expect(current).toContainText("21,67 / 40 h");
-  await expect(current).toContainText("Noch 18,33 h bis zum Wochensoll");
+  await expect(current).toContainText("28,33 / 40 h");
+  await expect(current).toContainText("Noch 11,67 h bis zum Wochensoll");
   await expect(account).not.toContainText("Minusstunden");
+  const week = page.getByRole("region", {
+    name: "Anwesenheit der ausgewählten Woche",
+    exact: true,
+  });
+  const weekDay = (label: RegExp) =>
+    week.getByRole("listitem").filter({ has: page.getByRole("heading", { name: label }) });
+  await expect(week).toContainText("15 h Anwesenheit + 13,33 h Tagesgutschriften");
+  await expect(week.locator("header > strong")).toHaveText("28,33 h");
+  const tuesday = weekDay(/^Dienstag, 6\. Okt/);
+  await expect(tuesday.getByRole("button", { name: "Feiertag", exact: true })).toBeVisible();
+  await expect(tuesday.getByRole("button", { name: "Feiertagsausgleich" })).toBeVisible();
+  await expect(tuesday.getByText("+6,67 h", { exact: true })).toHaveCount(1);
+  await expect(tuesday.getByText("3 h", { exact: true })).toBeVisible();
+  await expect(weekDay(/^Mittwoch, 7\. Okt/)).toContainText("Absent");
+  await expect(weekDay(/^Mittwoch, 7\. Okt/)).toContainText("+6,67 h");
+  await expect(weekDay(/^Donnerstag, 8\. Okt/)).toContainText("ABF");
+  await expect(weekDay(/^Donnerstag, 8\. Okt/)).not.toContainText("Tagesgutschrift");
+  await expect(weekDay(/^Freitag, 9\. Okt/)).not.toContainText("Tagesgutschrift");
   await account.getByLabel("Zeitraum des Zeitkontos").selectOption("custom");
   await account.getByLabel("Zeitkonto von", { exact: true }).fill("2026-10-06");
   await account.getByLabel("Zeitkonto bis", { exact: true }).fill("2026-10-06");
@@ -109,10 +137,16 @@ test("personal calendar credits appear separately in the mobile time account and
     "15 h",
   );
   await expect(current.locator("dl > div").filter({ hasText: "Tagesgutschriften" })).toContainText(
-    "6,67 h",
+    "13,33 h",
   );
   await expect(account).toContainText("Der Zeitraum umfasst ganze Kalenderwochen");
-  await expect(current).toContainText("Noch 18,33 h bis zum Wochensoll");
+  await expect(current).toContainText("Noch 11,67 h bis zum Wochensoll");
+  await page.getByLabel("Woche ab", { exact: true }).filter({ visible: true }).fill("2026-10-12");
+  const history = page.getByRole("region", { name: "Anwesenheit: Wochenverlauf", exact: true });
+  const lastWeek = history.locator("summary").filter({ hasText: "KW 41 · 2026" });
+  await expect(lastWeek).toContainText("28,33 h");
+  await lastWeek.click();
+  await expect(history.getByRole("heading", { name: /^Mittwoch, 7\. Okt/ })).toBeVisible();
   // Today's saved booking counts in full, separately from four completed 15-hour weeks.
   workspace.user.preferences!.workingTime = {
     version: 1,

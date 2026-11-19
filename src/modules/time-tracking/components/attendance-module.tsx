@@ -15,7 +15,8 @@ import { RecordDetail } from "@/components/resource-view";
 import { TimeBookingEditor } from "./time-booking-editor";
 import { groupBookingWeeks, isoWeek, periodForWeek } from "../history";
 import { timeDayMarkers } from "../day-markers";
-import { BookingList, WeekNavigator, WeeklyHistory } from "./weekly-bookings";
+import { attendanceCreditsByDay } from "../balance";
+import { AttendanceWeekList, WeekNavigator, WeeklyHistory } from "./weekly-bookings";
 import { CalendarTimeProposals } from "./calendar-time-proposals";
 import { WeekDayOverview } from "./week-day-overview";
 import { AttendanceBalanceCard } from "./attendance-balance";
@@ -76,14 +77,39 @@ export function AttendanceModule({ embedded = false }: { embedded?: boolean }) {
       period,
     });
   }, [workspace.records.events, workspace.records.calendarCategories, person, week, until, period]);
-  const weeks = useMemo(
-    () =>
-      groupBookingWeeks(workspace.records.attendance || [], { userId: person, period, markers }),
-    [workspace.records.attendance, person, period, markers],
-  );
+  const member =
+    person === workspace.user.id
+      ? workspace.user
+      : workspace.members.find((row) => row.id === person);
+  const settings = member?.preferences?.workingTime;
+  const today = localDate();
+  const weeks = useMemo(() => {
+    const creditsByDay = attendanceCreditsByDay({
+      userId: person,
+      markers,
+      settings,
+      leave: workspace.records.leave,
+      through: today,
+    });
+    return groupBookingWeeks(workspace.records.attendance || [], {
+      userId: person,
+      period,
+      markers,
+      creditsByDay,
+    });
+  }, [
+    workspace.records.attendance,
+    workspace.records.leave,
+    person,
+    period,
+    markers,
+    settings,
+    today,
+  ]);
   const selected = weeks.find((row) => row.start === week);
   const entries = selected?.entries || [];
-  const total = selected?.seconds || 0;
+  const credit = selected?.creditSeconds || 0;
+  const total = (selected?.seconds || 0) + credit;
   const selectWeek = (next: string) => {
     setWeek(next);
     setPeriod(periodForWeek(period, next, workspace.records.productions));
@@ -178,7 +204,7 @@ export function AttendanceModule({ embedded = false }: { embedded?: boolean }) {
         )}
         <Badge>
           <DoorOpen size={13} />
-          {hours(total)} h in dieser Woche
+          {hours(total)} h Wochengesamt
         </Badge>
       </div>
       {selfBooking && drafts.length > 0 && (
@@ -210,28 +236,27 @@ export function AttendanceModule({ embedded = false }: { embedded?: boolean }) {
         selectedWeek={week}
         onWeekChange={selectWeek}
       />
-      {entries.length ? (
+      {selected ? (
         <section className={styles.currentWeek} aria-label="Anwesenheit der ausgewählten Woche">
           <header className={styles.currentHeading}>
-            <h3>
-              KW {isoWeek(week).number} · {isoWeek(week).year}
-            </h3>
+            <div>
+              <h3>
+                KW {selected.number} · {selected.year}
+              </h3>
+              {credit > 0 && (
+                <p className="small muted">
+                  {hours(selected.seconds)} h Anwesenheit + {hours(credit)} h Tagesgutschriften
+                </p>
+              )}
+            </div>
             <strong>{hours(total)} h</strong>
           </header>
-          <BookingList
-            entries={entries}
-            kind="attendance"
-            onEdit={setEditing}
-            onDetail={setDetail}
-          />
+          <AttendanceWeekList week={selected} onEdit={setEditing} onDetail={setDetail} />
         </section>
       ) : (
         <section className={styles.emptyWeek}>
           <h3>Noch keine Anwesenheit in dieser Woche.</h3>
-          <p>
-            Frühere Buchungen findest du im Wochenverlauf. Kalenderkennzeichen sind keine gebuchten
-            Stunden.
-          </p>
+          <p>Frühere Buchungen und Tagesgutschriften findest du im Wochenverlauf.</p>
           {selfBooking && <Button onClick={() => openBooking()}>Anwesenheit nachtragen</Button>}
         </section>
       )}
@@ -240,6 +265,7 @@ export function AttendanceModule({ embedded = false }: { embedded?: boolean }) {
         person={person}
         entries={entries}
         markers={selected?.markers || []}
+        creditsByDay={selected?.creditsByDay}
         onDetail={setDetail}
         bookingLabel="Anwesenheit"
         onBookDay={canBookDay ? openBooking : undefined}
