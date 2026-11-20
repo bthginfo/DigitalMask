@@ -1,5 +1,6 @@
-const MAX_UPLOAD = 4_000_000;
-const MAX_IMAGE_EDGE = 1800;
+import type { RecordKind } from "./contracts";
+import { MAX_FILE_BYTES, uploadImageEdge } from "./file-limits";
+
 const MIN_IMAGE_EDGE = 320;
 const uploadImageTypes = ["image/jpeg", "image/png", "image/webp"];
 export const imageAccept =
@@ -76,10 +77,10 @@ function uploadImage(file: File, blob: Blob) {
   });
 }
 
-export async function prepareUpload(file: File): Promise<File> {
+export async function prepareUpload(file: File, recordKind?: RecordKind): Promise<File> {
   const mime = imageType(file);
   if (!mime || mime === "image/gif" || mime === "image/svg+xml") {
-    if (file.size > MAX_UPLOAD)
+    if (file.size > MAX_FILE_BYTES)
       throw new Error(
         "Dateien dürfen maximal 4 MB groß sein. Bitte verkleinere die Datei vor dem Hochladen.",
       );
@@ -89,7 +90,7 @@ export async function prepareUpload(file: File): Promise<File> {
   try {
     image = await loadImage(file);
   } catch {
-    if (uploadImageTypes.includes(mime) && file.size <= MAX_UPLOAD)
+    if (uploadImageTypes.includes(mime) && file.size <= MAX_FILE_BYTES)
       return file.type === mime
         ? file
         : new File([file], file.name, { type: mime, lastModified: file.lastModified });
@@ -97,12 +98,13 @@ export async function prepareUpload(file: File): Promise<File> {
       "Das Foto konnte nicht gelesen werden. Bitte lade es erneut aus deiner Mediathek oder als JPEG hoch.",
     );
   }
+  const maxEdge = uploadImageEdge(recordKind);
   let canvas: HTMLCanvasElement | undefined;
   try {
     if (
       uploadImageTypes.includes(mime) &&
-      image.width <= MAX_IMAGE_EDGE &&
-      image.height <= MAX_IMAGE_EDGE &&
+      image.width <= maxEdge &&
+      image.height <= maxEdge &&
       file.size <= 1024 * 1024
     )
       return file.type === mime
@@ -123,7 +125,7 @@ export async function prepareUpload(file: File): Promise<File> {
       ctx.imageSmoothingQuality = "high";
       ctx.drawImage(image.source, 0, 0, canvas!.width, canvas!.height);
     };
-    for (let edge = MAX_IMAGE_EDGE; ; edge = Math.max(MIN_IMAGE_EDGE, Math.floor(edge * 0.75))) {
+    for (let edge = maxEdge; ; edge = Math.max(MIN_IMAGE_EDGE, Math.floor(edge * 0.75))) {
       const scale = Math.min(1, edge / Math.max(image.width, image.height));
       canvas.width = Math.max(1, Math.round(image.width * scale));
       canvas.height = Math.max(1, Math.round(image.height * scale));
@@ -143,7 +145,7 @@ export async function prepareUpload(file: File): Promise<File> {
         if (
           blob &&
           blob.size > 0 &&
-          blob.size <= MAX_UPLOAD &&
+          blob.size <= MAX_FILE_BYTES &&
           uploadImageTypes.includes(blob.type)
         )
           return uploadImage(file, blob);

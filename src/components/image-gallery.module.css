@@ -1,15 +1,20 @@
 .dialog:global(.dialog) {
   width: min(calc(100% - 24px), 960px);
   max-width: none;
+  height: min(calc(var(--dialog-viewport-height, 100dvh) - 24px), 860px);
   max-height: calc(var(--dialog-viewport-height, 100dvh) - 24px);
   padding: 0;
 }
 .dialog[open] {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template:
+    "heading heading" auto
+    "image image" minmax(0, 1fr)
+    "zoom footer" auto / auto minmax(0, 1fr);
   overflow: hidden;
 }
 .dialog > :global(.dialog-heading) {
+  grid-area: heading;
   position: static;
   flex: none;
   margin: 0;
@@ -19,20 +24,35 @@
   font-size: 16px;
 }
 .stage {
+  grid-area: image;
   position: relative;
   display: grid;
   place-items: center;
-  height: min(68dvh, 680px);
   min-height: 0;
   min-width: 0;
   background: var(--surface-soft);
-  touch-action: pan-y pinch-zoom;
+  overflow: hidden;
+}
+.stage[data-ready="true"] {
+  cursor: zoom-in;
+  touch-action: none;
+}
+.stage[data-zoomed="true"] {
+  cursor: grab;
+}
+.stage[data-zoomed="true"]:active {
+  cursor: grabbing;
+}
+.stage:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
 }
 .photo {
   object-fit: contain;
   user-select: none;
+  pointer-events: none;
 }
-.photo[data-ready="false"] {
+.stage[data-ready="false"] .photo {
   visibility: hidden;
 }
 .message {
@@ -42,8 +62,8 @@
   text-align: center;
 }
 .footer {
+  grid-area: footer;
   display: flex;
-  flex: none;
   align-items: center;
   gap: 8px;
   padding: 6px 8px 6px 16px;
@@ -71,9 +91,47 @@
   flex: none;
   gap: 2px;
 }
-.actions > :global(.icon-button) {
+.zoomControls {
+  grid-area: zoom;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 8px;
+  border-top: 1px solid var(--border);
+  border-inline-end: 1px solid var(--border);
+}
+.zoomControls > :global(.icon-button),
+.actions > :global(.icon-button),
+.dialog > :global(.dialog-heading) > :global(.icon-button) {
   min-width: 44px;
   min-height: 44px;
+}
+.zoomControls > :global(.icon-button):disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.zoomControls > .zoomValue {
+  width: 58px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+@media (max-width: 520px) {
+  .dialog[open] {
+    grid-template:
+      "heading" auto
+      "image" minmax(0, 1fr)
+      "zoom" auto
+      "footer" auto / minmax(0, 1fr);
+  }
+  .zoomControls {
+    justify-content: center;
+    padding-block: 2px;
+    border-inline-end: 0;
+  }
+  .footer {
+    padding-block: 2px;
+  }
 }
 .trigger {
   display: block;

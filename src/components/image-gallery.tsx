@@ -1,11 +1,12 @@
 "use client";
 
-import { useRef, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import Image from "next/image";
-import { ArrowUpRight, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowUpRight, ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from "lucide-react";
 import type { DomainRecord } from "@/shared/contracts";
 import { value } from "@/shared/client-api";
 import { Modal } from "./ui";
+import { useGalleryZoom } from "./image-gallery-zoom";
 import styles from "./image-gallery.module.css";
 
 export function isImageAttachment(file: DomainRecord) {
@@ -116,55 +117,99 @@ function GalleryImage({
   onMove?: (step: number) => void;
 }) {
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
-  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const ready = status === "ready";
+  const { stage, image, view, atMax, zoomIn, zoomOut, reset, pan, pointerHandlers } =
+    useGalleryZoom(ready, onMove);
+  const { scale, x, y } = view;
+  const zoomed = scale > 1;
+  const percent = Math.round(scale * 100);
+  const url = `/api/files/${file.id}`;
 
   return (
-    <div
-      className={styles.stage}
-      role="group"
-      aria-label="Bildvorschau"
-      onTouchStart={(event) => {
-        const first = event.touches[0];
-        touchStart.current =
-          onMove && event.touches.length === 1 ? { x: first.clientX, y: first.clientY } : null;
-      }}
-      onTouchCancel={() => {
-        touchStart.current = null;
-      }}
-      onTouchEnd={(event) => {
-        const start = touchStart.current;
-        touchStart.current = null;
-        const end = event.changedTouches[0];
-        if (!onMove || !start || !end || event.touches.length) return;
-        const dx = end.clientX - start.x;
-        const dy = end.clientY - start.y;
-        if (Math.abs(dx) >= 48 && Math.abs(dx) > Math.abs(dy) * 1.5) onMove(dx < 0 ? 1 : -1);
-      }}
-    >
-      {status !== "error" && (
-        <Image
-          unoptimized
-          fill
-          loading="eager"
-          draggable={false}
-          src={`/api/files/${file.id}`}
-          alt={name}
-          className={styles.photo}
-          data-ready={status === "ready"}
-          onLoad={() => setStatus("ready")}
-          onError={() => setStatus("error")}
-        />
-      )}
-      {status === "loading" && (
-        <p className={styles.message} role="status">
-          Bild wird geladen …
-        </p>
-      )}
-      {status === "error" && (
-        <p className={styles.message} role="status">
-          Dieses Bild konnte nicht geladen werden.
-        </p>
-      )}
-    </div>
+    <>
+      <div
+        ref={stage}
+        className={styles.stage}
+        role="group"
+        aria-label={zoomed ? "Bildvorschau, mit den Pfeiltasten verschieben" : "Bildvorschau"}
+        tabIndex={zoomed ? 0 : undefined}
+        data-ready={ready}
+        data-zoomed={zoomed}
+        {...pointerHandlers}
+        onKeyDown={(event) => {
+          if (!zoomed || event.ctrlKey || event.metaKey || event.altKey) return;
+          const offset = arrowPan[event.key];
+          if (!offset) return;
+          event.preventDefault();
+          event.stopPropagation();
+          pan(offset[0], offset[1]);
+        }}
+      >
+        {status !== "error" && (
+          <Image
+            ref={image}
+            unoptimized
+            fill
+            loading="eager"
+            draggable={false}
+            src={url}
+            alt={name}
+            className={styles.photo}
+            style={zoomed ? { transform: `translate(${x}px, ${y}px) scale(${scale})` } : undefined}
+            onLoad={() => setStatus("ready")}
+            onError={() => setStatus("error")}
+          />
+        )}
+        {status === "loading" && (
+          <p className={styles.message} role="status">
+            Bild wird geladen …
+          </p>
+        )}
+        {status === "error" && (
+          <p className={styles.message} role="status">
+            Dieses Bild konnte nicht geladen werden.
+          </p>
+        )}
+      </div>
+      <div className={styles.zoomControls} role="group" aria-label="Bildzoom">
+        <button
+          type="button"
+          className="icon-button"
+          aria-label="Bild verkleinern"
+          title="Bild verkleinern"
+          disabled={!ready || !zoomed}
+          onClick={zoomOut}
+        >
+          <ZoomOut size={20} aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          className={`icon-button ${styles.zoomValue}`}
+          aria-label={`Bild einpassen, Zoom ${percent} Prozent`}
+          title="Ganzes Bild anzeigen"
+          disabled={!ready || !zoomed}
+          onClick={reset}
+        >
+          {percent} %
+        </button>
+        <button
+          type="button"
+          className="icon-button"
+          aria-label="Bild vergrößern"
+          title="Bild vergrößern"
+          disabled={!ready || atMax}
+          onClick={zoomIn}
+        >
+          <ZoomIn size={20} aria-hidden="true" />
+        </button>
+      </div>
+    </>
   );
 }
+
+const arrowPan: Record<string, [number, number] | undefined> = {
+  ArrowLeft: [48, 0],
+  ArrowRight: [-48, 0],
+  ArrowUp: [0, 48],
+  ArrowDown: [0, -48],
+};

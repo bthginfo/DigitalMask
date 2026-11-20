@@ -58,6 +58,13 @@ describe("photo preparation for upload", () => {
     expect(result.name).toMatch(/\.jpg$/);
   });
 
+  it("retains more detail for chat photos within the same upload limit", async () => {
+    const browser = imageBrowser((type) => blob(type));
+    const result = await prepareUpload(photo(), "messages");
+    expect(browser.ctx.drawImage).toHaveBeenLastCalledWith(expect.anything(), 0, 0, 2560, 1920);
+    expect(result.size).toBeLessThanOrEqual(4_000_000);
+  });
+
   it("preserves PNG transparency and reduces dimensions when quality cannot reduce PNG size", async () => {
     const browser = imageBrowser(
       (_, width) => (width > 1200 ? tooLarge : blob("image/png")),

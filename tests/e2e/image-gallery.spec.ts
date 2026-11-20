@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import type { DomainRecord, Workspace } from "../../src/shared/contracts";
 
@@ -62,12 +62,24 @@ test("opens the clicked photo, keeps each group separate and preserves keyboard 
   const gallery = page.getByRole("dialog", { name: "Bildergalerie", exact: true });
   await expect(gallery.getByRole("img", { name: "Seite.jpg", exact: true })).toBeVisible();
   await expect(gallery).toContainText("Bild 2 von 3");
+  const zoom = gallery.getByRole("button", { name: /^Bild einpassen/ });
+  await gallery.getByRole("button", { name: "Bild vergrößern", exact: true }).click();
+  await expect(zoom).toHaveText("150 %");
+  await gallery.getByRole("group", { name: /^Bildvorschau/ }).press("ArrowDown");
+  await expect(gallery.getByRole("img", { name: "Seite.jpg" })).toHaveCSS(
+    "transform",
+    "matrix(1.5, 0, 0, 1.5, 0, -48)",
+  );
+  await zoom.click();
+  await expect(zoom).toHaveText("100 %");
   if (process.env.E2E_ARTIFACTS_DIR)
     await gallery.screenshot({
       path: `${process.env.E2E_ARTIFACTS_DIR}/image-gallery-desktop.png`,
     });
-  await gallery.getByRole("button", { name: "Nächstes Bild", exact: true }).click();
+  const nextPicture = gallery.getByRole("button", { name: "Nächstes Bild", exact: true });
+  await nextPicture.click();
   await expect(gallery).toContainText("Dieses Bild konnte nicht geladen werden.");
+  await expect(nextPicture).toBeFocused();
   await page.keyboard.press("ArrowRight");
   await expect(gallery.getByRole("img", { name: "Vorne.jpg", exact: true })).toBeVisible();
   await expect(gallery).toContainText("Bild 1 von 3");
@@ -103,9 +115,45 @@ test("opens the clicked photo, keeps each group separate and preserves keyboard 
   await expect(gallery.getByRole("button", { name: "Nächstes Bild", exact: true })).toHaveCount(0);
 });
 
-test.describe("mobile gallery", () => {
-  test("swipes to the next photo in a fitted touch viewer", async ({ playwright, baseURL }) => {
-    const browser = await playwright.webkit.launch();
+type TouchPoint = { id: number; x: number; y: number };
+
+function webkitGesture(stage: Locator, start: TouchPoint[], end: TouchPoint[]) {
+  return stage.evaluate(
+    (area, { start, end }) => {
+      // WebKit's test driver exposes taps. Dispatch the multi-pointer sequence on the stage.
+      const capture = area.setPointerCapture;
+      area.setPointerCapture = () => {};
+      try {
+        for (const [type, points] of [
+          ["pointerdown", start],
+          ["pointermove", end],
+          ["pointerup", end],
+        ] as const)
+          for (const { id, x, y } of points)
+            area.dispatchEvent(
+              new PointerEvent(type, {
+                bubbles: true,
+                pointerType: "touch",
+                pointerId: id,
+                clientX: x,
+                clientY: y,
+                button: 0,
+              }),
+            );
+      } finally {
+        area.setPointerCapture = capture;
+      }
+    },
+    { start, end },
+  );
+}
+
+for (const engine of ["chromium", "webkit"] as const) {
+  test(`keeps chat photos zoomed after a pinch and pans before swiping (${engine})`, async ({
+    playwright,
+    baseURL,
+  }) => {
+    const browser = await playwright[engine].launch();
     try {
       const page = await browser.newPage({
         baseURL,
@@ -116,45 +164,61 @@ test.describe("mobile gallery", () => {
       });
       await page.addInitScript(() => localStorage.setItem("digitalmask-theme", "dark"));
       await mock(page);
-      await page.goto("/?module=documentation&record=qa-legacy-look", {
-        waitUntil: "domcontentloaded",
-      });
+      await page.goto("/?module=chat", { waitUntil: "domcontentloaded" });
       await page
-        .getByRole("button", { name: "Vorne.jpg vergrößern", exact: true })
+        .getByRole("button", { name: "Probe vorne.jpg", exact: true })
         .tap({ timeout: 30000 });
       const gallery = page.getByRole("dialog", { name: "Bildergalerie", exact: true });
-      await expect(gallery.getByRole("img", { name: "Vorne.jpg", exact: true })).toBeVisible();
-      await gallery.getByRole("group", { name: "Bildvorschau" }).evaluate((stage) => {
-        const bounds = stage.getBoundingClientRect();
-        const touch = (x: number) => ({ clientX: x, clientY: bounds.top + bounds.height / 2 });
-        const start = touch(bounds.right - 45);
-        const end = touch(bounds.left + 45);
-        for (const [type, touches, changed] of [
-          ["touchstart", [start], start],
-          ["touchend", [], end],
-        ] as const) {
-          const event = new Event(type, { bubbles: true });
-          Object.defineProperties(event, {
-            touches: { value: touches },
-            changedTouches: { value: [changed] },
-          });
-          stage.dispatchEvent(event);
-        }
-      });
-      await expect(gallery).toContainText("Bild 2 von 3");
-      await expect(gallery.getByRole("img", { name: "Seite.jpg", exact: true })).toBeVisible();
+      const photo = gallery.getByRole("img", { name: "Probe vorne.jpg", exact: true });
+      await expect(photo).toBeVisible();
+      const stage = gallery.getByRole("group", { name: /^Bildvorschau/ });
+      const bounds = (await stage.boundingBox())!;
+      const centerX = Math.round(bounds.x + bounds.width / 2);
+      const centerY = Math.round(bounds.y + bounds.height / 2);
+      const point = (id: number, offset: number) => ({ id, x: centerX + offset, y: centerY });
+      const cdp = engine === "chromium" ? await page.context().newCDPSession(page) : null;
+      const touch = async (start: TouchPoint[], end: TouchPoint[]) => {
+        if (!cdp) return webkitGesture(stage, start, end);
+        await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: start });
+        await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: end });
+        await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+      };
+      const originalScale = await page.evaluate(() => window.visualViewport?.scale);
+      await touch([point(1, -40), point(2, 40)], [point(1, -110), point(2, 110)]);
+      const zoom = gallery.getByRole("button", { name: /^Bild einpassen/ });
+      await expect(zoom).toHaveText("275 %");
+      const beforePan = await photo.evaluate((image) => getComputedStyle(image).transform);
+      await touch([point(1, 65)], [point(1, -65)]);
+      await expect(photo).not.toHaveCSS("transform", beforePan);
+      await expect(zoom).toHaveText("275 %");
+      await expect(gallery).toContainText("Bild 1 von 2");
+      expect(await page.evaluate(() => window.visualViewport?.scale)).toBe(originalScale);
       expect((await gallery.boundingBox())!.width).toBeLessThanOrEqual(390);
       expect((await gallery.boundingBox())!.height).toBeLessThanOrEqual(844);
-      if (process.env.E2E_ARTIFACTS_DIR)
+      if (process.env.E2E_ARTIFACTS_DIR && engine === "webkit")
         await gallery.screenshot({
           path: `${process.env.E2E_ARTIFACTS_DIR}/image-gallery-mobile.png`,
         });
-      await gallery.getByRole("button", { name: "Schließen", exact: true }).tap();
+      // Chromium's synthetic pinch and drag suppress the next emulated tap even on plain HTML.
+      if (cdp) await zoom.click();
+      else await zoom.tap();
+      await expect(zoom).toHaveText("100 %");
+      await touch([point(1, 65)], [point(1, -65)]);
+      await expect(gallery).toContainText("Bild 2 von 2");
       await expect(
-        page.getByRole("button", { name: "Vorne.jpg vergrößern", exact: true }),
+        gallery.getByRole("img", { name: "Probe hinten.jpg", exact: true }),
+      ).toBeVisible();
+      await expect(zoom).toHaveText("100 %");
+      for (let tap = 0; tap < 2; tap++) await touch([point(1, 30)], [point(1, 30)]);
+      await expect(zoom).toHaveText("250 %");
+      const close = gallery.getByRole("button", { name: "Schließen", exact: true });
+      if (cdp) await close.click();
+      else await close.tap();
+      await expect(
+        page.getByRole("button", { name: "Probe vorne.jpg", exact: true }),
       ).toBeVisible();
     } finally {
       await browser.close();
     }
   });
-});
+}

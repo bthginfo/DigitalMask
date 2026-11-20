@@ -200,7 +200,7 @@ export function ChatChannel({
       const record = "record" in result ? result.record : result;
       for (const file of files) {
         const form = new FormData();
-        form.append("file", await prepareUpload(file));
+        form.append("file", await prepareUpload(file, "messages"));
         form.append("recordKind", "messages");
         form.append("recordId", record.id);
         await api("/api/files", { method: "POST", body: form });

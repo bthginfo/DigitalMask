@@ -10,6 +10,7 @@ import { assertRead, assertWrite } from "@/modules/records/service";
 import { invalidateWorkspace } from "@/modules/records/workspace";
 import { emit, scheduleEvents, auditChange } from "@/platform/events";
 import { listValue, type RecordKind } from "@/shared/contracts";
+import { MAX_FILE_BYTES, uploadImageEdge } from "@/shared/file-limits";
 import { officeUpload } from "@/modules/documents/file-policy";
 import { analyzePortrait, type PortraitMetadata } from "./portrait-analysis";
 import { normalizeActorPortrait } from "./actor-portraits";
@@ -23,7 +24,7 @@ export async function uploadFile(
   const linked = await findRecord(context, recordId, recordKind);
   await assertRead(context, linked);
   await assertWrite(context, recordKind, linked);
-  if (file.size <= 0 || file.size > 4_000_000)
+  if (file.size <= 0 || file.size > MAX_FILE_BYTES)
     throw new HttpError(
       413,
       "Bitte verwende Dateien bis 4 MB. Fotos werden vor dem Upload verkleinert.",
@@ -35,9 +36,10 @@ export async function uploadFile(
   let extension = "pdf";
   if (["image/jpeg", "image/png", "image/webp"].includes(mime)) {
     try {
+      const edge = uploadImageEdge(recordKind);
       bytes = await sharp(bytes, { limitInputPixels: 40_000_000 })
         .rotate()
-        .resize({ width: 1800, height: 1800, fit: "inside", withoutEnlargement: true })
+        .resize({ width: edge, height: edge, fit: "inside", withoutEnlargement: true })
         .webp({ quality: 85 })
         .toBuffer();
       mime = "image/webp";
