@@ -11,6 +11,7 @@ import { recordKinds, listValue } from "@/shared/contracts";
 import { workflowMatchesExportPeriod } from "@/modules/workflows/export-period";
 import { calendarProductionRecords } from "@/shared/calendar-access";
 import { productionOverviewRecords } from "@/shared/production-overview";
+import { backstageChangesSection } from "@/shared/document-sections";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 export async function GET(request: Request) {
@@ -18,8 +19,15 @@ export async function GET(request: Request) {
     const query = new URL(request.url).searchParams;
     const kind = z.enum(recordKinds).parse(query.get("kind"));
     const format = z.enum(["pdf", "xlsx", "csv", "ics", "json"]).parse(query.get("format"));
+    const view = query.get("view") || undefined;
+    const productionId = query.get("productionId");
+    const backstageChanges = view === backstageChangesSection.key;
+    if (backstageChanges && (kind !== "looks" || format !== "pdf" || !productionId))
+      throw new HttpError(400, "Wähle eine Produktion für den Umzüge-Ausdruck als PDF.");
     const context = await requireContext();
     const workspace = await getWorkspace(context);
+    if (backstageChanges && !workspace.records.productions.some((row) => row.id === productionId))
+      throw new HttpError(404, "Diese Produktion ist nicht verfügbar.");
     const references =
       kind === "events"
         ? { ...workspace.records, productions: calendarProductionRecords(workspace) }
@@ -35,7 +43,6 @@ export async function GET(request: Request) {
       selected = selected.filter((row) => row.data.conversationId === conversationId);
     }
     const id = query.get("id"),
-      productionId = query.get("productionId"),
       userId = query.get("userId"),
       from = query.get("from") || undefined,
       to = query.get("to") || undefined;
@@ -113,7 +120,11 @@ export async function GET(request: Request) {
         return dates.some((date) => (!from || date >= from) && (!to || date <= to));
       });
     const images: Record<string, Uint8Array> = {};
-    if (["looks", "handovers", "characters", "casting"].includes(kind) && format === "pdf") {
+    if (
+      !backstageChanges &&
+      ["looks", "handovers", "characters", "casting"].includes(kind) &&
+      format === "pdf"
+    ) {
       const ids = Array.from(new Set(selected.flatMap((r) => listValue(r.data.imageIds))));
       if (ids.length > 80)
         throw new HttpError(
@@ -155,7 +166,7 @@ export async function GET(request: Request) {
       department: workspace.department.name,
       from,
       to,
-      view: query.get("view") || undefined,
+      view,
       references,
       images,
       teamOnly,

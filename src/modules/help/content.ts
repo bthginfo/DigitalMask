@@ -151,6 +151,7 @@ export const helpArticles: HelpArticle[] = [
       "Die Stückdauer kommt aus der Produktion. Trage im Aufschrieb nur dann eine eigene Dauer in Minuten ein, wenn sie abweicht. Gemeint ist die Länge des Stücks, nicht die Arbeitszeit in der Maske.",
       "Wähle bei Bedarf eine Vorlage. Sie ergänzt ihre Textfelder, ohne vorhandene Texte zu ersetzen. Ihr pflegt Vorlagen gemeinsam unter Aufschriebe → Vorlagen. Sichtbare Aufschriebe könnt ihr gemeinsam bearbeiten; frühere private Entwürfe bleiben geschützt. Bilder ergänzst du nach dem Speichern in der Galerie.",
       "Tippe ein Bild an. Vergrößere es mit zwei Fingern, per Doppeltipp oder mit der Lupe. Das vergrößerte Bild kannst du verschieben. Mit den Pfeilen oder in der Ausgangsgröße durch Wischen wechselst du das Bild. Im Chat gehören die Bilder einer Nachricht zusammen.",
+      "Trage Wechsel hinter der Bühne im Abschnitt Umzüge ein. Im Stück unter Umzüge findest du diese Einträge aller Schauspielpersonen. Über PDF herunterladen bekommst du das gemeinsame Blatt für die Bühne.",
       "Im Versionsverlauf bleiben ältere Stände einsehbar. Historische Szenen- und Zeitbedarfangaben aus alten Aufschrieben bleiben erhalten. PDF ist für lesbare Ausdrucke vorgesehen; Excel, CSV und JSON eignen sich zur Weiterverarbeitung.",
     ],
   },

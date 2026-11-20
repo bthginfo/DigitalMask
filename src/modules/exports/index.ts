@@ -9,6 +9,9 @@ import { durationSummary } from "./duration-summary";
 import { exportRows } from "./data";
 import { documentPresentation } from "./document-presentation";
 import { seasonBounds } from "../../shared/period-filter";
+import { backstageChangesSection } from "../../shared/document-sections";
+import { backstageChangesFilename } from "../../shared/backstage-changes";
+import { textValue } from "../../shared/contracts";
 export type { ExportInput, ExportResult, ExportFormat } from "./types";
 export { selectExportRecords } from "./selection";
 
@@ -39,7 +42,14 @@ export async function buildExport(input: ExportInput): Promise<ExportResult> {
   }
   if (input.records.length > 20000)
     throw new Error("Bitte die Exportauswahl auf höchstens 20.000 Einträge begrenzen.");
-  const filename = `digitalmask-${input.teamOnly ? "teamboard" : input.kind.replace(/[^a-zA-Z0-9_-]/g, "-")}${input.from ? `-${input.from.replace(/[^0-9-]/g, "")}` : ""}.${input.format}`;
+  const filename =
+    input.view === backstageChangesSection.key && input.kind === "looks" && input.format === "pdf"
+      ? backstageChangesFilename(
+          textValue(
+            input.references?.productions?.find((row) => row.id === input.productionId)?.data.title,
+          ),
+        )
+      : `digitalmask-${input.teamOnly ? "teamboard" : input.kind.replace(/[^a-zA-Z0-9_-]/g, "-")}${input.from ? `-${input.from.replace(/[^0-9-]/g, "")}` : ""}.${input.format}`;
   if (input.format === "json")
     return {
       bytes: new TextEncoder().encode(

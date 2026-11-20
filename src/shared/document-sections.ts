@@ -9,6 +9,9 @@ export interface TextSection {
   key: string;
   entries: TextEntry[];
 }
+
+export const backstageChangesSection = { key: "backstage-changes", name: "Umzüge" } as const;
+
 export const documentSectionDefaults = {
   looks: [
     { key: "preparation", name: "Vorbereitung" },
@@ -56,6 +59,7 @@ export function sectionName(
   kind: "looks" | "handovers",
   categories: DomainRecord[] = [],
 ) {
+  if (kind === "looks" && key === backstageChangesSection.key) return backstageChangesSection.name;
   const category = categories.find((row) => row.data.scope === kind && row.data.key === key);
   return (
     textValue(category?.data.name) ||

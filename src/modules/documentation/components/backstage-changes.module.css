@@ -1,0 +1,77 @@
+.tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+  margin: 0 0 16px;
+}
+
+.tools label {
+  display: grid;
+  width: min(100%, 25rem);
+  min-width: 0;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.tools select {
+  width: 100%;
+  min-width: 0;
+}
+
+.list {
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(8rem, 1fr) minmax(0, 3fr) 44px;
+  align-items: start;
+  gap: 8px 16px;
+  padding: 12px 14px;
+}
+
+.row + .row {
+  border-top: 1px solid var(--border);
+}
+
+.row :is(h3, p) {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.person h3 {
+  font-size: 15px;
+}
+
+.steps {
+  display: grid;
+  gap: 5px;
+  white-space: pre-wrap;
+}
+
+@media (max-width: 600px) {
+  .row {
+    grid-template-columns: minmax(0, 1fr) 44px;
+    grid-template-areas: "person edit" "steps steps";
+    padding: 10px 12px;
+  }
+
+  .person {
+    grid-area: person;
+    align-self: center;
+  }
+  .steps {
+    grid-area: steps;
+  }
+  .row > button {
+    grid-area: edit;
+  }
+}

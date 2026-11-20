@@ -35,6 +35,8 @@ import {
 } from "./data";
 import { DocumentPages } from "./document-pdf";
 import { LookPages } from "./look-pdf";
+import { BackstageChangesPage } from "./backstage-changes-pdf";
+import { backstageChangesSection } from "../../shared/document-sections";
 import { ProductionPages } from "./production-pdf";
 import { MaskPlanPages } from "../mask-plans/pdf";
 import { calendarRange, localDay } from "./calendar";
@@ -606,6 +608,14 @@ function AttendanceSummary({ input, rows }: { input: ExportInput; rows: ExportRo
 export async function buildPdf(input: ExportInput): Promise<Uint8Array> {
   const calendar = input.kind === "events" || input.kind === "calendar";
   await prepareFonts(calendar && input.view === "team-month" ? "NotoCondensed" : "Noto");
+  if (input.kind === "looks" && input.view === backstageChangesSection.key) {
+    const bytes = await renderToBuffer(
+      <Document title="Umzüge" author="DigitalMask" language="de-DE">
+        <BackstageChangesPage input={input} wrapLines={headerLines} />
+      </Document>,
+    );
+    return addPageNumbers(new Uint8Array(bytes));
+  }
   if (["looks", "handovers", "characters", "casting"].includes(input.kind) && input.images) {
     const normalizedImages: Record<string, Uint8Array> = {};
     const ids = [

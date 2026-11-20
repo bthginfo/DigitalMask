@@ -1,7 +1,7 @@
 ﻿"use client";
 import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
 import type { TextSection } from "@/shared/document-sections";
-import { sectionName } from "@/shared/document-sections";
+import { backstageChangesSection, sectionName } from "@/shared/document-sections";
 import { categoriesFor } from "@/shared/domain-categories";
 import { useWorkspace } from "@/components/workspace-context";
 import { Button, Empty } from "@/components/ui";
@@ -10,19 +10,26 @@ export function SectionFields({
   kind,
   sections,
   onChange,
+  showBackstageChanges = false,
+  backstageChangesOnly = false,
 }: {
   kind: "looks" | "handovers";
   sections: TextSection[];
   onChange: (sections: TextSection[]) => void;
+  showBackstageChanges?: boolean;
+  backstageChangesOnly?: boolean;
 }) {
   const { workspace } = useWorkspace();
   const options = categoriesFor(kind, workspace.records.categories);
-  const available = [
-    ...options.map((option) => option.key),
-    ...sections
-      .map((section) => section.key)
-      .filter((key) => !options.some((option) => option.key === key)),
-  ];
+  const available = backstageChangesOnly
+    ? [backstageChangesSection.key]
+    : [
+        ...new Set([
+          ...options.map((option) => option.key),
+          ...sections.map((section) => section.key),
+          ...(showBackstageChanges ? [backstageChangesSection.key] : []),
+        ]),
+      ];
   const update = (key: string, entries: TextSection["entries"]) =>
     onChange(
       sections.some((section) => section.key === key)
@@ -38,6 +45,8 @@ export function SectionFields({
         />
       )}
       {available.map((key) => {
+        const backstage = kind === "looks" && key === backstageChangesSection.key;
+        const name = sectionName(key, kind, workspace.records.categories);
         const entries = sections.find((section) => section.key === key)?.entries || [];
         const move = (index: number, offset: number) => {
           const next = [...entries];
@@ -46,16 +55,18 @@ export function SectionFields({
         };
         return (
           <fieldset className="document-section" key={key}>
-            <legend>{sectionName(key, kind, workspace.records.categories)}</legend>
+            <legend>{name}</legend>
+            {backstage && <p className="small muted">Für die Umzugs-Liste hinter der Bühne.</p>}
             {entries.map((entry, index) => (
               <div className="document-text-entry" key={entry.id}>
                 <div className="document-entry-header">
                   <label className="entry-label">
-                    Kurzes Label (optional)
+                    {backstage ? "Einsatz oder Stichwort (optional)" : "Kurzes Label (optional)"}
                     <input
                       className={kind === "looks" ? styles.labelInput : undefined}
                       value={entry.label || ""}
                       maxLength={200}
+                      placeholder={backstage ? "z. B. nach Szene 3" : undefined}
                       onChange={(event) =>
                         update(
                           key,
@@ -71,7 +82,7 @@ export function SectionFields({
                       type="button"
                       className="icon-button"
                       disabled={index === 0}
-                      aria-label={`${sectionName(key, kind, workspace.records.categories)} Feld ${index + 1} nach oben`}
+                      aria-label={`${name} Feld ${index + 1} nach oben`}
                       onClick={() => move(index, -1)}
                     >
                       <ArrowUp size={14} />
@@ -80,7 +91,7 @@ export function SectionFields({
                       type="button"
                       className="icon-button"
                       disabled={index === entries.length - 1}
-                      aria-label={`${sectionName(key, kind, workspace.records.categories)} Feld ${index + 1} nach unten`}
+                      aria-label={`${name} Feld ${index + 1} nach unten`}
                       onClick={() => move(index, 1)}
                     >
                       <ArrowDown size={14} />
@@ -88,7 +99,7 @@ export function SectionFields({
                     <button
                       type="button"
                       className="icon-button"
-                      aria-label={`${sectionName(key, kind, workspace.records.categories)} Feld ${index + 1} entfernen`}
+                      aria-label={`${name} Feld ${index + 1} entfernen`}
                       onClick={() =>
                         update(
                           key,
@@ -101,7 +112,7 @@ export function SectionFields({
                   </div>
                 </div>
                 <label htmlFor={`section-${entry.id}`} className="visually-hidden">
-                  {sectionName(key, kind, workspace.records.categories)} · Text {index + 1}
+                  {name} · Text {index + 1}
                 </label>
                 <textarea
                   id={`section-${entry.id}`}
@@ -123,7 +134,11 @@ export function SectionFields({
               onClick={() => update(key, [...entries, { id: crypto.randomUUID(), text: "" }])}
             >
               <Plus size={15} />
-              {entries.length ? "Textfeld hinzufügen" : "Textfeld anlegen"}
+              {backstage
+                ? "Umzug hinzufügen"
+                : entries.length
+                  ? "Textfeld hinzufügen"
+                  : "Textfeld anlegen"}
             </Button>
           </fieldset>
         );

@@ -83,6 +83,48 @@ for (const browserName of ["chromium", "webkit"] as const)
       serviceWorkers: "block",
       viewport: mobile ? { width: 390, height: 844 } : { width: 1440, height: 1000 },
     });
+    test("edits and downloads the combined backstage changes for one production", async ({
+      page,
+    }) => {
+      const state = await mock(page);
+      await page.goto("/?module=documentation");
+      const folder = page.locator(".document-folder").filter({
+        has: page.getByRole("heading", { name: "Ein Sommernachtstraum", exact: true }),
+      });
+      await folder.getByRole("button", { name: "Umzüge", exact: true }).click();
+      const panel = page.getByRole("region", { name: "Umzüge der Produktion" });
+      const download = panel.getByRole("button", { name: "PDF herunterladen" });
+      await expect(download).toBeDisabled();
+      await panel.getByLabel("Aufschrieb für Umzüge").selectOption("qa-legacy-look");
+      await panel.getByRole("button", { name: "Umzüge eintragen" }).click();
+      const editor = page.getByRole("dialog", { name: "Umzüge bearbeiten" });
+      await editor.getByLabel("Einsatz oder Stichwort (optional)").fill("Nach Szene 3");
+      await editor.getByLabel("Umzüge · Text 1", { exact: true }).fill("Perücke im Gang abnehmen.");
+      await editor.getByRole("button", { name: "Umzug hinzufügen" }).click();
+      await editor.getByLabel("Umzüge · Text 2", { exact: true }).fill("Schmuck bereitlegen.");
+      await editor.getByRole("button", { name: "Speichern", exact: true }).click();
+      await expect(editor).toHaveCount(0);
+      const list = panel.getByRole("list", { name: "Backstage-Umzüge" });
+      await expect(list).toContainText("Nora Beispiel");
+      await expect(list).toContainText("Titania");
+      await expect(list).toContainText("Nach Szene 3 Perücke im Gang abnehmen.");
+      await expect(list).toContainText("Schmuck bereitlegen.");
+      await expect(list).not.toContainText("Legacy Makeup Schritte");
+      expect(Object.keys(state.writes[0].data)).toEqual(["sections"]);
+      expect(JSON.stringify(state.writes[0].data)).toContain("Legacy Makeup Schritte");
+      await width(page);
+      await panel.screenshot({
+        path: test.info().outputPath(`backstage-changes-${browserName}.png`),
+      });
+      await download.click();
+      await expect.poll(() => state.exports.length).toBe(1);
+      expect(Object.fromEntries(new URLSearchParams(state.exports[0]))).toEqual({
+        kind: "looks",
+        format: "pdf",
+        view: "backstage-changes",
+        productionId: "qa-production",
+      });
+    });
     test("legacy documents preserve content, repeated fields, template and images", async ({
       page,
     }) => {

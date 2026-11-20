@@ -3,6 +3,7 @@ import { useState } from "react";
 import { FileText, Plus } from "lucide-react";
 import type { DomainRecord } from "@/shared/contracts";
 import {
+  backstageChangesSection,
   documentSections,
   sectionName,
   lookTitle,
@@ -18,6 +19,8 @@ import { ResourceEditor } from "@/components/resource-editor";
 import { ExportDialog } from "@/components/export-dialog";
 import { CategoryManager } from "@/modules/categories/components/category-manager";
 import { useViewState } from "@/shared/view-state";
+import { navigateWorkspace } from "@/shared/client-navigation";
+import styles from "./document-sections.module.css";
 export function DocumentationModule() {
   const { workspace } = useWorkspace();
   const [tab, setTab] = useViewState(workspace.user.id, "documentation", "tab", "looks"),
@@ -159,10 +162,28 @@ export function DocumentationModule() {
                         <p className="small muted">Stückdauer · {duration} Minuten</p>
                       )}
                     </div>
-                    <span className="small muted">
-                      {rows.filter((row) => value(row.data, "productionId") === id).length}{" "}
-                      Aufschriebe
-                    </span>
+                    <div className={styles.folderActions}>
+                      {project && (
+                        <Button
+                          onClick={() => {
+                            const params = new URLSearchParams({
+                              module: "productions",
+                              productionId: project.id,
+                              tab: backstageChangesSection.key,
+                            });
+                            navigateWorkspace(`/?${params}`, {
+                              returnLabel: "Zu den Aufschrieben",
+                            });
+                          }}
+                        >
+                          Umzüge
+                        </Button>
+                      )}
+                      <span className="small muted">
+                        {rows.filter((row) => value(row.data, "productionId") === id).length}{" "}
+                        Aufschriebe
+                      </span>
+                    </div>
                   </header>
                   <div className="document-folder-records">
                     {rows

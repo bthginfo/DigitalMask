@@ -2,7 +2,12 @@
 import { useState } from "react";
 import { Plus } from "lucide-react";
 import type { DomainRecord, RecordData } from "@/shared/contracts";
-import { documentSections, lookTitle, type TextSection } from "@/shared/document-sections";
+import {
+  backstageChangesSection,
+  documentSections,
+  lookTitle,
+  type TextSection,
+} from "@/shared/document-sections";
 import { categoriesFor } from "@/shared/domain-categories";
 import { ids, value } from "@/shared/client-api";
 import { useWorkspace } from "@/components/workspace-context";
@@ -19,6 +24,7 @@ export function DocumentEditor({
   record,
   defaults = {},
   lockedProductionId,
+  backstageChangesOnly = false,
   onClose,
   onSaved,
 }: {
@@ -26,12 +32,15 @@ export function DocumentEditor({
   record?: DomainRecord;
   defaults?: RecordData;
   lockedProductionId?: string;
+  backstageChangesOnly?: boolean;
   onClose: () => void;
   onSaved?: (record: DomainRecord) => void;
 }) {
   const { workspace, save, busy } = useWorkspace();
   const initial = { ...defaults, ...record?.data },
     scope = kind === "handovers" ? "handovers" : "looks";
+  const editingOnlyChanges =
+    backstageChangesOnly && !!record && !!(initial.actorId || initial.actorName);
   const [production, setProduction] = useState(
     lockedProductionId ?? value(initial, "productionId"),
   );
@@ -71,7 +80,15 @@ export function DocumentEditor({
     [categoriesOpen, setCategoriesOpen] = useState(false),
     [error, setError] = useState("");
   const [sections, setSections] = useState<TextSection[]>(() => {
-    const old = documentSections(initial, scope);
+    const old = backstageChangesOnly && !record ? [] : documentSections(initial, scope);
+    if (backstageChangesOnly) {
+      return old.some((section) => section.key === backstageChangesSection.key)
+        ? old
+        : [
+            ...old,
+            { key: backstageChangesSection.key, entries: [{ id: crypto.randomUUID(), text: "" }] },
+          ];
+    }
     const choices = categoriesFor(scope, workspace.records.categories);
     const next = choices.map((category) => ({
       key: category.key,
@@ -144,7 +161,13 @@ export function DocumentEditor({
   return (
     <>
       <Modal
-        title={`${kind === "templates" ? "Vorlage" : kind === "handovers" ? "Dienstübergabe" : "Aufschrieb"} ${record ? "bearbeiten" : "anlegen"}`}
+        title={
+          backstageChangesOnly
+            ? record
+              ? "Umzüge bearbeiten"
+              : "Umzüge eintragen"
+            : `${kind === "templates" ? "Vorlage" : kind === "handovers" ? "Dienstübergabe" : "Aufschrieb"} ${record ? "bearbeiten" : "anlegen"}`
+        }
         onClose={onClose}
         wide
       >
@@ -158,6 +181,25 @@ export function DocumentEditor({
                 throw new Error(
                   "Bitte eine Schauspielperson auswählen oder ihren Namen eintragen.",
                 );
+              const nextSections = sections.flatMap((section) => {
+                if (section.key !== backstageChangesSection.key) return [section];
+                const entries = section.entries.filter(
+                  (entry) => entry.label?.trim() || entry.text.trim(),
+                );
+                return entries.length ? [{ ...section, entries }] : [];
+              });
+              if (
+                backstageChangesOnly &&
+                !record &&
+                !nextSections.some((section) => section.key === backstageChangesSection.key)
+              )
+                throw new Error("Trage mindestens einen Umzug ein.");
+              if (editingOnlyChanges) {
+                const saved = await save("looks", { sections: nextSections }, record);
+                onSaved?.(saved);
+                onClose();
+                return;
+              }
               const data: RecordData =
                 kind === "looks"
                   ? {
@@ -171,7 +213,7 @@ export function DocumentEditor({
                         workspace.records.templates.find((row) => row.id === templateId)?.data
                           .version || 1,
                       ),
-                      sections,
+                      sections: nextSections,
                       imageIds: ids(initial, "imageIds"),
                     }
                   : kind === "templates"
@@ -213,49 +255,54 @@ export function DocumentEditor({
               />
             </label>
           )}
-          {kind === "looks" && (
+          {editingOnlyChanges && <strong>{lookTitle(initial, workspace.records.actors)}</strong>}
+          {kind === "looks" && !editingOnlyChanges && (
             <>
-              <div className="document-public-note">
-                Aufschriebe sind für das freigegebene Team sichtbar. Ihr Titel ist der Name der
-                Schauspielperson.
-              </div>
-              <div className="form-grid">
-                <label>
-                  Produktion
-                  <select
-                    disabled={
-                      lockedProductionId !== undefined || (!!record && !!initial.productionId)
-                    }
-                    value={production}
-                    onChange={(event) => {
-                      setProduction(event.target.value);
-                      setFigure(undefined);
-                    }}
-                  >
-                    <option value="">Allgemeiner Aufschrieb</option>
-                    {workspace.records.productions.map((row) => (
-                      <option key={row.id} value={row.id}>
-                        {value(row.data, "title")}
-                        {row.data.status === "archived" ? " · Archiv" : ""}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Vorlage (optional)
-                  <select
-                    value={templateId}
-                    onChange={(event) => changeTemplate(event.target.value)}
-                  >
-                    <option value="">Ohne Vorlage</option>
-                    {workspace.records.templates.map((row) => (
-                      <option key={row.id} value={row.id}>
-                        {value(row.data, "title")}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
+              {!backstageChangesOnly && (
+                <>
+                  <div className="document-public-note">
+                    Aufschriebe sind für das freigegebene Team sichtbar. Ihr Titel ist der Name der
+                    Schauspielperson.
+                  </div>
+                  <div className="form-grid">
+                    <label>
+                      Produktion
+                      <select
+                        disabled={
+                          lockedProductionId !== undefined || (!!record && !!initial.productionId)
+                        }
+                        value={production}
+                        onChange={(event) => {
+                          setProduction(event.target.value);
+                          setFigure(undefined);
+                        }}
+                      >
+                        <option value="">Allgemeiner Aufschrieb</option>
+                        {workspace.records.productions.map((row) => (
+                          <option key={row.id} value={row.id}>
+                            {value(row.data, "title")}
+                            {row.data.status === "archived" ? " · Archiv" : ""}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      Vorlage (optional)
+                      <select
+                        value={templateId}
+                        onChange={(event) => changeTemplate(event.target.value)}
+                      >
+                        <option value="">Ohne Vorlage</option>
+                        {workspace.records.templates.map((row) => (
+                          <option key={row.id} value={row.id}>
+                            {value(row.data, "title")}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                </>
+              )}
               <div className="form-grid">
                 {(["actor", "character"] as const).map((key) => {
                   const actor = key === "actor",
@@ -350,13 +397,21 @@ export function DocumentEditor({
               />
             </label>
           )}
-          <div className="document-section-heading">
-            <h3>{kind === "templates" ? "Textfelder der Vorlage" : "Inhalte"}</h3>
-            {workspace.user.role !== "user" && (
-              <Button onClick={() => setCategoriesOpen(true)}>Abschnitte verwalten</Button>
-            )}
-          </div>
-          <SectionFields kind={scope} sections={sections} onChange={setSections} />
+          {!backstageChangesOnly && (
+            <div className="document-section-heading">
+              <h3>{kind === "templates" ? "Textfelder der Vorlage" : "Inhalte"}</h3>
+              {workspace.user.role !== "user" && (
+                <Button onClick={() => setCategoriesOpen(true)}>Abschnitte verwalten</Button>
+              )}
+            </div>
+          )}
+          <SectionFields
+            kind={scope}
+            sections={sections}
+            onChange={setSections}
+            showBackstageChanges={kind === "looks" && !!production}
+            backstageChangesOnly={backstageChangesOnly}
+          />
           {kind === "handovers" && (
             <RepeatableList
               label="Checkliste"
@@ -367,18 +422,22 @@ export function DocumentEditor({
               }
             />
           )}
-          {record && !!(initial.scene || initial.durationMinutes || initial.legacyProductionId) && (
-            <p className="help-note">
-              Historische Angaben bleiben gespeichert: {value(initial, "scene")}{" "}
-              {initial.durationMinutes
-                ? `· früherer Zeitbedarf ${initial.durationMinutes} Minuten`
-                : ""}
-              {initial.legacyProductionId ? " · frühere Produktionszuordnung" : ""}.
+          {!backstageChangesOnly &&
+            record &&
+            !!(initial.scene || initial.durationMinutes || initial.legacyProductionId) && (
+              <p className="help-note">
+                Historische Angaben bleiben gespeichert: {value(initial, "scene")}{" "}
+                {initial.durationMinutes
+                  ? `· früherer Zeitbedarf ${initial.durationMinutes} Minuten`
+                  : ""}
+                {initial.legacyProductionId ? " · frühere Produktionszuordnung" : ""}.
+              </p>
+            )}
+          {!backstageChangesOnly && (
+            <p className="small muted">
+              Weitere Bilder lassen sich nach dem Speichern in der Galerie hinzufügen.
             </p>
           )}
-          <p className="small muted">
-            Weitere Bilder lassen sich nach dem Speichern in der Galerie hinzufügen.
-          </p>
           <ErrorMessage message={error} />
           <footer className="dialog-footer">
             <Button onClick={onClose}>Abbrechen</Button>

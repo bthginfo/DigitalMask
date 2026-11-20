@@ -7,7 +7,8 @@ import { recordMatchesPeriod, seasonForDate, type PeriodFilter } from "@/shared/
 import { contactsValue } from "@/shared/contracts";
 import { productionContactName } from "@/shared/production-contacts";
 import { productionCastingCounts } from "@/modules/productions/counts";
-import { productionLookDuration } from "@/shared/document-sections";
+import { backstageChangesSection, productionLookDuration } from "@/shared/document-sections";
+import { BackstageChanges } from "@/modules/documentation/components/backstage-changes";
 import { sortProductionsByPremiere } from "@/shared/production-order";
 import { productionOverviewRecords } from "@/shared/production-overview";
 import { SharedProductionOverview } from "@/modules/productions/components/shared-production-overview";
@@ -37,6 +38,7 @@ const productionSections = [
   ["mask-plan", "Maskenplan"],
   ["tasks", "Aufgaben & Sprints"],
   ["looks", "Aufschriebe"],
+  [backstageChangesSection.key, backstageChangesSection.name],
   ["documents", "Dokumente"],
   ["calendar", "Kalender"],
   ["time", "Produktionsstunden"],
@@ -318,17 +320,19 @@ export function ProductionsModule({
           <MaskPlansModule key={production.id} production={production} />
         ) : tab === "documents" ? (
           <RecordDocuments key={production.id} record={production} />
+        ) : tab === backstageChangesSection.key ? (
+          <BackstageChanges key={production.id} production={production} />
         ) : (
           <ResourceView
             key={`${production.id}:${tab}`}
-            kind={tab === "looks" ? "looks" : "handovers"}
+            kind="looks"
             lockedProductionId={production.id}
             defaults={{ productionId: production.id }}
             filter={(x) => x.data.productionId === production.id}
-            description={
-              tab === "looks"
-                ? "Aufschriebe, Bildgalerien und Arbeitsabläufe für diese Produktion."
-                : "Checklisten, Absprachen und offene Punkte zu den Vorstellungen."
+            headerActions={
+              <Button onClick={() => setTab(backstageChangesSection.key)}>
+                Umzüge-Liste öffnen
+              </Button>
             }
           />
         )}

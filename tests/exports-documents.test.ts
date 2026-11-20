@@ -206,7 +206,7 @@ function pictures() {
   );
 }
 let qaDirectory: string | undefined;
-async function pdfCheck(bytes: Uint8Array, name: string) {
+async function pdfCheck(bytes: Uint8Array, name: string, branded = true) {
   const { getDocument, OPS } = await import("pdfjs-dist/legacy/build/pdf.mjs");
   const document = await getDocument({
     data: new Uint8Array(bytes),
@@ -233,7 +233,7 @@ async function pdfCheck(bytes: Uint8Array, name: string) {
     const text = content.items.map((item) => ("str" in item ? item.str : "")).join(" ");
     texts.push(text);
     expect(text).toContain(`Seite ${p} von ${document.numPages}`);
-    expect(text.replace(/\s/g, "")).toContain("DIGITALMASK/MASKE");
+    if (branded) expect(text.replace(/\s/g, "")).toContain("DIGITALMASK/MASKE");
     for (const item of content.items)
       if ("str" in item && item.str.trim()) {
         expect(item.transform[4]).toBeGreaterThanOrEqual(0);
@@ -268,6 +268,70 @@ async function pdfCheck(bytes: Uint8Array, name: string) {
 }
 
 describe("document and contact presentation exports", () => {
+  it("prints a compact production list of backstage changes without other look content", async () => {
+    const backstage = (id: string, text: string, label?: string) => ({
+      key: "backstage-changes",
+      entries: [{ id, text, label }],
+    });
+    const first = record("looks", "first-stage", {
+      ...look.data,
+      sections: [
+        { key: "changeover", entries: [{ id: "other", text: "UMBAU IM FUNDUS" }] },
+        backstage("stage-1", "Perücke im Gang abnehmen.", "Nach Szene 3"),
+      ],
+      imageIds: ["image1"],
+    });
+    const second = record("looks", "second-stage", {
+      productionId: "p",
+      actorName: "Berta Bühnenprobe",
+      characterName: "Fee",
+      sections: [backstage("stage-2", "Schmuck an Tisch 2 bereitlegen.")],
+    });
+    const unrelated = record("looks", "third-stage", {
+      productionId: "another-production",
+      actorName: "Andere Produktion",
+      sections: [backstage("stage-3", "FALSCHES STÜCK")],
+    });
+    const legacy = record("looks", "legacy-stage", {
+      productionId: "p",
+      actorName: "Nur altes Feld",
+      changeover: "ALTER WECHSEL",
+    });
+    const file = await buildExport({
+      ...base("looks", "pdf", [second, unrelated, legacy, first]),
+      view: "backstage-changes",
+      productionId: "p",
+      images: { image1: new Uint8Array([1, 2, 3]) },
+    });
+    const printed = await pdfCheck(file.bytes, "backstage-changes", false);
+    expect(file.filename).toBe("Umzüge – Fiktiver Zauberwald.pdf");
+    expect(printed.pages).toBe(1);
+    expect(printed.images).toBe(0);
+    expect(printed.text).toContain("Fiktiver Zauberwald");
+    expect(printed.text).toContain("Käthchen aus dem fiktiven Zauberwald");
+    expect(printed.text).toContain("Nach Szene 3");
+    expect(printed.text).toContain("Perücke im Gang abnehmen.");
+    expect(printed.text).toContain("Schmuck an Tisch 2 bereitlegen.");
+    expect(printed.text.indexOf("Ännchen")).toBeLessThan(printed.text.indexOf("Berta Bühnenprobe"));
+    expect(printed.text).not.toMatch(/ALTER WECHSEL|UMBAU IM FUNDUS|FALSCHES STÜCK/);
+  });
+  it("paginates long backstage changes without dropping their instructions", async () => {
+    const text = `${"Schneller Wechsel an der seitlichen Bühne mit vorbereiteten Teilen. ".repeat(90)} LETZTER UMZUGSSCHRITT`;
+    const file = await buildExport({
+      ...base("looks", "pdf", [
+        record("looks", "long-stage", {
+          ...look.data,
+          sections: [{ key: "backstage-changes", entries: [{ id: "many-steps", text }] }],
+        }),
+      ]),
+      view: "backstage-changes",
+      productionId: "p",
+    });
+    const printed = await pdfCheck(file.bytes, "backstage-changes-long", false);
+    expect(printed.pages).toBeGreaterThan(1);
+    expect(printed.text).toContain("LETZTER UMZUGSSCHRITT");
+    for (const page of printed.texts) expect(page).toContain("Fiktiver Zauberwald");
+  });
   it("keeps maximum-length record names and season metadata clear of the body", async () => {
     const title = `${"Fiktiver sehr langer Produktionsname mit Bühnenfassung ".repeat(5).slice(0, 190)} TITLEEND`;
     const actorName = `${"Fiktive Schauspielerin mit einem ausführlichen Namen ".repeat(5).slice(0, 190)} ACTOREND`;

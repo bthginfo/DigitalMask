@@ -8,6 +8,21 @@ import { Button, ErrorMessage, Modal } from "./ui";
 import { isActiveStaff } from "@/shared/client-members";
 import { useWorkspace } from "./workspace-context";
 import { fields, labels } from "./resource-fields";
+
+export async function downloadExport(query: URLSearchParams, filename: string) {
+  const response = await fetch(`/api/export?${query}`, { credentials: "same-origin" });
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.error || "Der Export konnte nicht erstellt werden.");
+  }
+  const url = URL.createObjectURL(await response.blob());
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 export function ExportDialog({
   kind,
   filters = {},
@@ -44,18 +59,10 @@ export function ExportDialog({
         ...(to ? { to } : {}),
         view,
       });
-      const response = await fetch(`/api/export?${query}`, { credentials: "same-origin" });
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data.error || "Der Export konnte nicht erstellt werden.");
-      }
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `digitalmask-${filters.teamOnly === "true" ? "teamboard" : kind}-${localDate()}.${format}`;
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      await downloadExport(
+        query,
+        `digitalmask-${filters.teamOnly === "true" ? "teamboard" : kind}-${localDate()}.${format}`,
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : "Export fehlgeschlagen");
     } finally {
