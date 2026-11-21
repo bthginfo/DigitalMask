@@ -284,7 +284,9 @@ test("mobile day details preserve own-calendar planning and personal selection",
   await page.goto("/?module=calendar");
   await page.getByRole("button", { name: "Team", exact: true }).click();
   await page.getByRole("button", { name: "Teammonat", exact: true }).click();
-  await page.locator('.team-mobile-calendar [data-date="2026-10-12"]').click();
+  await page
+    .getByRole("button", { name: "Montag, 12. Oktober · Tagesdetails anzeigen", exact: true })
+    .click();
   await expect(page.locator(".team-mobile-create button")).toHaveCount(1);
   await expect(page.locator(".team-mobile-create button")).toContainText("Alex Beispiel");
   await page
@@ -296,12 +298,15 @@ test("mobile day details preserve own-calendar planning and personal selection",
     page.getByRole("dialog").getByRole("button", { name: "Bearbeiten", exact: true }),
   ).toHaveCount(0);
   await page.getByRole("button", { name: "Schließen", exact: true }).first().click();
+  await page.getByRole("button", { name: "Tagesdetails schließen" }).click();
   await page.getByRole("button", { name: "Monat", exact: true }).click();
   await page.locator(".calendar-filter-toggle").click();
   await expect(page.locator(".calendar-filters input[type=checkbox]:checked")).toHaveCount(1);
   await page.locator(".calendar-filter-toggle").click();
   await page.getByRole("button", { name: "Nächster Zeitraum", exact: true }).click();
-  await expect(page.locator(".personal-mobile-day-detail h3")).toContainText("November");
+  await expect(page.locator(".personal-mobile-day-detail").getByRole("button")).toContainText(
+    "November",
+  );
   expect(state.reads()).toBe(1);
 });
 

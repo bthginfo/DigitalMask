@@ -83,6 +83,30 @@ for (const browserName of ["chromium", "webkit"] as const)
       serviceWorkers: "block",
       viewport: mobile ? { width: 390, height: 844 } : { width: 1440, height: 1000 },
     });
+    test("find a look by its figure and jump to instructions behind the sticky title", async ({
+      page,
+    }) => {
+      await mock(page);
+      await page.goto("/");
+      await page
+        .getByRole("button", { name: mobile ? "Globale Suche" : /Alles durchsuchen/ })
+        .click();
+      const search = page.getByRole("dialog", { name: "Im Arbeitsraum suchen" });
+      await search.getByLabel("Suchbegriff").fill("Titania");
+      await search
+        .getByRole("button", { name: /Aufschrieb Nora Beispiel Ein Sommernachtstraum · Titania/ })
+        .click();
+      const look = page.getByRole("dialog", { name: "Nora Beispiel" });
+      const jump = look.getByLabel("Zum Abschnitt springen");
+      const label = await jump.locator("option").last().innerText();
+      await jump.selectOption({ label });
+      const heading = look.getByRole("heading", { name: label, exact: true });
+      await expect(heading).toBeFocused();
+      const header = await look.locator(".dialog-heading").boundingBox();
+      const target = await heading.boundingBox();
+      expect(target!.y).toBeGreaterThanOrEqual(header!.y + header!.height - 1);
+      await expect(heading).toBeInViewport();
+    });
     test("edits and downloads the combined backstage changes for one production", async ({
       page,
     }) => {
@@ -137,7 +161,7 @@ for (const browserName of ["chromium", "webkit"] as const)
         path: test.info().outputPath(`documents-folders-${browserName}-light.png`),
         fullPage: true,
       });
-      await page.getByRole("button", { name: "Nora Beispiel Titania 1 Bilder" }).click();
+      await page.getByRole("button", { name: "Nora Beispiel Titania 1 Bild", exact: true }).click();
       await expect(page.getByText("Vorbereitung aus dem Archiv", { exact: false })).toBeVisible();
       await page.getByRole("button", { name: "Bearbeiten", exact: true }).click();
       const editor = page.getByRole("dialog", { name: "Aufschrieb bearbeiten" });
@@ -274,6 +298,7 @@ for (const browserName of ["chromium", "webkit"] as const)
         { text: "Neuer Punkt", done: false },
       ]);
       await page.goto("/?module=documentation");
+      if (mobile) await page.getByLabel("Weitere Aktionen").click();
       await page.getByRole("button", { name: "Abschnitte verwalten", exact: true }).click();
       page.on("dialog", (dialog) => dialog.accept());
       await page.getByRole("button", { name: "Vorbereitung löschen", exact: true }).click();
@@ -296,6 +321,7 @@ for (const browserName of ["chromium", "webkit"] as const)
       await expect(
         page.getByRole("heading", { name: "Ein Sommernachtstraum", exact: true }),
       ).toHaveCount(0);
+      if (mobile) await page.getByLabel("Weitere Aktionen").click();
       await page.getByRole("button", { name: "Exportieren", exact: true }).click();
       await page.getByLabel(/^Format/).selectOption("csv");
       await page.getByRole("button", { name: "Herunterladen", exact: true }).click();
@@ -303,6 +329,7 @@ for (const browserName of ["chromium", "webkit"] as const)
       expect(state.exports[0]).toContain("year=2021");
       await page.goto("/?module=documentation");
       await page.getByLabel(/^Sammelordner/).selectOption("general");
+      if (mobile) await page.getByLabel("Weitere Aktionen").click();
       await page.getByRole("button", { name: "Exportieren", exact: true }).click();
       await page.getByRole("button", { name: "Herunterladen", exact: true }).click();
       await expect.poll(() => state.exports.length).toBe(2);

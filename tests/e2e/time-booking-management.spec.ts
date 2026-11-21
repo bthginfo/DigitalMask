@@ -91,7 +91,9 @@ for (const kind of ["attendance", "time"] as const) {
       name: `${kind === "attendance" ? "Anwesenheit" : "Arbeitszeit"}: Wochenverlauf`,
     });
     await history.locator("summary").filter({ hasText: "KW 40 · 2026" }).click();
-    const row = history.getByRole("listitem").filter({ hasText: String(booking.data.title) });
+    const row = history.locator("li:not(:has(ul))").filter({
+      has: page.getByRole("button", { name: String(booking.data.title), exact: true }),
+    });
     await expect(row.getByRole("button", { name: "Bearbeiten", exact: true })).toBeVisible();
     await expect(row.getByRole("button", { name: "Löschen", exact: true })).toBeVisible();
     const targets = await row

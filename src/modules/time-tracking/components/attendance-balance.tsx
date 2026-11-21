@@ -256,26 +256,35 @@ export function AttendanceBalanceCard({
                           ? `${signedHours(openWeek.balanceSeconds)} h über dem Wochensoll.`
                           : "Wochensoll erfüllt."}
                     </p>
-                    {compact ? (
-                      <details className={styles.details}>
-                        <summary>Wochenberechnung anzeigen</summary>
-                        <BalanceBreakdown
-                          amounts={openWeek}
-                          label="Berechnung der laufenden Woche"
-                        />
-                      </details>
-                    ) : (
+                    {!compact && (
                       <BalanceBreakdown amounts={openWeek} label="Berechnung der laufenden Woche" />
                     )}
-                    <p className="small muted">
-                      Der Wochenstand geht am Sonntag ins Plus-/Minuskonto ein.
-                    </p>
+                    {!compact && (
+                      <p className="small muted">
+                        Der Wochenstand geht am Sonntag ins Plus-/Minuskonto ein.
+                      </p>
+                    )}
                   </section>
                 )}
                 {compact ? (
                   <details className={styles.details}>
                     <summary>Berechnung anzeigen</summary>
-                    {breakdown}
+                    {openWeek && (
+                      <>
+                        <strong>Laufende Woche</strong>
+                        <BalanceBreakdown
+                          amounts={openWeek}
+                          label="Berechnung der laufenden Woche"
+                        />
+                        <p>Der Wochenstand geht am Sonntag ins Plus-/Minuskonto ein.</p>
+                      </>
+                    )}
+                    {breakdown && (
+                      <>
+                        <strong>Abgeschlossene Wochen</strong>
+                        {breakdown}
+                      </>
+                    )}
                     <p>
                       Gespeicherte Anwesenheiten bis einschließlich heute zählen vollständig, auch
                       vor ihrer Endzeit. Laufende Timer zählen erst nach dem Buchen.

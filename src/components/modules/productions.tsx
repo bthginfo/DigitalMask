@@ -344,7 +344,6 @@ export function ProductionsModule({
     <section className={styles.productionBrowse}>
       <PageHeader
         compact
-        eyebrow="JEDES STÜCK HAT SEINE GESCHICHTE"
         title="Produktionen"
         description="Euer gemeinsamer Überblick von der Vorbereitung bis zur Wiederaufnahme."
         secondaryActions={
@@ -368,7 +367,7 @@ export function ProductionsModule({
         onChange={setPeriod}
       />
       <div className={`toolbar ${styles.productionToolbar}`}>
-        <div className="segmented">
+        <div className="segmented" role="group" aria-label="Produktionsstatus">
           {[
             ["current", "Aktuell"],
             ["archived", "Archiv"],
@@ -377,6 +376,7 @@ export function ProductionsModule({
             <button
               key={key}
               className={status === key ? "active" : ""}
+              aria-pressed={status === key}
               onClick={() => setStatus(key)}
             >
               {label}
@@ -385,6 +385,8 @@ export function ProductionsModule({
         </div>
         <input
           className={`search-input ${styles.productionSearch}`}
+          type="search"
+          enterKeyHint="search"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Produktion suchen …"
@@ -393,7 +395,7 @@ export function ProductionsModule({
         <label className={`production-sort ${styles.productionSort}`}>
           <span>Sortieren nach</span>
           <select value={sort} onChange={(event) => setSort(event.target.value)}>
-            <option value="premiere">Premiere (früheste zuerst)</option>
+            <option value="premiere">Premiere ↑</option>
             <option value="name">Name A–Z</option>
             <option value="name-desc">Name Z–A</option>
             <option value="updated">Zuletzt geändert</option>

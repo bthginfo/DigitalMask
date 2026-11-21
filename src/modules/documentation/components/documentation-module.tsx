@@ -52,11 +52,12 @@ export function DocumentationModule() {
         JSON.stringify({
           ...row.data,
           actorName: lookTitle(row.data, workspace.records.actors),
-          characterName: value(
-            workspace.records.characters.find((figure) => figure.id === row.data.characterId)
-              ?.data || {},
-            "name",
-          ),
+          characterName:
+            value(
+              workspace.records.characters.find((figure) => figure.id === row.data.characterId)
+                ?.data || {},
+              "name",
+            ) || value(row.data, "characterName"),
           categories: documentSections(row.data, "looks").map((section) =>
             sectionName(section.key, "looks", workspace.records.categories),
           ),
@@ -80,10 +81,18 @@ export function DocumentationModule() {
   return (
     <>
       <div className="tabs compact-tabs">
-        <button className={tab === "looks" ? "active" : ""} onClick={() => setTab("looks")}>
+        <button
+          aria-pressed={tab === "looks"}
+          className={tab === "looks" ? "active" : ""}
+          onClick={() => setTab("looks")}
+        >
           Sammelordner
         </button>
-        <button className={tab === "templates" ? "active" : ""} onClick={() => setTab("templates")}>
+        <button
+          aria-pressed={tab === "templates"}
+          className={tab === "templates" ? "active" : ""}
+          onClick={() => setTab("templates")}
+        >
           Vorlagen
         </button>
       </div>
@@ -95,20 +104,23 @@ export function DocumentationModule() {
       ) : (
         <>
           <PageHeader
-            eyebrow="WISSEN FÜR EUER TEAM"
             title="Aufschriebe"
-            description="Allgemeine Aufschriebe und Produktionswissen, auch aus vergangenen Spielzeiten."
+            compact
+            secondaryActions={
+              <>
+                <ExportButton onClick={() => setExporting(true)} />
+                {workspace.user.role !== "user" && (
+                  <Button onClick={() => setCategoriesOpen(true)}>Abschnitte verwalten</Button>
+                )}
+              </>
+            }
           >
-            <ExportButton onClick={() => setExporting(true)} />
-            {workspace.user.role !== "user" && (
-              <Button onClick={() => setCategoriesOpen(true)}>Abschnitte verwalten</Button>
-            )}
             <Button variant="primary" onClick={() => setEditing(true)}>
               <Plus size={15} />
               Aufschrieb anlegen
             </Button>
           </PageHeader>
-          <div className="toolbar wrap">
+          <div className={`toolbar wrap ${styles.folderFilters}`}>
             <label className="inline-label">
               Sammelordner
               <select value={production} onChange={(event) => setProduction(event.target.value)}>
@@ -123,9 +135,11 @@ export function DocumentationModule() {
               </select>
             </label>
             <input
+              type="search"
+              enterKeyHint="search"
               className="search-input"
               aria-label="Aufschriebe durchsuchen"
-              placeholder="Person, Figur, Kategorie oder Text …"
+              placeholder="Person, Figur oder Text suchen …"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
             />
@@ -139,6 +153,7 @@ export function DocumentationModule() {
           {groupIds.length ? (
             groupIds.map((id) => {
               const project = workspace.records.productions.find((row) => row.id === id);
+              const folderRows = rows.filter((row) => value(row.data, "productionId") === id);
               const duration = project
                 ? productionLookDuration(project, workspace.records.looks)
                 : 0;
@@ -146,13 +161,7 @@ export function DocumentationModule() {
                 <section className="document-folder" key={id || "general"}>
                   <header>
                     <div>
-                      <span className="eyebrow">
-                        {project?.data.status === "archived"
-                          ? "ARCHIVIERTE PRODUKTION"
-                          : id
-                            ? "PRODUKTION"
-                            : "GEMEINSAMER SAMMELORDNER"}
-                      </span>
+                      {project?.data.status === "archived" && <span className="badge">Archiv</span>}
                       <h2>
                         {id
                           ? value(project?.data || {}, "title") || "Frühere Produktion"
@@ -180,35 +189,35 @@ export function DocumentationModule() {
                         </Button>
                       )}
                       <span className="small muted">
-                        {rows.filter((row) => value(row.data, "productionId") === id).length}{" "}
-                        Aufschriebe
+                        {folderRows.length} {folderRows.length === 1 ? "Aufschrieb" : "Aufschriebe"}
                       </span>
                     </div>
                   </header>
                   <div className="document-folder-records">
-                    {rows
-                      .filter((row) => value(row.data, "productionId") === id)
-                      .map((row) => (
-                        <button key={row.id} onClick={() => setDetail(row)}>
-                          <FileText size={20} />
-                          <div>
-                            <h3>{lookTitle(row.data, workspace.records.actors)}</h3>
-                            <p className="small muted">
-                              {value(
-                                workspace.records.characters.find(
-                                  (figure) => figure.id === row.data.characterId,
-                                )?.data || {},
-                                "name",
-                              ) ||
-                                value(row.data, "characterName") ||
-                                "Ohne Figur"}
-                            </p>
-                          </div>
+                    {folderRows.map((row) => (
+                      <button key={row.id} onClick={() => setDetail(row)}>
+                        <FileText size={20} />
+                        <div>
+                          <h3>{lookTitle(row.data, workspace.records.actors)}</h3>
+                          <p className="small muted">
+                            {value(
+                              workspace.records.characters.find(
+                                (figure) => figure.id === row.data.characterId,
+                              )?.data || {},
+                              "name",
+                            ) ||
+                              value(row.data, "characterName") ||
+                              "Ohne Figur"}
+                          </p>
+                        </div>
+                        {Array.isArray(row.data.imageIds) && row.data.imageIds.length > 0 && (
                           <span className="small muted">
-                            {Array.isArray(row.data.imageIds) ? row.data.imageIds.length : 0} Bilder
+                            {row.data.imageIds.length}{" "}
+                            {row.data.imageIds.length === 1 ? "Bild" : "Bilder"}
                           </span>
-                        </button>
-                      ))}
+                        )}
+                      </button>
+                    ))}
                   </div>
                 </section>
               );

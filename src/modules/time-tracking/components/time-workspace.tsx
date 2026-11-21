@@ -33,12 +33,7 @@ export function TimeWorkspace() {
   }, [workspace.records.time, workspace.records.attendance, workspace.user.id, week, until]);
   return (
     <div className={styles.workspace}>
-      <PageHeader
-        eyebrow="ZEIT IM THEATER"
-        title="Zeit buchen"
-        description="Anwesenheit und Produktionsstunden getrennt erfassen. Beide Timer können gleichzeitig laufen."
-        compact
-      />
+      <PageHeader title="Zeit buchen" compact />
       {selfBooking && (
         <>
           <div className={`dual-timers ${styles.timers}`}>

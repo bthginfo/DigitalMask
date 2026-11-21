@@ -108,11 +108,18 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   );
   const refresh = useCallback(() => reload(), [reload]);
   useEffect(() => {
-    void Promise.resolve().then(refresh);
-    if ("serviceWorker" in navigator)
-      void navigator.serviceWorker
-        .register("/sw.js", { updateViaCache: "none" })
-        .catch(() => undefined);
+    let active = true;
+    queueMicrotask(() => {
+      if (!active) return;
+      void refresh();
+      if ("serviceWorker" in navigator)
+        void navigator.serviceWorker
+          .register("/sw.js", { updateViaCache: "none" })
+          .catch(() => undefined);
+    });
+    return () => {
+      active = false;
+    };
   }, [refresh]);
   const liveEnabled = Boolean(workspace?.live);
   const departmentId = workspace?.department.id;

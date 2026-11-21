@@ -212,6 +212,37 @@
   }
 }
 @media (max-width: 600px) {
+  .dashboardSummary:global(.today-summary) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin-bottom: 16px;
+  }
+  .dashboardSummary:global(.today-summary) > button,
+  .dashboardSummary:global(.today-summary) > :global(.hours-summary) {
+    min-width: 0;
+    padding: 12px 9px;
+    gap: 6px;
+  }
+  .dashboardSummary:global(.today-summary) > button:nth-child(2) {
+    border-inline-end: 1px solid var(--border);
+  }
+  .dashboardSummary:global(.today-summary) > :global(.hours-summary) {
+    align-items: stretch;
+    border-top: 0;
+  }
+  .dashboardSummary :global(.summary-hours-action) {
+    flex-direction: column;
+    align-items: start;
+    gap: 6px;
+  }
+  .dashboardSummary :global(.summary-icon) {
+    height: 25px;
+    width: 25px;
+  }
+  .dashboardSummary .compact {
+    grid-column: 1 / -1;
+    border-inline-start: 0;
+    border-radius: 0 0 var(--radius) var(--radius);
+  }
   .card {
     padding: 14px;
   }
@@ -226,11 +257,8 @@
     min-height: 44px;
   }
   .compact .header select {
-    max-width: none;
-    width: 100%;
-  }
-  .compact .dates {
-    grid-template-columns: minmax(0, 1fr);
+    max-width: 60%;
+    width: auto;
   }
   .compact .total .value {
     font-size: 25px;

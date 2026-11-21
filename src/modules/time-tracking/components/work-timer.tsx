@@ -84,6 +84,7 @@ export function TimerPanel({
     <section
       className={`timer-panel ${styles.timer} ${compact ? "compact" : ""} ${attendance ? "attendance-timer" : ""}`}
       aria-label={attendance ? "Anwesenheitstimer" : "Produktionstimer"}
+      data-idle={!timer}
     >
       <header className={styles.header}>
         <button

@@ -149,21 +149,22 @@ export function TodayModule({ navigate }: { navigate: (module: string) => void }
       <div className={`today-layout${showTimer ? " today-layout--with-timer" : ""}`}>
         <div className="today-main">
           <div className="today-notifications">
-            <Section title="Neu für dich" meta={`${notices.length} ungelesene Mitteilungen`}>
-              <MarkAllReadButton />
-              {notices.length ? (
+            {notices.length ? (
+              <Section title="Neu für dich" meta={`${notices.length} ungelesene Mitteilungen`}>
+                <MarkAllReadButton />
                 <div className="list">
                   {notices.slice(0, 6).map((notice) => (
                     <NotificationRow key={notice.id} notice={notice} navigate={navigate} />
                   ))}
                 </div>
-              ) : (
-                <p className="empty-inline">
-                  <Sparkles size={18} />
-                  Alles auf dem neuesten Stand.
-                </p>
-              )}
-            </Section>
+              </Section>
+            ) : (
+              <section className="panel notifications-clear">
+                <Sparkles size={18} aria-hidden="true" />
+                <h2>Neu für dich</h2>
+                <span>Alles gelesen</span>
+              </section>
+            )}
           </div>
           <Section
             title="Als Nächstes"

@@ -81,6 +81,26 @@
   display: none;
 }
 @media (max-width: 760px) {
+  .timer:global(.timer-panel)[data-idle="true"] {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0 8px;
+  }
+  .timer[data-idle="true"] .main {
+    margin: 0;
+  }
+  .timer[data-idle="true"] .value,
+  .timer[data-idle="true"] .header :global(.badge) {
+    display: none;
+  }
+  .timer[data-idle="true"] > .details,
+  .timer[data-idle="true"] > :global(.error-message) {
+    grid-column: 1 / -1;
+  }
+  .timer[data-idle="true"] > .detailsOpen {
+    margin-top: 8px;
+  }
   .timer:global(.timer-panel) {
     padding: 12px 14px;
   }

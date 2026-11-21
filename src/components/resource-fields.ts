@@ -1,4 +1,6 @@
-import type { RecordKind } from "@/shared/contracts";
+import type { DomainRecord, RecordKind, Workspace } from "@/shared/contracts";
+import { value } from "@/shared/client-api";
+import { lookTitle } from "@/shared/document-sections";
 export type Field = {
   key: string;
   label: string;
@@ -315,3 +317,10 @@ export const statusLabels: Record<string, string> = {
   makeup: "Make-up",
   tool: "Werkzeug",
 };
+
+export function recordTitle(record: DomainRecord, workspace: Workspace) {
+  if (record.kind === "looks") return lookTitle(record.data, workspace.records.actors);
+  if (record.kind === "casting")
+    return `${value(workspace.records.characters.find((row) => row.id === record.data.characterId)?.data || {}, "name") || value(record.data, "characterName") || "Figur"} · ${value(workspace.records.actors.find((row) => row.id === record.data.actorId)?.data || {}, "name") || value(record.data, "actorName") || "Schauspieler"}`;
+  return value(record.data, "title") || value(record.data, "name") || labels[record.kind][1];
+}

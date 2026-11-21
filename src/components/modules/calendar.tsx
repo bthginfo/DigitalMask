@@ -713,7 +713,7 @@ export function CalendarModule({
                   : title}
               </h2>
             </div>
-            <div className="segmented">
+            <div className="segmented" role="group" aria-label="Kalenderansicht">
               {[
                 ["month", "Monat"],
                 ["week", "Woche"],
@@ -724,6 +724,7 @@ export function CalendarModule({
                 <button
                   key={key}
                   className={view === key ? "active" : ""}
+                  aria-pressed={view === key}
                   onClick={() => changeView(key)}
                 >
                   {label}
@@ -732,7 +733,7 @@ export function CalendarModule({
             </div>
           </div>
           {view === "team" && (
-            <div className="team-span-controls segmented" aria-label="Teamzeitraum">
+            <div className="team-span-controls segmented" role="group" aria-label="Teamzeitraum">
               {[
                 ["week", "Teamwoche"],
                 ["month", "Teammonat"],
@@ -740,6 +741,7 @@ export function CalendarModule({
                 <button
                   key={key}
                   className={teamSpan === key ? "active" : ""}
+                  aria-pressed={teamSpan === key}
                   onClick={() => {
                     setTeamSpan(key);
                   }}

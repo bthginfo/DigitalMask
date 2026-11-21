@@ -11,18 +11,17 @@ import {
   Trash2,
   Upload,
 } from "lucide-react";
-import type { DomainRecord, RecordData, RecordKind, Workspace } from "@/shared/contracts";
+import type { DomainRecord, RecordData, RecordKind } from "@/shared/contracts";
 import { api, dateLabel, hours, ids, localDate, num, value } from "@/shared/client-api";
 import { imageAccept, prepareUpload } from "@/shared/client-files";
 import { HistoryPanel } from "./history-panel";
-import { fields, labels, statusLabels } from "./resource-fields";
+import { fields, labels, recordTitle, statusLabels } from "./resource-fields";
 import { useWorkspace } from "./workspace-context";
 import { Badge, Button, Empty, ErrorMessage, ExportButton, Modal, PageHeader } from "./ui";
 import browseStyles from "./workspace-browse.module.css";
 import { ResourceEditor } from "./resource-editor";
 import { DocumentContent } from "@/modules/documentation/components/document-content";
 import lookStyles from "@/modules/documentation/components/document-sections.module.css";
-import { lookTitle } from "@/shared/document-sections";
 import { CategoryManager } from "@/modules/categories/components/category-manager";
 import { categoryName } from "@/shared/domain-categories";
 import { EventDetail } from "@/modules/calendar/components/event-detail";
@@ -46,13 +45,6 @@ import { initialPeriod, teamTaskSeason } from "@/shared/period-filter";
 import { useViewState } from "@/shared/view-state";
 import { MaterialReservations } from "@/modules/reservations/components/material-reservations";
 import { TimeBookingDelete } from "@/modules/time-tracking/components/time-booking-delete";
-
-function recordTitle(record: DomainRecord, workspace: Workspace) {
-  if (record.kind === "looks") return lookTitle(record.data, workspace.records.actors);
-  if (record.kind === "casting")
-    return `${value(workspace.records.characters.find((row) => row.id === record.data.characterId)?.data || {}, "name") || value(record.data, "characterName") || "Figur"} · ${value(workspace.records.actors.find((row) => row.id === record.data.actorId)?.data || {}, "name") || value(record.data, "actorName") || "Schauspieler"}`;
-  return value(record.data, "title") || value(record.data, "name") || labels[record.kind][1];
-}
 
 export function RecordDetail({
   record,

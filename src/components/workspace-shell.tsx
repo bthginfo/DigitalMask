@@ -30,14 +30,13 @@ import {
   closeRecordDetail,
   navigateWorkspace,
   navigationReturn,
-  recordHref,
   restoreNavigationScroll,
   returnToContext,
   setNavigationUser,
 } from "@/shared/client-navigation";
 import { subscribeLocation, subscribeMobile } from "@/shared/client-storage";
 import { onboardingVersion, type DomainRecord, type RecordKind } from "@/shared/contracts";
-import { initials, post, value } from "@/shared/client-api";
+import { initials, post } from "@/shared/client-api";
 import { useWorkspace } from "./workspace-context";
 import { stopPushOnLogout } from "@/modules/notifications/client";
 import { chatUnreadCounts, unreadNotifications } from "@/modules/notifications/unread";
@@ -47,6 +46,7 @@ import { Badge, Empty, Modal } from "./ui";
 import { ThemeSwitch } from "./theme-switch";
 import { LiveStatus } from "./live-status";
 import { RecordDetail, ResourceView } from "./resource-view";
+import { WorkspaceSearch } from "./workspace-search";
 import { TodayModule } from "./modules/today";
 import { ProductionsModule } from "./modules/productions";
 import { TasksModule } from "./modules/tasks";
@@ -62,7 +62,6 @@ import { HelpModule } from "@/modules/help/components/help-module";
 import { DocumentationModule } from "@/modules/documentation/components/documentation-module";
 import { PeopleModule } from "@/modules/people/components";
 import { ActorsModule } from "@/modules/ensemble/components/actors-module";
-import { isDirectoryPerson } from "@/modules/people/components/person-data";
 import { AppInstall } from "@/modules/pwa/components/app-install";
 import { ExportDialog } from "./export-dialog";
 const nav: { id: string; label: string; icon: LucideIcon; group: string }[] = [
@@ -107,7 +106,6 @@ export function WorkspaceShell() {
         : undefined;
   const [mobileMenu, setMobileMenu] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [search, setSearch] = useState("");
   const [detail, setDetail] = useState<DomainRecord | null>(null);
   const [notificationSnapshot, setNotificationSnapshot] = useState<{
     items: DomainRecord[];
@@ -154,9 +152,8 @@ export function WorkspaceShell() {
       window.removeEventListener("keydown", key);
     };
   }, []);
-  const openMenu = () => {
-    menuOpener.current =
-      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  const openMenu = (opener: HTMLElement) => {
+    menuOpener.current = opener;
     setMobileMenu(true);
   };
   useEffect(() => {
@@ -191,7 +188,8 @@ export function WorkspaceShell() {
     return () => {
       window.removeEventListener("keydown", key);
       document.body.style.setProperty("overflow", previousOverflow);
-      if (previousFocus instanceof HTMLElement) previousFocus.focus();
+      if (previousFocus instanceof HTMLElement && previousFocus.isConnected)
+        previousFocus.focus({ preventScroll: true });
     };
   }, [mobileMenu, isMobile]);
   useEffect(() => {
@@ -248,28 +246,6 @@ export function WorkspaceShell() {
       )
     : [];
   const chatUnread = chatUnreadCounts(workspace.records.notifications, workspace.user.id).total;
-  const results =
-    search.length >= 2
-      ? Object.values(workspace.records)
-          .flat()
-          .filter(
-            (record) =>
-              ![
-                "files",
-                "notifications",
-                "timesheets",
-                "messages",
-                "time",
-                "feedback",
-                "attendance",
-                "calendarCategories",
-                "conversations",
-              ].includes(record.kind) &&
-              (record.kind !== "people" || isDirectoryPerson(record)) &&
-              JSON.stringify(record.data).toLowerCase().includes(search.toLowerCase()),
-          )
-          .slice(0, 30)
-      : [];
   const linkedRecord = recordId
     ? Object.values(workspace.records)
         .flat()
@@ -475,8 +451,10 @@ export function WorkspaceShell() {
             )}
             <button
               className="icon-button mobile-menu-button"
-              onClick={openMenu}
+              onClick={(event) => openMenu(event.currentTarget)}
               aria-label="Menü öffnen"
+              aria-haspopup="dialog"
+              aria-expanded={mobileMenu}
             >
               <Menu size={19} />
             </button>
@@ -561,11 +539,15 @@ export function WorkspaceShell() {
                   : ""
               }
               aria-current={activeModule === key ? "page" : undefined}
+              aria-haspopup={key === "more" ? "dialog" : undefined}
+              aria-expanded={key === "more" ? mobileMenu : undefined}
               aria-label={key === "chat" ? "Kommunikation" : String(label)}
               aria-description={
                 key === "chat" && chatUnread ? `${chatUnread} ungelesene Nachrichten` : undefined
               }
-              onClick={() => (key === "more" ? openMenu() : navigate(String(key)))}
+              onClick={(event) =>
+                key === "more" ? openMenu(event.currentTarget) : navigate(String(key))
+              }
             >
               <Component size={20} />
               {key === "chat" && chatUnread > 0 && (
@@ -586,59 +568,7 @@ export function WorkspaceShell() {
           </button>
         </div>
       )}
-      {searchOpen && (
-        <Modal
-          title="Im Arbeitsraum suchen"
-          onClose={() => {
-            setSearchOpen(false);
-            setSearch("");
-          }}
-          wide
-        >
-          <div className="global-search-field">
-            <Search size={20} />
-            <input
-              autoFocus
-              placeholder="Produktion, Figur, Schauspieler, Material …"
-              aria-label="Suchbegriff"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-          {search.length < 2 ? (
-            <p className="empty-inline">
-              Mindestens 2 Zeichen eingeben. Die Suche verwendet die bereits geladenen, für dich
-              freigegebenen Daten.
-            </p>
-          ) : results.length ? (
-            <div className="search-results">
-              {results.map((result) => (
-                <button
-                  key={result.id}
-                  onClick={() => {
-                    navigate(recordHref(result));
-                    setSearchOpen(false);
-                    setSearch("");
-                  }}
-                >
-                  <span className="small muted">{labels[result.kind][1]}</span>
-                  <strong>
-                    {value(result.data, "title") || value(result.data, "name") || "Eintrag"}
-                  </strong>
-                  <span className="small muted">
-                    {value(result.data, "description") || value(result.data, "notes")}
-                  </span>
-                </button>
-              ))}
-            </div>
-          ) : (
-            <Empty
-              title="Nichts Passendes gefunden."
-              description="Versuche einen anderen Namen oder Begriff."
-            />
-          )}
-        </Modal>
-      )}
+      {searchOpen && <WorkspaceSearch onClose={() => setSearchOpen(false)} navigate={navigate} />}
       {notificationSnapshot && (
         <Modal title="Mitteilungen" onClose={() => setNotificationSnapshot(null)}>
           <MarkAllReadButton />
