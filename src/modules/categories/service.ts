@@ -5,7 +5,7 @@ import type { Context } from "@/platform/context";
 import { HttpError } from "@/platform/http";
 import { textValue, type RecordData } from "@/shared/contracts";
 import type { CategoryScope } from "@/shared/domain-categories";
-import { documentSections } from "@/shared/document-sections";
+import { backstageChangesSection, documentSections } from "@/shared/document-sections";
 
 async function lock(context: Context, scope: string, tx: Transaction) {
   await tx.execute(
@@ -102,6 +102,8 @@ export async function validateCategoryReferences(
     scope === "time" || scope === "materials"
       ? [textValue(data.category)]
       : documentSections(data, scope)
+          // Backstage changes are built into production notes, independently of department categories.
+          .filter((section) => scope !== "looks" || section.key !== backstageChangesSection.key)
           .filter((section) =>
             section.entries.some((entry) => entry.text.trim() || entry.label?.trim()),
           )
