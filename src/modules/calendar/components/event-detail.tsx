@@ -16,12 +16,16 @@ import {
   canEditCalendarEvent,
 } from "@/shared/calendar-access";
 import { RecordLink } from "@/components/record-link";
+import { navigateWorkspace } from "@/shared/client-navigation";
+import { backstageChangesSection } from "@/shared/document-sections";
 export function EventDetail({
   record,
+  occurrence,
   onClose,
   onNavigate = onClose,
 }: {
   record: DomainRecord;
+  occurrence?: { start: string; end: string };
   onClose: () => void;
   onNavigate?: () => void;
 }) {
@@ -44,7 +48,11 @@ export function EventDetail({
   const calendarProduction = calendarProductions.find(
     (row) => row.id === current.data.productionId,
   );
-  const endDay = shiftDate(localDate(instantDate(value(current.data, "end"))), -1);
+  const seriesInstance =
+    current.data.recurrence && current.data.recurrence !== "none" ? occurrence : undefined;
+  const start = seriesInstance?.start || value(current.data, "start");
+  const end = seriesInstance?.end || value(current.data, "end");
+  const endDay = shiftDate(localDate(instantDate(end)), -1);
   return (
     <>
       {editing ? (
@@ -93,8 +101,8 @@ export function EventDetail({
               </dt>
               <dd>
                 {presentation.allDay
-                  ? `${dateLabel(localDate(instantDate(value(current.data, "start"))))} – ${dateLabel(endDay)} · ganztägig`
-                  : `${dateLabel(value(current.data, "start"), true)} – ${dateLabel(value(current.data, "end"), true)}`}
+                  ? `${dateLabel(localDate(instantDate(start)))} – ${dateLabel(endDay)} · ganztägig`
+                  : `${dateLabel(start, true)} – ${dateLabel(end, true)}`}
               </dd>
             </div>
             <div>
@@ -138,6 +146,38 @@ export function EventDetail({
               </dd>
             </div>
           </dl>
+          {production && (
+            <nav className="detail-actions" aria-label="Für diesen Termin">
+              {[
+                ["mask-plan", "Maskenplan"],
+                [backstageChangesSection.key, "Umzugsliste"],
+              ].map(([tab, label]) => {
+                const query = new URLSearchParams({
+                  module: "productions",
+                  productionId: production.id,
+                  tab,
+                });
+                if (tab === "mask-plan" && !presentation.allDay)
+                  query.set("showStart", instantDate(start).toISOString());
+                const href = `/?${query}`;
+                return (
+                  <a
+                    key={tab}
+                    className="button"
+                    href={href}
+                    onClick={(event) => {
+                      if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
+                      event.preventDefault();
+                      onNavigate();
+                      navigateWorkspace(href, { returnLabel: "Zurück zum Kalender" });
+                    }}
+                  >
+                    {label}
+                  </a>
+                );
+              })}
+            </nav>
+          )}
           {presentation.background && (
             <p className="help-note">
               {presentation.background === "service"

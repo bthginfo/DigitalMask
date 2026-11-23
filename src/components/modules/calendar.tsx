@@ -45,7 +45,7 @@ import { sortProductionsByPremiere } from "@/shared/production-order";
 import { useWorkspace } from "../workspace-context";
 import { Badge, Button, ErrorMessage, ExportButton, Modal, PageHeader } from "../ui";
 import { ResourceEditor } from "../resource-editor";
-import { RecordDetail } from "../resource-view";
+import { EventDetail } from "@/modules/calendar/components/event-detail";
 import { ExportDialog } from "../export-dialog";
 import {
   calendarPresentation,
@@ -255,7 +255,12 @@ export function CalendarModule({
     defaults?: Record<string, unknown>;
     record?: DomainRecord;
   } | null>(null);
-  const [detail, setDetail] = useState<DomainRecord | null>(null);
+  type Occurrence = { start: string; end: string };
+  const [detail, setDetail] = useState<{ record: DomainRecord; occurrence: Occurrence } | null>(
+    null,
+  );
+  const openDetail = (record: DomainRecord, occurrence: Occurrence) =>
+    setDetail({ record, occurrence });
   const [error, setError] = useState("");
   const [exporting, setExporting] = useState(false);
   const [googleCalendarOpen, setGoogleCalendarOpen] = useState(returnedFromGoogleCalendar);
@@ -348,6 +353,7 @@ export function CalendarModule({
         ...event,
         extendedProps: {
           ...event.extendedProps,
+          occurrence: { start: event.start, end: event.end },
           monthPriority: calendarMonthPriority(
             value(event.extendedProps.record.data, "category"),
             event.categoryName,
@@ -781,7 +787,7 @@ export function CalendarModule({
               canEdit={(record) => canEditCalendarEvent(workspace, record)}
               timeAccounts={admin ? accountsByPerson : undefined}
               onOpenAccount={setAccountPerson}
-              onOpen={setDetail}
+              onOpen={openDetail}
               onEdit={(record) => setEditor({ kind: "events", record })}
               onCreate={(defaults) => setEditor({ kind: "events", defaults })}
             />
@@ -892,7 +898,10 @@ export function CalendarModule({
                       onTouchStart={(event) => event.stopPropagation()}
                       onClick={(event) => {
                         event.stopPropagation();
-                        setDetail(info.event.extendedProps.record as DomainRecord);
+                        openDetail(
+                          info.event.extendedProps.record,
+                          info.event.extendedProps.occurrence,
+                        );
                       }}
                     >
                       <strong>{info.event.title}</strong>
@@ -931,7 +940,9 @@ export function CalendarModule({
                       : { start: info.startStr, end: info.endStr },
                   );
                 }}
-                eventClick={(info) => setDetail(info.event.extendedProps.record as DomainRecord)}
+                eventClick={({ event }) =>
+                  openDetail(event.extendedProps.record, event.extendedProps.occurrence)
+                }
                 dateClick={(info) => {
                   const day = localDate(info.date);
                   if (mobile && view === "month") openMobileDay(day);
@@ -1031,7 +1042,7 @@ export function CalendarModule({
                       ?.querySelector<HTMLButtonElement>(`[data-calendar-day="${mobileDay}"]`)
                       ?.focus({ preventScroll: true })
                   }
-                  onOpen={setDetail}
+                  onOpen={openDetail}
                   onEdit={(record) => setEditor({ kind: "events", record })}
                   onCreate={(defaults) => setEditor({ kind: "events", defaults })}
                 />
@@ -1151,7 +1162,7 @@ export function CalendarModule({
         />
       )}
       <ShiftSwapPanel />
-      {detail && <RecordDetail record={detail} onClose={() => setDetail(null)} />}
+      {detail && <EventDetail {...detail} onClose={() => setDetail(null)} />}
       {admin && selectedAccount?.state === "ready" && (
         <Modal
           title={`Zeitkonto · ${selectedAccount.member.name}`}

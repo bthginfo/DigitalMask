@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { Button, Empty, ErrorMessage, Modal } from "@/components/ui";
 import { useWorkspace } from "@/components/workspace-context";
-import { ApiFailure, value } from "@/shared/client-api";
+import { ApiFailure, dateLabel, localDateTime, value } from "@/shared/client-api";
 import { contactsValue, type DomainRecord } from "@/shared/contracts";
 import { isActiveStaff } from "@/shared/client-members";
 import { maskPlanSchema } from "../schema";
@@ -34,6 +34,7 @@ import {
 import { BlockEditor, LaneEditor, PlanOptions } from "./plan-editors";
 import { Timetable } from "./timetable";
 import { SavedTimetable } from "./saved-timetable";
+import { RunOfShow } from "./run-of-show";
 import styles from "./mask-plans.module.css";
 import { useViewState } from "@/shared/view-state";
 import { navigateWorkspace } from "@/shared/client-navigation";
@@ -58,7 +59,13 @@ function updateLocation(id: string, push = false) {
   }
 }
 
-export function MaskPlansModule({ production }: { production: DomainRecord }) {
+export function MaskPlansModule({
+  production,
+  showStart = "",
+}: {
+  production: DomainRecord;
+  showStart?: string;
+}) {
   const { workspace, save, remove, refresh, busy, online, notify } = useWorkspace();
   const plans = workspace.records.maskPlans.filter(
     (record) => record.data.productionId === production.id,
@@ -76,12 +83,20 @@ export function MaskPlansModule({ production }: { production: DomainRecord }) {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [editor, setEditor] = useState<Editor>(null);
   const [editing, setEditing] = useState(false);
-  const [performanceTime, setPerformanceTime] = useViewState(
+  const [manualTime, setManualTime] = useViewState(
     workspace.user.id,
     `mask-plans:${production.id}`,
     "performanceTime",
     "",
   );
+  const eventStart =
+    /^\d{4}-\d\d-\d\dT\d\d:\d\d:.*Z$/.test(showStart) && Number.isFinite(Date.parse(showStart))
+      ? localDateTime(showStart)
+      : "";
+  const [eventTimeOverride, setEventTimeOverride] = useState<string | null>(null);
+  const beginInput = useRef<HTMLInputElement>(null);
+  const performanceTime = eventStart ? (eventTimeOverride ?? eventStart.slice(11)) : manualTime;
+  const setPerformanceTime = eventStart ? setEventTimeOverride : setManualTime;
   const [error, setError] = useState("");
   const [conflict, setConflict] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -318,9 +333,10 @@ export function MaskPlansModule({ production }: { production: DomainRecord }) {
   const beginningControl = (
     <div className={styles.viewControls}>
       <label>
-        <span>Beginn (optional)</span>
+        <span>{eventStart ? `Beginn · ${dateLabel(showStart)}` : "Beginn (optional)"}</span>
         <input
           type="time"
+          ref={beginInput}
           aria-label="Vorstellungsbeginn (optional)"
           value={performanceTime}
           onChange={(event) => setPerformanceTime(event.target.value)}
@@ -516,6 +532,18 @@ export function MaskPlansModule({ production }: { production: DomainRecord }) {
             </div>
           )}
           <ErrorMessage message={error} />
+          {compact && plan.blocks.length > 0 && (
+            <RunOfShow
+              key={selected?.id}
+              plan={plan}
+              members={workspace.members}
+              actors={workspace.records.actors}
+              userId={workspace.user.id}
+              performanceTime={performanceTime}
+              eventDate={eventStart.slice(0, 10)}
+              onChooseTime={() => beginInput.current?.focus()}
+            />
+          )}
           {!compact && (
             <div className={styles.toolbar}>
               <div className={styles.addActions}>

@@ -267,6 +267,8 @@ export function WorkspaceShell() {
     ) : activeModule === "productions" ? (
       <ProductionsModule
         productionId={params.get("productionId") || ""}
+        showStart={params.get("showStart") || ""}
+        focusedMessageId={params.get("messageId") || ""}
         activeTab={params.get("tab") === "handovers" ? "overview" : params.get("tab") || "overview"}
         onNavigate={(id, tab) => {
           const next = new URLSearchParams({

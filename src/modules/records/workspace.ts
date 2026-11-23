@@ -20,6 +20,7 @@ import {
 import { serialize, projectVisible } from "./repository";
 import { scheduleLiveChange } from "@/platform/realtime";
 import { canReadShiftSwap } from "@/modules/shift-swaps/rules";
+import { messageInChat, workspaceMessageLimit, type ChatScope } from "@/modules/chat/media";
 import { visibleWorkingTime } from "@/shared/working-time";
 import { calendarProductionReference } from "@/shared/calendar-access";
 import { productionOverviewReference } from "@/shared/production-overview";
@@ -132,6 +133,7 @@ async function readTeam(departmentId: string) {
 export async function getWorkspace(
   context: Context,
   selected?: readonly RecordKind[],
+  chatArchive?: ChatScope,
 ): Promise<Workspace> {
   const [rows, members] = await Promise.all([
     readWorkspaceRows(context, selected),
@@ -187,7 +189,11 @@ export async function getWorkspace(
       context.user.role === "user"
     )
       continue;
-    if (row.kind === "messages" && grouped.messages.length >= 300) grouped.messages.shift();
+    if (row.kind === "messages") {
+      if (chatArchive && !messageInChat(row, chatArchive)) continue;
+      if (!chatArchive && grouped.messages.length >= workspaceMessageLimit)
+        grouped.messages.shift();
+    }
     if (row.kind !== "files")
       grouped[row.kind].push(
         row.kind === "leave" && row.data.userId !== context.user.id

@@ -22,6 +22,7 @@ vi.mock("next/cache", () => ({
 vi.mock("@/platform/context", () => ({ scopeTag: (id: string) => `workspace:${id}` }));
 vi.mock("@/platform/realtime", () => ({ scheduleLiveChange: vi.fn() }));
 import { getWorkspace } from "@/modules/records/workspace";
+import { chatMediaItems, chatMediaPage, workspaceMessageLimit } from "@/modules/chat/media";
 
 const context: Context = {
   organizationId: "fictional-theatre",
@@ -148,6 +149,50 @@ beforeEach(() => {
       return { where: () => ({ unionAll: () => Promise.resolve([]) }) };
     },
   }));
+});
+
+it("retrieves older chat media in stable pages and keeps private channel files out", async () => {
+  const scope = { conversationId: "", productionId: "" };
+  const initialSize = scopeRows.length;
+  try {
+    for (let index = 0; index <= workspaceMessageLimit; index++) {
+      scopeRows.push(row("messages", `general-${index}`, {}));
+    }
+    for (let index = 0; index < 14; index++) {
+      scopeRows.push(
+        row("files", `photo-${index}`, {
+          recordKind: "messages",
+          recordId: "general-0",
+          path: "private-blob-path",
+        }),
+      );
+    }
+    scopeRows.push(
+      row("messages", "private-source", { conversationId: "private-chat" }),
+      row("files", "private-photo", { recordKind: "messages", recordId: "private-source" }),
+    );
+    const recent = await getWorkspace(context, ["messages", "files"]);
+    expect(recent.records.messages.some((message) => message.id === "general-0")).toBe(false);
+    const archive = await getWorkspace(context, ["messages", "files"], scope);
+    const items = chatMediaItems(archive.records.messages, archive.records.files, scope);
+    expect(items).toHaveLength(14);
+    expect(items.every((item) => item.messageId === "general-0" && !item.file.data.path)).toBe(
+      true,
+    );
+    const first = chatMediaPage(items, "", "");
+    const last = first.items.at(-1)!;
+    const second = chatMediaPage(items, last.sentAt, last.file.id);
+    expect(first.more).toBe(true);
+    expect(second.more).toBe(false);
+    expect([...first.items, ...second.items]).toEqual(items);
+    const privateArchive = await getWorkspace(context, ["messages", "files"], {
+      ...scope,
+      conversationId: "private-chat",
+    });
+    expect(privateArchive.records.messages).toEqual([]);
+  } finally {
+    scopeRows.length = initialSize;
+  }
 });
 
 describe("department calendar sharing", () => {

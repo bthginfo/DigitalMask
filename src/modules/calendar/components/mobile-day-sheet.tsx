@@ -46,7 +46,7 @@ export function MobileDaySheet({
   onSelect: (day: string) => void;
   onClose: () => void;
   onRestoreFocus: () => void;
-  onOpen: (record: DomainRecord) => void;
+  onOpen: (record: DomainRecord, occurrence: Pick<CalendarInstance, "start" | "end">) => void;
   onEdit: (record: DomainRecord) => void;
   onCreate: (defaults: RecordData) => void;
 }) {

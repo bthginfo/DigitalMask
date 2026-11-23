@@ -75,7 +75,7 @@ export function TeamCalendar({
   canEdit: (record: DomainRecord) => boolean;
   suspended: boolean;
   productions: DomainRecord[];
-  onOpen: (record: DomainRecord) => void;
+  onOpen: (record: DomainRecord, occurrence: Pick<CalendarInstance, "start" | "end">) => void;
   onEdit: (record: DomainRecord) => void;
   onCreate: (data: RecordData) => void;
   timeAccounts?: ReadonlyMap<string, CalendarTimeAccount>;
@@ -170,7 +170,7 @@ export function TeamCalendar({
                           aria-label={`${event.title} · ${event.categoryName} · ${event.allDay ? "ganztägig" : `${clock(event.start)} bis ${clock(event.end)}`} · ${person.name}`}
                           onClick={() => {
                             setSelectedDay(date);
-                            onOpen(event.extendedProps.record);
+                            onOpen(event.extendedProps.record, event);
                           }}
                         >
                           <strong>{event.title}</strong>
@@ -280,7 +280,7 @@ export function TeamCalendar({
                   backgroundColor: event.backgroundColor,
                   color: event.textColor,
                 }}
-                onClick={() => onOpen(event.extendedProps.record)}
+                onClick={() => onOpen(event.extendedProps.record, event)}
               >
                 <span className="small muted">
                   {person.name} · {event.categoryName}

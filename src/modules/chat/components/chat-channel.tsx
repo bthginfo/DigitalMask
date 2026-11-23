@@ -5,6 +5,7 @@ import {
   FilePlus2,
   Download,
   Hash,
+  Images,
   MessageCircle,
   MoreHorizontal,
   Paperclip,
@@ -30,6 +31,9 @@ import { ImageGallery } from "@/components/image-gallery";
 import { NewDocumentDialog } from "@/modules/documents/components/new-document-dialog";
 import { documentAccept } from "@/modules/documents/components/record-documents";
 import { ChatActionMenu } from "./chat-action-menu";
+import { navigateWorkspace } from "@/shared/client-navigation";
+import { messageInChat, type ChatMediaItem } from "../media";
+const ChatMediaDialog = dynamic(() => import("./chat-media"));
 const DocumentEditor = dynamic(() => import("@/modules/documents/components/document-editor"), {
   ssr: false,
 });
@@ -73,6 +77,8 @@ export function ChatChannel({
     nearBottom = useRef(true),
     lastMessage = useRef("");
   const messageTarget = useRef<HTMLElement>(null);
+  const [mediaOpen, setMediaOpen] = useState(false);
+  const [mediaSource, setMediaSource] = useState<ChatMediaItem | null>(null);
   const positionedTarget = useRef("");
   const [linkedMessage, setLinkedMessage] = useState<{ id: string; record?: DomainRecord }>();
   const messageInput = useRef<HTMLTextAreaElement>(null);
@@ -103,12 +109,7 @@ export function ChatChannel({
   const recentMessages = useMemo(
     () =>
       workspace.records.messages
-        .filter((message) =>
-          conversationId
-            ? message.data.conversationId === conversationId
-            : !value(message.data, "conversationId") &&
-              value(message.data, "productionId") === productionId,
-        )
+        .filter((message) => messageInChat(message, { conversationId, productionId }))
         .sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
     [workspace.records.messages, conversationId, productionId],
   );
@@ -123,10 +124,7 @@ export function ChatChannel({
     })
       .then((record) => {
         if (controller.signal.aborted) return;
-        const matchesChannel = conversationId
-          ? record.data.conversationId === conversationId
-          : !value(record.data, "conversationId") &&
-            value(record.data, "productionId") === productionId;
+        const matchesChannel = messageInChat(record, { conversationId, productionId });
         setLinkedMessage({
           id: focusedMessageId,
           record: record.id === focusedMessageId && matchesChannel ? record : undefined,
@@ -232,6 +230,10 @@ export function ChatChannel({
         <ChatActionMenu label="Chataktionen" icon={<MoreHorizontal size={21} aria-hidden="true" />}>
           {archived && <Badge>Archiviert</Badge>}
           <LiveStatus recovery />
+          <button type="button" onClick={() => setMediaOpen(true)}>
+            <Images size={17} />
+            Medien &amp; Dateien
+          </button>
           {onCreatePrivate && (
             <button type="button" onClick={onCreatePrivate}>
               <Plus size={17} />
@@ -296,6 +298,10 @@ export function ChatChannel({
         <div className="chat-heading-actions">
           {archived && <Badge>Archiviert</Badge>}
           <LiveStatus recovery />
+          <Button onClick={() => setMediaOpen(true)}>
+            <Images size={16} />
+            Medien &amp; Dateien
+          </Button>
           {onManage && <Button onClick={onManage}>Verwalten</Button>}
           <ExportButton onClick={() => setExporting(true)} />
         </div>
@@ -323,6 +329,12 @@ export function ChatChannel({
               const attached = workspace.records.files.filter(
                 (file) => file.data.recordKind === "messages" && file.data.recordId === message.id,
               );
+              if (
+                fetchedTarget?.id === message.id &&
+                mediaSource?.messageId === message.id &&
+                !attached.some((file) => file.id === mediaSource.file.id)
+              )
+                attached.push(mediaSource.file);
               const attachmentIds = Array.isArray(message.data.attachmentIds)
                 ? (message.data.attachmentIds as string[])
                 : [];
@@ -582,6 +594,25 @@ export function ChatChannel({
             await refresh();
             setCreatingDocument(false);
             setOpenedDocument(file);
+          }}
+        />
+      )}
+      {mediaOpen && (
+        <ChatMediaDialog
+          title={title}
+          productionId={productionId}
+          conversationId={conversationId}
+          onClose={() => setMediaOpen(false)}
+          onMessage={(item) => {
+            setMediaSource(item);
+            setMediaOpen(false);
+            positionedTarget.current = "";
+            const next = new URL(location.href);
+            next.searchParams.set("messageId", item.messageId);
+            if (focusedMessageId === item.messageId && messageTarget.current) {
+              messageTarget.current.focus({ preventScroll: true });
+              messageTarget.current.scrollIntoView({ block: "center" });
+            } else navigateWorkspace(next.pathname + next.search);
           }}
         />
       )}

@@ -21,7 +21,7 @@ export function MobileDayAgenda({
   members: Pick<Member, "id" | "name">[];
   productions: DomainRecord[];
   canEdit?: (record: DomainRecord) => boolean;
-  onOpen: (record: DomainRecord) => void;
+  onOpen: (record: DomainRecord, occurrence: Pick<CalendarInstance, "start" | "end">) => void;
   onEdit?: (record: DomainRecord) => void;
 }) {
   const selected = useMemo(() => calendarDayEntries(events, day), [events, day]);
@@ -44,7 +44,7 @@ export function MobileDayAgenda({
                   backgroundColor: event.backgroundColor,
                   color: event.textColor,
                 }}
-                onClick={() => onOpen(record)}
+                onClick={() => onOpen(record, event)}
               >
                 <span className={styles.people}>{names.join(", ") || "Gäste/Aushilfen"}</span>
                 <strong>{event.title}</strong>

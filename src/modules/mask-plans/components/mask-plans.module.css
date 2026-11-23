@@ -1441,3 +1441,55 @@
     position: static;
   }
 }
+.runOfShow {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0 0.85rem;
+  margin-block: 0.75rem;
+}
+.runOfShow summary {
+  cursor: pointer;
+  padding-block: 0.75rem;
+  font-weight: 650;
+}
+.runOfShow summary svg {
+  vertical-align: middle;
+  margin-inline-end: 0.3rem;
+}
+.runControls {
+  display: flex;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+.runControls label {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+}
+.runControls :is(select, input) {
+  max-width: 100%;
+}
+.runOfShow h4 {
+  margin-block: 0.7rem 0.25rem;
+}
+.runOfShow p,
+.runOfShow ul {
+  margin: 0.3rem 0 0.75rem;
+}
+.runOfShow ul {
+  list-style: none;
+  padding: 0;
+}
+.runOfShow li {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+.runOfShow li strong {
+  overflow-wrap: anywhere;
+}
+.runOfShow li span {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}

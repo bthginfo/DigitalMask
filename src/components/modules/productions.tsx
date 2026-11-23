@@ -47,10 +47,14 @@ const productionSections = [
 ];
 export function ProductionsModule({
   productionId = "",
+  showStart = "",
+  focusedMessageId = "",
   activeTab = "overview",
   onNavigate,
 }: {
   productionId?: string;
+  showStart?: string;
+  focusedMessageId?: string;
   activeTab?: string;
   onNavigate: (id: string, tab: string) => void;
 }) {
@@ -308,7 +312,11 @@ export function ProductionsModule({
         ) : tab === "team" ? (
           <ProductionTeamModule key={production.id} production={production} />
         ) : tab === "chat" ? (
-          <ChatModule key={production.id} productionId={production.id} />
+          <ChatModule
+            key={production.id}
+            productionId={production.id}
+            focusedMessageId={focusedMessageId}
+          />
         ) : tab === "tasks" ? (
           <TasksModule key={production.id} productionId={production.id} />
         ) : tab === "calendar" ? (
@@ -318,7 +326,11 @@ export function ProductionsModule({
         ) : tab === "casting" ? (
           <CastingModule key={production.id} productionId={production.id} />
         ) : tab === "mask-plan" ? (
-          <MaskPlansModule key={production.id} production={production} />
+          <MaskPlansModule
+            key={`${production.id}:${showStart}`}
+            production={production}
+            showStart={showStart}
+          />
         ) : tab === "documents" ? (
           <RecordDocuments key={production.id} record={production} />
         ) : tab === backstageChangesSection.key ? (
