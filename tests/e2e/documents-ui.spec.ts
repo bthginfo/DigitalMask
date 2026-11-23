@@ -314,6 +314,8 @@ for (const browserName of ["chromium", "webkit"] as const)
     }) => {
       const state = await mock(page);
       await page.goto("/?module=documentation");
+      await page.locator("summary").filter({ hasText: "Filter" }).click();
+      await page.getByLabel("Spielzeit", { exact: true }).selectOption("");
       await page.getByLabel("Jahr", { exact: true }).fill("2021");
       await expect(
         page.getByRole("heading", { name: "Archivproduktion 2021", exact: true }),
@@ -328,6 +330,7 @@ for (const browserName of ["chromium", "webkit"] as const)
       await expect.poll(() => state.exports.length).toBe(1);
       expect(state.exports[0]).toContain("year=2021");
       await page.goto("/?module=documentation");
+      await page.locator("summary").filter({ hasText: "Filter" }).click();
       await page.getByLabel(/^Sammelordner/).selectOption("general");
       if (mobile) await page.getByLabel("Weitere Aktionen").click();
       await page.getByRole("button", { name: "Exportieren", exact: true }).click();

@@ -1,6 +1,6 @@
 ﻿"use client";
 import { useMemo, useState } from "react";
-import { ArrowRight, Clock3, DoorOpen } from "lucide-react";
+import { Clock3, DoorOpen } from "lucide-react";
 import type { DomainRecord } from "@/shared/contracts";
 import { hours, shiftDate, timeAllocations, weekStart } from "@/shared/client-api";
 import { useWorkspace } from "@/components/workspace-context";
@@ -34,65 +34,40 @@ export function TimeWorkspace() {
   return (
     <div className={styles.workspace}>
       <PageHeader title="Zeit buchen" compact />
-      {selfBooking && (
-        <>
-          <div className={`dual-timers ${styles.timers}`}>
-            <TimerPanel kind="attendance" onBooked={setBooked} />
-            <TimerPanel onBooked={setBooked} />
-          </div>
-          <section
-            className={`time-comparison ${styles.comparison}`}
-            aria-label="Vergleich deiner aktuellen Woche"
-          >
-            <div>
-              <span className="eyebrow">DEINE AKTUELLE WOCHE</span>
-              <p className="small muted">
-                Bereits gebuchte Zeiten · laufende Timer werden erst nach dem Stoppen gezählt.
-              </p>
-            </div>
-            <div>
-              <DoorOpen size={19} />
+      <div className={styles.choices} role="group" aria-label="Zeitnachweise">
+        {(["attendance", "work"] as const).map((key) => {
+          const attendance = key === "attendance";
+          const Icon = attendance ? DoorOpen : Clock3;
+          const timer = attendance ? workspace.attendanceTimer : workspace.timer;
+          const name = attendance ? "Anwesenheit" : "Produktionsstunden";
+          return (
+            <button
+              key={key}
+              aria-label={name}
+              aria-pressed={tab === key}
+              aria-describedby={selfBooking ? `time-week-${key}` : undefined}
+              onClick={() => setTab(key)}
+            >
               <span>
-                Anwesenheit<strong>{hours(totals.attendance)} h</strong>
+                <Icon size={17} aria-hidden="true" />
+                {name}
               </span>
-            </div>
-            <div>
-              <Clock3 size={19} />
-              <span>
-                Produktionsstunden<strong>{hours(totals.work)} h</strong>
-              </span>
-            </div>
-            <div className="time-comparison-note">
-              <ArrowRight size={15} />
-              <span>Du musst nicht jede Minute einer Produktion zuordnen.</span>
-            </div>
-          </section>
-        </>
-      )}
-      <div className="tabs time-workspace-tabs" aria-label="Zeitnachweise">
-        <button
-          className={tab === "attendance" ? "active" : ""}
-          aria-current={tab === "attendance" ? "page" : undefined}
-          onClick={() => setTab("attendance")}
-        >
-          <DoorOpen size={16} />
-          <span className={styles.desktopLabel}>Anwesenheit im Theater</span>
-          <span className={styles.mobileLabel}>Anwesenheit</span>
-        </button>
-        <button
-          className={tab === "work" ? "active" : ""}
-          aria-current={tab === "work" ? "page" : undefined}
-          onClick={() => setTab("work")}
-        >
-          <Clock3 size={16} />
-          <span className={styles.desktopLabel}>Produktionsstunden</span>
-          <span className={styles.mobileLabel}>Produktionsstunden</span>
-        </button>
+              {selfBooking && (
+                <small id={`time-week-${key}`}>
+                  <strong>{hours(totals[key])} h</strong> diese Woche
+                  {timer && <em>{timer.data.pausedAt ? "Pausiert" : "Timer läuft"}</em>}
+                </small>
+              )}
+            </button>
+          );
+        })}
       </div>
       <div hidden={tab !== "attendance"}>
+        {selfBooking && <TimerPanel kind="attendance" onBooked={setBooked} />}
         <AttendanceModule embedded />
       </div>
       <div hidden={tab !== "work"}>
+        {selfBooking && <TimerPanel onBooked={setBooked} />}
         <WorkTimeModule embedded />
       </div>
       {booked && (

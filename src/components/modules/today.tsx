@@ -88,11 +88,9 @@ export function TodayModule({ navigate }: { navigate: (module: string) => void }
           day: "numeric",
           month: "long",
           year: "numeric",
-        })
-          .format(new Date())
-          .toUpperCase()}
+        }).format(new Date())}
         title={`${greet}, ${workspace.user.name.split(" ")[0]}.`}
-        description="Dein Tag hinter der Bühne. Alles Wichtige an einem Ort."
+        compact
       >
         <Button variant="primary" onClick={() => navigate("time")}>
           <Clock3 size={16} />
@@ -166,11 +164,7 @@ export function TodayModule({ navigate }: { navigate: (module: string) => void }
               </section>
             )}
           </div>
-          <Section
-            title="Als Nächstes"
-            meta="Dein persönlicher Kalender"
-            action={() => navigate("calendar")}
-          >
+          <Section title="Als Nächstes" action={() => navigate("calendar")}>
             {myEvents.length ? (
               <div className="schedule-list">
                 {myEvents.map((event) => (
@@ -203,7 +197,8 @@ export function TodayModule({ navigate }: { navigate: (module: string) => void }
                         {event.allDay
                           ? "Ganztägig"
                           : `${new Intl.DateTimeFormat("de-DE", { timeZone: "Europe/Berlin", hour: "2-digit", minute: "2-digit" }).format(new Date(event.start))}–${new Intl.DateTimeFormat("de-DE", { timeZone: "Europe/Berlin", hour: "2-digit", minute: "2-digit" }).format(new Date(event.end))}`}{" "}
-                        · {value(event.extendedProps.record.data, "location") || "Ort noch offen"}
+                        {value(event.extendedProps.record.data, "location") &&
+                          ` · ${value(event.extendedProps.record.data, "location")}`}
                       </p>
                     </div>
                     <ArrowRight size={17} />
@@ -221,7 +216,6 @@ export function TodayModule({ navigate }: { navigate: (module: string) => void }
           </Section>
           <Section
             title="Deine Aufgaben"
-            meta="Was als Nächstes ansteht"
             action={() =>
               navigate(myTasks.some((task) => task.data.productionId) ? "productions" : "tasks")
             }

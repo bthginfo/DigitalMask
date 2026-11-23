@@ -146,15 +146,27 @@ for (const mobile of [false, true])
       await page.goto("/?module=time");
       const attendance = page.getByRole("region", { name: "Anwesenheitstimer" }),
         work = page.getByRole("region", { name: "Produktionstimer" });
-      await attendance.getByRole("button", { name: "Anwesenheit starten" }).click();
+      const choices = page.getByRole("group", { name: "Zeitnachweise" });
+      const attendanceChoice = choices.getByRole("button", { name: "Anwesenheit", exact: true });
+      const workChoice = choices.getByRole("button", { name: "Produktionsstunden", exact: true });
+      await attendance
+        .getByRole("button", { name: mobile ? "Starten" : "Anwesenheit starten" })
+        .click();
+      await workChoice.click();
+      if (mobile) await work.getByRole("button", { name: "Tätigkeit & Zuordnung" }).click();
       await work.getByLabel("Tätigkeit", { exact: true }).fill("Perücke vorbereiten");
-      await work.getByRole("button", { name: "Produktionstimer starten" }).click();
-      await expect(attendance.getByText("Timer läuft")).toBeVisible();
+      await work
+        .getByRole("button", { name: mobile ? "Starten" : "Produktionstimer starten" })
+        .click();
+      await expect(attendanceChoice).toContainText("Timer läuft");
       await expect(work.getByText("Timer läuft")).toBeVisible();
+      await attendanceChoice.click();
       await attendance.getByRole("button", { name: "Pause", exact: true }).click();
       await expect(attendance.getByText("Pausiert")).toBeVisible();
-      await expect(work.getByText("Timer läuft")).toBeVisible();
-      await attendance.getByRole("button", { name: "Stoppen & buchen" }).click();
+      await expect(workChoice).toContainText("Timer läuft");
+      await attendance
+        .getByRole("button", { name: mobile ? "Stoppen" : "Stoppen & buchen", exact: true })
+        .click();
       const editor = page.getByRole("dialog", { name: "Anwesenheit bearbeiten" });
       await expect(editor).toBeVisible();
       expect(state.workspace.attendanceTimer).toBeNull();
@@ -350,16 +362,23 @@ for (const mobile of [false, true])
       const state = await mock(page);
       await page.goto("/?module=productions");
       const cards = page.locator(".production-card");
-      await expect(cards.first().locator("h2")).toHaveText(
-        String(state.workspace.records.productions[0].data.title),
-      );
-      await expect(cards.first().locator(".production-card-makeup")).toContainText("Klara Extern");
+      await page.locator("summary").filter({ hasText: "Filter" }).click();
+      await page.getByLabel("Spielzeit", { exact: true }).selectOption("");
+      await expect(cards.first().locator("h2")).toHaveText("Frühere Premiere");
+      await expect(
+        cards.filter({ hasText: "Ein Sommernachtstraum" }).locator(".production-card-makeup"),
+      ).toContainText("Klara Extern");
       await page.getByLabel("Sortieren nach").selectOption("name-desc");
       await expect(cards.first().locator("h2")).toHaveText("Zweite Premiere");
       expect(state.reads()).toBe(1);
       await cards.filter({ hasText: "Klara Extern" }).click();
       await expect(page.locator(".production-makeup-contact")).toContainText("Klara Extern");
-      await page.getByRole("button", { name: "Produktionsstunden", exact: true }).click();
+      if (mobile)
+        await page
+          .getByRole("combobox")
+          .filter({ has: page.locator('option[value="time"]') })
+          .selectOption("time");
+      else await page.getByRole("button", { name: "Produktionsstunden", exact: true }).click();
       await expect(page.getByRole("region", { name: "Anwesenheitstimer" })).toHaveCount(0);
       await noOverflow(page);
     });

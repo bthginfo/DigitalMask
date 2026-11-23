@@ -108,27 +108,6 @@
     width: 100%;
     font-size: 16px;
   }
-  .folderFilters:global(.toolbar) {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 8px;
-    margin-bottom: 8px;
-  }
-  .folderFilters > :global(.inline-label) {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    align-items: center;
-    gap: 10px;
-    margin: 0;
-    font-size: 13px;
-  }
-  .folderFilters select,
-  .folderFilters input:global(.search-input) {
-    min-width: 0;
-    width: 100%;
-    margin: 0;
-    font-size: 16px;
-  }
   .content:global(.document-content) {
     gap: 12px;
   }

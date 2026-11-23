@@ -133,3 +133,31 @@
     display: none;
   }
 }
+
+.root.embedded:global(.period-picker) {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.embedded .mobileSummary {
+  display: none;
+}
+.embedded .controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 8px 14px;
+}
+.embedded .controls label {
+  flex: 1 1 120px;
+  min-width: 0;
+}
+.embedded .controls input,
+.embedded .controls select {
+  width: 100%;
+  min-width: 0;
+}
+.embedded .desktopCurrent {
+  display: inline-flex;
+}

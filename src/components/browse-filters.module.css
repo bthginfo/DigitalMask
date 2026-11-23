@@ -1,0 +1,100 @@
+.tools {
+  display: grid;
+  grid-template-columns: minmax(200px, 1fr) minmax(260px, 1fr);
+  align-items: start;
+  gap: 10px 20px;
+  margin-block: 0 20px;
+}
+.search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  color: var(--muted);
+  margin: 0;
+}
+.search svg {
+  position: absolute;
+  left: 14px;
+  pointer-events: none;
+}
+.search input {
+  width: 100%;
+  min-width: 0;
+  min-height: 46px;
+  margin: 0;
+  padding-left: 41px;
+  border-radius: 14px;
+  font-size: 16px;
+  background: var(--surface);
+  color: var(--text);
+}
+.filters {
+  min-width: 0;
+}
+.filters summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 5px 8px;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 650;
+  border-radius: 8px;
+}
+.filters summary::-webkit-details-marker {
+  display: none;
+}
+.filters summary span {
+  font-size: 13px;
+  font-weight: 450;
+  color: var(--muted);
+  margin-left: auto;
+  overflow-wrap: anywhere;
+}
+.filters summary svg {
+  flex: none;
+  color: var(--accent);
+}
+.filters[open] .chevron {
+  transform: rotate(180deg);
+}
+.fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px 16px;
+  padding: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.fields label {
+  margin: 0;
+  min-width: 0;
+}
+.fields select,
+.fields input {
+  margin: 3px 0 0;
+  min-height: 44px;
+}
+.fields > :global(.period-picker) {
+  flex-basis: 100%;
+}
+@media (max-width: 760px) {
+  .tools {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+    margin-bottom: 14px;
+  }
+  .filters summary {
+    padding-inline: 3px;
+  }
+  .fields select,
+  .fields input {
+    font-size: 16px;
+    max-width: 100%;
+  }
+}

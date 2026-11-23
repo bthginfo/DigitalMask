@@ -37,6 +37,9 @@
     justify-content: flex-start;
     gap: 8px;
   }
+  .compactHeader :global(.heading-actions):empty {
+    display: none;
+  }
 
   .compactHeader :global(.heading-actions) > :global(.button) {
     flex: 1;

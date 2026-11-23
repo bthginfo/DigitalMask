@@ -1,7 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Scale } from "lucide-react";
+import { ArrowRight, ChevronDown, Scale } from "lucide-react";
 import { useWorkspace } from "@/components/workspace-context";
 import { Button } from "@/components/ui";
 import {
@@ -107,15 +107,12 @@ export function AttendanceBalanceCard({
       label="Berechnung abgeschlossener Wochen"
     />
   );
-  return (
-    <section
-      className={`${styles.card} ${compact ? styles.compact : styles.panel}`}
-      aria-label={`Zeitkonto von ${member?.name || "Teammitglied"}`}
-    >
+  const controls = (
+    <>
       <header className={styles.header}>
         <span className={styles.heading}>
           <Scale size={17} />
-          Zeitkonto{!compact && member ? ` · ${member.name}` : ""}
+          {compact ? "Zeitraum" : `Zeitkonto${member ? ` · ${member.name}` : ""}`}
         </span>
         {configured && (
           <select
@@ -336,6 +333,35 @@ export function AttendanceBalanceCard({
             )
           )}
         </>
+      )}
+    </>
+  );
+  return (
+    <section
+      className={`${styles.card} ${compact ? styles.compact : styles.panel}`}
+      aria-label={`Zeitkonto von ${member?.name || "Teammitglied"}`}
+    >
+      {compact ? (
+        <details className={styles.accountDisclosure}>
+          <summary>
+            <span>
+              <Scale size={17} aria-hidden="true" /> Zeitkonto
+            </span>
+            <strong>
+              {!configured
+                ? "Einrichten"
+                : invalidRange
+                  ? "Zeitraum prüfen"
+                  : showCompleted
+                    ? `${signedHours(seconds)} h`
+                    : "Woche läuft"}
+            </strong>
+            <ChevronDown size={16} aria-hidden="true" />
+          </summary>
+          {controls}
+        </details>
+      ) : (
+        controls
       )}
     </section>
   );

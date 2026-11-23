@@ -19,6 +19,51 @@
   border-left: 1px solid var(--border);
   border-radius: 0;
 }
+.card.compact {
+  padding: 0;
+  justify-content: center;
+}
+.accountDisclosure {
+  min-width: 0;
+  padding: 0 14px;
+}
+.accountDisclosure > summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  min-height: 52px;
+  cursor: pointer;
+  list-style: none;
+  font-size: 14px;
+}
+.accountDisclosure > summary::-webkit-details-marker {
+  display: none;
+}
+.accountDisclosure > summary > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.accountDisclosure > summary > strong {
+  margin-left: auto;
+  font-size: 16px;
+  letter-spacing: 0;
+  color: var(--text);
+}
+.accountDisclosure > summary svg {
+  color: var(--accent);
+  flex: none;
+}
+.accountDisclosure[open] > summary > svg {
+  transform: rotate(180deg);
+}
+.accountDisclosure[open] {
+  padding-bottom: 14px;
+}
+.accountDisclosure[open] > * + * {
+  margin-top: 8px;
+}
 .header {
   display: flex;
   align-items: center;

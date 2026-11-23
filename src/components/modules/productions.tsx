@@ -1,4 +1,5 @@
 "use client";
+import { BrowseFilters } from "../browse-filters";
 import { LinkedText } from "@/components/linked-text";
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowUpRight, CalendarDays, Plus, Users } from "lucide-react";
@@ -360,13 +361,25 @@ export function ProductionsModule({
           Produktion anlegen
         </Button>
       </PageHeader>
-      <PeriodPicker
-        records={productions}
-        productions={productions}
-        value={period}
-        onChange={setPeriod}
-      />
-      <div className={`toolbar ${styles.productionToolbar}`}>
+      <BrowseFilters
+        label="Produktion suchen"
+        placeholder="Produktion suchen …"
+        search={search}
+        onSearch={setSearch}
+        period={period}
+        selection={[
+          status === "archived" ? "Archiv" : status === "all" ? "Alle Stücke" : "",
+          sort === "name"
+            ? "A–Z"
+            : sort === "name-desc"
+              ? "Z–A"
+              : sort === "updated"
+                ? "Zuletzt geändert"
+                : "",
+        ]
+          .filter(Boolean)
+          .join(" · ")}
+      >
         <div className="segmented" role="group" aria-label="Produktionsstatus">
           {[
             ["current", "Aktuell"],
@@ -383,15 +396,6 @@ export function ProductionsModule({
             </button>
           ))}
         </div>
-        <input
-          className={`search-input ${styles.productionSearch}`}
-          type="search"
-          enterKeyHint="search"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Produktion suchen …"
-          aria-label="Produktion suchen"
-        />
         <label className={`production-sort ${styles.productionSort}`}>
           <span>Sortieren nach</span>
           <select value={sort} onChange={(event) => setSort(event.target.value)}>
@@ -401,10 +405,17 @@ export function ProductionsModule({
             <option value="updated">Zuletzt geändert</option>
           </select>
         </label>
-      </div>
+        <PeriodPicker
+          embedded
+          records={productions}
+          productions={productions}
+          value={period}
+          onChange={setPeriod}
+        />
+      </BrowseFilters>
       {records.length ? (
         <div className="production-grid">
-          {records.map((project, i) => {
+          {records.map((project) => {
             const accessible = workspace.records.productions.some(
               (record) => record.id === project.id,
             );
@@ -426,12 +437,8 @@ export function ProductionsModule({
                   <span className="eyebrow">{value(project.data, "season") || "SPIELZEIT"}</span>
                   <Badge>{statusLabels[value(project.data, "status")]}</Badge>
                 </div>
-                <span className="production-number">{String(i + 1).padStart(2, "0")}</span>
                 <h2>{value(project.data, "title")}</h2>
-                <p>
-                  {value(project.data, "description") ||
-                    "Infos, Maskenbetreuung und Team für dieses Stück."}
-                </p>
+                {value(project.data, "description") && <p>{value(project.data, "description")}</p>}
                 <div className="production-card-meta">
                   <span>
                     <CalendarDays size={15} />
@@ -464,12 +471,16 @@ export function ProductionsModule({
       ) : (
         <Empty
           title={
-            search || status === "archived"
+            productions.length
               ? "Keine Produktionen in dieser Ansicht."
               : "Platz für euer nächstes Stück."
           }
-          description="Lege eine Produktion an. Hier laufen Aufgaben, Besetzung, Dokumentation, Termine und Arbeitszeit zusammen."
-          action="Erste Produktion anlegen"
+          description={
+            productions.length
+              ? "Ändere den Suchtext oder öffne die Filter für andere Spielzeiten und archivierte Stücke."
+              : "Lege das erste Stück für euer Team an."
+          }
+          action={productions.length ? undefined : "Erste Produktion anlegen"}
           onAction={() => setEditor(true)}
         />
       )}

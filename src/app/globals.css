@@ -377,7 +377,7 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font-family: "Geist", "Segoe UI", sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Geist", "Segoe UI", sans-serif;
   font-size: 14px;
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
@@ -5786,12 +5786,16 @@ td .text-button,
 @supports ((backdrop-filter: blur(12px)) or (-webkit-backdrop-filter: blur(12px))) {
   @media screen and (max-width: 760px) {
     .bottom-nav {
-      background: color-mix(in srgb, var(--surface) 90%, transparent);
-      -webkit-backdrop-filter: blur(14px) saturate(125%);
-      backdrop-filter: blur(14px) saturate(125%);
+      border-radius: 26px;
+      background: color-mix(in srgb, var(--surface) 84%, transparent);
+      -webkit-backdrop-filter: blur(18px) saturate(125%);
+      backdrop-filter: blur(18px) saturate(125%);
       box-shadow:
-        inset 0 1px 0 color-mix(in srgb, white 15%, transparent),
-        0 4px 16px #101b181c;
+        inset 0 1px 0 color-mix(in srgb, white 25%, transparent),
+        0 4px 16px #101b1824;
+    }
+    .bottom-nav > button {
+      border-radius: 21px;
     }
   }
   @media screen {

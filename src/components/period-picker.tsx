@@ -21,6 +21,7 @@ export function PeriodPicker({
   onChange,
   season = true,
   compact = false,
+  embedded = false,
 }: {
   records: DomainRecord[];
   productions: DomainRecord[];
@@ -28,6 +29,7 @@ export function PeriodPicker({
   onChange: (filter: PeriodFilter) => void;
   season?: boolean;
   compact?: boolean;
+  embedded?: boolean;
 }) {
   const listId = useId();
   const controlsId = useId();
@@ -54,7 +56,9 @@ export function PeriodPicker({
     onChange({ season: currentSeason });
   };
   return (
-    <div className={`period-picker ${styles.root}${compact ? " period-picker--compact" : ""}`}>
+    <div
+      className={`period-picker ${styles.root} ${embedded ? styles.embedded : ""}${compact ? " period-picker--compact" : ""}`}
+    >
       <div className={styles.mobileSummary}>
         <button
           type="button"

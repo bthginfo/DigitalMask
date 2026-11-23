@@ -11,6 +11,7 @@ import {
 } from "@/shared/document-sections";
 import { initialPeriod, recordMatchesPeriod, type PeriodFilter } from "@/shared/period-filter";
 import { value } from "@/shared/client-api";
+import { BrowseFilters } from "@/components/browse-filters";
 import { useWorkspace } from "@/components/workspace-context";
 import { Button, Empty, ExportButton, PageHeader } from "@/components/ui";
 import { PeriodPicker, periodExportFilters } from "@/components/period-picker";
@@ -120,7 +121,21 @@ export function DocumentationModule() {
               Aufschrieb anlegen
             </Button>
           </PageHeader>
-          <div className={`toolbar wrap ${styles.folderFilters}`}>
+          <BrowseFilters
+            label="Aufschriebe durchsuchen"
+            placeholder="Person, Figur oder Text suchen …"
+            search={search}
+            onSearch={setSearch}
+            period={period}
+            selection={
+              production === "general"
+                ? "Allgemein"
+                : value(
+                    workspace.records.productions.find((row) => row.id === production)?.data || {},
+                    "title",
+                  )
+            }
+          >
             <label className="inline-label">
               Sammelordner
               <select value={production} onChange={(event) => setProduction(event.target.value)}>
@@ -134,22 +149,14 @@ export function DocumentationModule() {
                 ))}
               </select>
             </label>
-            <input
-              type="search"
-              enterKeyHint="search"
-              className="search-input"
-              aria-label="Aufschriebe durchsuchen"
-              placeholder="Person, Figur oder Text suchen …"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
+            <PeriodPicker
+              embedded
+              records={workspace.records.looks}
+              productions={workspace.records.productions}
+              value={period}
+              onChange={setPeriod}
             />
-          </div>
-          <PeriodPicker
-            records={workspace.records.looks}
-            productions={workspace.records.productions}
-            value={period}
-            onChange={setPeriod}
-          />
+          </BrowseFilters>
           {groupIds.length ? (
             groupIds.map((id) => {
               const project = workspace.records.productions.find((row) => row.id === id);

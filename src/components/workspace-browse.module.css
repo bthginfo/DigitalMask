@@ -2,59 +2,47 @@
   display: none;
 }
 
+.productionBrowse :global(.production-card) {
+  border-radius: 16px;
+  padding: 18px 20px;
+}
+.productionBrowse :global(.production-card-top) {
+  margin-bottom: 10px;
+}
+.productionBrowse :global(.production-card-top .eyebrow) {
+  font-size: 11px;
+}
+.productionBrowse :global(.production-card h2) {
+  max-width: 100%;
+  font-size: 23px;
+  margin-bottom: 5px;
+}
+.productionBrowse :global(.production-card > p) {
+  min-height: 0;
+  font-size: 13px;
+}
+.productionBrowse :global(.production-card-meta) {
+  margin: 12px 0;
+  flex-flow: row wrap;
+  gap: 6px 16px;
+  font-size: 12px;
+}
+.productionBrowse :global(.production-card-makeup) {
+  margin: 0 0 12px;
+}
+.productionBrowse :global(.production-card-makeup > span) {
+  gap: 0;
+}
+.productionBrowse :global(.production-card footer) {
+  padding-top: 10px;
+  font-size: 12px;
+}
+
 .productionPreview > :global(.panel) {
   margin-bottom: 16px;
 }
 
-.productionToolbar {
-  flex-wrap: wrap;
-}
-
-.productionToolbar .productionSort {
-  margin: 0;
-}
-
-.productionToolbar .productionSearch {
-  flex: 1;
-  min-width: 180px;
-}
-
 @media (max-width: 760px) {
-  .productionBrowse .productionToolbar {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(110px, 0.8fr);
-    gap: 8px;
-    margin-bottom: 16px;
-  }
-
-  .productionToolbar .productionSearch {
-    grid-column: 1 / -1;
-    grid-row: 1;
-    width: 100%;
-    margin: 0;
-    min-height: 44px;
-    font-size: 16px;
-  }
-
-  .productionToolbar :global(.segmented) {
-    display: flex;
-    margin: 0;
-    width: 100%;
-  }
-
-  .productionToolbar :global(.segmented) button {
-    flex: 1;
-    min-width: 0;
-    padding-inline: 7px;
-    font-size: 11px;
-    min-height: 44px;
-  }
-
-  .productionToolbar .productionSort {
-    min-width: 0;
-    display: block;
-  }
-
   .productionSort > span {
     position: absolute;
     width: 1px;
