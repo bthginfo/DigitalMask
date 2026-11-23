@@ -11,6 +11,7 @@ import { validateBooking } from "@/modules/time-tracking/validation";
 import { occurrences } from "@/modules/calendar/occurrences";
 import { assertConversation } from "@/modules/chat/permissions";
 import { prepareConversation } from "@/modules/chat/conversations";
+import { matchesPhotoReply, photoReplyValue } from "@/modules/chat/photo-reply";
 import { prepareProductionContacts } from "@/modules/people/production-contacts";
 import { maskPlanValue } from "@/modules/mask-plans/model";
 import { maskPlanMemberIdsToValidate, validateMaskPlanActors } from "@/modules/mask-plans/service";
@@ -138,6 +139,23 @@ async function validateRelations(
       throw new HttpError(400, "Bitte wähle genau einen Chat.");
     conversation = await assertConversation(context, data.conversationId, tx);
     if (conversation?.data.archived) throw new HttpError(409, "Dieser Chat ist archiviert.");
+    const reply = photoReplyValue(data.photoReply);
+    if (!recordId && reply) {
+      const targets = await tx
+        .select({ id: records.id, kind: records.kind, data: records.data })
+        .from(records)
+        .where(
+          and(
+            eq(records.departmentId, context.departmentId),
+            inArray(records.id, [reply.messageId, reply.fileId]),
+          ),
+        );
+      if (!matchesPhotoReply(reply, data, targets))
+        throw new HttpError(
+          400,
+          "Dieses Foto ist in diesem Chat nicht mehr verfügbar. Entferne den Fotobezug oder wähle ein anderes Bild.",
+        );
+    }
   }
   const ids = listValue(data.assigneeIds).concat(
     listValue(data.participantIds),
@@ -345,7 +363,15 @@ export async function saveRecord(
     if (existing) await assertRead(context, existing, tx);
     const data = validateRecord(
       kind,
-      applySeasonDefaults(kind, { ...existing?.data, ...input }, existing?.createdAt.toISOString()),
+      applySeasonDefaults(
+        kind,
+        {
+          ...existing?.data,
+          ...input,
+          ...(kind === "messages" && existing ? { photoReply: existing.data.photoReply } : {}),
+        },
+        existing?.createdAt.toISOString(),
+      ),
     );
     if (kind === "reservations") await validateReservation(context, data, tx, existingId, existing);
     if (kind === "materials") await validateMaterialCapacity(context, data, tx, existingId);

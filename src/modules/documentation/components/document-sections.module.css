@@ -45,6 +45,9 @@
   margin-top: 16px;
   padding-top: 12px;
 }
+.detail :global(.detail-section > .panel-heading) {
+  flex-wrap: wrap;
+}
 
 .compactContent:global(.document-content) {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));

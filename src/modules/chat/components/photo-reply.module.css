@@ -1,0 +1,52 @@
+.quote {
+  display: flex;
+  align-items: center;
+  max-width: 100%;
+  margin: 0.25rem 0;
+  border-inline-start: 3px solid var(--accent);
+  background: var(--surface-soft);
+  border-radius: 6px;
+}
+.content {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.25rem 0.5rem;
+  color: inherit;
+  text-align: start;
+  font: inherit;
+  background: transparent;
+  border: 0;
+}
+button.content {
+  cursor: pointer;
+}
+.content > span {
+  min-width: 0;
+}
+.content img,
+.missing {
+  width: 40px;
+  height: 40px;
+  border-radius: 4px;
+  object-fit: cover;
+  flex: none;
+}
+.content small {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+.content strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.quote > button:last-child {
+  min-height: 44px;
+}

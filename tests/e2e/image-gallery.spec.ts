@@ -38,6 +38,13 @@ async function mock(page: Page) {
   await page.route("**/api/**", (route) => {
     const path = new URL(route.request().url()).pathname;
     if (path === "/api/workspace") return route.fulfill({ json: workspace });
+    if (path === "/api/records/messages" && route.request().method() === "POST") {
+      add("messages", "photo-reply", {
+        ...route.request().postDataJSON().data,
+        userId: workspace.user.id,
+      });
+      return route.fulfill({ status: 201, json: workspace.records.messages.at(-1) });
+    }
     if (path === "/api/files/look-back") return route.fulfill({ status: 404 });
     if (path.startsWith("/api/files/"))
       return route.fulfill({
@@ -47,6 +54,83 @@ async function mock(page: Page) {
     return route.fulfill({ json: { ok: true, messages: [], versions: [] } });
   });
 }
+
+test("replies to the selected photo and returns to the original message", async ({
+  page,
+  browserName,
+}) => {
+  const mobile = browserName === "webkit";
+  await page.setViewportSize({ width: mobile ? 390 : 1366, height: 844 });
+  await mock(page);
+  await page.goto("/?module=chat");
+  if (mobile) await page.getByRole("button", { name: "Chataktionen" }).click();
+  await page.getByRole("button", { name: "Medien & Dateien", exact: true }).click();
+  await page.getByRole("button", { name: "Probe hinten.jpg vergrößern" }).click();
+  await page.getByRole("button", { name: "Auf dieses Foto antworten" }).click();
+  const composer = page.locator("form.chat-composer");
+  await expect(composer).toContainText("Probe hinten.jpg");
+  await expect(composer.getByRole("textbox")).toBeFocused();
+  await composer.getByRole("button", { name: "Fotobezug entfernen" }).click();
+  await expect(composer).not.toContainText("Probe hinten.jpg");
+  await page.getByRole("button", { name: "Probe vorne.jpg", exact: true }).click();
+  await page.getByRole("button", { name: "Nächstes Bild" }).click();
+  await page.getByRole("button", { name: "Auf dieses Foto antworten" }).click();
+  await composer.getByRole("textbox").fill("Die Perücke hinten etwas höher.");
+  const request = page.waitForRequest(
+    (req) => req.url().endsWith("/api/records/messages") && req.method() === "POST",
+  );
+  await composer.getByRole("button", { name: "Senden", exact: true }).click();
+  expect((await request).postDataJSON().data.photoReply).toEqual({
+    messageId: "chat-photos",
+    fileId: "chat-second",
+  });
+  await expect(composer).not.toContainText("Antwort auf ein Foto");
+  await page.reload();
+  const reply = page.locator("article").filter({ hasText: "Die Perücke hinten etwas höher." });
+  await expect(reply.locator("img")).toHaveAttribute("src", /chat-second\?preview=thumbnail/, {
+    timeout: 30000,
+  });
+  await reply
+    .getByRole("button", { name: "Zur ursprünglichen Nachricht mit Probe hinten.jpg" })
+    .click();
+  await expect(page.locator("article.notification-target")).toContainText("Fotos aus der Probe");
+});
+
+test("compares two look photos with a shared zoom and a movable divider", async ({
+  page,
+  browserName,
+}) => {
+  await page.setViewportSize({ width: browserName === "webkit" ? 390 : 1366, height: 844 });
+  await mock(page);
+  await page.goto("/?module=documentation&record=qa-legacy-look");
+  const trigger = page.getByRole("button", { name: "Fotos vergleichen", exact: true });
+  await trigger.click();
+  const compare = page.getByRole("dialog", { name: "Fotos vergleichen" });
+  const divider = compare.getByRole("slider", { name: "Bildaufteilung" });
+  await expect(divider).toHaveAttribute("aria-valuenow", "50");
+  await expect(compare.getByLabel("Linkes Foto")).toHaveValue("look-front");
+  await compare.getByRole("button", { name: "Beide Fotos vergrößern" }).click();
+  await divider.press("End");
+  await expect(divider).toHaveAttribute("aria-valuenow", "100");
+  await expect(compare.getByRole("button", { name: "Beide Fotos einpassen" })).toHaveText("150 %");
+  const matrices = await compare
+    .locator("img")
+    .evaluateAll((images) => images.map((img) => getComputedStyle(img).transform));
+  expect(matrices).toEqual(["matrix(1.5, 0, 0, 1.5, 0, 0)", "matrix(1.5, 0, 0, 1.5, 0, 0)"]);
+  await divider.press("Home");
+  const grip = (await divider.boundingBox())!;
+  await page.mouse.move(grip.x + grip.width / 2, grip.y + grip.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(grip.x + grip.width / 2 + 110, grip.y + grip.height / 2);
+  await page.mouse.up();
+  await expect(divider).not.toHaveAttribute("aria-valuenow", "0");
+  await compare.getByLabel("Rechtes Foto").selectOption("look-front");
+  await expect(compare.getByLabel("Linkes Foto")).toHaveValue("look-side");
+  await compare.getByLabel("Linkes Foto").selectOption("look-back");
+  await expect(compare.getByRole("status")).toContainText("Hinten.jpg konnte nicht geladen werden");
+  await compare.getByRole("button", { name: "Schließen" }).click();
+  await expect(trigger).toBeFocused();
+});
 
 test("opens the clicked photo, keeps each group separate and preserves keyboard focus", async ({
   page,

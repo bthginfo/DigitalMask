@@ -308,6 +308,7 @@ export const schemas: Record<RecordKind, z.ZodType> = {
   }),
   messages: z.object({
     text: z.string().trim().min(1).max(10000),
+    photoReply: z.object({ messageId: short.min(1), fileId: short.min(1) }).optional(),
     productionId: id,
     conversationId: id,
     attachmentIds: ids,

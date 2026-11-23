@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import Image from "next/image";
-import { ArrowUpRight, ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from "lucide-react";
+import { ArrowUpRight, ChevronLeft, ChevronRight, Reply, ZoomIn, ZoomOut } from "lucide-react";
 import type { DomainRecord } from "@/shared/contracts";
 import { value } from "@/shared/client-api";
 import { Modal } from "./ui";
@@ -17,9 +17,11 @@ export function isImageAttachment(file: DomainRecord) {
 export function ImageGallery({
   files,
   children,
+  onReply,
 }: {
   files: readonly DomainRecord[];
   children: (openImage: (id: string) => void) => ReactNode;
+  onReply?: (file: DomainRecord) => void;
 }) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const images = files.filter(isImageAttachment);
@@ -67,6 +69,20 @@ export function ImageGallery({
               )}
             </div>
             <div className={styles.actions}>
+              {onReply && (
+                <button
+                  type="button"
+                  className={`text-button ${styles.reply}`}
+                  aria-label="Auf dieses Foto antworten"
+                  onClick={() => {
+                    setActiveId(null);
+                    onReply(active);
+                  }}
+                >
+                  <Reply size={17} aria-hidden="true" />
+                  Antworten
+                </button>
+              )}
               {multiple && (
                 <>
                   <button

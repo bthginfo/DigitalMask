@@ -91,6 +91,12 @@
   flex: none;
   gap: 2px;
 }
+.reply {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 44px;
+}
 .zoomControls {
   grid-area: zoom;
   display: flex;

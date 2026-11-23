@@ -33,6 +33,8 @@ import { documentAccept } from "@/modules/documents/components/record-documents"
 import { ChatActionMenu } from "./chat-action-menu";
 import { navigateWorkspace } from "@/shared/client-navigation";
 import { messageInChat, type ChatMediaItem } from "../media";
+import { photoReplyValue } from "../photo-reply";
+import { PhotoReplyPreview } from "./photo-reply-preview";
 const ChatMediaDialog = dynamic(() => import("./chat-media"));
 const DocumentEditor = dynamic(() => import("@/modules/documents/components/document-editor"), {
   ssr: false,
@@ -79,6 +81,11 @@ export function ChatChannel({
   const messageTarget = useRef<HTMLElement>(null);
   const [mediaOpen, setMediaOpen] = useState(false);
   const [mediaSource, setMediaSource] = useState<ChatMediaItem | null>(null);
+  const [replyFile, setReplyFile] = useState<DomainRecord | null>(null);
+  const filesById = useMemo(
+    () => new Map(workspace.records.files.map((file) => [file.id, file])),
+    [workspace.records.files],
+  );
   const positionedTarget = useRef("");
   const [linkedMessage, setLinkedMessage] = useState<{ id: string; record?: DomainRecord }>();
   const messageInput = useRef<HTMLTextAreaElement>(null);
@@ -193,6 +200,9 @@ export function ChatChannel({
           text: text.trim() || "Dateianhang",
           ...(conversationId ? { conversationId } : { productionId }),
           attachmentIds: [],
+          ...(replyFile
+            ? { photoReply: { messageId: replyFile.data.recordId, fileId: replyFile.id } }
+            : {}),
         },
       });
       const record = "record" in result ? result.record : result;
@@ -205,6 +215,7 @@ export function ChatChannel({
       }
       setText("");
       setFiles([]);
+      setReplyFile(null);
       await refresh();
     } catch (exception) {
       setError(
@@ -213,6 +224,22 @@ export function ChatChannel({
     } finally {
       setSending(false);
     }
+  };
+  const replyToPhoto = (file: DomainRecord) => {
+    setMediaOpen(false);
+    setReplyFile(file);
+    requestAnimationFrame(() => messageInput.current?.focus());
+  };
+  const openSource = (messageId: string) => {
+    positionedTarget.current = "";
+    if (focusedMessageId === messageId && messageTarget.current) {
+      messageTarget.current.focus({ preventScroll: true });
+      messageTarget.current.scrollIntoView({ block: "center" });
+      return;
+    }
+    const next = new URL(location.href);
+    next.searchParams.set("messageId", messageId);
+    navigateWorkspace(next.pathname + next.search);
   };
   const update = async (fn: () => Promise<unknown>) => {
     setError("");
@@ -339,6 +366,7 @@ export function ChatChannel({
                 ? (message.data.attachmentIds as string[])
                 : [];
               const focused = message.id === focusedMessageId;
+              const photoReply = photoReplyValue(message.data.photoReply);
               return (
                 <article
                   className={`chat-message${own ? " own" : ""}${focused ? " notification-target" : ""}`}
@@ -355,11 +383,22 @@ export function ChatChannel({
                       </time>
                       {message.version > 1 && <span className="small muted">bearbeitet</span>}
                     </header>
+                    {photoReply && (
+                      <PhotoReplyPreview
+                        key={photoReply.fileId}
+                        reply={photoReply}
+                        name={value(filesById.get(photoReply.fileId)?.data || {}, "name")}
+                        onSource={() => openSource(photoReply.messageId)}
+                      />
+                    )}
                     <p>
                       <LinkedText>{value(message.data, "text")}</LinkedText>
                     </p>
                     {attached.length > 0 && (
-                      <ImageGallery files={attached}>
+                      <ImageGallery
+                        files={attached}
+                        onReply={archived || sending ? undefined : replyToPhoto}
+                      >
                         {(openImage) =>
                           attached.map((file) => (
                             <DocumentAttachment
@@ -436,6 +475,14 @@ export function ChatChannel({
       ) : (
         <form className="chat-composer" onSubmit={send}>
           <div className="chat-composer-notices">
+            {replyFile && (
+              <PhotoReplyPreview
+                key={replyFile.id}
+                reply={{ messageId: value(replyFile.data, "recordId"), fileId: replyFile.id }}
+                name={value(replyFile.data, "name")}
+                onCancel={sending ? undefined : () => setReplyFile(null)}
+              />
+            )}
             {files.length > 0 && (
               <div className="pending-files">
                 {files.map((file, index) => (
@@ -603,16 +650,11 @@ export function ChatChannel({
           productionId={productionId}
           conversationId={conversationId}
           onClose={() => setMediaOpen(false)}
+          onReply={archived || sending ? undefined : replyToPhoto}
           onMessage={(item) => {
             setMediaSource(item);
             setMediaOpen(false);
-            positionedTarget.current = "";
-            const next = new URL(location.href);
-            next.searchParams.set("messageId", item.messageId);
-            if (focusedMessageId === item.messageId && messageTarget.current) {
-              messageTarget.current.focus({ preventScroll: true });
-              messageTarget.current.scrollIntoView({ block: "center" });
-            } else navigateWorkspace(next.pathname + next.search);
+            openSource(item.messageId);
           }}
         />
       )}

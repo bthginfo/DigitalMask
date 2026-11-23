@@ -4,6 +4,7 @@ import Image from "next/image";
 import { ImageGallery, isImageAttachment } from "@/components/image-gallery";
 import { Button, ErrorMessage, Modal } from "@/components/ui";
 import { useWorkspace } from "@/components/workspace-context";
+import type { DomainRecord } from "@/shared/contracts";
 import { DocumentAttachment } from "@/modules/documents/components/document-attachment";
 import { api, instantDate, localDate, value } from "@/shared/client-api";
 import {
@@ -27,7 +28,13 @@ export default function ChatMediaDialog({
   title,
   onClose,
   onMessage,
-}: ChatScope & { title: string; onClose: () => void; onMessage: (item: ChatMediaItem) => void }) {
+  onReply,
+}: ChatScope & {
+  title: string;
+  onClose: () => void;
+  onMessage: (item: ChatMediaItem) => void;
+  onReply?: (file: DomainRecord) => void;
+}) {
   const { workspace } = useWorkspace();
   const { messages, files } = workspace.records;
   const archive = messages.length >= workspaceMessageLimit;
@@ -85,7 +92,7 @@ export default function ChatMediaDialog({
   return (
     <Modal title="Medien & Dateien" onClose={onClose} wide>
       <p className="muted">{title}</p>
-      <ImageGallery files={items.map((item) => item.file)}>
+      <ImageGallery files={items.map((item) => item.file)} onReply={onReply}>
         {(openImage) =>
           [...days].map(([day, entries]) => (
             <section key={day} className={styles.day}>
@@ -104,7 +111,7 @@ export default function ChatMediaDialog({
                           onClick={() => openImage(file.id)}
                         >
                           <Image
-                            src={`/api/files/${encodeURIComponent(file.id)}`}
+                            src={`/api/files/${encodeURIComponent(file.id)}?preview=thumbnail`}
                             width={160}
                             height={100}
                             alt=""

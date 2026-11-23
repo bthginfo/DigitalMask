@@ -2,6 +2,7 @@
 import { useState, type ReactNode } from "react";
 import { LinkedText } from "./linked-text";
 import Image from "next/image";
+import dynamic from "next/dynamic";
 import {
   ArrowLeft,
   Image as ImageIcon,
@@ -21,6 +22,7 @@ import { Badge, Button, Empty, ErrorMessage, ExportButton, Modal, PageHeader } f
 import browseStyles from "./workspace-browse.module.css";
 import { ResourceEditor } from "./resource-editor";
 import { DocumentContent } from "@/modules/documentation/components/document-content";
+import { isImageAttachment } from "./image-gallery";
 import lookStyles from "@/modules/documentation/components/document-sections.module.css";
 import { CategoryManager } from "@/modules/categories/components/category-manager";
 import { categoryName } from "@/shared/domain-categories";
@@ -45,6 +47,10 @@ import { initialPeriod, teamTaskSeason } from "@/shared/period-filter";
 import { useViewState } from "@/shared/view-state";
 import { MaterialReservations } from "@/modules/reservations/components/material-reservations";
 import { TimeBookingDelete } from "@/modules/time-tracking/components/time-booking-delete";
+
+const LookPhotoComparison = dynamic(
+  () => import("@/modules/documentation/components/look-photo-comparison"),
+);
 
 export function RecordDetail({
   record,
@@ -84,6 +90,7 @@ function GenericRecordDetail({
   const [subtask, setSubtask] = useState(false);
   const [timeBooking, setTimeBooking] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [comparingPhotos, setComparingPhotos] = useState(false);
   const current = workspace.records[record.kind].find((x) => x.id === record.id) || record;
   const canEdit = canManageRecord(workspace.user, current.kind, current);
   const allLinkedFiles = workspace.records.files.filter(
@@ -100,6 +107,7 @@ function GenericRecordDetail({
     current.kind === "casting"
       ? workspace.records.characters.find((row) => row.id === current.data.characterId)
       : undefined;
+  const lookPhotos = current.kind === "looks" ? linkedFiles.filter(isImageAttachment) : [];
   const figureFiles = linkedFigure
     ? workspace.records.files.filter(
         (row) => row.data.recordKind === "characters" && row.data.recordId === linkedFigure.id,
@@ -393,6 +401,19 @@ function GenericRecordDetail({
                       ? "Porträt & Dateien"
                       : "Bilder & Dateien"}
                 </h3>
+                {lookPhotos.length >= 2 && (
+                  <button
+                    type="button"
+                    className="button secondary"
+                    aria-haspopup="dialog"
+                    onClick={(event) => {
+                      event.currentTarget.focus({ preventScroll: true });
+                      setComparingPhotos(true);
+                    }}
+                  >
+                    Fotos vergleichen
+                  </button>
+                )}
                 {canEdit && (
                   <label className="button secondary">
                     <Upload size={15} />
@@ -416,6 +437,12 @@ function GenericRecordDetail({
                   </label>
                 )}
               </header>
+              {comparingPhotos && lookPhotos.length >= 2 && (
+                <LookPhotoComparison
+                  photos={lookPhotos}
+                  onClose={() => setComparingPhotos(false)}
+                />
+              )}
               {linkedFiles.length ? (
                 <AttachmentGrid
                   files={linkedFiles}

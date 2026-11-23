@@ -1,0 +1,94 @@
+.dialog:global(.dialog)[open] {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  width: min(52rem, calc(100% - 1rem));
+  height: min(48rem, calc(var(--dialog-viewport-height, 100dvh) - 1rem));
+}
+.pickers {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+.pickers label {
+  display: grid;
+  min-width: 0;
+  gap: 0.2rem;
+}
+.pickers select {
+  min-width: 0;
+  width: 100%;
+}
+.frame {
+  position: relative;
+  flex: 1 0 8rem;
+  overflow: hidden;
+  isolation: isolate;
+  border-radius: 0.6rem;
+  background: var(--surface-soft);
+}
+.images,
+.layer {
+  position: absolute;
+  inset: 0;
+}
+.images {
+  touch-action: none;
+}
+.layer {
+  background: var(--surface-soft);
+  pointer-events: none;
+  overflow: hidden;
+}
+.layer img {
+  object-fit: contain;
+  user-select: none;
+}
+.line {
+  position: absolute;
+  inset-block: 0;
+  left: var(--split);
+  width: 2px;
+  background: white;
+  box-shadow: 0 0 3px #0009;
+  pointer-events: none;
+}
+.handle {
+  position: absolute;
+  top: 50%;
+  left: clamp(22px, var(--split), calc(100% - 22px));
+  transform: translate(-50%, -50%);
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: var(--text);
+  background: var(--surface);
+  box-shadow: 0 1px 5px #0004;
+  touch-action: none;
+  cursor: ew-resize;
+}
+.handle:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+}
+.controls button {
+  min-width: 44px;
+  min-height: 44px;
+}
+.status {
+  position: absolute;
+  inset: auto 0.4rem 0.4rem;
+  padding: 0.45rem;
+  background: var(--surface);
+  text-align: center;
+  border-radius: 0.4rem;
+}
