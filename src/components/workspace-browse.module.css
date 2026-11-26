@@ -128,12 +128,13 @@
   }
 
   .productionDetail > :global(.production-tabs) {
-    margin: 0 -18px 18px;
-    padding: 2px 18px 6px;
+    margin: 0 0 18px;
+    padding: 2px 0 6px;
+    max-width: 100%;
     flex-wrap: nowrap;
     overflow-x: auto;
     scroll-snap-type: x proximity;
-    scroll-padding-inline: 18px;
+    scroll-padding-inline: 0;
     -webkit-overflow-scrolling: touch;
   }
   .productionDetail > :global(.production-tabs) button {
