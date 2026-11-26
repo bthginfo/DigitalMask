@@ -274,6 +274,24 @@ describe("atomic shift-swap service", () => {
     ).rejects.toThrow("Zuerst");
     await decideShiftSwap(user("b"), "request", { action: "accept", version: 1 });
     expect(data.stored.get("request")!.data.status).toBe("awaiting_admin");
+    // The two colleagues are informed; admins receive a separate decision request.
+    expect(mocks.emit).toHaveBeenCalledWith(
+      expect.anything(),
+      user("b"),
+      "ShiftSwapChangedV1",
+      expect.objectContaining({ title: "Diensttausch wartet auf Freigabe", userIds: ["a", "b"] }),
+    );
+    expect(mocks.emit).toHaveBeenCalledWith(
+      expect.anything(),
+      user("b"),
+      "AdminDecisionRequestedV1",
+      expect.objectContaining({
+        title: "Diensttausch zur Freigabe",
+        recordId: "request",
+        link: "/?module=calendar&swapId=request",
+        excludeUserIds: ["a", "b"],
+      }),
+    );
     expect(data.stored.get("a-duty")!.version).toBe(1);
     expect(data.stored.get("a-duty")!.data.participantIds).toEqual(["a"]);
   });

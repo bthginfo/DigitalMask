@@ -138,19 +138,6 @@ async function updateRow(context: Context, before: Row, data: RecordData, tx: Tr
 async function notifySwap(context: Context, row: Row, tx: Transaction) {
   const data = shiftSwapSchema.parse(row.data);
   const targets = new Set([data.requesterId, data.partnerId]);
-  if (data.status === "awaiting_admin") {
-    const admins = await tx
-      .select({ id: memberships.userId })
-      .from(memberships)
-      .where(
-        and(
-          eq(memberships.departmentId, context.departmentId),
-          eq(memberships.status, "active"),
-          ne(memberships.role, "user"),
-        ),
-      );
-    for (const person of admins) targets.add(person.id);
-  }
   const titles = {
     awaiting_partner: "Neue Diensttausch-Anfrage",
     awaiting_admin: "Diensttausch wartet auf Freigabe",
@@ -159,19 +146,30 @@ async function notifySwap(context: Context, row: Row, tx: Transaction) {
     rejected: "Diensttausch nicht freigegeben",
     withdrawn: "Diensttausch zurückgezogen",
   };
+  const body = `${data.serviceTitle} · ${new Intl.DateTimeFormat("de-DE", {
+    timeZone: "Europe/Berlin",
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(data.serviceStart))}`;
+  const link = `/?module=calendar&swapId=${encodeURIComponent(row.id)}`;
   await emit(tx, context, "ShiftSwapChangedV1", {
     userIds: [...targets],
     title: titles[data.status],
-    body: `${data.serviceTitle} · ${new Intl.DateTimeFormat("de-DE", {
-      timeZone: "Europe/Berlin",
-      day: "2-digit",
-      month: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-    }).format(new Date(data.serviceStart))}`,
+    body,
     recordId: row.id,
-    link: `/?module=calendar&swapId=${encodeURIComponent(row.id)}`,
+    link,
   });
+  // Admins and superadmins are asked for the decision; the worker resolves them on delivery.
+  if (data.status === "awaiting_admin")
+    await emit(tx, context, "AdminDecisionRequestedV1", {
+      title: "Diensttausch zur Freigabe",
+      body,
+      recordId: row.id,
+      link,
+      excludeUserIds: [...targets],
+    });
 }
 
 export async function createShiftSwap(context: Context, input: unknown) {

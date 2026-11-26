@@ -609,9 +609,22 @@ export async function saveRecord(
         userIds: listValue(data.participantIds),
         title: existing ? "Dienst geändert" : "Neuer Dienst",
         body: related.eventTitle,
+        // Dates for a coalesced summary when many shifts are planned at once.
+        start: data.start,
+        allDay: data.allDay === true,
         link: "/?module=calendar",
         recordId: row.id,
         productionId: data.productionId,
+      });
+      eventQueued = true;
+    }
+    if (kind === "leave" && !existing && data.status === "pending") {
+      await emit(tx, context, "AdminDecisionRequestedV1", {
+        title: "Neuer Freiwunsch",
+        body: `${context.user.name} · ${data.start} bis ${data.end}`,
+        link: `/?module=calendar&leaveId=${encodeURIComponent(row.id)}`,
+        recordId: row.id,
+        excludeUserIds: [context.user.id],
       });
       eventQueued = true;
     }

@@ -7,6 +7,7 @@ import { db } from "@/platform/db";
 import { departments, memberships } from "@/platform/db/schema";
 import { readJson, route, HttpError } from "@/platform/http";
 import { throttle } from "@/platform/auth/throttle";
+import { emit, scheduleEvents } from "@/platform/events";
 import { invalidateTeam } from "@/modules/records/workspace";
 import { scheduleLiveChange } from "@/platform/realtime";
 import { teamChangeKinds } from "@/shared/workspace-sync";
@@ -39,17 +40,35 @@ export async function POST(request: Request) {
           );
         throw error;
       });
-    await db.insert(memberships).values({
-      id: crypto.randomUUID(),
-      userId: response.user.id,
-      organizationId: department.organizationId,
-      departmentId: department.id,
-      role: "user",
-      status: "pending",
+    await db.transaction(async (tx) => {
+      await tx.insert(memberships).values({
+        id: crypto.randomUUID(),
+        userId: response.user.id,
+        organizationId: department.organizationId,
+        departmentId: department.id,
+        role: "user",
+        status: "pending",
+      });
+      await emit(
+        tx,
+        {
+          departmentId: department.id,
+          organizationId: department.organizationId,
+          user: { id: response.user.id },
+        },
+        "AdminDecisionRequestedV1",
+        {
+          title: "Neue Registrierung",
+          body: `${response.user.name} (${body.username.toLowerCase()}) wartet auf Freigabe.`,
+          link: "/?module=settings",
+          recordId: "",
+        },
+      );
     });
     // A pending account changes only the team list: no shared record slice, no full reload.
     invalidateTeam(department.id);
     scheduleLiveChange(department.id, teamChangeKinds, { origin: null });
+    scheduleEvents();
     return NextResponse.json({ pending: true }, { status: 201 });
   });
 }
