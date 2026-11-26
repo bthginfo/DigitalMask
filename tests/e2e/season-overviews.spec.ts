@@ -13,7 +13,7 @@ test("teamboard and documentation start current, filter locally, and new subtask
   page,
 }) => {
   const state = await mockSeasons(page);
-  await page.goto("/?module=tasks");
+  await page.goto("/?module=tasks&view=team");
   await expect(seasonPicker(page)).toHaveValue("2026/27");
   await expect(
     page.getByRole("button", { name: "Perückenwagen vorbereiten", exact: true }),

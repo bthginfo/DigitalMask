@@ -94,17 +94,21 @@ export const helpArticles: HelpArticle[] = [
   },
   {
     id: "tasks",
-    title: "Aufgaben, Kanban & Sprints",
+    title: "Aufgaben & Teamboard",
     module: "tasks",
     intro:
-      "Produktionsaufgaben gehören ins Kanban des Stücks; allgemeine Aufgaben gehören ins Teamboard.",
+      "Im Teamboard siehst du oben drei Ansichten: Meine Aufgaben, Team und Alle Stücke. Aufgaben zu einem Stück legst du im Stück unter Aufgaben an, allgemeine Aufgaben unter Team.",
     steps: [
-      "Öffne im Stück Aufgaben & Sprints. Neue Aufgaben bleiben dieser Produktion zugeordnet. Im Teamboard wird keine Produktion zugeteilt.",
-      "Am Smartphone startet die Aufgabenansicht als Liste. Sie zeigt Aufgaben nach Status mit ihren Anzahlen. Über Liste und Kanban wechselst du zur Spaltenansicht und zurück. Suche, Meine Aufgaben und die Spielzeitauswahl gelten in beiden Ansichten.",
+      "Meine Aufgaben zeigt alles, was dir zugeteilt ist, aus allen Stücken und dem Teamboard, nach Stück gruppiert und nach Fälligkeit sortiert. Überfällige Aufgaben sind rot markiert.",
+      "Ein Tipp auf den Kreis erledigt eine Aufgabe. Erledigte findest du darunter unter Erledigt; ein weiterer Tipp öffnet sie wieder.",
+      "Team zeigt die allgemeinen Aufgaben ohne Stück, Alle Stücke die Aufgaben aller Produktionen. Deine gewählte Ansicht bleibt auf diesem Gerät erhalten.",
+      "Eine Aufgabe ist Offen, In Arbeit oder Erledigt. Ältere Aufgaben tragen eventuell zusätzlich Später oder Prüfen.",
+      "Öffne im Stück Aufgaben. Neue Aufgaben bleiben dieser Produktion zugeordnet. Unter Team wird keine Produktion zugeteilt.",
+      "Am Smartphone startet die Aufgabenansicht als Liste. Sie zeigt Aufgaben nach Status mit ihren Anzahlen. Über Liste und Kanban wechselst du zur Spaltenansicht und zurück. Suche, Nur meine und die Spielzeitauswahl gelten in beiden Ansichten.",
       "Das Teamboard startet mit der aktuellen Spielzeit von August bis Juli. Über Spielzeit findest du frühere Aufgaben oder Alle Spielzeiten. Neue Teamaufgaben übernehmen die gewählte Spielzeit; im Aufgabenformular kannst du sie ändern. Unteraufgaben übernehmen die Spielzeit der Hauptaufgabe. In einem älteren Stück siehst du automatisch dessen eigene Spielzeit.",
       "Ergänze Verantwortliche, Priorität, Fälligkeitsdatum und eine Checkliste. Unteraufgaben behalten den Arbeitsraum ihrer übergeordneten Aufgabe.",
       "Verschiebe eine Aufgabe zwischen den Spalten oder ändere ihren Status im Auswahlfeld. Das funktioniert auch am Smartphone ohne Ziehen.",
-      "Alle freigegebenen Teammitglieder planen Sprints innerhalb der Produktion mit frei gewähltem Start, Ende und Ziel. Die Sprintauswahl filtert das Board.",
+      "Sprints sind freiwillig. Schaltet im Stück unter Aufgaben Sprints verwenden ein, wenn ihr Aufgaben für einen Zeitraum bündeln wollt. Danach könnt ihr Sprints mit Start, Ende und Ziel planen; die Sprintauswahl filtert das Board.",
       "Ihr könnt alle Aufgaben in zugänglichen Produktionen und im Teamboard bearbeiten und verschieben, auch wenn sie einer anderen Person zugeteilt sind.",
     ],
   },
@@ -406,7 +410,7 @@ export const helpFaq = [
   ],
   [
     "Wo kommen allgemeine Aufgaben hin?",
-    "Ins Teamboard der aktuellen Spielzeit. Frühere Aufgaben findest du über Spielzeit oder Alle Spielzeiten. Aufgaben zu einem Stück werden direkt unter dessen Aufgaben & Sprints angelegt und bleiben in seiner Spielzeit sichtbar.",
+    "Ins Teamboard unter Team, für die aktuelle Spielzeit. Frühere Aufgaben findest du über Spielzeit oder Alle Spielzeiten. Aufgaben zu einem Stück werden direkt unter dessen Aufgaben angelegt und bleiben in seiner Spielzeit sichtbar. Unter Meine Aufgaben siehst du beides zusammen.",
   ],
   [
     "Wo finde ich das Ensemble und die Aufgaben aus früheren Spielzeiten?",

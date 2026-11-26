@@ -24,7 +24,7 @@ const steps = [
     icon: Check,
     text: "Heute bündelt deine Aufgaben, die nächsten Dienste und deine gebuchte Zeit. Von hier kommst du direkt zu deinem nächsten Arbeitsschritt.",
     tips: [
-      "Persönliche Aufgaben öffnen immer den passenden Produktionsarbeitsraum.",
+      "Deine offenen Aufgaben führen direkt zu Meine Aufgaben im Teamboard.",
       "Die Suche findet Einträge aus deinen freigegebenen Bereichen.",
     ],
   },
@@ -42,10 +42,10 @@ const steps = [
     module: "tasks",
     title: "Klar verteilen, gemeinsam vorankommen.",
     icon: Layers3,
-    text: "Hier stehen allgemeine Aufgaben der Maske. Die Aufgaben eines Stücks findest du in der Produktion. Dort zeigt ein Board den Arbeitsstand; Sprints bündeln Aufgaben für einen Zeitraum.",
+    text: "Meine Aufgaben zeigt alles, was dir zugeteilt ist, aus allen Stücken. Ein Tipp auf den Kreis erledigt eine Aufgabe. Unter Team stehen die allgemeinen Aufgaben der Maske, unter Alle Stücke die Aufgaben aller Produktionen.",
     tips: [
-      "Aufgaben können Verantwortliche, Unteraufgaben und Checklisten haben.",
-      "Am Smartphone kannst du den Status auch im Auswahlfeld der Aufgabe ändern.",
+      "Aufgaben sind Offen, In Arbeit oder Erledigt und können Verantwortliche und Checklisten haben.",
+      "Sprints sind freiwillig und lassen sich im Stück unter Aufgaben einschalten.",
     ],
   },
   {
@@ -121,7 +121,7 @@ export function OnboardingTour({
         if (stopped || !matchMedia("(max-width:760px)").matches || last) return;
         const targets: Record<string, string> = {
           productions: ".production-card",
-          tasks: ".kanban",
+          tasks: ".task-view-switch",
           calendar: ".calendar-board",
           time: ".dual-timers",
           chat: ".chat-layout",
