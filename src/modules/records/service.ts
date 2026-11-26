@@ -348,6 +348,8 @@ export async function saveRecord(
   let eventQueued = false;
   // A record moving to another production or chat changes document access for its files.
   let accessMoved = false;
+  // An idempotent retry or an existing direct chat returns stored data: nothing to announce.
+  let unchanged = false;
   await assertWrite(context, kind);
   const write = async (tx: Transaction) => {
     await acquireWorkflowLock(context, kind, tx);
@@ -406,6 +408,7 @@ export async function saveRecord(
       const duplicate = await prepareConversation(context, data, tx, existing);
       if (duplicate) {
         await assertRead(context, duplicate, tx);
+        unchanged = true;
         return serialize(duplicate);
       }
     }
@@ -480,6 +483,7 @@ export async function saveRecord(
         if (kind === "messages") {
           // The same send arrives again, e.g. after a lost response: never post it twice.
           await assertRead(context, duplicate, tx);
+          unchanged = true;
           return serialize(duplicate);
         }
         if (String(data.idempotencyKey).startsWith("manual:")) {
@@ -502,6 +506,7 @@ export async function saveRecord(
               "Diese Buchung wurde bereits gespeichert. Lade deine Zeiten neu und bearbeite den vorhandenen Eintrag, um deine Änderungen zu übernehmen.",
             );
         }
+        unchanged = true;
         return serialize(duplicate);
       }
     }
@@ -671,7 +676,7 @@ export async function saveRecord(
   const result = options.transaction
     ? await write(options.transaction)
     : await db.transaction(write);
-  if (!options.deferEffects && !options.transaction) {
+  if (!options.deferEffects && !options.transaction && !unchanged) {
     invalidateWorkspace(context.departmentId, true, recordChangeKinds(kind), {
       permissions: accessMoved,
     });

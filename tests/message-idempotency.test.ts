@@ -74,8 +74,9 @@ describe("idempotent chat messages", () => {
     expect(retry.id).toBe(first.id);
     expect(stored).toHaveLength(1);
     expect(first.data).toMatchObject({ userId: "writer", idempotencyKey: "send-1" });
-    // One message, one push.
+    // One message, one push, one live signal.
     expect(mock.emit).toHaveBeenCalledTimes(1);
+    expect(mock.invalidate).toHaveBeenCalledTimes(1);
     expect(mock.emit.mock.calls[0][2]).toBe("ChatMessageCreatedV1");
     expect(mock.locks.some((params) => String(params[0]).includes(":messages:writer"))).toBe(true);
   });
