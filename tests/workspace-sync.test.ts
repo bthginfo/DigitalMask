@@ -113,6 +113,18 @@ describe("incremental workspace delivery", () => {
     expect(edited.records.events[0].version).toBe(2);
     expect(edited.records.events[1]).toBe(merged.records.events[1]);
     expect(edited.records.messages).toBe(merged.records.messages);
+
+    // Notices can be marked read without a new version and are always taken as sent.
+    const notice = versioned("notifications", "n1");
+    const withNotice = { ...base, records: { ...base.records, notifications: [notice] } };
+    const read = { ...notice, data: { ...notice.data, read: true } };
+    const afterRead = mergeWorkspaceUpdate(
+      withNotice,
+      workspacePatch({ ...withNotice, records: { ...withNotice.records, notifications: [read] } }, [
+        "notifications",
+      ]),
+    );
+    expect(afterRead.records.notifications[0].data.read).toBe(true);
   });
 
   it("handles old or malformed live payloads as a safe full refresh", () => {

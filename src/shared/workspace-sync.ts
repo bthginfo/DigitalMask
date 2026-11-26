@@ -77,6 +77,7 @@ const sameRecord = (a: DomainRecord, b: DomainRecord) =>
 /**
  * Keep the previous array and record objects when the server sends the same versions again, so
  * memoized views (calendar balances, event expansion, chat rows) skip unrelated updates.
+ * Relies on every data change bumping the record version (or update time).
  */
 export function shareRecords(current: DomainRecord[] | undefined, next: DomainRecord[]) {
   if (!current || current === next) return next;
@@ -113,7 +114,8 @@ function shareRecordMap(
   for (const kind of Object.keys(next) as RecordKind[]) {
     const rows = next[kind];
     if (!rows) continue;
-    const shared = shareRecords(current[kind], rows);
+    // Read state is personal and may change without a record version; always take it fresh.
+    const shared = kind === "notifications" ? rows : shareRecords(current[kind], rows);
     if (shared !== current[kind]) {
       merged[kind] = shared;
       changed = true;

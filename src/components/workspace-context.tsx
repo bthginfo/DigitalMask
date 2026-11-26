@@ -168,8 +168,9 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   }, [refresh]);
   useEffect(() => {
     // Notification taps in an already open app arrive from the service worker.
-    if (!("serviceWorker" in navigator)) return;
-    const container = navigator.serviceWorker;
+    const container = "serviceWorker" in navigator ? navigator.serviceWorker : undefined;
+    // Some embedded browsers expose a partial ServiceWorkerContainer.
+    if (typeof container?.addEventListener !== "function") return;
     const navigate = (event: MessageEvent) => {
       if (event.data?.type !== "DIGITALMASK_NAVIGATE" || typeof event.data.url !== "string") return;
       try {
@@ -181,7 +182,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       }
     };
     container.addEventListener("message", navigate);
-    container.startMessages?.();
+    if (typeof container.startMessages === "function") container.startMessages();
     return () => container.removeEventListener("message", navigate);
   }, []);
   /** Fresh live ticket without reloading workspace data; `true` when data was reloaded. */
