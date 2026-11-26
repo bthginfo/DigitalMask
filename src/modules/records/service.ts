@@ -453,7 +453,17 @@ export async function saveRecord(
         sql`select pg_advisory_xact_lock(hashtext(${context.departmentId + ":" + kind + ":" + String(data.userId)}))`,
       );
     // Events are already serialised by acquireWorkflowLock's "<department>:calendar" lock.
-    if ((kind === "time" || kind === "attendance") && data.idempotencyKey) {
+    if (kind === "messages" && data.idempotencyKey && !existing)
+      // Serialises retries of one send before the duplicate lookup (message_idempotency_idx).
+      await tx.execute(
+        sql`select pg_advisory_xact_lock(hashtext(${`${context.departmentId}:messages:${String(data.userId)}`}))`,
+      );
+    // The key belongs to the original send; edits keep it unchanged.
+    if (existing && kind === "messages") data.idempotencyKey = existing.data.idempotencyKey;
+    if (
+      (kind === "time" || kind === "attendance" || (kind === "messages" && !existing)) &&
+      data.idempotencyKey
+    ) {
       const [duplicate] = await tx
         .select()
         .from(records)
@@ -467,6 +477,11 @@ export async function saveRecord(
         )
         .limit(1);
       if (duplicate && !existing) {
+        if (kind === "messages") {
+          // The same send arrives again, e.g. after a lost response: never post it twice.
+          await assertRead(context, duplicate, tx);
+          return serialize(duplicate);
+        }
         if (String(data.idempotencyKey).startsWith("manual:")) {
           const fields = [
             "title",
