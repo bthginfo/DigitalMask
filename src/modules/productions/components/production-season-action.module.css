@@ -1,0 +1,15 @@
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+@media (max-width: 760px) {
+  .status {
+    flex-basis: 100%;
+  }
+}

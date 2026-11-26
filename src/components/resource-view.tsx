@@ -43,7 +43,13 @@ import relationStyles from "./record-links.module.css";
 import { actorPortrait } from "@/modules/ensemble/portrait-layout";
 import { ActorPortrait } from "@/modules/ensemble/components/actor-portrait";
 import portraitStyles from "@/modules/ensemble/components/actor-portrait.module.css";
-import { initialPeriod, teamTaskSeason } from "@/shared/period-filter";
+import {
+  initialPeriod,
+  productionSeasons,
+  shortSeasonLabel,
+  teamTaskSeason,
+} from "@/shared/period-filter";
+import { ProductionSeasonAction } from "@/modules/productions/components/production-season-action";
 import { useViewState } from "@/shared/view-state";
 import { MaterialReservations } from "@/modules/reservations/components/material-reservations";
 import { TimeBookingDelete } from "@/modules/time-tracking/components/time-booking-delete";
@@ -268,6 +274,8 @@ function GenericRecordDetail({
                 else if (field.type === "checkbox")
                   display = current.data[field.key] ? "Ja" : "Nein";
                 else if (field.type === "lines") display = ids(current.data, field.key).join(" · ");
+                else if (field.type === "seasons")
+                  display = productionSeasons(current.data).map(shortSeasonLabel).join(" · ");
                 if (
                   field.key === "category" &&
                   (current.kind === "time" || current.kind === "materials")
@@ -351,12 +359,17 @@ function GenericRecordDetail({
           )}
           {current.kind === "productions" && canEdit && (
             <div className="detail-actions">
+              <ProductionSeasonAction
+                production={current}
+                disabled={busy}
+                onAdd={(seasons) => attempt(() => save("productions", { seasons }, current))}
+              />
               <Button
                 disabled={busy}
                 onClick={() => {
                   const title = prompt(
-                    "Titel der Wiederaufnahme",
-                    `${value(current.data, "title")} · Wiederaufnahme`,
+                    "Titel der neuen Produktion. Aufschriebe, Besetzung und Maskenpläne werden kopiert und danach getrennt gepflegt.",
+                    `${value(current.data, "title")} · Neuinszenierung`,
                   );
                   if (title)
                     void attempt(async () => {
@@ -365,7 +378,7 @@ function GenericRecordDetail({
                     });
                 }}
               >
-                Als Wiederaufnahme kopieren
+                Als neue Produktion kopieren
               </Button>
               <Button
                 disabled={busy}
