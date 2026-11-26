@@ -33,6 +33,7 @@ import {
 import { ChannelGroup } from "@/modules/chat/components/channel-group";
 import { useCollapsedPreference } from "@/shared/use-collapsed-preference";
 import styles from "@/modules/chat/components/chat-viewport.module.css";
+import { useConfirm } from "@/components/confirm-dialog";
 
 function ChannelChoice({
   title,
@@ -112,6 +113,7 @@ export function ChatModule({
     options?: { replace?: boolean },
   ) => void;
 }) {
+  const confirm = useConfirm();
   const { workspace, save, remove, busy, online } = useWorkspace();
   const viewport = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
@@ -639,8 +641,14 @@ export function ChatModule({
             <Button
               variant="danger-ghost"
               disabled={busy}
-              onClick={() => {
-                if (confirm("Leeren Chat löschen? Chats mit Nachrichten können archiviert werden."))
+              onClick={async () => {
+                if (
+                  await confirm({
+                    message: `Leeren Chat „${title}“ löschen? Chats mit Nachrichten können archiviert werden.`,
+                    confirmLabel: "Löschen",
+                    destructive: true,
+                  })
+                )
                   void update(async () => {
                     await remove(conversation);
                     choose("");

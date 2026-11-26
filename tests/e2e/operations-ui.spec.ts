@@ -292,8 +292,11 @@ for (const mobile of [false, true])
       expect(state.writes.find((write) => write.kind === "calendarCategories")!.data.key).toMatch(
         /^category-/,
       );
-      page.once("dialog", (dialog) => dialog.accept());
       await page.getByRole("button", { name: "Urlaub löschen", exact: true }).click();
+      await page
+        .getByRole("alertdialog")
+        .getByRole("button", { name: "Löschen", exact: true })
+        .click();
       await expect(page.locator(".error-message")).toHaveText(
         "Diese Kalenderart wird bereits verwendet.",
       );

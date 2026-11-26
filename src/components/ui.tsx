@@ -10,6 +10,7 @@ import {
 } from "react";
 import { ArrowUpRight, Download, MoreHorizontal, Plus, X } from "lucide-react";
 import { subscribeMobile } from "@/shared/client-storage";
+import { discardChanges, useConfirm } from "./confirm-dialog";
 import styles from "./ui.module.css";
 
 export function Button({
@@ -190,6 +191,7 @@ export function Modal({
   wide = false,
   className = "",
   onKeyDown,
+  dirty,
 }: {
   title: string;
   children: ReactNode;
@@ -197,9 +199,26 @@ export function Modal({
   wide?: boolean;
   className?: string;
   onKeyDown?: KeyboardEventHandler<HTMLDialogElement>;
+  /**
+   * Unsaved input: closing with Escape, the backdrop or the close button first asks
+   * "Ungespeicherte Änderungen verwerfen?". A function is evaluated only when closing.
+   */
+  dirty?: boolean | (() => boolean);
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
+  const confirm = useConfirm();
+  const asking = useRef(false);
+  const requestClose = async () => {
+    if (asking.current) return;
+    if (typeof dirty === "function" ? dirty() : dirty) {
+      asking.current = true;
+      const discard = await confirm(discardChanges);
+      asking.current = false;
+      if (!discard) return;
+    }
+    onClose();
+  };
   useEffect(() => {
     const el = ref.current;
     const previousFocus = document.activeElement;
@@ -238,7 +257,7 @@ export function Modal({
       onCancel={(event) => {
         event.preventDefault();
         event.stopPropagation();
-        onClose();
+        void requestClose();
       }}
       onClick={(event) => {
         if (event.target === event.currentTarget) {
@@ -250,13 +269,18 @@ export function Modal({
               event.clientY < bounds.top ||
               event.clientY > bounds.bottom)
           )
-            onClose();
+            void requestClose();
         }
       }}
     >
       <header className="dialog-heading">
         <h2 id={titleId}>{title}</h2>
-        <button type="button" className="icon-button" onClick={onClose} aria-label="Schließen">
+        <button
+          type="button"
+          className="icon-button"
+          onClick={() => void requestClose()}
+          aria-label="Schließen"
+        >
           <X size={20} />
         </button>
       </header>

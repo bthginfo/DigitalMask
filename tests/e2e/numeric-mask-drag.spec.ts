@@ -83,11 +83,10 @@ test("minute drafts clear, reject blanks, keep discard guards and apply real num
   await expect(page.getByText("Bitte Zeit und Dauer eintragen.", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Übernehmen", exact: true }).click();
   await expect(page.getByRole("dialog", { name: "Zeitblock bearbeiten" })).toBeVisible();
-  const confirm = page.waitForEvent("dialog");
-  const closing = page.getByRole("button", { name: "Abbrechen", exact: true }).click();
-  expect((await confirm).message()).toContain("verwerfen");
-  await (await confirm).dismiss();
-  await closing;
+  await page.getByRole("button", { name: "Abbrechen", exact: true }).click();
+  const confirm = page.getByRole("alertdialog");
+  await expect(confirm).toContainText("verwerfen");
+  await confirm.getByRole("button", { name: "Weiter bearbeiten", exact: true }).click();
   await start.fill("70");
   await duration.fill("30");
   await page.getByRole("button", { name: "Übernehmen", exact: true }).click();
@@ -394,7 +393,10 @@ test("mobile short tap edits; long hold moves, clamps at zero, and scrolling or 
   await expect(page.getByRole("dialog", { name: "Zeitblock hinzufügen" })).toBeVisible();
   await expect(page.getByLabel("Minuten vor Beginn", { exact: true })).toHaveValue("25");
   await page.getByRole("button", { name: "Abbrechen", exact: true }).click();
-  page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Verwerfen", exact: true }).click();
+  await page
+    .getByRole("alertdialog")
+    .getByRole("button", { name: "Verwerfen", exact: true })
+    .click();
   await context.close();
 });

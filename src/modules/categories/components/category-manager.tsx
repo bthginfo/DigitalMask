@@ -7,6 +7,7 @@ import { value } from "@/shared/client-api";
 import { useWorkspace } from "@/components/workspace-context";
 import { Button, Empty, ErrorMessage, Modal } from "@/components/ui";
 import { numberDraft, parseNumberDraft } from "@/shared/number-draft";
+import { useConfirm } from "@/components/confirm-dialog";
 const scopes = {
   time: "Tätigkeitsbereiche",
   materials: "Funduskategorien",
@@ -14,6 +15,7 @@ const scopes = {
   handovers: "Übergabeabschnitte",
 };
 export function CategoryManager({ scope, onClose }: { scope: CategoryScope; onClose: () => void }) {
+  const confirm = useConfirm();
   const { workspace, remove, busy } = useWorkspace();
   const [editing, setEditing] = useState<DomainRecord | "new" | null>(null),
     [error, setError] = useState("");
@@ -54,8 +56,14 @@ export function CategoryManager({ scope, onClose }: { scope: CategoryScope; onCl
                     className="icon-button"
                     disabled={busy}
                     aria-label={`${value(row.data, "name")} löschen`}
-                    onClick={() => {
-                      if (confirm("Ungenutzte Kategorie löschen?"))
+                    onClick={async () => {
+                      if (
+                        await confirm({
+                          message: `Kategorie „${value(row.data, "name")}“ löschen? Verwendete Kategorien bleiben erhalten.`,
+                          confirmLabel: "Löschen",
+                          destructive: true,
+                        })
+                      )
                         void remove(row).catch((exception) => setError(exception.message));
                     }}
                   >

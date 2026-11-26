@@ -74,6 +74,7 @@ import {
 import chatStyles from "@/modules/chat/components/chat-viewport.module.css";
 import { ProfileAccent } from "@/modules/profile/components/accent-picker";
 import { AppInstall } from "@/modules/pwa/components/app-install";
+import { useConfirm } from "@/components/confirm-dialog";
 const nav: { id: string; label: string; icon: LucideIcon; group: string }[] = [
   { id: "today", label: "Heute", icon: Home, group: "ARBEITSRAUM" },
   { id: "productions", label: "Produktionen", icon: Theater, group: "ARBEITSRAUM" },
@@ -94,6 +95,7 @@ export function WorkspaceShell() {
   // Data and stable actions only: busy, notices and sync status render in small children.
   const workspace = useWorkspaceData();
   const { notify, action } = useWorkspaceActions();
+  const confirm = useConfirm();
   const { search: query, params } = useWorkspaceLocation();
   const requestedModule =
     params.get("module") === "productions" && params.get("tab") === "handovers"
@@ -246,9 +248,13 @@ export function WorkspaceShell() {
     } catch {}
     if (
       drafts.length &&
-      !confirm(
-        "Es gibt lokale Zeitentwürfe. Beim Abmelden werden sie auf diesem Gerät gelöscht. Trotzdem abmelden?",
-      )
+      !(await confirm({
+        title: "Lokale Zeitentwürfe",
+        message:
+          "Es gibt lokale Zeitentwürfe. Beim Abmelden werden sie auf diesem Gerät gelöscht. Trotzdem abmelden?",
+        confirmLabel: "Abmelden",
+        destructive: true,
+      }))
     )
       return;
     try {

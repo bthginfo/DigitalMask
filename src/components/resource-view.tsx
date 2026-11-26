@@ -48,6 +48,7 @@ import { useViewState } from "@/shared/view-state";
 import { matchesSearch, searchIndex, searchTerms } from "@/shared/search-text";
 import { MaterialReservations } from "@/modules/reservations/components/material-reservations";
 import { TimeBookingDelete } from "@/modules/time-tracking/components/time-booking-delete";
+import { useConfirm } from "@/components/confirm-dialog";
 
 const LookPhotoComparison = dynamic(
   () => import("@/modules/documentation/components/look-photo-comparison"),
@@ -134,8 +135,15 @@ function GenericRecordDetail({
       setError(e instanceof Error ? e.message : "Aktion fehlgeschlagen");
     }
   };
-  const deleteRecord = () => {
-    if (window.confirm(`„${title}“ wirklich löschen? Verknüpfte Einträge können betroffen sein.`))
+  const confirm = useConfirm();
+  const deleteRecord = async () => {
+    if (
+      await confirm({
+        message: `„${title}“ wirklich löschen? Verknüpfte Einträge können betroffen sein.`,
+        confirmLabel: "Löschen",
+        destructive: true,
+      })
+    )
       void attempt(async () => {
         await remove(current);
         onClose();
@@ -461,7 +469,13 @@ function GenericRecordDetail({
                   onRemove={
                     canEdit
                       ? (file) => {
-                          if (confirm("Datei löschen?")) void attempt(() => removeFile(file));
+                          void confirm({
+                            message: `Datei „${value(file.data, "name") || "Anhang"}“ löschen?`,
+                            confirmLabel: "Löschen",
+                            destructive: true,
+                          }).then((confirmed) => {
+                            if (confirmed) void attempt(() => removeFile(file));
+                          });
                         }
                       : undefined
                   }

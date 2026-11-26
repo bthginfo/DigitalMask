@@ -9,6 +9,7 @@ import {
 } from "@/shared/calendar-categories";
 import { useWorkspace } from "@/components/workspace-context";
 import { Badge, Button, Empty, ErrorMessage, Modal } from "@/components/ui";
+import { useConfirm } from "@/components/confirm-dialog";
 function CategoryEditor({ record, onClose }: { record?: DomainRecord; onClose: () => void }) {
   const { save, busy } = useWorkspace();
   const [name, setName] = useState(value(record?.data || {}, "name"));
@@ -82,6 +83,7 @@ function CategoryEditor({ record, onClose }: { record?: DomainRecord; onClose: (
   );
 }
 export function CalendarCategoriesDialog({ onClose }: { onClose: () => void }) {
+  const confirm = useConfirm();
   const { workspace, remove, busy } = useWorkspace();
   const [editing, setEditing] = useState<DomainRecord | "new" | null>(null);
   const [error, setError] = useState("");
@@ -137,11 +139,13 @@ export function CalendarCategoriesDialog({ onClose }: { onClose: () => void }) {
                     className="icon-button"
                     aria-label={`${value(record.data, "name")} löschen`}
                     disabled={busy}
-                    onClick={() => {
+                    onClick={async () => {
                       if (
-                        confirm(
-                          `Kalenderart „${value(record.data, "name")}“ löschen? Bereits verwendete Arten können nicht gelöscht werden.`,
-                        )
+                        await confirm({
+                          message: `Kalenderart „${value(record.data, "name")}“ löschen? Bereits verwendete Arten können nicht gelöscht werden.`,
+                          confirmLabel: "Löschen",
+                          destructive: true,
+                        })
                       ) {
                         setError("");
                         void remove(record).catch((exception) =>

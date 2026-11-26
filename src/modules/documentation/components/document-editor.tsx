@@ -19,6 +19,7 @@ import { productionFigureOptions, type FigureOption } from "@/modules/production
 import { personNameKey } from "@/shared/person-identity";
 import { SectionFields } from "./section-fields";
 import { numberDraft, parseNumberDraft } from "@/shared/number-draft";
+import { useDraftChanged } from "@/shared/use-draft-changed";
 export function DocumentEditor({
   kind,
   record,
@@ -158,9 +159,22 @@ export function DocumentEditor({
       return next;
     });
   };
+  const changed = useDraftChanged({
+    production,
+    figure: figure?.key,
+    actorId,
+    actorName,
+    characterName,
+    title,
+    templateId,
+    version,
+    checklist,
+    sections,
+  });
   return (
     <>
       <Modal
+        dirty={changed}
         title={
           backstageChangesOnly
             ? record

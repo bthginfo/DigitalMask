@@ -21,9 +21,11 @@ import { CalendarTimeProposals } from "./calendar-time-proposals";
 import { WeekDayOverview } from "./week-day-overview";
 import { AttendanceBalanceCard } from "./attendance-balance";
 import styles from "./time-history.module.css";
+import { useConfirm } from "@/components/confirm-dialog";
 
 type AttendanceDraft = { id: string; createdAt: string; data: RecordData };
 export function AttendanceModule({ embedded = false }: { embedded?: boolean }) {
+  const confirm = useConfirm();
   const { workspace, reload, online, busy } = useWorkspace();
   const selfBooking = workspace.user.role !== "superadmin";
   const admin = workspace.user.role !== "user";
@@ -221,8 +223,15 @@ export function AttendanceModule({ embedded = false }: { embedded?: boolean }) {
           </Button>
           <Button
             variant="ghost"
-            onClick={() => {
-              if (confirm("Lokale Anwesenheitsentwürfe verwerfen?")) setDraftJson("[]");
+            onClick={async () => {
+              if (
+                await confirm({
+                  message: `${drafts.length === 1 ? "Den lokalen Anwesenheitsentwurf" : `Alle ${drafts.length} lokalen Anwesenheitsentwürfe`} verwerfen?`,
+                  confirmLabel: "Verwerfen",
+                  destructive: true,
+                })
+              )
+                setDraftJson("[]");
             }}
           >
             Verwerfen

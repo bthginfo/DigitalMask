@@ -17,8 +17,10 @@ import { useWorkspace } from "@/components/workspace-context";
 import { Badge, Button, ErrorMessage, ExportButton, Modal } from "@/components/ui";
 import { ExportDialog } from "@/components/export-dialog";
 import styles from "@/modules/workflows/components/workflow.module.css";
+import { useConfirm } from "@/components/confirm-dialog";
 
 export function MaterialReservations({ material }: { material: DomainRecord }) {
+  const confirm = useConfirm();
   const { workspace, save, remove, busy } = useWorkspace();
   const [editor, setEditor] = useState<DomainRecord | "new" | null>(null);
   const [history, setHistory] = useState(false);
@@ -37,7 +39,13 @@ export function MaterialReservations({ material }: { material: DomainRecord }) {
   );
   const visible = history ? records : current;
   const cancel = async (record: DomainRecord) => {
-    if (!confirm("Diese Reservierung aufheben? Der Artikel wird für den Zeitraum wieder frei."))
+    if (
+      !(await confirm({
+        message: `Reservierung für „${textValue(material.data.name) || "diesen Artikel"}“ aufheben? Der Artikel wird für den Zeitraum wieder frei.`,
+        confirmLabel: "Aufheben",
+        destructive: true,
+      }))
+    )
       return;
     setError("");
     try {
@@ -139,7 +147,14 @@ export function MaterialReservations({ material }: { material: DomainRecord }) {
                     <Button
                       disabled={busy}
                       onClick={async () => {
-                        if (!confirm("Diese Reservierung entfernen?")) return;
+                        if (
+                          !(await confirm({
+                            message: `Reservierung für „${textValue(material.data.name) || "diesen Artikel"}“ entfernen?`,
+                            confirmLabel: "Entfernen",
+                            destructive: true,
+                          }))
+                        )
+                          return;
                         setError("");
                         try {
                           await remove(record);

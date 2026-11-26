@@ -18,6 +18,7 @@ import {
 import { RecordLink } from "@/components/record-link";
 import { navigateWorkspace } from "@/shared/client-navigation";
 import { backstageChangesSection } from "@/shared/document-sections";
+import { useConfirm } from "@/components/confirm-dialog";
 export function EventDetail({
   record,
   occurrence,
@@ -30,6 +31,7 @@ export function EventDetail({
   onNavigate?: () => void;
 }) {
   const { workspace, remove, busy } = useWorkspace();
+  const confirm = useConfirm();
   const [editing, setEditing] = useState(false),
     [booking, setBooking] = useState(false),
     [exporting, setExporting] = useState(false),
@@ -75,8 +77,14 @@ export function EventDetail({
               <Button
                 variant="danger-ghost"
                 disabled={busy}
-                onClick={() => {
-                  if (confirm(`Termin „${presentation.title}“ löschen?`)) {
+                onClick={async () => {
+                  if (
+                    await confirm({
+                      message: `Termin „${presentation.title}“ löschen?`,
+                      confirmLabel: "Löschen",
+                      destructive: true,
+                    })
+                  ) {
                     setError("");
                     void remove(current)
                       .then(onClose)

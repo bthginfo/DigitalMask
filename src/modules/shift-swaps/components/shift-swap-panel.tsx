@@ -14,6 +14,7 @@ import { ExportDialog } from "@/components/export-dialog";
 import { eligibleSwapService, shiftSwapStatusLabels } from "../model";
 import type { ShiftSwapAction, ShiftSwapStatus } from "../schema";
 import styles from "@/modules/workflows/components/workflow.module.css";
+import { useConfirm } from "@/components/confirm-dialog";
 
 /** Swap decisions change the request and the exchanged services, nothing else. */
 const swapKinds = ["shiftSwaps", "events"] as const;
@@ -58,6 +59,7 @@ const serviceLabel = (service: ServiceOption) =>
   `${dateLabel(service.start, true)} · ${service.title}`;
 
 export function ShiftSwapPanel() {
+  const confirm = useConfirm();
   const { workspace, runWorkflow, busy } = useWorkspace();
   const query = useSyncExternalStore(
     subscribeLocation,
@@ -85,11 +87,11 @@ export function ShiftSwapPanel() {
     setError("");
     if (
       ["decline", "reject", "withdraw"].includes(action) &&
-      !confirm(
-        action === "withdraw"
-          ? "Diese Tauschanfrage zurückziehen?"
-          : "Diese Tauschanfrage ablehnen?",
-      )
+      !(await confirm({
+        message: `Tauschanfrage für „${textValue(record.data.serviceTitle) || "diesen Dienst"}“ ${action === "withdraw" ? "zurückziehen" : "ablehnen"}?`,
+        confirmLabel: action === "withdraw" ? "Zurückziehen" : "Ablehnen",
+        destructive: true,
+      }))
     )
       return;
     try {

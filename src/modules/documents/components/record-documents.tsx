@@ -12,10 +12,12 @@ import { imageAccept, prepareUpload } from "@/shared/client-files";
 import { DocumentAttachment } from "./document-attachment";
 import { NewDocumentDialog } from "./new-document-dialog";
 import "../documents.css";
+import { useConfirm } from "@/components/confirm-dialog";
 const DocumentEditor = dynamic(() => import("./document-editor"), { ssr: false });
 
 export const documentAccept = `.docx,.xlsx,.csv,.pdf,${imageAccept}`;
 export function RecordDocuments({ record }: { record: DomainRecord }) {
+  const confirm = useConfirm();
   const { workspace, refresh, removeFile } = useWorkspace();
   const [creating, setCreating] = useState(false),
     [opened, setOpened] = useState<DomainRecord | null>(null),
@@ -95,8 +97,14 @@ export function RecordDocuments({ record }: { record: DomainRecord }) {
                       className="icon-button"
                       aria-label={`${value(file.data, "name")} löschen`}
                       disabled={busy}
-                      onClick={() => {
-                        if (!confirm("Datei und ihren gemeinsamen Bearbeitungsstand löschen?"))
+                      onClick={async () => {
+                        if (
+                          !(await confirm({
+                            message: `„${value(file.data, "name")}“ und den gemeinsamen Bearbeitungsstand löschen?`,
+                            confirmLabel: "Löschen",
+                            destructive: true,
+                          }))
+                        )
                           return;
                         setBusy(true);
                         setError("");

@@ -10,6 +10,7 @@ import { sortProductionsByPremiere } from "@/shared/production-order";
 import { useWorkspace } from "@/components/workspace-context";
 import { Button, ErrorMessage, Modal } from "@/components/ui";
 import { calendarCategories } from "./client-calendar";
+import { useDraftChanged } from "@/shared/use-draft-changed";
 
 export function EventEditor({
   record,
@@ -58,6 +59,20 @@ export function EventEditor({
   const [until, setUntil] = useState(value(initial, "until"));
   const [exceptions, setExceptions] = useState(ids(initial, "exceptions").join("\n"));
   const [error, setError] = useState("");
+  const changed = useDraftChanged({
+    title,
+    category,
+    start,
+    end,
+    from,
+    to,
+    production,
+    people,
+    location,
+    recurrence,
+    until,
+    exceptions,
+  });
   const selected = options.find((option) => option.key === category);
   const allDay = selected?.allDay === true;
   const suggestedTitle =
@@ -77,7 +92,12 @@ export function EventEditor({
   const productions = sortProductionsByPremiere(workspace.records.productions);
   const behavior = calendarCategoryBehavior(category, selected);
   return (
-    <Modal title={`Termin ${record ? "bearbeiten" : "anlegen"}`} onClose={onClose} wide>
+    <Modal
+      title={`Termin ${record ? "bearbeiten" : "anlegen"}`}
+      onClose={onClose}
+      dirty={changed}
+      wide
+    >
       <form
         className="event-form"
         onSubmit={async (event) => {

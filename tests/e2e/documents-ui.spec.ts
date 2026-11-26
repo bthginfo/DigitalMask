@@ -302,8 +302,11 @@ for (const browserName of ["chromium", "webkit"] as const)
       await page.goto("/?module=documentation");
       if (mobile) await page.getByLabel("Weitere Aktionen").click();
       await page.getByRole("button", { name: "Abschnitte verwalten", exact: true }).click();
-      page.on("dialog", (dialog) => dialog.accept());
       await page.getByRole("button", { name: "Vorbereitung löschen", exact: true }).click();
+      await page
+        .getByRole("alertdialog")
+        .getByRole("button", { name: "Löschen", exact: true })
+        .click();
       await expect(page.getByText("Diese Kategorie wird bereits verwendet.")).toBeVisible();
       await page.getByRole("button", { name: "Kategorie anlegen", exact: true }).click();
       await page.getByLabel("Bezeichnung", { exact: true }).fill("Eigener Testabschnitt");

@@ -49,6 +49,7 @@ import { isPlainClick, navigateWorkspace } from "@/shared/client-navigation";
 import { messageInChat, type ChatMediaItem } from "../media";
 import { photoReplyValue, type PhotoReply } from "../photo-reply";
 import { PhotoReplyPreview } from "./photo-reply-preview";
+import { useConfirm } from "@/components/confirm-dialog";
 const ChatMediaDialog = dynamic(() => import("./chat-media"));
 const DocumentEditor = dynamic(() => import("@/modules/documents/components/document-editor"), {
   ssr: false,
@@ -78,6 +79,7 @@ export function ChatChannel({
   const workspace = useWorkspaceData();
   const { reload, save, remove } = useWorkspaceActions();
   const { busy } = useWorkspaceStatus();
+  const confirm = useConfirm();
   const conversationId = conversation?.id || "",
     archived = conversation?.data.archived === true;
   const [sending, setSending] = useState(false),
@@ -224,8 +226,15 @@ export function ChatChannel({
     setEditing(message);
     setEditingText(value(message.data, "text"));
   });
-  const deleteMessage = useStableCallback((message: DomainRecord) => {
-    if (confirm("Eigene Nachricht löschen?")) void update(() => remove(message));
+  const deleteMessage = useStableCallback(async (message: DomainRecord) => {
+    if (
+      await confirm({
+        message: `Eigene Nachricht vom ${dateLabel(message.createdAt, true)} löschen?`,
+        confirmLabel: "Löschen",
+        destructive: true,
+      })
+    )
+      void update(() => remove(message));
   });
   const onReply = archived || sending ? undefined : replyToPhoto;
   return (

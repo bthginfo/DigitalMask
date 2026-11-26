@@ -17,6 +17,7 @@ import { numberDraft, parseNumberDraft, previewNumberDraft } from "@/shared/numb
 import { clearTimeDraft, retainTimeDraft, timeDraftQueueKey } from "../client-drafts";
 import { TimeBookingDelete } from "./time-booking-delete";
 import styles from "./time-history.module.css";
+import { useDraftChanged } from "@/shared/use-draft-changed";
 
 export function TimeBookingEditor({
   kind = "time",
@@ -74,6 +75,20 @@ export function TimeBookingEditor({
   );
   const [taskId, setTaskId] = useState(value(initial, "taskId"));
   const [error, setError] = useState("");
+  const changed = useDraftChanged({
+    title,
+    notes,
+    mode,
+    day,
+    start,
+    end,
+    customEndDate,
+    minutes,
+    pause,
+    production,
+    category,
+    taskId,
+  });
   const receipt = useRef("");
   const submitting = useRef(false);
   const queueKey = timeDraftQueueKey(kind, workspace.user.id);
@@ -99,6 +114,7 @@ export function TimeBookingEditor({
           : `${attendance ? "Anwesenheit" : "Zeitbuchung"} ${record ? "bearbeiten" : onDraft ? "offline vormerken" : "anlegen"}`
       }
       onClose={onClose}
+      dirty={changed}
       wide
     >
       <form

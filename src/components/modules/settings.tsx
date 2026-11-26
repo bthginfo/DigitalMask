@@ -11,7 +11,9 @@ import {
   GoogleCalendarDialog,
   returnedFromGoogleCalendar,
 } from "@/modules/google-calendar/components/google-calendar-dialog";
+import { useConfirm } from "@/components/confirm-dialog";
 export function SettingsModule({ navigate }: { navigate?: (module: string) => void }) {
+  const confirm = useConfirm();
   const { workspace, action, busy } = useWorkspace();
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -168,11 +170,14 @@ export function SettingsModule({ navigate }: { navigate?: (module: string) => vo
             </p>
             <Button
               variant="danger-ghost"
-              onClick={() => {
+              onClick={async () => {
                 if (
-                  confirm(
-                    "Kalenderlink widerrufen? Bestehende Abonnements verlieren ihren Zugriff.",
-                  )
+                  await confirm({
+                    message:
+                      "Kalenderlink widerrufen? Bestehende Abonnements verlieren ihren Zugriff.",
+                    confirmLabel: "Widerrufen",
+                    destructive: true,
+                  })
                 )
                   void run(async () => {
                     await action("calendar-token", undefined, { revoke: true });
@@ -273,8 +278,14 @@ export function SettingsModule({ navigate }: { navigate?: (module: string) => vo
                             ) : (
                               <Button
                                 disabled={busy}
-                                onClick={() => {
-                                  if (confirm(`Zugang für ${member.name} deaktivieren?`))
+                                onClick={async () => {
+                                  if (
+                                    await confirm({
+                                      message: `Zugang für ${member.name} deaktivieren?`,
+                                      confirmLabel: "Deaktivieren",
+                                      destructive: true,
+                                    })
+                                  )
                                     void run(() =>
                                       action("member-update", member.id, { status: "disabled" }),
                                     );
