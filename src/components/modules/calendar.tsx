@@ -641,15 +641,9 @@ export function CalendarModule({
             onToggleFilters={presentation.toggleFilters}
             onToggleFullscreen={presentation.toggleFullscreen}
           />
-          <ExportButton onClick={() => setExporting(true)} />
-          <Button onClick={() => setGoogleCalendarOpen(true)}>
-            <Link2 size={16} />
-            Google Kalender
-          </Button>
           {workspace.user.role !== "superadmin" && (
             <Button onClick={() => setEditor({ kind: "leave" })}>Freien Tag wünschen</Button>
           )}
-          {admin && <Button onClick={() => setCategoriesOpen(true)}>Kalenderarten</Button>}
         </div>
         <Button
           variant="primary"
