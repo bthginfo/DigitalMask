@@ -130,13 +130,13 @@ for (const width of [1440, 768, 375]) {
     }, testInfo) => {
       const state = await mock(page);
       await page.goto("/");
-      await expect(page.locator(".today-summary > button").nth(1)).toContainText("7");
-      await expect(page.locator(".today-summary > button").nth(1)).toContainText("Vorstellungen");
+      await expect(page.locator('[data-stat="performances"]')).toContainText("7");
+      await expect(page.locator('[data-stat="performances"]')).toContainText("Vorstellungen");
       await expect(
         page.getByText("Dein Tag hinter der Bühne. Alles Wichtige an einem Ort.", { exact: true }),
       ).toHaveCount(0);
-      await expect(page.locator(".hours-summary strong")).toHaveText("8,5 h");
-      await expect(page.locator(".hours-summary")).toContainText("Anwesenheit diese Woche");
+      await expect(page.locator('[data-stat="attendance"] strong')).toHaveText("8,5 h");
+      await expect(page.locator('[data-stat="attendance"]')).toContainText("Anwesenheit");
       await expect(page.getByRole("button", { name: "Gesamt", exact: true })).toHaveCount(0);
       expect(
         await page

@@ -17,7 +17,7 @@ async function mock(
   if (options.superadmin)
     workspace.user = {
       ...workspace.members.find((person) => person.role === "superadmin")!,
-      preferences: { accentPalette: "green", onboardingVersion: 1 },
+      preferences: { accentPalette: "green", onboardingVersion: 2 },
     };
   if (options.tour) workspace.user.preferences!.onboardingVersion = 0;
   if (options.emptyCategories) workspace.records.calendarCategories = [];
@@ -59,7 +59,7 @@ async function mock(
       if (action === "profile-update")
         workspace.user.preferences = {
           ...workspace.user.preferences!,
-          onboardingVersion: 1,
+          onboardingVersion: 2,
           ...(body.data.accentPalette ? { accentPalette: body.data.accentPalette } : {}),
         };
       if (action.includes("timer-")) {

@@ -17,7 +17,7 @@ const member = (
     ? {
         preferences: {
           accentPalette: "green",
-          onboardingVersion: 1,
+          onboardingVersion: 2,
           workingTime: {
             version: 1,
             openingBalanceSeconds: 0,

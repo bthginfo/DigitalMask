@@ -65,9 +65,10 @@ test("teamboard and documentation start current, filter locally, and new subtask
   ).toBeVisible();
   await capture(page, "documentation-desktop-light");
   await page.goto("/?module=today");
-  await expect(page.locator(".today-summary > button").first().locator("strong")).toHaveText("1");
-  await expect(page.locator(".task-list-row")).toHaveCount(1);
-  await expect(page.locator(".task-list-row").first()).toContainText("Perückenwagen vorbereiten");
+  await expect(page.locator('[data-section="my-tasks"] li')).toHaveCount(1);
+  await expect(page.locator('[data-section="my-tasks"] li').first()).toContainText(
+    "Perückenwagen vorbereiten",
+  );
 });
 
 test("mobile actor catalogue retains out-of-season links, editable memberships, new current defaults and season-aware exports", async ({

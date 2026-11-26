@@ -401,9 +401,7 @@ test("read-only team permissions and cached production search navigation", async
     page.getByRole("button", { name: "Aufgabe verschieben", exact: true }),
   ).toBeDisabled();
   await page.goto("/?module=productions");
-  await expect(page.getByRole("button", { name: "Produktion anlegen", exact: true })).toHaveCount(
-    0,
-  );
+  await expect(page.getByRole("button", { name: "Stück anlegen", exact: true })).toHaveCount(0);
   await page.locator(".global-search-button:visible, .search-mobile:visible").first().click();
   await page
     .getByRole("textbox", { name: "Suchbegriff", exact: true })

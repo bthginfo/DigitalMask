@@ -99,7 +99,7 @@ test("normal team account manages shared work and calendars but not categories o
     resources.push({ kind: "people", id: person.id });
     await expect(page.getByRole("dialog")).toHaveCount(0);
     await page.goto("/?module=productions");
-    await page.getByRole("button", { name: "Produktion anlegen", exact: true }).click();
+    await page.getByRole("button", { name: "Stück anlegen", exact: true }).click();
     await page.getByLabel("Titel *", { exact: true }).fill(`QA Teamproduktion ${stamp}`);
     await page.getByLabel("QA Teammitglied", { exact: true }).nth(1).check();
     const productionSaved = page.waitForResponse(

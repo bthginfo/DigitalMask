@@ -45,7 +45,7 @@ async function mock(
           accentPalette:
             body.data.accentPalette || workspace.user.preferences?.accentPalette || "green",
           onboardingVersion: body.data.onboardingCompleted
-            ? 1
+            ? 2
             : workspace.user.preferences?.onboardingVersion || 0,
         };
       }

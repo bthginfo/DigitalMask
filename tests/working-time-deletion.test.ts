@@ -67,7 +67,7 @@ function database(settings: WorkingTimeSettings | null = fixture(), role: string
           returning: async () => {
             writes.push(set.workingTime);
             settings = set.workingTime;
-            return [{ accentPalette: "rose", onboardingVersion: 1, workingTime: settings }];
+            return [{ accentPalette: "rose", onboardingVersion: 2, workingTime: settings }];
           },
         }),
       }),

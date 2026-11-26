@@ -24,7 +24,7 @@ export function maskPlanFixture(): Workspace {
     username: "jules",
     role: "user",
     status: "active",
-    preferences: { accentPalette: "green", onboardingVersion: 1 },
+    preferences: { accentPalette: "green", onboardingVersion: 2 },
   };
   const workspace: Workspace = {
     user,

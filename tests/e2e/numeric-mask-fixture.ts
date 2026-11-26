@@ -6,7 +6,7 @@ export function numericMaskFixture(extended = false) {
   const workspace = maskPlanFixture();
   workspace.user = {
     ...workspace.members.find((member) => member.id === "lena")!,
-    preferences: { onboardingVersion: 1, accentPalette: "green" },
+    preferences: { onboardingVersion: 2, accentPalette: "green" },
   };
   const add = (kind: RecordKind, id: string, data: RecordData) =>
     workspace.records[kind].push({

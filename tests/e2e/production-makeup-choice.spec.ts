@@ -180,8 +180,8 @@ test("new and editing forms keep quick choices local, including contact-only tea
   ).toBe(false);
   await capture(page, "production-mobile-dark.png");
   await page.goto("/?module=productions");
-  await page.getByRole("button", { name: "Produktion anlegen", exact: true }).click();
-  const create = page.getByRole("dialog", { name: "Produktion anlegen", exact: true });
+  await page.getByRole("button", { name: "Stück anlegen", exact: true }).click();
+  const create = page.getByRole("dialog", { name: "Stück anlegen", exact: true });
   await create.getByRole("textbox", { name: /^Titel/ }).fill("Probentag");
   const newTeam = create.getByRole("group", { name: "Produktionsteam", exact: true });
   await newTeam.getByRole("checkbox", { name: "Janine", exact: true }).check();

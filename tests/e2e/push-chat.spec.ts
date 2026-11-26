@@ -6,7 +6,7 @@ async function mock(page: Page, mode = "supported", dark = false) {
   const workspace = JSON.parse(
     readFileSync("tests/e2e/operations-fixture.json", "utf8"),
   ) as Workspace;
-  workspace.user.preferences = { accentPalette: "green", onboardingVersion: 1 };
+  workspace.user.preferences = { accentPalette: "green", onboardingVersion: 2 };
   for (const kind of recordKinds) workspace.records[kind] = [];
   const record = (
     kind: DomainRecord["kind"],
@@ -439,7 +439,7 @@ for (const width of [1440, 390]) {
         ? page.getByRole("navigation", { name: "Hauptnavigation" })
         : page.locator(".bottom-nav");
     // Navigation entries are links; the unread count is part of their accessible name.
-    const chatLabel = width === 1440 ? "Kommunikation" : "Chat";
+    const chatLabel = "Chat";
     const chatLink = nav.getByRole("link", { name: new RegExp(`^${chatLabel}`) });
     await expect(chatLink).toHaveAccessibleName(`${chatLabel} · 6 ungelesene Nachrichten`);
     await page.goto("/?module=chat&conversationId=private");

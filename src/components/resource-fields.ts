@@ -25,7 +25,7 @@ export type Field = {
   min?: number;
 };
 export const labels: Record<RecordKind, [string, string]> = {
-  productions: ["Produktionen", "Produktion"],
+  productions: ["Stücke", "Stück"],
   actors: ["Schauspieler", "Schauspieler"],
   characters: ["Figuren", "Figur"],
   casting: ["Besetzung", "Besetzung"],

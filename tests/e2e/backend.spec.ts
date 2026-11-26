@@ -84,7 +84,7 @@ test("real database workflows, permissions and booking integrity", async () => {
     ).toBe(200);
     expect((await (await member.get("/api/workspace")).json()).user.preferences).toEqual({
       accentPalette: "lavender",
-      onboardingVersion: 1,
+      onboardingVersion: 2,
     });
     expect(
       (

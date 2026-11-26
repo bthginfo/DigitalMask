@@ -222,7 +222,7 @@ for (const browserName of ["chromium", "webkit"] as const)
       const state = await mock(page);
       await page.goto("/?module=productions&productionId=qa-production");
       await expect(page.getByText("Klara Verzeichnis", { exact: false }).first()).toBeVisible();
-      await page.getByRole("button", { name: "Produktion verwalten" }).click();
+      await page.getByRole("button", { name: "Stück verwalten" }).click();
       await page.getByRole("button", { name: "Bearbeiten", exact: true }).click();
       const prod = page.getByRole("dialog", { name: "Produktion bearbeiten" });
       await expect(prod.getByLabel("Verzeichnis für Kontakt 2")).toHaveValue("qa-contact");

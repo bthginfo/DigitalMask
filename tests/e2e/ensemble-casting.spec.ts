@@ -11,7 +11,7 @@ async function mock(page: Page, dark = false, role = "admin") {
   const workspace = JSON.parse(
     readFileSync("tests/e2e/operations-fixture.json", "utf8"),
   ) as Workspace;
-  workspace.user.preferences = { accentPalette: "green", onboardingVersion: 1 };
+  workspace.user.preferences = { accentPalette: "green", onboardingVersion: 2 };
   workspace.user.role = role as Workspace["user"]["role"];
   for (const kind of recordKinds) workspace.records[kind] = [];
   const record = (

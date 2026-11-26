@@ -366,7 +366,7 @@ export function MyDay({ navigate }: { navigate: (target: string) => void }) {
               </ul>
             </section>
           )}
-          <section className={`panel ${styles.card}`}>
+          <section className={`panel ${styles.card}`} data-section="my-tasks">
             <header className={styles.cardHead}>
               <h2>Meine Aufgaben</h2>
               <button
@@ -428,21 +428,22 @@ export function MyDay({ navigate }: { navigate: (target: string) => void }) {
                 </button>
               </header>
               <div className={styles.weekStats}>
-                <div>
+                <div data-stat="attendance">
                   <strong>{hours(attendanceWeek)} h</strong>
                   <span>Anwesenheit</span>
                 </div>
-                <div>
+                <div data-stat="performances">
                   <strong>
                     {
                       events.filter(
                         (event) =>
                           event.extendedProps.record.data.category === "performance" &&
-                          localDate(new Date(event.start)) <= weekEnd,
+                          new Date(event.start).getTime() >= now &&
+                          new Date(event.start).getTime() < now + 7 * 86400000,
                       ).length
                     }
                   </strong>
-                  <span>Vorstellungen</span>
+                  <span>Vorstellungen · 7 Tage</span>
                 </div>
               </div>
               <AttendanceBalanceCard compact onOpenSettings={() => navigate("settings")} />
