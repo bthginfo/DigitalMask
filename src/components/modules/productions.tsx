@@ -435,7 +435,7 @@ export function ProductionsModule({
       </BrowseFilters>
       {records.length ? (
         <div className="production-grid">
-          {records.map((project) => {
+          {records.map((project, index) => {
             const accessible = workspace.records.productions.some(
               (record) => record.id === project.id,
             );
@@ -454,7 +454,7 @@ export function ProductionsModule({
                 }
               >
                 <div className="production-card-top">
-                  <span className="eyebrow">
+                  <span className="eyebrow" data-whats-new={index === 0 ? "seasons" : undefined}>
                     {seasonListLabel(productionSeasons(project.data)) || "SPIELZEIT"}
                   </span>
                   <Badge>{statusLabels[value(project.data, "status")]}</Badge>
