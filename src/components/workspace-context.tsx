@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
@@ -24,26 +25,48 @@ import {
   type WorkspacePatch,
 } from "@/shared/workspace-sync";
 
-interface Context {
-  workspace: Workspace;
+export interface WorkspaceStatus {
   busy: boolean;
   notice: string;
   online: boolean;
   syncStatus: SyncStatus;
+}
+/** Stable for the lifetime of the provider; safe as effect and memo dependencies. */
+export interface WorkspaceActions {
   refresh: () => Promise<void>;
+  /** Reload only the given record kinds (a full snapshot when omitted or visibility changes). */
+  reload: (kinds?: readonly RecordKind[]) => Promise<void>;
   save: (kind: RecordKind, data: RecordData, record?: DomainRecord) => Promise<DomainRecord>;
   remove: (record: DomainRecord) => Promise<void>;
   action: (action: string, id?: string, data?: RecordData) => Promise<unknown>;
   notify: (message: string) => void;
   mergeMessages: (messages: DomainRecord[]) => void;
   removeFile: (file: DomainRecord) => Promise<void>;
-  runWorkflow: <T = unknown>(url: string, data: RecordData) => Promise<T>;
+  runWorkflow: <T = unknown>(
+    url: string,
+    data: RecordData,
+    kinds?: readonly RecordKind[],
+  ) => Promise<T>;
 }
-const WorkspaceContext = createContext<Context | null>(null);
-export const useWorkspace = () => {
-  const context = useContext(WorkspaceContext);
-  if (!context) throw new Error("Workspace fehlt");
-  return context;
+interface Context extends WorkspaceStatus, WorkspaceActions {
+  workspace: Workspace;
+}
+const WorkspaceDataContext = createContext<Workspace | null>(null);
+const WorkspaceStatusContext = createContext<WorkspaceStatus | null>(null);
+const WorkspaceActionsContext = createContext<WorkspaceActions | null>(null);
+const missing = (): never => {
+  throw new Error("Workspace fehlt");
+};
+/** Workspace records only; does not re-render for busy, notices or connection changes. */
+export const useWorkspaceData = () => useContext(WorkspaceDataContext) ?? missing();
+export const useWorkspaceStatus = () => useContext(WorkspaceStatusContext) ?? missing();
+export const useWorkspaceActions = () => useContext(WorkspaceActionsContext) ?? missing();
+/** Combined view for existing consumers; prefer the narrow hooks in frequently rendered views. */
+export const useWorkspace = (): Context => {
+  const workspace = useWorkspaceData();
+  const status = useWorkspaceStatus();
+  const actions = useWorkspaceActions();
+  return useMemo(() => ({ workspace, ...status, ...actions }), [workspace, status, actions]);
 };
 
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
@@ -65,16 +88,25 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   );
   const loading = useRef<Promise<void> | null>(null);
   const workspaceRef = useRef<Workspace | null>(null);
-  const queued = useRef({ full: false, kinds: new Set<RecordKind>() });
+  const queued = useRef({
+    full: false,
+    kinds: new Set<RecordKind>(),
+    settled: [] as (() => void)[],
+  });
   const reload = useCallback(
-    async (kinds?: readonly RecordKind[]) => {
+    async (kinds?: readonly RecordKind[], settled?: () => void) => {
       const selected = workspaceRef.current ? partialWorkspaceKinds(kinds) : undefined;
       if (!selected) queued.current.full = true;
       else for (const kind of selected) queued.current.kinds.add(kind);
+      if (settled) {
+        if (queued.current.full || queued.current.kinds.size) queued.current.settled.push(settled);
+        else settled();
+      }
       if (loading.current) return loading.current;
       const run = async () => {
         while (queued.current.full || queued.current.kinds.size) {
           const selected = queued.current.full ? undefined : [...queued.current.kinds];
+          const done = queued.current.settled.splice(0);
           queued.current.full = false;
           queued.current.kinds.clear();
           try {
@@ -96,11 +128,15 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
             }
             if (e instanceof ApiFailure && e.status === 403) setPending(true);
             else setError(e instanceof Error ? e.message : "Verbindung fehlgeschlagen");
+          } finally {
+            // Mutations end in the same commit as their data, instead of one render each.
+            for (const callback of done) callback();
           }
         }
       };
       loading.current = run().finally(() => {
         loading.current = null;
+        for (const callback of queued.current.settled.splice(0)) callback();
       });
       return loading.current;
     },
@@ -173,73 +209,118 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       disconnect();
     };
   }, [liveEnabled, departmentId, userId, liveAttempt, refresh, reload]);
-  const mutate = async (run: () => Promise<unknown>, kinds?: readonly RecordKind[]) => {
-    mutationPending.current = true;
-    setBusy(true);
-    try {
-      const result = await run();
-      await reload(kinds);
-      return result;
-    } finally {
-      mutationPending.current = false;
-      setBusy(false);
-    }
-  };
-  const save = async (kind: RecordKind, data: RecordData, record?: DomainRecord) => {
-    return (await mutate(
-      () =>
-        record
-          ? api(`/api/records/${kind}/${record.id}`, {
-              method: "PATCH",
-              body: JSON.stringify({ data, version: record.version }),
-            })
-          : post(`/api/records/${kind}`, { data }),
-      recordChangeKinds(kind),
-    )) as DomainRecord;
-  };
-  const remove = async (record: DomainRecord) => {
-    await mutate(() =>
-      api(
-        `/api/records/${record.kind}/${record.id}?${new URLSearchParams({ version: String(record.version) })}`,
-        { method: "DELETE" },
+  const mutations = useRef(0);
+  const mutate = useCallback(
+    async <T,>(run: () => Promise<T>, kinds?: readonly RecordKind[]): Promise<T> => {
+      mutations.current++;
+      mutationPending.current = true;
+      setBusy(true);
+      let ended = false;
+      const end = () => {
+        if (ended) return;
+        ended = true;
+        mutations.current = Math.max(0, mutations.current - 1);
+        if (mutations.current) return;
+        mutationPending.current = false;
+        setBusy(false);
+      };
+      try {
+        const result = await run();
+        await reload(kinds, end);
+        return result;
+      } finally {
+        end();
+      }
+    },
+    [reload],
+  );
+  const save = useCallback(
+    (kind: RecordKind, data: RecordData, record?: DomainRecord) =>
+      mutate(
+        () =>
+          record
+            ? api<DomainRecord>(`/api/records/${kind}/${record.id}`, {
+                method: "PATCH",
+                body: JSON.stringify({ data, version: record.version }),
+              })
+            : post<DomainRecord>(`/api/records/${kind}`, { data }),
+        recordChangeKinds(kind),
       ),
-    );
-  };
-  const action = (action: string, id?: string, data?: RecordData) =>
-    mutate(
-      () => post("/api/actions", { action, id, data }),
-      ["notifications-read", "chat-notifications-read", "notification-read"].includes(action)
-        ? ["notifications"]
-        : action.startsWith("attendance-timer-")
-          ? ["attendance"]
-          : action.startsWith("timer-")
-            ? ["time"]
-            : action === "leave-decide"
-              ? ["events", "leave"]
-              : undefined,
-    );
-  const runWorkflow = async <T = unknown,>(url: string, data: RecordData) =>
-    (await mutate(() => post<T>(url, data))) as T;
-  const removeFile = async (file: DomainRecord) => {
-    await mutate(() => api(`/api/files/${file.id}`, { method: "DELETE" }));
-  };
-  const mergeMessages = (messages: DomainRecord[]) => {
+    [mutate],
+  );
+  const remove = useCallback(
+    async (record: DomainRecord) => {
+      await mutate(() =>
+        api(
+          `/api/records/${record.kind}/${record.id}?${new URLSearchParams({ version: String(record.version) })}`,
+          { method: "DELETE" },
+        ),
+      );
+    },
+    [mutate],
+  );
+  const action = useCallback(
+    (action: string, id?: string, data?: RecordData) =>
+      mutate(
+        () => post("/api/actions", { action, id, data }),
+        ["notifications-read", "chat-notifications-read", "notification-read"].includes(action)
+          ? ["notifications"]
+          : action.startsWith("attendance-timer-")
+            ? ["attendance"]
+            : action.startsWith("timer-")
+              ? ["time"]
+              : action === "leave-decide"
+                ? ["events", "leave"]
+                : undefined,
+      ),
+    [mutate],
+  );
+  const runWorkflow = useCallback(
+    <T = unknown,>(url: string, data: RecordData, kinds?: readonly RecordKind[]) =>
+      mutate(() => post<T>(url, data), kinds),
+    [mutate],
+  );
+  const removeFile = useCallback(
+    async (file: DomainRecord) => {
+      await mutate(() => api(`/api/files/${file.id}`, { method: "DELETE" }));
+    },
+    [mutate],
+  );
+  const mergeMessages = useCallback((messages: DomainRecord[]) => {
     const current = workspaceRef.current;
-    const next = current
-      ? {
-          ...current,
-          records: {
-            ...current.records,
-            messages: [
-              ...current.records.messages.filter((x) => !messages.some((m) => m.id === x.id)),
-              ...messages,
-            ],
-          },
-        }
-      : current;
+    if (!current) return;
+    const incoming = new Set(messages.map((message) => message.id));
+    const next = {
+      ...current,
+      records: {
+        ...current.records,
+        messages: [
+          ...current.records.messages.filter((message) => !incoming.has(message.id)),
+          ...messages,
+        ],
+      },
+    };
     workspaceRef.current = next;
     setWorkspace(next);
-  };
+  }, []);
+  const actions = useMemo<WorkspaceActions>(
+    () => ({
+      refresh,
+      reload: (kinds?: readonly RecordKind[]) => reload(kinds),
+      save,
+      remove,
+      action,
+      notify: setNotice,
+      mergeMessages,
+      removeFile,
+      runWorkflow,
+    }),
+    [refresh, reload, save, remove, action, mergeMessages, removeFile, runWorkflow],
+  );
+  const status = useMemo<WorkspaceStatus>(
+    () => ({ busy, notice, online, syncStatus }),
+    [busy, notice, online, syncStatus],
+  );
   if (pending)
     return (
       <main className="gate">
@@ -279,33 +360,21 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       </main>
     );
   return (
-    <WorkspaceContext.Provider
-      value={{
-        workspace,
-        busy,
-        notice,
-        online,
-        syncStatus,
-        refresh,
-        save,
-        remove,
-        action,
-        notify: setNotice,
-        mergeMessages,
-        removeFile,
-        runWorkflow,
-      }}
-    >
-      {error && (
-        <div className="connectivity-banner" role="alert">
-          Die Übersicht konnte nicht aktualisiert werden: {error}. Deine zuletzt geladenen Daten
-          bleiben sichtbar.
-          <button className="text-button" onClick={() => void refresh()}>
-            Erneut laden
-          </button>
-        </div>
-      )}
-      {children}
-    </WorkspaceContext.Provider>
+    <WorkspaceActionsContext.Provider value={actions}>
+      <WorkspaceStatusContext.Provider value={status}>
+        <WorkspaceDataContext.Provider value={workspace}>
+          {error && (
+            <div className="connectivity-banner" role="alert">
+              Die Übersicht konnte nicht aktualisiert werden: {error}. Deine zuletzt geladenen Daten
+              bleiben sichtbar.
+              <button className="text-button" onClick={() => void refresh()}>
+                Erneut laden
+              </button>
+            </div>
+          )}
+          {children}
+        </WorkspaceDataContext.Provider>
+      </WorkspaceStatusContext.Provider>
+    </WorkspaceActionsContext.Provider>
   );
 }

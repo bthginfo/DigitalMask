@@ -17,7 +17,7 @@ import { api, dateLabel, hours, ids, localDate, num, value } from "@/shared/clie
 import { imageAccept, prepareUpload } from "@/shared/client-files";
 import { HistoryPanel } from "./history-panel";
 import { fields, labels, recordTitle, statusLabels } from "./resource-fields";
-import { useWorkspace } from "./workspace-context";
+import { useWorkspace, useWorkspaceData } from "./workspace-context";
 import { Badge, Button, Empty, ErrorMessage, ExportButton, Modal, PageHeader } from "./ui";
 import browseStyles from "./workspace-browse.module.css";
 import { ResourceEditor } from "./resource-editor";
@@ -641,7 +641,7 @@ export function ResourceView({
   lockedProductionId?: string;
   exportFilters?: Record<string, string>;
 }) {
-  const { workspace } = useWorkspace();
+  const workspace = useWorkspaceData();
   const scope = `resource:${kind}:${lockedProductionId || "all"}`;
   const [search, setSearch] = useViewState(workspace.user.id, scope, "search", "");
   const [editor, setEditor] = useState(false);

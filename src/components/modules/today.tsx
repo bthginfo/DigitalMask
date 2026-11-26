@@ -21,7 +21,7 @@ import {
 } from "@/shared/client-api";
 import { recordHref } from "@/shared/client-navigation";
 import { isStaff } from "@/shared/client-members";
-import { useWorkspace } from "../workspace-context";
+import { useWorkspaceData } from "../workspace-context";
 import { Badge, Button, Empty, PageHeader, Section } from "../ui";
 import { RecordDetail } from "../lazy-modules";
 import { TimerPanel } from "@/modules/time-tracking/components/work-timer";
@@ -37,7 +37,7 @@ import {
   attendanceBalanceStyles,
 } from "@/modules/time-tracking/components/attendance-balance";
 export function TodayModule({ navigate }: { navigate: (module: string) => void }) {
-  const { workspace } = useWorkspace();
+  const workspace = useWorkspaceData();
   const showTimer = isStaff(workspace.user);
   const [detail, setDetail] = useState<DomainRecord | null>(null);
   const [now] = useState(Date.now);

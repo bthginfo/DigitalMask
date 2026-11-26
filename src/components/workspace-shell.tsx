@@ -37,7 +37,7 @@ import {
 import { subscribeLocation, subscribeMobile } from "@/shared/client-storage";
 import { onboardingVersion, type DomainRecord } from "@/shared/contracts";
 import { initials, post } from "@/shared/client-api";
-import { useWorkspace } from "./workspace-context";
+import { useWorkspaceActions, useWorkspaceData, useWorkspaceStatus } from "./workspace-context";
 import { stopPushOnLogout } from "@/modules/notifications/client";
 import { chatUnreadCounts, unreadNotifications } from "@/modules/notifications/unread";
 import { MarkAllReadButton } from "@/modules/notifications/components/mark-all-read";
@@ -85,7 +85,9 @@ const nav: { id: string; label: string; icon: LucideIcon; group: string }[] = [
   { id: "settings", label: "Einstellungen", icon: Settings2, group: "VERWALTUNG" },
 ];
 export function WorkspaceShell() {
-  const { workspace, notice, notify, online, action } = useWorkspace();
+  // Data and stable actions only: busy, notices and sync status render in small children.
+  const workspace = useWorkspaceData();
+  const { notify, action } = useWorkspaceActions();
   const query = useSyncExternalStore(
     subscribeLocation,
     () => location.search,
@@ -201,11 +203,6 @@ export function WorkspaceShell() {
         previousFocus.focus({ preventScroll: true });
     };
   }, [mobileMenu, isMobile]);
-  useEffect(() => {
-    if (!notice) return;
-    const timeout = setTimeout(() => notify(""), 7000);
-    return () => clearTimeout(timeout);
-  }, [notice, notify]);
   const navigate = useCallback((next: string) => {
     setMobileMenu(false);
     navigateWorkspace(next.startsWith("/") ? next : next === "today" ? "/" : `/?module=${next}`);
@@ -494,7 +491,7 @@ export function WorkspaceShell() {
                   items: unread,
                   knownIds: new Set(workspace.records.notifications.map((item) => item.id)),
                 });
-                if (unread.length && online)
+                if (unread.length && navigator.onLine)
                   void action("notifications-read", undefined, {
                     ids: unread.map((item) => item.id),
                   }).catch((error) =>
@@ -509,12 +506,7 @@ export function WorkspaceShell() {
             <span className="avatar topbar-avatar">{initials(workspace.user.name)}</span>
           </div>
         </header>
-        {!online && (
-          <div className="connectivity-banner" role="status">
-            <WifiOff size={17} />
-            Du bist offline. Zeitentwürfe kannst du lokal speichern und später synchronisieren.
-          </div>
-        )}
+        <OfflineBanner />
         <main ref={main} id="main" className="main-content" key={activeModule} tabIndex={-1}>
           {missingTarget && (
             <p className="empty-inline" role="status">
@@ -571,14 +563,7 @@ export function WorkspaceShell() {
           );
         })}
       </nav>
-      {notice && (
-        <div className="toast" role="status">
-          {notice}
-          <button onClick={() => notify("")} aria-label="Hinweis schließen">
-            <X size={15} />
-          </button>
-        </div>
-      )}
+      <Toast />
       {searchOpen && <WorkspaceSearch onClose={() => setSearchOpen(false)} navigate={navigate} />}
       {notificationSnapshot && (
         <Modal title="Mitteilungen" onClose={() => setNotificationSnapshot(null)}>
@@ -622,6 +607,34 @@ export function WorkspaceShell() {
           onNavigate={() => setDetail(null)}
         />
       )}
+    </div>
+  );
+}
+function OfflineBanner() {
+  const { online } = useWorkspaceStatus();
+  if (online) return null;
+  return (
+    <div className="connectivity-banner" role="status">
+      <WifiOff size={17} />
+      Du bist offline. Zeitentwürfe kannst du lokal speichern und später synchronisieren.
+    </div>
+  );
+}
+function Toast() {
+  const { notice } = useWorkspaceStatus();
+  const { notify } = useWorkspaceActions();
+  useEffect(() => {
+    if (!notice) return;
+    const timeout = setTimeout(() => notify(""), 7000);
+    return () => clearTimeout(timeout);
+  }, [notice, notify]);
+  if (!notice) return null;
+  return (
+    <div className="toast" role="status">
+      {notice}
+      <button onClick={() => notify("")} aria-label="Hinweis schließen">
+        <X size={15} />
+      </button>
     </div>
   );
 }
