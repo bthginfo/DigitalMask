@@ -47,7 +47,7 @@ import { ThemeSwitch } from "./theme-switch";
 import { LiveStatus } from "./live-status";
 import { RecordDetail, ResourceView } from "./resource-view";
 import { WorkspaceSearch } from "./workspace-search";
-import { TodayModule } from "./modules/today";
+import { MyDay } from "@/modules/today/my-day";
 import { ProductionsModule } from "./modules/productions";
 import { TasksModule } from "./modules/tasks";
 import { CalendarModule } from "./modules/calendar";
@@ -263,7 +263,7 @@ export function WorkspaceShell() {
   const active = nav.find((x) => x.id === activeModule)!;
   const screen =
     activeModule === "today" ? (
-      <TodayModule navigate={navigate} />
+      <MyDay navigate={navigate} />
     ) : activeModule === "productions" ? (
       <ProductionsModule
         productionId={params.get("productionId") || ""}
