@@ -804,3 +804,23 @@ th {
     display: none;
   }
 }
+
+/* Small phones: the month grid must stay fully above the floating tab bar. */
+@media (max-width: 760px) {
+  .topbar {
+    height: 52px;
+  }
+  .calendar-module .fc {
+    font-size: 13px;
+  }
+  .calendar-module .segmented button {
+    min-height: 30px;
+    padding: 4px 8px;
+  }
+  .calendar-module > .page-heading {
+    margin-bottom: 4px;
+  }
+  .calendar-mobile-selection {
+    margin-bottom: 6px;
+  }
+}
