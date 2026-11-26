@@ -1,9 +1,5 @@
 import { and, eq, inArray, ne } from "drizzle-orm";
-import {
-  calendarCategoryRows,
-  calendarWindow,
-  productionRows,
-} from "@/modules/calendar/window";
+import { calendarCategoryRows, calendarWindow, productionRows } from "@/modules/calendar/window";
 import { db, type Transaction } from "@/platform/db";
 import { memberships, records } from "@/platform/db/schema";
 import type { Context } from "@/platform/context";
@@ -80,7 +76,6 @@ function peopleForService(people: Staff[], service: Row, requesterId: string, pa
   const ids = new Set([...listValue(service.data.participantIds), requesterId, partnerId]);
   return people.filter((person) => ids.has(person.id));
 }
-
 
 /** Lock every referenced event in stable ID order before touching its data. */
 async function lockedServices(context: Context, ids: string[], tx: Transaction) {
