@@ -36,6 +36,7 @@ import {
   AttendanceBalanceCard,
   attendanceBalanceStyles,
 } from "@/modules/time-tracking/components/attendance-balance";
+const myTasksHref = "/?module=tasks&view=mine";
 export function TodayModule({ navigate }: { navigate: (module: string) => void }) {
   const { workspace } = useWorkspace();
   const showTimer = isStaff(workspace.user);
@@ -100,11 +101,7 @@ export function TodayModule({ navigate }: { navigate: (module: string) => void }
       <div
         className={`today-summary${showTimer ? ` ${attendanceBalanceStyles.dashboardSummary}` : ""}`}
       >
-        <button
-          onClick={() =>
-            navigate(myTasks.some((task) => task.data.productionId) ? "productions" : "tasks")
-          }
-        >
+        <button onClick={() => navigate(myTasksHref)}>
           <span className="summary-icon">
             <CheckCircle2 size={21} />
           </span>
@@ -214,12 +211,7 @@ export function TodayModule({ navigate }: { navigate: (module: string) => void }
               />
             )}
           </Section>
-          <Section
-            title="Deine Aufgaben"
-            action={() =>
-              navigate(myTasks.some((task) => task.data.productionId) ? "productions" : "tasks")
-            }
-          >
+          <Section title="Deine Aufgaben" action={() => navigate(myTasksHref)}>
             {myTasks.length ? (
               <div className="list">
                 {myTasks.slice(0, 6).map((task) => (
@@ -248,9 +240,9 @@ export function TodayModule({ navigate }: { navigate: (module: string) => void }
             ) : (
               <Empty
                 title="Aktuell nichts offen."
-                description="Neue Aufgaben, die dir zugeteilt werden, erscheinen hier. Im Board findest du alle Aufgaben eurer Produktionen."
-                action="Zum Aufgabenboard"
-                onAction={() => navigate("tasks")}
+                description="Neue Aufgaben, die dir zugeteilt werden, erscheinen hier."
+                action="Zu meinen Aufgaben"
+                onAction={() => navigate(myTasksHref)}
               />
             )}
           </Section>

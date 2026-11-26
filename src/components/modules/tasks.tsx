@@ -1,6 +1,6 @@
 "use client";
 import { LinkedText } from "@/components/linked-text";
-import { useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useViewState } from "@/shared/view-state";
 import {
   DndContext,
@@ -34,15 +34,23 @@ import { canManageRecord } from "@/shared/record-permissions";
 import { ExportDialog } from "../export-dialog";
 import { RecordLink } from "../record-link";
 import { subscribeMobile, useStoredValue } from "@/shared/client-storage";
+import {
+  sprintsEnabled,
+  statusAfterDrop,
+  taskStatuses,
+  taskStatusGroup,
+  taskStatusOptions,
+  taskStatusTag,
+} from "@/modules/tasks/overview";
+import {
+  TaskOverview,
+  TaskViewSwitch,
+  useTaskView,
+} from "@/modules/tasks/components/task-overview";
 import styles from "./task-board.module.css";
-const columns = [
-  ["backlog", "Backlog"],
-  ["todo", "Offen"],
-  ["doing", "In Arbeit"],
-  ["review", "Prüfung"],
-  ["done", "Erledigt"],
-];
-const listColumns = [columns[1], columns[2], columns[3], columns[0], columns[4]];
+// Offen, In Arbeit, Erledigt. Older backlog/review tasks are shown in their group with a tag.
+const columns = taskStatuses;
+const inColumn = (task: DomainRecord, id: string) => taskStatusGroup(task.data.status) === id;
 function TaskListRow({
   task,
   onOpen,
@@ -85,6 +93,9 @@ function TaskListRow({
                 {checklist.length}
               </span>
             )}
+            {!!taskStatusTag(task.data.status) && (
+              <span className={styles.statusTag}>{taskStatusTag(task.data.status)}</span>
+            )}
           </span>
         </span>
         <ChevronRight size={18} />
@@ -98,7 +109,7 @@ function TaskListRow({
             value={value(task.data, "status")}
             onChange={(event) => onMove(event.target.value)}
           >
-            {columns.map(([id, label]) => (
+            {taskStatusOptions(task.data.status).map(([id, label]) => (
               <option key={id} value={id}>
                 {label}
               </option>
@@ -179,6 +190,9 @@ function TaskCard({
           </span>
         )}
         {subtasks.length > 0 && <span className="small">{subtasks.length} Unteraufgaben</span>}
+        {!!taskStatusTag(task.data.status) && (
+          <span className={styles.statusTag}>{taskStatusTag(task.data.status)}</span>
+        )}
       </div>
       <footer className="task-footer">
         <div className="avatar-stack">
@@ -198,7 +212,7 @@ function TaskCard({
             value={value(task.data, "status")}
             onChange={(e) => onMove(e.target.value)}
           >
-            {columns.map(([id, label]) => (
+            {taskStatusOptions(task.data.status).map(([id, label]) => (
               <option key={id} value={id}>
                 {label}
               </option>
@@ -257,16 +271,40 @@ function Column({
   );
 }
 export function TasksModule({ productionId = "" }: { productionId?: string }) {
-  const { workspace, save } = useWorkspace();
+  if (productionId) return <TaskBoard productionId={productionId} />;
+  return <TeamTasks />;
+}
+/** Teamboard: Meine Aufgaben across all sources, the general team board, or all Stücke. */
+function TeamTasks() {
+  const [view, setView] = useTaskView();
+  const switcher = <TaskViewSwitch value={view} onChange={setView} />;
+  return view === "team" ? (
+    <TaskBoard switcher={switcher} />
+  ) : (
+    <TaskOverview key={view} mode={view} switcher={switcher} />
+  );
+}
+function TaskBoard({
+  productionId = "",
+  switcher,
+}: {
+  productionId?: string;
+  switcher?: ReactNode;
+}) {
+  const { workspace, save, busy } = useWorkspace();
   const project = productionId;
   const scope = `tasks:${productionId || "team"}`;
   const [period, setPeriod] = useViewState<PeriodFilter>(workspace.user.id, scope, "period", () =>
     initialPeriod(workspace.records.productions, productionId),
   );
-  const [sprint, setSprint] = useViewState(workspace.user.id, scope, "sprint", "");
+  const production = workspace.records.productions.find((row) => row.id === project);
+  const sprintsOn = sprintsEnabled(production, workspace.records.sprints);
+  const [storedSprint, setSprint] = useViewState(workspace.user.id, scope, "sprint", "");
+  const sprint = sprintsOn ? storedSprint : "";
   const [mine, setMine] = useViewState(workspace.user.id, scope, "mine", false);
   const [search, setSearch] = useViewState(workspace.user.id, scope, "search", "");
-  const [status, setStatus] = useViewState(workspace.user.id, scope, "status", "");
+  const [storedStatus, setStatus] = useViewState(workspace.user.id, scope, "status", "");
+  const status = columns.some(([id]) => id === storedStatus) ? storedStatus : "";
   const isMobile = useSyncExternalStore(
     subscribeMobile,
     () => window.matchMedia("(max-width: 760px)").matches,
@@ -311,9 +349,7 @@ export function TasksModule({ productionId = "" }: { productionId?: string }) {
       search,
     ],
   );
-  const tasks = status
-    ? filteredTasks.filter((task) => task.data.status === status)
-    : filteredTasks;
+  const tasks = status ? filteredTasks.filter((task) => inColumn(task, status)) : filteredTasks;
   const move = async (task: DomainRecord, status: string) => {
     if (task.data.status === status) return;
     setError("");
@@ -325,8 +361,8 @@ export function TasksModule({ productionId = "" }: { productionId?: string }) {
   };
   const dragEnd = (event: DragEndEvent) => {
     const task = tasks.find((x) => x.id === event.active.id);
-    const status = String(event.over?.id || "");
-    if (task && columns.some((x) => x[0] === status)) void move(task, status);
+    const status = task && statusAfterDrop(task.data.status, String(event.over?.id || ""));
+    if (task && status) void move(task, status);
   };
   const selectedSprint = workspace.records.sprints.find((x) => x.id === sprint);
   return (
@@ -334,16 +370,16 @@ export function TasksModule({ productionId = "" }: { productionId?: string }) {
       <PageHeader
         compact
         eyebrow="GEMEINSAM VORAN"
-        title={project ? "Aufgaben & Sprints" : "Teamboard"}
+        title={project ? "Aufgaben" : "Teamboard"}
         description={
           project
-            ? "Das Kanban und die Sprints dieser Produktion."
+            ? "Die Aufgaben dieser Produktion."
             : "Gemeinsame Aufgaben der Maske, unabhängig von einer Produktion."
         }
         secondaryActions={
           <>
             <ExportButton onClick={() => setExporting(true)} />
-            {project && (
+            {project && sprintsOn && (
               <Button onClick={() => setEditor({ kind: "sprints" })}>Sprint planen</Button>
             )}
           </>
@@ -354,6 +390,7 @@ export function TasksModule({ productionId = "" }: { productionId?: string }) {
           Aufgabe
         </Button>
       </PageHeader>
+      {switcher}
       <PeriodPicker
         compact
         records={workspace.records.tasks.filter(
@@ -365,6 +402,26 @@ export function TasksModule({ productionId = "" }: { productionId?: string }) {
       />
       <div className={`toolbar wrap ${styles.filters}`}>
         {project && (
+          <button
+            type="button"
+            role="switch"
+            aria-checked={sprintsOn}
+            className={styles.sprintSwitch}
+            disabled={
+              busy || !production || !canManageRecord(workspace.user, "productions", production)
+            }
+            onClick={() => {
+              if (!production) return;
+              setError("");
+              save("productions", { sprintsEnabled: !sprintsOn }, production).catch((e) =>
+                setError(e instanceof Error ? e.message : "Speichern fehlgeschlagen"),
+              );
+            }}
+          >
+            Sprints verwenden
+          </button>
+        )}
+        {project && sprintsOn && (
           <select aria-label="Sprint" value={sprint} onChange={(e) => setSprint(e.target.value)}>
             <option value="">Alle Sprints</option>
             {workspace.records.sprints
@@ -385,7 +442,7 @@ export function TasksModule({ productionId = "" }: { productionId?: string }) {
         />
         <label className="check-label">
           <input type="checkbox" checked={mine} onChange={(e) => setMine(e.target.checked)} />
-          Meine Aufgaben
+          Nur meine
         </label>
       </div>
       <div className={styles.viewToolbar}>
@@ -397,7 +454,7 @@ export function TasksModule({ productionId = "" }: { productionId?: string }) {
           <option value="">Alle Status ({filteredTasks.length})</option>
           {columns.map(([id, label]) => (
             <option key={id} value={id}>
-              {label} ({filteredTasks.filter((task) => task.data.status === id).length})
+              {label} ({filteredTasks.filter((task) => inColumn(task, id)).length})
             </option>
           ))}
         </select>
@@ -435,10 +492,10 @@ export function TasksModule({ productionId = "" }: { productionId?: string }) {
       <ErrorMessage message={error} />
       {listView ? (
         <div className={styles.taskGroups}>
-          {listColumns
-            .filter(([id]) => tasks.some((task) => task.data.status === id))
+          {columns
+            .filter(([id]) => tasks.some((task) => inColumn(task, id)))
             .map(([id, label]) => {
-              const group = tasks.filter((task) => task.data.status === id);
+              const group = tasks.filter((task) => inColumn(task, id));
               return (
                 <section
                   key={id}
@@ -504,7 +561,7 @@ export function TasksModule({ productionId = "" }: { productionId?: string }) {
               <span className="small muted">Alle Spalten: horizontal wischen oder auswählen</span>
               <select
                 aria-label="Kanban-Spalte anzeigen"
-                defaultValue="backlog"
+                defaultValue="todo"
                 onChange={(event) =>
                   board.current
                     ?.querySelector(`[data-column="${event.target.value}"]`)
@@ -513,7 +570,7 @@ export function TasksModule({ productionId = "" }: { productionId?: string }) {
               >
                 {columns.map(([id, label]) => (
                   <option key={id} value={id}>
-                    {label} ({tasks.filter((task) => task.data.status === id).length})
+                    {label} ({tasks.filter((task) => inColumn(task, id)).length})
                   </option>
                 ))}
               </select>
@@ -533,7 +590,7 @@ export function TasksModule({ productionId = "" }: { productionId?: string }) {
                     key={id}
                     id={id}
                     label={label}
-                    tasks={tasks.filter((x) => x.data.status === id)}
+                    tasks={tasks.filter((x) => inColumn(x, id))}
                     onOpen={setDetail}
                     onMove={(task, status) => void move(task, status)}
                     onAdd={() => setEditor({ kind: "tasks", status: id })}

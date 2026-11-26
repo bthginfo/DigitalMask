@@ -187,6 +187,8 @@ export const schemas: Record<RecordKind, z.ZodType> = {
     contacts: productionContacts,
     sourceId: id,
     durationMinutes: z.number().min(0).max(10000).default(0),
+    // Unset means off, unless the production already has sprints (see sprintsEnabled()).
+    sprintsEnabled: z.boolean().optional(),
   }),
   actors: z.object({
     name: title,

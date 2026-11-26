@@ -54,7 +54,7 @@ export const workflowTutorials: HelpTutorial[] = [
     poster: "/tutorials/v4/production-tasks.webp",
     captions: "/tutorials/v4/production-tasks.vtt",
     steps: [
-      "Aufgaben & Sprints enthält das eigene Board dieser Produktion.",
+      "Aufgaben enthält das eigene Board dieser Produktion.",
       "Gib der Aufgabe einen klaren Titel und wähle bei Bedarf einen Sprint.",
       "Teile die Aufgabe einer oder mehreren Kolleginnen zu.",
       "Lege jeden Arbeitsschritt als eigenen Eintrag an.",

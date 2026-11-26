@@ -142,7 +142,7 @@ for (const browserName of ["chromium", "webkit"] as const)
             )
           ).status(),
         ).toBe(401);
-        await page.goto(`${baseURL}/?module=tasks`);
+        await page.goto(`${baseURL}/?module=tasks&view=team`);
         await page.bringToFront();
         await expect(page.getByText("Live verbunden", { exact: true }).first()).toBeVisible({
           timeout: 30000,

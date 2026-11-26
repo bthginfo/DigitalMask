@@ -37,7 +37,7 @@ const productionSections = [
   ["team", "Team & Kontakte"],
   ["casting", "Besetzung"],
   ["mask-plan", "Maskenplan"],
-  ["tasks", "Aufgaben & Sprints"],
+  ["tasks", "Aufgaben"],
   ["looks", "Aufschriebe"],
   [backstageChangesSection.key, backstageChangesSection.name],
   ["documents", "Dokumente"],

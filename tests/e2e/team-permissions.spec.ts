@@ -128,6 +128,8 @@ test("normal team account manages shared work and calendars but not categories o
     expect(makeupProduction.data.memberIds).toEqual(expect.arrayContaining(members));
     await expect(page.getByRole("dialog")).toHaveCount(0);
     await page.goto(`/?module=productions&productionId=${production.id}&tab=tasks`);
+    await expect(page.getByRole("button", { name: "Sprint planen", exact: true })).toHaveCount(0);
+    await page.getByRole("switch", { name: "Sprints verwenden", exact: true }).click();
     await expect(page.getByRole("button", { name: "Sprint planen", exact: true })).toBeVisible();
     const actor = await create(page.request, "actors", { name: `QA Schauspieler ${stamp}` });
     const figure = await create(page.request, "characters", {

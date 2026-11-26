@@ -22,6 +22,7 @@ import { categoriesFor } from "@/shared/domain-categories";
 import { CastingImpact } from "./casting-impact";
 import { numberDraft, parseNumberDraft } from "@/shared/number-draft";
 import { actorSeasons, initialPeriod, seasonKey, teamTaskSeason } from "@/shared/period-filter";
+import { sprintsEnabled, taskStatusOptions } from "@/modules/tasks/overview";
 
 function initialData(kind: RecordKind): RecordData {
   return {
@@ -253,13 +254,27 @@ function GenericResourceEditor({
         </div>
       );
     if (field.key === "sprintId" && productionContext === "") return null;
+    if (
+      kind === "tasks" &&
+      field.key === "sprintId" &&
+      !value(data, "sprintId") &&
+      !sprintsEnabled(
+        workspace.records.productions.find(
+          (row) => row.id === (productionContext ?? value(data, "productionId")),
+        ),
+        workspace.records.sprints,
+      )
+    )
+      return null;
     if (kind === "productions" && field.key === "memberIds") return null;
     const options =
       (field.key === "category" && (kind === "materials" || kind === "time")
         ? categoriesFor(kind, workspace.records.categories).map(
             (option) => [option.key, option.name] as [string, string],
           )
-        : field.options) ||
+        : kind === "tasks" && field.key === "status"
+          ? taskStatusOptions(record?.data.status)
+          : field.options) ||
       (field.source === "members"
         ? workspace.members
             .filter((x) => isActiveStaff(x) || ids(data, field.key).includes(x.id))

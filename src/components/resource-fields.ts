@@ -1,6 +1,7 @@
 import type { DomainRecord, RecordKind, Workspace } from "@/shared/contracts";
 import { value } from "@/shared/client-api";
 import { lookTitle } from "@/shared/document-sections";
+import { taskStatusLabel, taskStatusOptions } from "@/modules/tasks/overview";
 export type Field = {
   key: string;
   label: string;
@@ -141,15 +142,9 @@ export const fields: Partial<Record<RecordKind, Field[]>> = {
     { key: "assigneeIds", label: "Verantwortliche", type: "multi", source: "members" },
     {
       key: "status",
-      label: "Spalte",
+      label: "Status",
       type: "select",
-      options: [
-        ["backlog", "Backlog"],
-        ["todo", "Offen"],
-        ["doing", "In Arbeit"],
-        ["review", "Prüfung"],
-        ["done", "Erledigt"],
-      ],
+      options: taskStatusOptions(),
     },
     {
       key: "priority",
@@ -288,10 +283,10 @@ export const statusLabels: Record<string, string> = {
   preparation: "Vorbereitung",
   active: "Aktiv",
   archived: "Archiviert",
-  backlog: "Backlog",
+  backlog: taskStatusLabel("backlog"),
   todo: "Offen",
   doing: "In Arbeit",
-  review: "Prüfung",
+  review: taskStatusLabel("review"),
   done: "Erledigt",
   planned: "Geplant",
   completed: "Abgeschlossen",

@@ -274,7 +274,7 @@ for (const device of [
       });
       test("Teamboard excludes productions, production parents and sprints", async ({ page }) => {
         const state = await mock(page);
-        await page.goto("/?module=tasks");
+        await page.goto("/?module=tasks&view=team");
         await expect(
           page.getByRole("button", { name: "QA Teamaufgabe", exact: true }),
         ).toBeVisible();
@@ -396,7 +396,7 @@ test("read-only team permissions and cached production search navigation", async
     name: "QA Lesendes Mitglied",
   };
   state.workspace.members.push(state.workspace.user);
-  await page.goto("/?module=tasks");
+  await page.goto("/?module=tasks&view=team");
   await expect(page.getByRole("combobox", { name: "Status von QA Teamaufgabe" })).toBeDisabled();
   await expect(
     page.getByRole("button", { name: "Aufgabe verschieben", exact: true }),
