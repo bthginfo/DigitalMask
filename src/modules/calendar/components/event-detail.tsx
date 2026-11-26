@@ -212,7 +212,9 @@ export function EventDetail({
           defaults={{
             title: presentation.title,
             productionId: value(current.data, "productionId"),
-            date: localDate(),
+            // Book the event's own day and times (this occurrence of a series), not today.
+            date: localDate(instantDate(start)),
+            ...(presentation.allDay ? {} : { start, end }),
             category: current.data.productionId ? "production" : "other",
           }}
           onClose={() => setBooking(false)}

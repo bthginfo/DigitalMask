@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   chatChoiceKey,
+  defaultChatChoice,
   unreadFirstChoices,
   type ChatChoice,
 } from "../src/modules/chat/channel-order";
@@ -106,5 +107,27 @@ describe("unread chat order", () => {
         "me",
       ).unread.map((row) => row.title),
     ).toEqual(["Alpha", "Beta"]);
+  });
+  it("opens the newest unread channel, else the last opened one, else the general channel", () => {
+    const general = choice("team", "general", "Allgemein", 0);
+    const team = choice("team", "team", "Team", 0);
+    const play = choice("production", "play", "Produktion", 2);
+    const direct = choice("direct", "direct", "Direkt", 1);
+    const unread = unreadFirstChoices(
+      [general, team, play, direct],
+      [message(play, 9), message(direct, 11)],
+      [],
+      "me",
+    );
+    expect(defaultChatChoice(unread, team.key)?.key).toBe(direct.key);
+    const quiet = unreadFirstChoices(
+      [general, team, { ...play, unread: 0 }, { ...direct, unread: 0 }],
+      [],
+      [],
+      "me",
+    );
+    expect(defaultChatChoice(quiet, team.key)?.key).toBe(team.key);
+    expect(defaultChatChoice(quiet, "conversation:deleted")).toBeUndefined();
+    expect(defaultChatChoice(quiet, null)).toBeUndefined();
   });
 });

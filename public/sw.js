@@ -1,5 +1,8 @@
 /* Never cache authenticated HTML, API responses, uploads, or personal records. */
 const CACHE = "digitalmask-shell-v6";
+/* Content-hashed build output (/_next/static) only: public code and styles, no personal data. */
+const STATIC_CACHE = "digitalmask-static-v1";
+const STATIC_LIMIT = 400;
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(["/icon.svg", "/offline.html"])));
   self.skipWaiting();
@@ -9,7 +12,11 @@ self.addEventListener("activate", (event) => {
     caches
       .keys()
       .then((keys) =>
-        Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key))),
+        Promise.all(
+          keys
+            .filter((key) => key !== CACHE && key !== STATIC_CACHE)
+            .map((key) => caches.delete(key)),
+        ),
       ),
   );
   self.clients.claim();
@@ -22,6 +29,10 @@ self.addEventListener("fetch", (event) => {
     url.pathname.startsWith("/api/")
   )
     return;
+  if (url.pathname.startsWith("/_next/static/")) {
+    event.respondWith(staticAsset(event.request));
+    return;
+  }
   if (event.request.mode === "navigate") {
     event.respondWith(fetch(event.request).catch(() => caches.match("/offline.html")));
     return;
@@ -29,6 +40,31 @@ self.addEventListener("fetch", (event) => {
   if (url.pathname === "/icon.svg" || url.pathname === "/offline.html")
     event.respondWith(caches.match(event.request).then((cached) => cached || fetch(event.request)));
 });
+
+async function staticAsset(request) {
+  const cache = await caches.open(STATIC_CACHE);
+  const cached = await cache.match(request);
+  if (cached) return cached;
+  const response = await fetch(request);
+  // Production marks hashed assets immutable; development output never is and is never stored.
+  if (
+    response.ok &&
+    response.type === "basic" &&
+    /immutable/.test(response.headers.get("cache-control") || "")
+  ) {
+    const copy = response.clone();
+    cache
+      .put(request, copy)
+      .then(() => cache.keys())
+      .then((keys) =>
+        Promise.all(
+          keys.slice(0, Math.max(0, keys.length - STATIC_LIMIT)).map((key) => cache.delete(key)),
+        ),
+      )
+      .catch(() => undefined);
+  }
+  return response;
+}
 
 // Device consent metadata only; no authenticated pages, message bodies or personal records.
 function deviceState(write) {
@@ -130,13 +166,36 @@ self.addEventListener("notificationclick", (event) => {
         state.userId === event.notification.data?.userId ? event.notification.data?.url : "/",
       );
       const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-      for (const client of windows) {
-        if (new URL(client.url).origin !== self.location.origin) continue;
-        if ("navigate" in client) await client.navigate(url);
-        await client.focus();
-        return;
+      // An open workspace navigates itself in place (client.navigate() rejects for windows this
+      // worker does not control). Anything else opens the link in a new window.
+      const workspace = windows
+        .filter((client) => {
+          try {
+            const location = new URL(client.url);
+            return location.origin === self.location.origin && location.pathname === "/";
+          } catch {
+            return false;
+          }
+        })
+        .sort((a, b) => Number(b.focused) - Number(a.focused))[0];
+      if (workspace) {
+        try {
+          workspace.postMessage({ type: "DIGITALMASK_NAVIGATE", url });
+          try {
+            await workspace.focus();
+          } catch {
+            /* Focus can be refused; the app still navigates. */
+          }
+          return;
+        } catch {
+          /* Fall back to a new window below. */
+        }
       }
-      await self.clients.openWindow(url);
+      try {
+        await self.clients.openWindow(url);
+      } catch {
+        /* Nothing else can be done without a window. */
+      }
     })(),
   );
 });

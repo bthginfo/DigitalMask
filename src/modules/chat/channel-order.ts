@@ -53,3 +53,35 @@ export function unreadFirstChoices(
     ordinary: rows.filter((choice) => choice.unread <= 0),
   };
 }
+
+/**
+ * Channel to open when Kommunikation is opened without a channel: the most recent channel with
+ * unread messages, else the last one this person opened, else the general team channel.
+ */
+export function defaultChatChoice(
+  ordered: { unread: ChatChoice[]; ordinary: ChatChoice[] },
+  lastOpenedKey?: string | null,
+): ChatChoice | undefined {
+  return (
+    ordered.unread[0] ??
+    (lastOpenedKey
+      ? [...ordered.unread, ...ordered.ordinary].find((choice) => choice.key === lastOpenedKey)
+      : undefined)
+  );
+}
+
+export const lastChatKey = (userId: string) => `digitalmask:chat-last:${userId}`;
+export function readLastChat(userId: string) {
+  try {
+    return localStorage.getItem(lastChatKey(userId));
+  } catch {
+    return null;
+  }
+}
+export function rememberLastChat(userId: string, key: string) {
+  try {
+    localStorage.setItem(lastChatKey(userId), key);
+  } catch {
+    // Without device storage the next visit simply opens the default channel.
+  }
+}

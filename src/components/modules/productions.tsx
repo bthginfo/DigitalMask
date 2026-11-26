@@ -279,7 +279,7 @@ export function ProductionsModule({
                   <span>Stunden</span>
                 </strong>
                 <p className="muted small">
-                  Gebuchte Produktionszeit aller freigegebenen Buchungen.
+                  Gebuchte Produktionszeit des Teams.
                 </p>
                 <Button onClick={() => setTab("time")}>
                   Zeitübersicht öffnen

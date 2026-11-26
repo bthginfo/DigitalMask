@@ -10,6 +10,7 @@ export function ChannelGroup({
   storageKey,
   defaultCollapsed = false,
   query = "",
+  revealKey,
   children,
 }: {
   label: string;
@@ -17,6 +18,8 @@ export function ChannelGroup({
   storageKey: string;
   defaultCollapsed?: boolean;
   query?: string;
+  /** Key of the open channel when it belongs to this group: the group shows expanded. */
+  revealKey?: string;
   children: ReactNode;
 }) {
   const id = useId();
@@ -25,10 +28,13 @@ export function ChannelGroup({
     defaultCollapsed,
   );
   const [searchState, setSearchState] = useState({ query: "", collapsed: false });
-  // Reveal new search results without changing the user's normal group preference.
+  const [revealState, setRevealState] = useState({ key: "", collapsed: false });
+  // Reveal new search results and the open channel without changing the saved preference.
   const collapsed = query
     ? searchState.query === query && searchState.collapsed
-    : preferredCollapsed;
+    : revealKey
+      ? revealState.key === revealKey && revealState.collapsed
+      : preferredCollapsed;
 
   return (
     <div className="chat-channel-group">
@@ -41,7 +47,10 @@ export function ChannelGroup({
           aria-controls={id}
           onClick={() => {
             if (query) setSearchState({ query, collapsed: !collapsed });
-            else setPreferredCollapsed(!collapsed);
+            else {
+              if (revealKey) setRevealState({ key: revealKey, collapsed: !collapsed });
+              setPreferredCollapsed(!collapsed);
+            }
           }}
         >
           {collapsed ? (

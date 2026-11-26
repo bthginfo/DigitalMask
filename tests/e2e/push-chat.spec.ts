@@ -417,11 +417,15 @@ for (const width of [1440, 390]) {
     expect(state.reads()).toBe(reads);
     await page.reload();
     if (width === 390) await page.locator(".chat-channel-toggle").click();
-    for (const label of ["Team", "Produktionen", "Direktnachrichten", "Gruppen"])
+    for (const label of ["Team", "Produktionen", "Gruppen"])
       await expect(navigation.getByRole("button", { name: label, exact: true })).toHaveAttribute(
         "aria-expanded",
         "false",
       );
+    // The group holding the open chat is always revealed.
+    await expect(
+      navigation.getByRole("button", { name: "Direktnachrichten", exact: true }),
+    ).toHaveAttribute("aria-expanded", "true");
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
     ).toBeLessThanOrEqual(1);

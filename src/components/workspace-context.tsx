@@ -32,6 +32,7 @@ import {
   type WorkspacePatch,
 } from "@/shared/workspace-sync";
 import { clientId } from "@/shared/client-id";
+import { navigateWorkspace } from "@/shared/client-navigation";
 
 export interface WorkspaceStatus {
   busy: boolean;
@@ -165,6 +166,24 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       active = false;
     };
   }, [refresh]);
+  useEffect(() => {
+    // Notification taps in an already open app arrive from the service worker.
+    if (!("serviceWorker" in navigator)) return;
+    const container = navigator.serviceWorker;
+    const navigate = (event: MessageEvent) => {
+      if (event.data?.type !== "DIGITALMASK_NAVIGATE" || typeof event.data.url !== "string") return;
+      try {
+        const target = new URL(event.data.url, location.href);
+        if (target.origin !== location.origin) return;
+        navigateWorkspace(safeNotificationLink(target.pathname + target.search));
+      } catch {
+        /* Ignore malformed messages. */
+      }
+    };
+    container.addEventListener("message", navigate);
+    container.startMessages?.();
+    return () => container.removeEventListener("message", navigate);
+  }, []);
   /** Fresh live ticket without reloading workspace data; `true` when data was reloaded. */
   const renewLive = useCallback(async () => {
     try {

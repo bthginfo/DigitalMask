@@ -251,7 +251,7 @@ export function TodayModule({ navigate }: { navigate: (module: string) => void }
             ) : (
               <Empty
                 title="Aktuell nichts offen."
-                description="Neue Aufgaben, die dir zugeteilt werden, erscheinen hier. Im Board findest du alle Aufgaben eurer Produktionen."
+                description="Neue Aufgaben, die dir zugeteilt werden, erscheinen hier."
                 action="Zum Aufgabenboard"
                 onAction={() => navigate("tasks")}
               />

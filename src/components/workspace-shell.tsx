@@ -32,6 +32,7 @@ import {
   moduleHref,
   navigateWorkspace,
   navigationReturn,
+  replaceWorkspaceUrl,
   restoreNavigationScroll,
   returnToContext,
   setNavigationUser,
@@ -308,13 +309,20 @@ export function WorkspaceShell() {
       <ChatModule
         conversationId={params.get("conversationId") || ""}
         productionId={params.get("productionId") || ""}
+        generalChosen={params.get("channel") === "general"}
         focusedMessageId={params.get("messageId") || ""}
-        onNavigate={(conversationId, productionId) => {
+        onNavigate={(conversationId, productionId, options) => {
           const query = new URLSearchParams({
             module: "chat",
-            ...(conversationId ? { conversationId } : productionId ? { productionId } : {}),
+            ...(conversationId
+              ? { conversationId }
+              : productionId
+                ? { productionId }
+                : { channel: "general" }),
           });
-          navigateWorkspace(`/?${query}`);
+          // Opening the default channel replaces the bare ?module=chat entry.
+          if (options?.replace) replaceWorkspaceUrl(`/?${query}`);
+          else navigateWorkspace(`/?${query}`);
         }}
       />
     ) : activeModule === "people" ? (

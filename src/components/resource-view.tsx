@@ -619,6 +619,24 @@ function GenericRecordDetail({
   );
 }
 
+/** Grammatical German per collection (der Fundus, die Besetzung, die Vorlagen …). */
+const emptyTitles: Partial<Record<RecordKind, string>> = {
+  productions: "Hier beginnen eure Produktionen.",
+  actors: "Hier beginnt euer Schauspielerkatalog.",
+  characters: "Hier beginnen eure Figuren.",
+  casting: "Hier beginnt eure Besetzung.",
+  sprints: "Hier beginnen eure Sprints.",
+  tasks: "Hier beginnen eure Aufgaben.",
+  events: "Hier beginnen eure Termine.",
+  time: "Hier beginnen eure Zeitbuchungen.",
+  looks: "Hier beginnen eure Aufschriebe.",
+  templates: "Hier beginnen eure Vorlagen.",
+  materials: "Hier beginnt euer Fundus.",
+  reservations: "Hier beginnen eure Reservierungen.",
+  handovers: "Hier beginnen eure Dienstübergaben.",
+  people: "Hier beginnen eure Ansprechpersonen.",
+};
+
 export function ResourceView({
   kind,
   title,
@@ -934,7 +952,7 @@ export function ResourceView({
           title={
             search || (kind === "actors" && filter)
               ? "Keine passenden Einträge"
-              : `Hier beginnen eure ${labels[kind][0]}.`
+              : emptyTitles[kind] || "Noch keine Einträge."
           }
           description={
             search
