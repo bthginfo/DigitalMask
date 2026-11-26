@@ -25,7 +25,6 @@ export function matchesPhotoReply(
     file.data.recordKind === "messages" &&
     file.data.recordId === source.id &&
     typeof file.data.mime === "string" &&
-    file.data.mime.startsWith("image/") &&
-    !file.data.pendingDeletionOperation
+    file.data.mime.startsWith("image/")
   );
 }

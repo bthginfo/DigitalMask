@@ -12,7 +12,7 @@ import {
   primaryKey,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
-import type { AccentPalette, DomainRecord, RecordData, RecordKind, Role } from "@/shared/contracts";
+import type { AccentPalette, RecordData, RecordKind, Role } from "@/shared/contracts";
 import type { DocumentFormat, DocumentMetadata } from "@/modules/documents/contracts";
 import type { WorkingTimeSettings } from "@/shared/working-time";
 import type {
@@ -177,9 +177,9 @@ export const records = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    index("record_scope_kind_idx").on(t.departmentId, t.kind),
     index("record_production_idx").on(t.departmentId, t.productionId, t.kind),
     index("record_owner_time_idx").on(t.departmentId, t.ownerId, t.kind, t.startAt),
+    // Also serves (department_id, kind) lookups; a separate two-column index is redundant.
     index("record_chat_idx").on(t.departmentId, t.kind, t.productionId, t.createdAt),
     foreignKey({
       columns: [t.departmentId, t.organizationId],
@@ -189,9 +189,6 @@ export const records = pgTable(
     uniqueIndex("time_idempotency_idx")
       .on(t.departmentId, t.ownerId, sql`(${t.data}->>'idempotencyKey')`)
       .where(sql`${t.kind}='time' and coalesce(${t.data}->>'idempotencyKey','')<>''`),
-    uniqueIndex("timesheet_week_idx")
-      .on(t.departmentId, t.ownerId, sql`(${t.data}->>'week')`)
-      .where(sql`${t.kind}='timesheets'`),
     uniqueIndex("attendance_idempotency_idx")
       .on(t.departmentId, t.ownerId, sql`(${t.data}->>'idempotencyKey')`)
       .where(sql`${t.kind}='attendance' and coalesce(${t.data}->>'idempotencyKey','')<>''`),
@@ -204,9 +201,6 @@ export const records = pgTable(
     uniqueIndex("direct_chat_key_idx")
       .on(t.departmentId, sql`(${t.data}->>'directKey')`)
       .where(sql`${t.kind}='conversations' and coalesce(${t.data}->>'directKey','')<>''`),
-    index("private_chat_messages_idx")
-      .on(t.departmentId, sql`(${t.data}->>'conversationId')`, t.updatedAt)
-      .where(sql`${t.kind}='messages' and coalesce(${t.data}->>'conversationId','')<>''`),
     // Retried chat messages return the stored message instead of a duplicate.
     uniqueIndex("message_idempotency_idx")
       .on(t.departmentId, t.ownerId, sql`(${t.data}->>'idempotencyKey')`)
@@ -301,38 +295,6 @@ export const audit = pgTable("audit", {
   recordId: text("record_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
-/** Bounded change history and short-lived undo receipts; deleted records have no cascading FK. */
-export const recordOperations = pgTable(
-  "record_operations",
-  {
-    id: text("id").primaryKey(),
-    departmentId: text("department_id")
-      .notNull()
-      .references(() => departments.id),
-    organizationId: text("organization_id")
-      .notNull()
-      .references(() => organizations.id),
-    userId: text("user_id")
-      .notNull()
-      .references(() => user.id),
-    recordId: text("record_id").notNull(),
-    kind: text("kind").$type<RecordKind>().notNull(),
-    operation: text("operation").$type<"created" | "updated" | "deleted" | "undone">().notNull(),
-    before: jsonb("before_data").$type<DomainRecord>(),
-    after: jsonb("after_data").$type<DomainRecord>(),
-    undoPayload: jsonb("undo_payload").$type<RecordData>(),
-    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
-    undoneAt: timestamp("undone_at", { withTimezone: true }),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (t) => [
-    index("record_operations_scope_time_idx").on(t.departmentId, t.createdAt),
-    index("record_operations_record_idx").on(t.departmentId, t.recordId, t.createdAt),
-    index("record_operations_expiry_idx")
-      .on(t.expiresAt)
-      .where(sql`${t.undoPayload} is not null`),
-  ],
-);
 export const calendarTokens = pgTable("calendar_tokens", {
   id: text("id").primaryKey(),
   tokenHash: text("token_hash").notNull().unique(),

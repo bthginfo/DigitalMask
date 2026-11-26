@@ -165,7 +165,7 @@ test("calendar category lifecycle and private chat/file permissions", async () =
     expect((await directExport.json()).records.map((row: { id: string }) => row.id)).toEqual([
       privateMessage.id,
     ]);
-    expect((await root.get(`/api/messages?conversationId=${direct.id}`)).status()).toBe(403);
+    expect((await root.get(`/api/records/messages/${privateMessage.id}`)).status()).toBe(403);
     expect(
       (
         await root.post("/api/records/messages", {
@@ -184,15 +184,11 @@ test("calendar category lifecycle and private chat/file permissions", async () =
       ),
     ).toBe(false);
     expect(
-      (await (await b.get(`/api/messages?conversationId=${direct.id}`)).json()).messages.map(
+      (await (await b.get("/api/workspace")).json()).records.messages.map(
         (row: { id: string }) => row.id,
       ),
     ).toContain(privateMessage.id);
-    expect(
-      (await (await b.get("/api/messages")).json()).messages.some(
-        (row: { id: string }) => row.id === privateMessage.id,
-      ),
-    ).toBe(false);
+    expect((await b.get(`/api/records/messages/${privateMessage.id}`)).status()).toBe(200);
     expect(
       (
         await b.patch(`/api/records/messages/${privateMessage.id}`, {
@@ -258,7 +254,7 @@ test("calendar category lifecycle and private chat/file permissions", async () =
       ).status(),
     ).toBe(200);
     expect((await a.get(`/api/files/${file.id}`)).status()).toBe(403);
-    expect((await a.get(`/api/messages?conversationId=${group.id}`)).status()).toBe(403);
+    expect((await a.get(`/api/records/messages/${groupMessage.id}`)).status()).toBe(403);
     expect((await b.get(`/api/files/${file.id}`)).status()).toBe(200);
   } finally {
     for (const row of created.reverse())

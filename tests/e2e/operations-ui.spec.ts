@@ -48,7 +48,6 @@ async function mock(
       reads++;
       return route.fulfill({ json: workspace });
     }
-    if (path === "/api/messages") return route.fulfill({ json: { messages: [] } });
     if (path === "/api/export") {
       exports.push(url.search);
       return route.fulfill({ contentType: "text/csv", body: "QA synthetic export" });

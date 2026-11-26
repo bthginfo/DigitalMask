@@ -382,7 +382,6 @@ export async function getWorkspace(
     .filter(
       (r) =>
         r.kind === "files" &&
-        !r.data.pendingDeletionOperation &&
         readableIds.has(String(r.data.recordId)),
     )
     .map((r) => ({ ...r, data: { ...r.data, path: undefined } }));

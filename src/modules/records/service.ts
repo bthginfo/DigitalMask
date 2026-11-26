@@ -228,10 +228,7 @@ async function validateRelations(
           inArray(records.id, fileIds),
         ),
       );
-    if (
-      assets.length !== fileIds.length ||
-      assets.some((file) => file.data.pendingDeletionOperation)
-    )
+    if (assets.length !== fileIds.length)
       throw new HttpError(404, "Eine verknüpfte Datei wurde nicht gefunden.");
     const linkedIds = Array.from(new Set(assets.map((file) => String(file.data.recordId))));
     const linkedRecords = await tx

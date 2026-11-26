@@ -79,7 +79,6 @@ async function mock(
       ];
       return route.fulfill({ json: row });
     }
-    if (pathname === "/api/messages") return route.fulfill({ json: { messages: [] } });
     return route.fulfill({ json: { ok: true, messages: [] } });
   });
   return {

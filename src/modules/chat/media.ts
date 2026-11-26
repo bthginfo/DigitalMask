@@ -17,7 +17,7 @@ export function chatMediaItems(messages: DomainRecord[], files: DomainRecord[], 
   );
   const items: ChatMediaItem[] = [];
   for (const file of files) {
-    if (file.data.recordKind !== "messages" || file.data.pendingDeletionOperation) continue;
+    if (file.data.recordKind !== "messages") continue;
     const message = parents.get(String(file.data.recordId));
     if (message) items.push({ file, messageId: message.id, sentAt: message.createdAt });
   }
