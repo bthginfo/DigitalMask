@@ -35,7 +35,7 @@ import {
   setNavigationUser,
 } from "@/shared/client-navigation";
 import { subscribeLocation, subscribeMobile } from "@/shared/client-storage";
-import { onboardingVersion, type DomainRecord, type RecordKind } from "@/shared/contracts";
+import { onboardingVersion, type DomainRecord } from "@/shared/contracts";
 import { initials, post } from "@/shared/client-api";
 import { useWorkspace } from "./workspace-context";
 import { stopPushOnLogout } from "@/modules/notifications/client";
@@ -45,25 +45,29 @@ import { NotificationRow } from "@/modules/notifications/components/notification
 import { Badge, Empty, Modal } from "./ui";
 import { ThemeSwitch } from "./theme-switch";
 import { LiveStatus } from "./live-status";
-import { RecordDetail, ResourceView } from "./resource-view";
-import { WorkspaceSearch } from "./workspace-search";
 import { TodayModule } from "./modules/today";
-import { ProductionsModule } from "./modules/productions";
-import { TasksModule } from "./modules/tasks";
-import { CalendarModule } from "./modules/calendar";
-import { TimeModule } from "./modules/time";
-import { ChatModule } from "./modules/chat";
+import {
+  ActorsModule,
+  CalendarModule,
+  ChatModule,
+  DocumentationModule,
+  ExportsModule,
+  HelpModule,
+  OnboardingTour,
+  PeopleModule,
+  ProductionsModule,
+  RecordDetail,
+  ResourceView,
+  SettingsModule,
+  TasksModule,
+  TimeModule,
+  WorkspaceSearch,
+  prefetchModules,
+  whenIdle,
+} from "./lazy-modules";
 import chatStyles from "@/modules/chat/components/chat-viewport.module.css";
-import { SettingsModule } from "./modules/settings";
-import { labels } from "./resource-fields";
 import { ProfileAccent } from "@/modules/profile/components/accent-picker";
-import { OnboardingTour } from "@/modules/profile/components/onboarding-tour";
-import { HelpModule } from "@/modules/help/components/help-module";
-import { DocumentationModule } from "@/modules/documentation/components/documentation-module";
-import { PeopleModule } from "@/modules/people/components";
-import { ActorsModule } from "@/modules/ensemble/components/actors-module";
 import { AppInstall } from "@/modules/pwa/components/app-install";
-import { ExportDialog } from "./export-dialog";
 const nav: { id: string; label: string; icon: LucideIcon; group: string }[] = [
   { id: "today", label: "Heute", icon: Home, group: "ARBEITSRAUM" },
   { id: "productions", label: "Produktionen", icon: Theater, group: "ARBEITSRAUM" },
@@ -140,6 +144,11 @@ export function WorkspaceShell() {
     };
   }, [workspace.user.id]);
   useEffect(() => restoreNavigationScroll(scrollTarget), [query, scrollTarget]);
+  // Bottom-navigation screens load in the background so switching tabs stays instant.
+  useEffect(
+    () => whenIdle(() => prefetchModules(["calendar", "productions", "time", "chat", "resources"])),
+    [],
+  );
   useEffect(() => {
     const key = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key === "k") {
@@ -614,52 +623,5 @@ export function WorkspaceShell() {
         />
       )}
     </div>
-  );
-}
-function ExportsModule() {
-  const [kind, setKind] = useState<RecordKind | null>(null);
-  return (
-    <>
-      <header className="page-heading">
-        <div>
-          <p className="eyebrow">DIE RICHTIGE ANSICHT FÜR JEDEN ZWECK</p>
-          <h1>Exporte & Ausdrucke</h1>
-          <p className="muted">
-            Kalender, Arbeitszeit und Theaterwissen als PDF, Excel oder offene Daten.
-          </p>
-        </div>
-      </header>
-      <div className="export-options">
-        {(
-          [
-            "events",
-            "time",
-            "attendance",
-            "people",
-            "productions",
-            "actors",
-            "casting",
-            "looks",
-            "tasks",
-            "materials",
-            "handovers",
-          ] as RecordKind[]
-        ).map((item) => (
-          <button key={item} onClick={() => setKind(item)}>
-            <Download size={22} />
-            <div>
-              <h3>{labels[item][0]}</h3>
-              <p className="small muted">
-                {item === "events"
-                  ? "Monat, Woche, Tag, Agenda & Team · PDF, ICS, Excel"
-                  : "PDF für Ausdrucke · Excel, CSV & JSON für Daten"}
-              </p>
-            </div>
-            <span>Exportieren →</span>
-          </button>
-        ))}
-      </div>
-      {kind && <ExportDialog kind={kind} onClose={() => setKind(null)} />}
-    </>
   );
 }

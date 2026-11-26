@@ -1,6 +1,5 @@
 "use client";
 import { useState } from "react";
-import Papa from "papaparse";
 import { Download, Upload } from "lucide-react";
 import type { RecordData, RecordKind } from "@/shared/contracts";
 import { localDate, post } from "@/shared/client-api";
@@ -162,9 +161,11 @@ export function ImportDialog({ kind, onClose }: { kind: RecordKind; onClose: () 
     imported: number;
     errors: { row: number; error: string }[];
   } | null>(null);
-  const parse = (file: File) => {
+  const parse = async (file: File) => {
     setError("");
     setResult(null);
+    // CSV parsing is only needed once someone imports a file.
+    const { default: Papa } = await import("papaparse");
     Papa.parse<Record<string, string>>(file, {
       header: true,
       skipEmptyLines: "greedy",
@@ -211,7 +212,8 @@ export function ImportDialog({ kind, onClose }: { kind: RecordKind; onClose: () 
       },
     });
   };
-  const template = () => {
+  const template = async () => {
+    const { default: Papa } = await import("papaparse");
     const columns = (fields[kind] || []).map((field) => field.key);
     const url = URL.createObjectURL(
       new Blob(["\uFEFF" + Papa.unparse([columns]) + "\r\n"], { type: "text/csv;charset=utf-8" }),
@@ -246,7 +248,7 @@ export function ImportDialog({ kind, onClose }: { kind: RecordKind; onClose: () 
         neue Einträge an. Druck- und Berichtsexporte verwenden andere Spalten und sind keine
         Importvorlage.
       </p>
-      <Button onClick={template}>
+      <Button onClick={() => void template()}>
         <Download size={16} />
         CSV-Importvorlage herunterladen
       </Button>
@@ -309,7 +311,10 @@ export function ImportDialog({ kind, onClose }: { kind: RecordKind; onClose: () 
           disabled={busy}
           onChange={(event) => {
             const file = event.target.files?.[0];
-            if (file) parse(file);
+            if (file)
+              void parse(file).catch((e) =>
+                setError(e instanceof Error ? e.message : "CSV konnte nicht gelesen werden."),
+              );
           }}
         />
       </label>

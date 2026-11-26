@@ -14,7 +14,7 @@ import listPlugin from "@fullcalendar/list";
 import interactionPlugin from "@fullcalendar/interaction";
 import deLocale from "@fullcalendar/core/locales/de";
 import luxonPlugin from "@fullcalendar/luxon3";
-import { occurrences } from "@/modules/calendar/occurrences";
+import { expandEvents } from "@/modules/calendar/expand";
 import {
   AlertTriangle,
   ChevronDown,
@@ -24,8 +24,7 @@ import {
   Plus,
   SlidersHorizontal,
 } from "lucide-react";
-import type { DomainRecord, Member } from "@/shared/contracts";
-import { canManageRecord } from "@/shared/record-permissions";
+import type { DomainRecord } from "@/shared/contracts";
 import { calendarProductionRecords, canEditCalendarEvent } from "@/shared/calendar-access";
 import {
   dateLabel,
@@ -38,7 +37,6 @@ import {
 } from "@/shared/client-api";
 import { isActiveStaff } from "@/shared/client-members";
 import { calendarEventSelected } from "@/shared/calendar-selection";
-import { calendarEventPaint } from "@/shared/calendar-paint";
 import { sortCalendarStaff } from "@/shared/calendar-team";
 import { bavarianHoliday } from "@/shared/bavarian-holidays";
 import { sortProductionsByPremiere } from "@/shared/production-order";
@@ -47,11 +45,7 @@ import { Badge, Button, ErrorMessage, ExportButton, Modal, PageHeader } from "..
 import { ResourceEditor } from "../resource-editor";
 import { EventDetail } from "@/modules/calendar/components/event-detail";
 import { ExportDialog } from "../export-dialog";
-import {
-  calendarPresentation,
-  calendarCategoryBlocksTime,
-  calendarMonthPriority,
-} from "@/shared/calendar-categories";
+import { calendarCategoryBlocksTime, calendarMonthPriority } from "@/shared/calendar-categories";
 import {
   calendarCategories,
   monthStart,
@@ -92,44 +86,6 @@ const calendarViews = {
     eventOrderStrict: true,
   },
 };
-export function expandEvents(
-  records: DomainRecord[],
-  rangeStart: string,
-  rangeEnd: string,
-  productions: DomainRecord[] = [],
-  categories?: DomainRecord[],
-  member?: Member,
-  editableProductionIds?: ReadonlySet<string>,
-) {
-  return records.flatMap((record) => {
-    if (
-      !Number.isFinite(new Date(value(record.data, "start")).getTime()) ||
-      !Number.isFinite(new Date(value(record.data, "end")).getTime())
-    )
-      return [];
-    const presentation = calendarPresentation(record, productions, categories);
-    return occurrences(record, new Date(rangeStart), new Date(rangeEnd)).map((instance) => ({
-      id: `${record.id}:${instance.start.toISOString()}`,
-      title: presentation.title,
-      allDay: presentation.allDay,
-      categoryName: presentation.categoryName,
-      background: presentation.background,
-      blocksTime: presentation.blocksTime,
-      start: instance.start.toISOString(),
-      end: instance.end.toISOString(),
-      ...calendarEventPaint(presentation.color, presentation.allDay, !!presentation.background),
-      editable:
-        !record.data.leaveId &&
-        !presentation.background &&
-        (!record.data.recurrence || record.data.recurrence === "none") &&
-        (!member || canManageRecord(member, "events", record)) &&
-        (!editableProductionIds ||
-          !record.data.productionId ||
-          editableProductionIds.has(value(record.data, "productionId"))),
-      extendedProps: { record },
-    }));
-  });
-}
 export function CalendarModule({
   productionId = "",
   focusedLeaveId = "",

@@ -9,7 +9,6 @@ import { contactsValue } from "@/shared/contracts";
 import { productionContactName } from "@/shared/production-contacts";
 import { productionCastingCounts } from "@/modules/productions/counts";
 import { backstageChangesSection, productionLookDuration } from "@/shared/document-sections";
-import { BackstageChanges } from "@/modules/documentation/components/backstage-changes";
 import { sortProductionsByPremiere } from "@/shared/production-order";
 import { productionOverviewRecords } from "@/shared/production-overview";
 import { SharedProductionOverview } from "@/modules/productions/components/shared-production-overview";
@@ -17,17 +16,22 @@ import type { Workspace } from "@/shared/contracts";
 import { dateLabel, hours, ids, num, value } from "@/shared/client-api";
 import { useWorkspace } from "../workspace-context";
 import { Badge, Button, Empty, ExportButton, PageHeader, Section } from "../ui";
-import { ResourceEditor } from "../resource-editor";
-import { RecordDetail, ResourceView } from "../resource-view";
-import { ExportDialog, ImportDialog } from "../export-dialog";
-import { ProductionTeamModule } from "../production-people";
-import { ChatModule } from "./chat";
-import { TasksModule } from "./tasks";
-import { CalendarModule } from "./calendar";
-import { TimeModule } from "./time";
 import { statusLabels } from "../resource-fields";
-import { RecordDocuments } from "@/modules/documents/components/record-documents";
-import { MaskPlansModule } from "@/modules/mask-plans/components/mask-plans-module";
+import {
+  BackstageChanges,
+  CalendarModule,
+  ChatModule,
+  ExportDialog,
+  ImportDialog,
+  MaskPlansModule,
+  ProductionTeamModule,
+  RecordDetail,
+  RecordDocuments,
+  ResourceEditor,
+  ResourceView,
+  TasksModule,
+  TimeModule,
+} from "../lazy-modules";
 import { RecordLink } from "../record-link";
 import relationStyles from "../record-links.module.css";
 import styles from "../workspace-browse.module.css";
