@@ -22,13 +22,15 @@ it("sends a small private preview and leaves the original at full resolution", a
     new Request("https://example.test/api/files/photo?preview=thumbnail"),
     params,
   );
-  expect(preview.headers.get("Cache-Control")).toBe("private, no-store");
+  // Immutable per id, but only in the viewer's own browser cache.
+  expect(preview.headers.get("Cache-Control")).toBe("private, max-age=31536000, immutable");
   expect(await sharp(Buffer.from(await preview.arrayBuffer())).metadata()).toMatchObject({
     format: "webp",
     width: 320,
     height: 240,
   });
   const original = await GET(new Request("https://example.test/api/files/photo"), params);
+  expect(original.headers.get("Cache-Control")).toBe("private, max-age=31536000, immutable");
   expect(Buffer.from(await original.arrayBuffer())).toEqual(bytes);
 });
 
@@ -39,4 +41,5 @@ it("uses the original file permissions for thumbnails", async () => {
     params,
   );
   expect(response.status).toBe(403);
+  expect(response.headers.get("Cache-Control")).toBe("private, no-store");
 });
