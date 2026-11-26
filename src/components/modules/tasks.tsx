@@ -10,7 +10,9 @@ import {
   useSensors,
   useDraggable,
   useDroppable,
+  type DndContextProps,
   type DragEndEvent,
+  type UniqueIdentifier,
 } from "@dnd-kit/core";
 import {
   CalendarDays,
@@ -323,6 +325,29 @@ export function TasksModule({ productionId = "" }: { productionId?: string }) {
       setError(e instanceof Error ? e.message : "Verschieben fehlgeschlagen");
     }
   };
+  // German screen reader guidance for moving cards with the keyboard (dnd-kit defaults are English).
+  const taskTitle = (id: UniqueIdentifier) =>
+    `„${value(tasks.find((task) => task.id === id)?.data || {}, "title") || "Aufgabe"}“`;
+  const columnLabel = (id?: UniqueIdentifier) =>
+    columns.find(([key]) => key === id)?.[1] || "keiner Spalte";
+  const dragAccessibility: DndContextProps["accessibility"] = {
+    screenReaderInstructions: {
+      draggable:
+        "Zum Verschieben einer Aufgabe Leertaste oder Eingabetaste drücken. Mit den Pfeiltasten die Spalte wechseln, mit Leertaste oder Eingabetaste ablegen, mit Escape abbrechen.",
+    },
+    announcements: {
+      onDragStart: ({ active }) => `Aufgabe ${taskTitle(active.id)} aufgenommen.`,
+      onDragOver: ({ active, over }) =>
+        over
+          ? `Aufgabe ${taskTitle(active.id)} befindet sich über Spalte ${columnLabel(over.id)}.`
+          : `Aufgabe ${taskTitle(active.id)} befindet sich über keiner Spalte.`,
+      onDragEnd: ({ active, over }) =>
+        over
+          ? `Aufgabe ${taskTitle(active.id)} in Spalte ${columnLabel(over.id)} abgelegt.`
+          : `Aufgabe ${taskTitle(active.id)} abgelegt, Spalte unverändert.`,
+      onDragCancel: ({ active }) => `Verschieben von Aufgabe ${taskTitle(active.id)} abgebrochen.`,
+    },
+  };
   const dragEnd = (event: DragEndEvent) => {
     const task = tasks.find((x) => x.id === event.active.id);
     const status = String(event.over?.id || "");
@@ -519,7 +544,7 @@ export function TasksModule({ productionId = "" }: { productionId?: string }) {
               </select>
             </div>
           )}
-          <DndContext sensors={sensors} onDragEnd={dragEnd}>
+          <DndContext sensors={sensors} onDragEnd={dragEnd} accessibility={dragAccessibility}>
             <div
               className={`kanban ${styles.board}`}
               ref={(element) => {

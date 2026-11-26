@@ -147,6 +147,35 @@ export function WorkspaceShell() {
     };
   }, [workspace.user.id]);
   useEffect(() => restoreNavigationScroll(scrollTarget), [query, scrollTarget]);
+  // After switching modules, move focus to the new page heading once it has rendered (module
+  // chunks load lazily), unless a dialog is open or focus already went into the page.
+  const focusedModule = useRef(activeModule);
+  useEffect(() => {
+    if (focusedModule.current === activeModule) return;
+    focusedModule.current = activeModule;
+    const root = main.current;
+    if (!root) return;
+    const focusHeading = () => {
+      const heading = root.querySelector<HTMLElement>("h1");
+      if (!heading) return false;
+      const current = document.activeElement;
+      if (document.querySelector("dialog[open]") || (current && root.contains(current)))
+        return true;
+      if (!heading.hasAttribute("tabindex")) heading.tabIndex = -1;
+      heading.focus({ preventScroll: true });
+      return true;
+    };
+    if (focusHeading()) return;
+    const observer = new MutationObserver(() => {
+      if (focusHeading()) observer.disconnect();
+    });
+    observer.observe(root, { childList: true, subtree: true });
+    const timeout = setTimeout(() => observer.disconnect(), 8000);
+    return () => {
+      observer.disconnect();
+      clearTimeout(timeout);
+    };
+  }, [activeModule]);
   // Bottom-navigation screens load in the background so switching tabs stays instant.
   useEffect(
     () => whenIdle(() => prefetchModules(["calendar", "productions", "time", "chat", "resources"])),
@@ -523,6 +552,10 @@ export function WorkspaceShell() {
           </div>
         </header>
         <OfflineBanner />
+        {/* Announces module switches; present from the start so only changes are read. */}
+        <p className="visually-hidden" role="status" aria-live="polite">
+          {active.label} geöffnet
+        </p>
         <main ref={main} id="main" className="main-content" key={activeModule} tabIndex={-1}>
           {missingTarget && (
             <p className="empty-inline" role="status">
