@@ -1,4 +1,4 @@
-﻿.viewport:global(.chat-layout) {
+.viewport:global(.chat-layout) {
   position: relative;
   height: var(--chat-available-height, min(760px, calc(100vh - 240px)));
   height: var(--chat-available-height, min(760px, calc(100dvh - 240px)));
