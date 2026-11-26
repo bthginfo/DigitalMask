@@ -12,7 +12,7 @@ import {
   primaryKey,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
-import type { AccentPalette, RecordData, RecordKind, Role } from "@/shared/contracts";
+import type { AccentPalette, DomainRecord, RecordData, RecordKind, Role } from "@/shared/contracts";
 import type { DocumentFormat, DocumentMetadata } from "@/modules/documents/contracts";
 import type { WorkingTimeSettings } from "@/shared/working-time";
 import type {
@@ -295,6 +295,41 @@ export const audit = pgTable("audit", {
   recordId: text("record_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+/**
+ * Change history of the removed undo feature. Read by nothing; kept because it holds
+ * historical record versions that should not be destroyed by a deployment.
+ */
+export const recordOperations = pgTable(
+  "record_operations",
+  {
+    id: text("id").primaryKey(),
+    departmentId: text("department_id")
+      .notNull()
+      .references(() => departments.id),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organizations.id),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id),
+    recordId: text("record_id").notNull(),
+    kind: text("kind").$type<RecordKind>().notNull(),
+    operation: text("operation").$type<"created" | "updated" | "deleted" | "undone">().notNull(),
+    before: jsonb("before_data").$type<DomainRecord>(),
+    after: jsonb("after_data").$type<DomainRecord>(),
+    undoPayload: jsonb("undo_payload").$type<RecordData>(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    undoneAt: timestamp("undone_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("record_operations_scope_time_idx").on(t.departmentId, t.createdAt),
+    index("record_operations_record_idx").on(t.departmentId, t.recordId, t.createdAt),
+    index("record_operations_expiry_idx")
+      .on(t.expiresAt)
+      .where(sql`${t.undoPayload} is not null`),
+  ],
+);
 export const calendarTokens = pgTable("calendar_tokens", {
   id: text("id").primaryKey(),
   tokenHash: text("token_hash").notNull().unique(),
