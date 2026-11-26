@@ -1,5 +1,5 @@
 "use client";
-import { useState, type ReactNode } from "react";
+import { useDeferredValue, useMemo, useState, type ReactNode } from "react";
 import { LinkedText } from "./linked-text";
 import Image from "next/image";
 import dynamic from "next/dynamic";
@@ -45,6 +45,7 @@ import { ActorPortrait } from "@/modules/ensemble/components/actor-portrait";
 import portraitStyles from "@/modules/ensemble/components/actor-portrait.module.css";
 import { initialPeriod, teamTaskSeason } from "@/shared/period-filter";
 import { useViewState } from "@/shared/view-state";
+import { matchesSearch, searchIndex, searchTerms } from "@/shared/search-text";
 import { MaterialReservations } from "@/modules/reservations/components/material-reservations";
 import { TimeBookingDelete } from "@/modules/time-tracking/components/time-booking-delete";
 
@@ -651,10 +652,15 @@ export function ResourceView({
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const admin = workspace.user.role !== "user";
   const allowedCreate = canCreate !== false && canManageRecord(workspace.user, kind);
-  const rows = workspace.records[kind].filter(
+  const records = workspace.records[kind];
+  // Search text (with resolved names) is built once per data update, not per keystroke.
+  const index = useMemo(() => searchIndex(kind, records, workspace), [kind, records, workspace]);
+  const deferredSearch = useDeferredValue(search);
+  const terms = useMemo(() => searchTerms(deferredSearch), [deferredSearch]);
+  const rows = records.filter(
     (row) =>
       (!filter || filter(row)) &&
-      (!search || JSON.stringify(row.data).toLowerCase().includes(search.toLowerCase())) &&
+      (!terms.length || matchesSearch(index.get(row.id) ?? "", terms)) &&
       (!low || num(row.data, "quantity") <= num(row.data, "minQuantity")),
   );
   const exportable = [

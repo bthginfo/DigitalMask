@@ -1,11 +1,12 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { isDirectoryPerson } from "@/modules/people/components/person-data";
 import { value } from "@/shared/client-api";
 import { recordHref } from "@/shared/client-navigation";
 import { castingCharacter, relatedProduction } from "@/shared/record-relationships";
 import { labels, recordTitle } from "./resource-fields";
+import { matchesSearch, searchTerms, searchText } from "@/shared/search-text";
 import { Empty, Modal } from "./ui";
 import { useWorkspace } from "./workspace-context";
 
@@ -30,8 +31,8 @@ export function WorkspaceSearch({
 }) {
   const { workspace } = useWorkspace();
   const [search, setSearch] = useState("");
-  const term = search.trim().toLocaleLowerCase("de");
-  const searching = term.length >= 2;
+  const deferredTerm = useDeferredValue(search);
+  const searching = deferredTerm.trim().length >= 2;
   const index = useMemo(() => {
     if (!searching) return [];
     return Object.values(workspace.records)
@@ -53,16 +54,24 @@ export function WorkspaceSearch({
                 .filter(Boolean)
                 .join(" · ")
             : value(record.data, "description") || value(record.data, "notes");
-        const content = (description + " " + JSON.stringify(record.data)).toLocaleLowerCase("de");
-        return { record, title, name: title.toLocaleLowerCase("de"), description, content };
+        return {
+          record,
+          title,
+          name: title.toLocaleLowerCase("de"),
+          description,
+          content: searchText(record.kind, record, workspace),
+        };
       });
   }, [workspace, searching]);
-  const byName = index.filter((item) => item.name.includes(term));
+  const terms = searchTerms(deferredTerm);
+  const byName = index.filter((item) => matchesSearch(item.name, terms));
   const results = byName
     .concat(
       byName.length >= 30
         ? []
-        : index.filter((item) => !item.name.includes(term) && item.content.includes(term)),
+        : index.filter(
+            (item) => !matchesSearch(item.name, terms) && matchesSearch(item.content, terms),
+          ),
     )
     .slice(0, 30);
   return (

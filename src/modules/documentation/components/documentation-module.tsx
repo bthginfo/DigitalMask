@@ -1,11 +1,9 @@
 ﻿"use client";
-import { useState } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
 import { FileText, Plus } from "lucide-react";
 import type { DomainRecord } from "@/shared/contracts";
 import {
   backstageChangesSection,
-  documentSections,
-  sectionName,
   lookTitle,
   productionLookDuration,
 } from "@/shared/document-sections";
@@ -20,6 +18,7 @@ import { ResourceEditor } from "@/components/resource-editor";
 import { ExportDialog } from "@/components/export-dialog";
 import { CategoryManager } from "@/modules/categories/components/category-manager";
 import { useViewState } from "@/shared/view-state";
+import { matchesSearch, searchIndex, searchTerms } from "@/shared/search-text";
 import { navigateWorkspace } from "@/shared/client-navigation";
 import styles from "./document-sections.module.css";
 export function DocumentationModule() {
@@ -42,29 +41,18 @@ export function DocumentationModule() {
     [detail, setDetail] = useState<DomainRecord | null>(null),
     [exporting, setExporting] = useState(false),
     [categoriesOpen, setCategoriesOpen] = useState(false);
-  const rows = workspace.records.looks.filter(
+  const looks = workspace.records.looks;
+  const index = useMemo(() => searchIndex("looks", looks, workspace), [looks, workspace]);
+  const deferredSearch = useDeferredValue(search);
+  const terms = useMemo(() => searchTerms(deferredSearch), [deferredSearch]);
+  const rows = looks.filter(
     (row) =>
       (!production ||
         (production === "general"
           ? !row.data.productionId
           : row.data.productionId === production)) &&
       recordMatchesPeriod(row, period, workspace.records.productions) &&
-      (!search ||
-        JSON.stringify({
-          ...row.data,
-          actorName: lookTitle(row.data, workspace.records.actors),
-          characterName:
-            value(
-              workspace.records.characters.find((figure) => figure.id === row.data.characterId)
-                ?.data || {},
-              "name",
-            ) || value(row.data, "characterName"),
-          categories: documentSections(row.data, "looks").map((section) =>
-            sectionName(section.key, "looks", workspace.records.categories),
-          ),
-        })
-          .toLowerCase()
-          .includes(search.toLowerCase())),
+      (!terms.length || matchesSearch(index.get(row.id) ?? "", terms)),
   );
   const groupIds = [...new Set(rows.map((row) => value(row.data, "productionId")))].sort((a, b) =>
     !a
