@@ -280,8 +280,10 @@ export function ChatModule({
     workspace.records.notifications,
     workspace.user.id,
   );
-  // Opening Kommunikation without a channel picks one before anything is marked as read.
-  const choosingDefault = !!onNavigate && !conversationId && !productionId && !generalChosen;
+  // Opening Kommunikation without a channel picks one before anything is marked as read. A
+  // linked message without a channel belongs to the general channel.
+  const choosingDefault =
+    !!onNavigate && !conversationId && !productionId && !generalChosen && !focusedMessageId;
   const defaultChoice = choosingDefault
     ? defaultChatChoice(ordered, readLastChat(workspace.user.id))
     : undefined;
