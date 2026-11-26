@@ -49,8 +49,7 @@ export function HelpModule({
   return (
     <>
       <PageHeader
-        eyebrow="SICHER DURCH DEN ARBEITSALLTAG"
-        title="Hilfe & Orientierung"
+        title="Hilfe"
         description="Anleitungen für eure gemeinsame Arbeit, Antworten und Raum für Verbesserungen."
       >
         <Button onClick={onStartTour}>

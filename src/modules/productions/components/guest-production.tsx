@@ -39,7 +39,7 @@ export function GuestProduction({
     <section className={styles.productionDetail}>
       <div className="production-breadcrumb">
         <Button variant="ghost" onClick={onBack}>
-          <ArrowLeft size={16} aria-hidden="true" /> Alle Produktionen
+          <ArrowLeft size={16} aria-hidden="true" /> Alle Stücke
         </Button>
         <Badge tone="green">
           {seasonListLabel(productionSeasons(production.data)) || "Spielzeit"}

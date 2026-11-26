@@ -128,7 +128,16 @@
   }
 
   .productionDetail > :global(.production-tabs) {
-    display: none;
+    margin: 0 -18px 18px;
+    padding: 2px 18px 6px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    scroll-padding-inline: 18px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .productionDetail > :global(.production-tabs) button {
+    scroll-snap-align: start;
   }
 
   .productionDetail > :global(.production-makeup-contact) {
@@ -145,4 +154,17 @@
     margin: 0;
     min-height: 44px;
   }
+}
+
+.tabGroup {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+.tabDivider {
+  width: 1px;
+  height: 22px;
+  margin: 0 6px 0 4px;
+  background: var(--separator);
 }

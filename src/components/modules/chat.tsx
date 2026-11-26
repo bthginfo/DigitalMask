@@ -375,8 +375,7 @@ export function ChatModule({
     <>
       <div className={styles.pageHeading}>
         <PageHeader
-          eyebrow="KURZE WEGE. GUTE ABSPRACHEN."
-          title={locked ? "Projektchat" : "Kommunikation"}
+          title="Chat"
           description={
             locked
               ? "Alles zum Stück an einem gemeinsamen Ort."

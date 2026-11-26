@@ -44,19 +44,37 @@ import { RecordLink } from "../record-link";
 import relationStyles from "../record-links.module.css";
 import styles from "../workspace-browse.module.css";
 import { useViewState } from "@/shared/view-state";
-const productionSections = [
-  ["overview", "Überblick"],
-  ["team", "Team & Kontakte"],
-  ["casting", "Besetzung"],
-  ["mask-plan", "Maskenplan"],
-  ["tasks", "Aufgaben"],
-  ["looks", "Aufschriebe"],
-  [backstageChangesSection.key, backstageChangesSection.name],
-  ["documents", "Dokumente"],
-  ["calendar", "Kalender"],
-  ["time", "Produktionsstunden"],
-  ["chat", "Projektchat"],
+import { NextShow } from "@/modules/productions/components/next-show";
+/** Grouped like the work: the evening, what we know about the piece, and organisation. */
+const productionSectionGroups: [string, [string, string][]][] = [
+  [
+    "Abend",
+    [
+      ["overview", "Überblick"],
+      ["mask-plan", "Maskenplan"],
+      [backstageChangesSection.key, backstageChangesSection.name],
+      ["casting", "Besetzung"],
+    ],
+  ],
+  [
+    "Wissen",
+    [
+      ["looks", "Aufschriebe"],
+      ["documents", "Dokumente"],
+    ],
+  ],
+  [
+    "Organisation",
+    [
+      ["team", "Team & Kontakte"],
+      ["tasks", "Aufgaben"],
+      ["calendar", "Kalender"],
+      ["time", "Stunden"],
+      ["chat", "Chat"],
+    ],
+  ],
 ];
+const productionSections = productionSectionGroups.flatMap(([, sections]) => sections);
 export function ProductionsModule({
   productionId = "",
   showStart = "",
@@ -176,7 +194,7 @@ export function ProductionsModule({
             }}
           >
             <ArrowLeft size={16} />
-            Alle Produktionen
+            Alle Stücke
           </Button>
           <Badge tone="green">
             {seasonListLabel(productionSeasons(production.data)) || "Spielzeit"}
@@ -189,37 +207,29 @@ export function ProductionsModule({
             {duration > 0 && <p className="small muted">Stückdauer · {duration} Minuten</p>}
           </div>
           <div className="heading-actions">
-            <Button onClick={() => setDetails(true)}>Produktion verwalten</Button>
+            <Button onClick={() => setDetails(true)}>Stück verwalten</Button>
           </div>
         </header>
-        <label className={styles.productionSection}>
-          Produktionsbereich
-          <select
-            aria-label="Produktionsbereich"
-            value={tab}
-            onChange={(event) => setTab(event.target.value)}
-          >
-            {productionSections.map(([key, label]) => (
-              <option key={key} value={key}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <div ref={tabs} className="tabs production-tabs" aria-label="Produktionsbereiche">
-          {productionSections.map(([key, label]) => (
-            <button
-              key={key}
-              aria-current={tab === key ? "page" : undefined}
-              className={tab === key ? "active" : ""}
-              onClick={() => setTab(key)}
-            >
-              {label}
-            </button>
+        <nav ref={tabs} className="tabs production-tabs" aria-label="Bereiche des Stücks">
+          {productionSectionGroups.map(([group, sections], index) => (
+            <div key={group} className={styles.tabGroup} role="group" aria-label={group}>
+              {index > 0 && <span className={styles.tabDivider} aria-hidden="true" />}
+              {sections.map(([key, label]) => (
+                <button
+                  key={key}
+                  aria-current={tab === key ? "page" : undefined}
+                  className={tab === key ? "active" : ""}
+                  onClick={() => setTab(key)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           ))}
-        </div>
+        </nav>
         {tab === "overview" ? (
           <>
+            <NextShow production={production} workspace={workspace} />
             <section className="production-makeup-contact">
               <Users size={22} />
               <div>
@@ -377,7 +387,7 @@ export function ProductionsModule({
     <section className={styles.productionBrowse}>
       <PageHeader
         compact
-        title="Produktionen"
+        title="Stücke"
         description="Euer gemeinsamer Überblick von der Vorbereitung bis zur Wiederaufnahme."
         secondaryActions={
           <>
@@ -390,7 +400,7 @@ export function ProductionsModule({
       >
         <Button variant="primary" onClick={() => setEditor(true)}>
           <Plus size={16} />
-          Produktion anlegen
+          Stück anlegen
         </Button>
       </PageHeader>
       <BrowseFilters
@@ -514,7 +524,7 @@ export function ProductionsModule({
               ? "Ändere den Suchtext oder öffne die Filter für andere Spielzeiten und archivierte Stücke."
               : "Lege das erste Stück für euer Team an."
           }
-          action={productions.length ? undefined : "Erste Produktion anlegen"}
+          action={productions.length ? undefined : "Erstes Stück anlegen"}
           onAction={() => setEditor(true)}
         />
       )}

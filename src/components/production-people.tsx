@@ -355,7 +355,6 @@ export function ProductionTeamModule({ production }: { production: DomainRecord 
   return (
     <>
       <PageHeader
-        eyebrow="MENSCHEN HINTER DER PRODUKTION"
         title="Team & Kontakte"
         description="Zuständigkeiten und wichtige Personen für dieses Stück."
       >

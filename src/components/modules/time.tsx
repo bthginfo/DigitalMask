@@ -160,8 +160,7 @@ export function WorkTimeModule({
         </header>
       ) : (
         <PageHeader
-          eyebrow="PRODUKTIONSSTUNDEN"
-          title="Produktionsstunden"
+          title="Stunden"
           description="Produktionsarbeit und allgemeine Tätigkeiten. Tages- und Wochensummen rechnen sich von selbst."
           compact
           secondaryActions={secondaryActions}

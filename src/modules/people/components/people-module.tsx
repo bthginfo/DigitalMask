@@ -45,7 +45,6 @@ export function PeopleModule() {
   return (
     <section className={styles.directory}>
       <PageHeader
-        eyebrow="Kontakte"
         title="Ansprechpersonen"
         description="Ansprechpersonen für eure Zusammenarbeit – mit Funktion, Organisation und Kontaktdaten."
       >

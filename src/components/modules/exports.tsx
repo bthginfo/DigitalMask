@@ -26,7 +26,7 @@ export function ExportsModule() {
       <header className="page-heading">
         <div>
           <p className="eyebrow">DIE RICHTIGE ANSICHT FÜR JEDEN ZWECK</p>
-          <h1>Exporte & Ausdrucke</h1>
+          <h1>Exporte</h1>
           <p className="muted">
             Kalender, Arbeitszeit und Theaterwissen als PDF, Excel oder offene Daten.
           </p>

@@ -630,7 +630,6 @@ export function CalendarModule({
       data-calendar-fullscreen={presentation.fullscreen || undefined}
     >
       <PageHeader
-        eyebrow="DEIN DIENSTPLAN. GEMEINSAM GEPLANT."
         title="Kalender"
         description="Eigene Dienste, Teamkalender und freie Tage im Überblick."
       >

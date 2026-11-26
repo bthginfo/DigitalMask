@@ -728,7 +728,6 @@ export function ResourceView({
     <section className={browseStyles.resourceBrowse}>
       <PageHeader
         compact
-        eyebrow="DEIN GEMEINSAMER ARBEITSRAUM"
         title={title || labels[kind][0]}
         description={description}
         secondaryActions={

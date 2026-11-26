@@ -394,8 +394,7 @@ function TaskBoard({
     <section className={styles.taskWorkspace}>
       <PageHeader
         compact
-        eyebrow="GEMEINSAM VORAN"
-        title={project ? "Aufgaben" : "Teamboard"}
+        title="Aufgaben"
         description={
           project
             ? "Die Aufgaben dieser Produktion."

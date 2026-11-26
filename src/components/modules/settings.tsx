@@ -54,7 +54,6 @@ export function SettingsModule({ navigate }: { navigate?: (module: string) => vo
   return (
     <>
       <PageHeader
-        eyebrow="DEIN ARBEITSRAUM"
         title="Einstellungen"
         description="Darstellung, Kalenderanbindung und sichere Zugänge."
       />

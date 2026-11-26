@@ -1,0 +1,85 @@
+.card {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  margin-bottom: 18px;
+  padding: 16px 18px;
+  border-radius: var(--radius);
+  background:
+    radial-gradient(120% 160% at 0% 0%, color-mix(in oklab, var(--coral) 12%, transparent), transparent 62%),
+    var(--surface);
+  box-shadow: var(--shadow);
+}
+.icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  color: var(--coral);
+  background: var(--coral-soft);
+}
+.body {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.eyebrow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.mine {
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: var(--accent);
+  background: color-mix(in oklab, var(--accent) 14%, transparent);
+  text-transform: none;
+  letter-spacing: 0;
+}
+.when {
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+.crew {
+  font-size: 14px;
+  color: var(--muted);
+}
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: var(--fill);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.links a:hover {
+  background: var(--fill-strong);
+  text-decoration: none;
+}
+@media (max-width: 760px) {
+  .when {
+    font-size: 17px;
+  }
+  .card {
+    padding: 14px;
+  }
+}

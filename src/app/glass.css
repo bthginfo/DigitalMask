@@ -598,3 +598,106 @@ input[type="checkbox"] {
 .chat-layout .chat-composer textarea:focus {
   box-shadow: none;
 }
+
+/* Phone: "Mehr" opens the navigation as a bottom sheet with grouped, inset lists. */
+@media (max-width: 760px) {
+  .topbar .mobile-menu-button {
+    display: none;
+  }
+  .sidebar {
+    inset: auto 0 0 0;
+    width: 100%;
+    height: min(88dvh, 760px);
+    border: 0;
+    border-radius: 24px 24px 0 0;
+    background: var(--glass-bg-strong);
+    box-shadow: 0 -12px 40px #00000033;
+    transform: translateY(105%);
+    transition: transform 0.42s var(--ease-spring);
+    padding-top: 6px;
+  }
+  .sidebar.mobile-open {
+    transform: translateY(0);
+  }
+  .sidebar::before {
+    content: "";
+    width: 38px;
+    height: 5px;
+    border-radius: 3px;
+    background: var(--fill-strong);
+    margin: 4px auto 0;
+    flex: none;
+  }
+  .sidebar .brand {
+    padding: 10px 20px 8px;
+    font-size: 19px;
+  }
+  .sidebar .brand-symbol {
+    width: 32px;
+    height: 32px;
+  }
+  .sidebar .department-switch {
+    display: none;
+  }
+  .sidebar-backdrop {
+    background: #0000004d;
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+  }
+  .sidebar nav {
+    padding: 0 16px 16px;
+  }
+  .sidebar .nav-group {
+    margin-top: 18px;
+  }
+  .sidebar .nav-group .eyebrow {
+    padding: 0 14px 6px;
+  }
+  .sidebar .nav-group > a,
+  .sidebar .nav-group > .nav-item {
+    margin: 0;
+    border-radius: 0;
+    background: var(--surface);
+    min-height: 50px;
+    font-size: 16px;
+    padding: 12px 14px;
+  }
+  .sidebar .nav-group > .nav-item {
+    position: relative;
+  }
+  .sidebar .nav-group > .nav-item + .nav-item::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 46px;
+    right: 0;
+    border-top: 0.5px solid var(--separator);
+  }
+  .sidebar .nav-group > .nav-item:nth-child(2) {
+    border-top-left-radius: 14px;
+    border-top-right-radius: 14px;
+  }
+  .sidebar .nav-group > .nav-item:last-child {
+    border-bottom-left-radius: 14px;
+    border-bottom-right-radius: 14px;
+  }
+  .sidebar .nav-group > .nav-item.active {
+    background: var(--surface);
+    color: var(--accent);
+  }
+  .sidebar .nav-group > .nav-item.active svg {
+    color: var(--accent);
+  }
+  .sidebar .sidebar-footer {
+    border-top: 0.5px solid var(--separator);
+    padding: 12px 18px calc(12px + env(safe-area-inset-bottom));
+  }
+  .mobile-close {
+    top: 12px;
+  }
+}
+@media (max-width: 760px) and (prefers-reduced-motion: reduce) {
+  .sidebar {
+    transition: none;
+  }
+}

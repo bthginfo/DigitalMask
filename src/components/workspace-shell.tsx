@@ -3,6 +3,9 @@ import { BrandMark } from "./brand-mark";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
   Bell,
+  Contact,
+  Drama,
+  ListChecks,
   ArrowLeft,
   BookOpen,
   CalendarDays,
@@ -11,7 +14,6 @@ import {
   Download,
   Home,
   CircleHelp,
-  Layers3,
   LogOut,
   Menu,
   MessageSquare,
@@ -19,7 +21,6 @@ import {
   Search,
   Settings2,
   Theater,
-  Users,
   WifiOff,
   X,
   type LucideIcon,
@@ -76,21 +77,27 @@ import chatStyles from "@/modules/chat/components/chat-viewport.module.css";
 import { ProfileAccent } from "@/modules/profile/components/accent-picker";
 import { AppInstall } from "@/modules/pwa/components/app-install";
 import { useConfirm } from "@/components/confirm-dialog";
-const nav: { id: string; label: string; icon: LucideIcon; group: string }[] = [
-  { id: "today", label: "Heute", icon: Home, group: "ARBEITSRAUM" },
-  { id: "productions", label: "Produktionen", icon: Theater, group: "ARBEITSRAUM" },
-  { id: "calendar", label: "Kalender", icon: CalendarDays, group: "ARBEITSRAUM" },
-  { id: "tasks", label: "Teamboard", icon: Layers3, group: "ARBEITSRAUM" },
-  { id: "time", label: "Zeit buchen", icon: Clock3, group: "ARBEITSRAUM" },
-  { id: "chat", label: "Kommunikation", icon: MessageSquare, group: "ARBEITSRAUM" },
-  { id: "people", label: "Ansprechpersonen", icon: Users, group: "WISSEN & FUNDUS" },
-  { id: "actors", label: "Schauspielerkatalog", icon: Users, group: "WISSEN & FUNDUS" },
-  { id: "documentation", label: "Aufschriebe", icon: BookOpen, group: "WISSEN & FUNDUS" },
-  { id: "inventory", label: "Fundus & Material", icon: Package, group: "WISSEN & FUNDUS" },
-  { id: "handovers", label: "Dienstübergaben", icon: ClipboardCheck, group: "WISSEN & FUNDUS" },
-  { id: "exports", label: "Exporte", icon: Download, group: "VERWALTUNG" },
-  { id: "help", label: "Hilfe & Feedback", icon: CircleHelp, group: "VERWALTUNG" },
-  { id: "settings", label: "Einstellungen", icon: Settings2, group: "VERWALTUNG" },
+const navGroups = ["Arbeitsraum", "Nachschlagen", "Team", "Konto"] as const;
+const nav: {
+  id: string;
+  label: string;
+  icon: LucideIcon;
+  group: (typeof navGroups)[number];
+}[] = [
+  { id: "today", label: "Heute", icon: Home, group: "Arbeitsraum" },
+  { id: "calendar", label: "Kalender", icon: CalendarDays, group: "Arbeitsraum" },
+  { id: "productions", label: "Stücke", icon: Theater, group: "Arbeitsraum" },
+  { id: "tasks", label: "Aufgaben", icon: ListChecks, group: "Arbeitsraum" },
+  { id: "time", label: "Zeit", icon: Clock3, group: "Arbeitsraum" },
+  { id: "chat", label: "Chat", icon: MessageSquare, group: "Arbeitsraum" },
+  { id: "documentation", label: "Aufschriebe", icon: BookOpen, group: "Nachschlagen" },
+  { id: "actors", label: "Schauspieler", icon: Drama, group: "Nachschlagen" },
+  { id: "people", label: "Ansprechpersonen", icon: Contact, group: "Nachschlagen" },
+  { id: "inventory", label: "Fundus", icon: Package, group: "Nachschlagen" },
+  { id: "handovers", label: "Übergaben", icon: ClipboardCheck, group: "Team" },
+  { id: "exports", label: "Exporte", icon: Download, group: "Team" },
+  { id: "settings", label: "Einstellungen", icon: Settings2, group: "Konto" },
+  { id: "help", label: "Hilfe", icon: CircleHelp, group: "Konto" },
 ];
 export function WorkspaceShell() {
   // Data and stable actions only: busy, notices and sync status render in small children.
@@ -441,7 +448,7 @@ export function WorkspaceShell() {
           <Badge tone="green">Team</Badge>
         </div>
         <nav aria-label="Hauptnavigation">
-          {["ARBEITSRAUM", "WISSEN & FUNDUS", "VERWALTUNG"].map((group) => (
+          {navGroups.map((group) => (
             <div className="nav-group" key={group}>
               <p className="eyebrow">{group}</p>
               {nav

@@ -283,8 +283,7 @@ export function TaskOverview({
     <section className={styles.overview}>
       <PageHeader
         compact
-        eyebrow="GEMEINSAM VORAN"
-        title="Teamboard"
+        title="Aufgaben"
         description={
           mine
             ? "Deine offenen Aufgaben aus allen Stücken und dem Teamboard."
