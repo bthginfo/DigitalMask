@@ -1,6 +1,6 @@
 "use client";
 import { berlinClock, dateFormat } from "@/shared/intl";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   ArrowRight,
   CalendarDays,
@@ -52,27 +52,32 @@ export function TodayModule({ navigate }: { navigate: (module: string) => void }
   const today = localDate(new Date(now));
   const week = weekStart();
   const weekEnd = shiftDate(week, 6);
-  const myTasks = workspace.records.tasks.filter(
-    (x) =>
-      ids(x.data, "assigneeIds").includes(workspace.user.id) &&
-      x.data.status !== "done" &&
-      recordMatchesPeriod(
-        x,
-        initialPeriod(workspace.records.productions),
-        workspace.records.productions,
-      ),
+  const userId = workspace.user.id;
+  const { productions, tasks, events, calendarCategories } = workspace.records;
+  const calendarProductions = calendarProductionRecords(workspace);
+  // Heute re-renders for every workspace update; only recompute when its inputs change.
+  const myTasks = useMemo(() => {
+    const period = initialPeriod(productions);
+    return tasks.filter(
+      (x) =>
+        ids(x.data, "assigneeIds").includes(userId) &&
+        x.data.status !== "done" &&
+        recordMatchesPeriod(x, period, productions),
+    );
+  }, [tasks, productions, userId]);
+  const upcomingEvents = useMemo(
+    () =>
+      expandEvents(
+        events.filter((x) => ids(x.data, "participantIds").includes(userId)),
+        `${today}T00:00:00`,
+        new Date(now + 7 * 86400000).toISOString(),
+        calendarProductions,
+        calendarCategories,
+      )
+        .sort((a, b) => a.start.localeCompare(b.start))
+        .filter((x) => new Date(x.end).getTime() >= now),
+    [events, userId, today, now, calendarProductions, calendarCategories],
   );
-  const upcomingEvents = expandEvents(
-    workspace.records.events.filter((x) =>
-      ids(x.data, "participantIds").includes(workspace.user.id),
-    ),
-    `${today}T00:00:00`,
-    new Date(now + 7 * 86400000).toISOString(),
-    calendarProductionRecords(workspace),
-    workspace.records.calendarCategories,
-  )
-    .sort((a, b) => a.start.localeCompare(b.start))
-    .filter((x) => new Date(x.end).getTime() >= now);
   const myEvents = upcomingEvents.slice(0, 5);
   const performances = upcomingEvents.filter(
     (event) =>
