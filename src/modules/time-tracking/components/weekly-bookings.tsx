@@ -110,7 +110,7 @@ export function BookingList({
         const from = allocations[0]?.date || value(record.data, "date");
         const to = allocations.at(-1)?.date || from;
         return (
-          <li key={record.id} className={styles.bookingRow}>
+          <li key={record.id} className={`${styles.bookingRow} time-booking-row`}>
             <div className={styles.bookingContent}>
               {showDate && (
                 <span className={styles.bookingDate}>
@@ -283,7 +283,7 @@ export function WeeklyHistory({
       {history.length ? (
         <div className={styles.historyWeeks}>
           {history.slice(0, visible).map((week) => (
-            <details key={week.start} className={styles.historyWeek}>
+            <details key={week.start} className={`${styles.historyWeek} time-history-week`}>
               <summary>
                 <span>
                   <strong>

@@ -1,0 +1,81 @@
+/*
+ * Rendering performance only: no colours, spacing or typography live here.
+ * Long lists let the browser skip layout and paint for rows outside the viewport;
+ * `auto` remembers each row's real size once it has been rendered.
+ */
+.chat-message,
+.list > .list-row,
+.editorial-grid > .editorial-card,
+.time-history-week,
+.time-booking-row {
+  content-visibility: auto;
+}
+.chat-message {
+  contain-intrinsic-size: auto 88px;
+}
+.list > .list-row {
+  contain-intrinsic-size: auto 68px;
+}
+.editorial-grid > .editorial-card {
+  contain-intrinsic-size: auto 360px;
+}
+.time-history-week {
+  contain-intrinsic-size: auto 64px;
+}
+.time-booking-row {
+  contain-intrinsic-size: auto 76px;
+}
+/* A focused deep-link target must be measurable immediately for scrollIntoView. */
+.notification-target {
+  content-visibility: visible;
+}
+@media print {
+  .chat-message,
+  .list > .list-row,
+  .editorial-grid > .editorial-card,
+  .time-history-week,
+  .time-booking-row {
+    content-visibility: visible;
+  }
+}
+
+/* Placeholder while a module chunk loads (see components/module-skeleton.tsx). */
+.module-skeleton {
+  display: grid;
+  gap: 24px;
+  padding-block: 8px;
+}
+.module-skeleton-heading,
+.module-skeleton-panel {
+  display: grid;
+  gap: 12px;
+}
+.module-skeleton-line,
+.module-skeleton-row {
+  display: block;
+  border-radius: 8px;
+  background: color-mix(in srgb, currentColor 8%, transparent);
+  animation: module-skeleton-pulse 1.4s ease-in-out infinite;
+}
+.module-skeleton-line.short {
+  width: 9rem;
+  height: 0.7rem;
+}
+.module-skeleton-line.title {
+  width: min(18rem, 70%);
+  height: 2rem;
+}
+.module-skeleton-row {
+  height: 3.25rem;
+}
+@keyframes module-skeleton-pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .module-skeleton-line,
+  .module-skeleton-row {
+    animation: none;
+  }
+}
