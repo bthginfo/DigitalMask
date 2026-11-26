@@ -253,6 +253,8 @@ export const schemas: Record<RecordKind, z.ZodType> = {
     until: z.string().max(10).default(""),
     exceptions: ids,
     leaveId: id,
+    /** Optional plan for this evening; empty means the production's automatic choice. */
+    maskPlanId: id,
   }),
   leave: z.object({
     start: day,

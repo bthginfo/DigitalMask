@@ -10,6 +10,8 @@ import { sortProductionsByPremiere } from "@/shared/production-order";
 import { useWorkspace } from "@/components/workspace-context";
 import { Button, ErrorMessage, Modal } from "@/components/ui";
 import { calendarCategories } from "./client-calendar";
+import { isShowCategory } from "@/modules/calendar/show-events";
+import { automaticMaskPlan, defaultEventMaskPlanId } from "@/modules/mask-plans/evening";
 
 export function EventEditor({
   record,
@@ -49,6 +51,13 @@ export function EventEditor({
   const [production, setProduction] = useState(
     lockedProductionId ?? value(initial, "productionId"),
   );
+  const plansFor = (productionId: string) =>
+    productionId
+      ? workspace.records.maskPlans.filter((plan) => plan.data.productionId === productionId)
+      : [];
+  const [maskPlanId, setMaskPlanId] = useState(
+    () => value(initial, "maskPlanId") || defaultEventMaskPlanId(plansFor(production)),
+  );
   const admin = workspace.user.role !== "user";
   const [people, setPeople] = useState(
     admin ? ids(initial, "participantIds") : [workspace.user.id],
@@ -76,6 +85,10 @@ export function EventEditor({
   );
   const productions = sortProductionsByPremiere(workspace.records.productions);
   const behavior = calendarCategoryBehavior(category, selected);
+  // Performances and rehearsals name the mask plan that applies to them.
+  const plans = plansFor(production);
+  const planChoice = !!production && !allDay && isShowCategory(category, selected);
+  const automaticPlan = automaticMaskPlan(plans);
   return (
     <Modal title={`Termin ${record ? "bearbeiten" : "anlegen"}`} onClose={onClose} wide>
       <form
@@ -117,6 +130,8 @@ export function EventEditor({
                 end: endDate.toISOString(),
                 productionId: production,
                 participantIds: people,
+                maskPlanId:
+                  planChoice && plans.some((plan) => plan.id === maskPlanId) ? maskPlanId : "",
                 location: location.trim(),
                 recurrence,
                 until: recurrence === "none" ? "" : until,
@@ -185,7 +200,10 @@ export function EventEditor({
               aria-label="Produktion"
               disabled={lockedProductionId !== undefined}
               value={production}
-              onChange={(event) => setProduction(event.target.value)}
+              onChange={(event) => {
+                setProduction(event.target.value);
+                setMaskPlanId(defaultEventMaskPlanId(plansFor(event.target.value)));
+              }}
             >
               <option value="">Ohne Produktion</option>
               {productions.map((row) => (
@@ -196,6 +214,28 @@ export function EventEditor({
             </select>
           </label>
         </div>
+        {planChoice &&
+          (plans.length ? (
+            <label>
+              Maskenplan
+              <select
+                aria-label="Maskenplan"
+                value={plans.some((plan) => plan.id === maskPlanId) ? maskPlanId : ""}
+                onChange={(event) => setMaskPlanId(event.target.value)}
+              >
+                <option value="">
+                  {`Automatisch${automaticPlan ? ` · ${value(automaticPlan.data, "title")}` : ""}`}
+                </option>
+                {plans.map((plan) => (
+                  <option key={plan.id} value={plan.id}>
+                    {value(plan.data, "title")}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : (
+            <p className="help-note">Für diese Produktion gibt es noch keinen Maskenplan.</p>
+          ))}
         {behavior.background && (
           <p className="help-note">
             {behavior.background === "service"

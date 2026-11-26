@@ -63,3 +63,30 @@ export async function validateMaskPlanActors(
       "Bitte nimm die Schauspielperson zuerst in die Besetzung dieser Produktion auf oder trage einen freien Namen ein.",
     );
 }
+
+/** An event may name one plan of its own production; a deleted plan falls back to automatic. */
+export async function validateEventMaskPlan(
+  context: Context,
+  data: Record<string, unknown>,
+  tx: Transaction,
+) {
+  const id = typeof data.maskPlanId === "string" ? data.maskPlanId : "";
+  if (!id) return;
+  const [plan] = await tx
+    .select({ productionId: records.productionId })
+    .from(records)
+    .where(
+      and(
+        eq(records.departmentId, context.departmentId),
+        eq(records.kind, "maskPlans"),
+        eq(records.id, id),
+      ),
+    )
+    .limit(1);
+  if (!plan) {
+    data.maskPlanId = "";
+    return;
+  }
+  if (!data.productionId || plan.productionId !== data.productionId)
+    throw new HttpError(400, "Der Maskenplan gehört zu einer anderen Produktion.");
+}

@@ -14,7 +14,11 @@ import { prepareConversation } from "@/modules/chat/conversations";
 import { matchesPhotoReply, photoReplyValue } from "@/modules/chat/photo-reply";
 import { prepareProductionContacts } from "@/modules/people/production-contacts";
 import { maskPlanValue } from "@/modules/mask-plans/model";
-import { maskPlanMemberIdsToValidate, validateMaskPlanActors } from "@/modules/mask-plans/service";
+import {
+  maskPlanMemberIdsToValidate,
+  validateEventMaskPlan,
+  validateMaskPlanActors,
+} from "@/modules/mask-plans/service";
 import { guestMayRead, showEventAllowsGuests } from "@/modules/productions/guest-access";
 import { personNameKey } from "@/shared/person-identity";
 import {
@@ -283,6 +287,7 @@ async function validateRelations(
       throw new HttpError(400, "Das Ende muss nach dem Beginn liegen.");
     if (data.until && String(data.until) < localDay(String(data.start)))
       throw new HttpError(400, "Das Serienende liegt vor dem ersten Termin.");
+    await validateEventMaskPlan(context, data, tx);
     const selected = listValue(data.participantIds);
     if (selected.length) {
       const candidates = await tx
