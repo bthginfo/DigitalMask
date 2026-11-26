@@ -17,7 +17,7 @@ Word-DOCX, Excel-XLSX und CSV sind dieselben gemeinsam bearbeiteten Dateien für
 
 Ein Dokument erbt Leserechte vom übergeordneten Datensatz und dessen Produktion/privatem Chat. Berechtigte Chatteilnehmer dürfen Dateiinhalte gemeinsam bearbeiten, auch wenn jemand anderes die Nachricht hochgeladen hat; die Nachricht selbst und das Löschen der Datei folgen weiter den bestehenden Rechten. Archivierte Chats liefern nur Leserechte.
 
-Cookie-gebundene, signierte Dokumenttickets erlauben nur eine Datei und laufen nach 30 Minuten ab. Ein Redis-Berechtigungsstand wird bei Workspace-Änderungen erneuert; jeder Inhaltszugriff und jedes Update prüft diesen Stand atomar. Nach einer Änderung müssen Clients ihre Session erneut über die Datenbank autorisieren. SSE-Tickets können deshalb auch bei einer später entzogenen Berechtigung keine Inhalte offenlegen.
+Cookie-gebundene, signierte Dokumenttickets erlauben nur eine Datei und laufen nach 30 Minuten ab. Ein Redis-Berechtigungsstand wird bei Änderungen an Produktionen, Chats, Dateien und Mitgliedschaften sowie beim Verschieben eines Datensatzes in eine andere Produktion bzw. einen anderen Chat erneuert; jeder Inhaltszugriff und jedes Update prüft diesen Stand atomar. Nach einer Änderung müssen Clients ihre Session erneut über die Datenbank autorisieren. SSE-Tickets können deshalb auch bei einer später entzogenen Berechtigung keine Inhalte offenlegen.
 
 ## Formate und Grenzen
 
