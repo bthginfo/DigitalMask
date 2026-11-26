@@ -16,6 +16,7 @@ import { subscribeConnectivity } from "@/shared/client-storage";
 import { useRouter } from "next/navigation";
 import { connectLiveSync, type SyncStatus } from "@/shared/live-sync";
 import { syncAppBadge } from "@/modules/notifications/client";
+import { appBadgeCount } from "@/modules/notifications/unread";
 import { safeNotificationLink } from "@/modules/notifications/links";
 import {
   mergeWorkspaceUpdate,
@@ -124,10 +125,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const liveEnabled = Boolean(workspace?.live);
   const departmentId = workspace?.department.id;
   const userId = workspace?.user.id;
-  const unreadCount =
-    workspace?.records.notifications.filter(
-      (notice) => notice.data.userId === userId && !notice.data.read,
-    ).length || 0;
+  const unreadCount = workspace ? appBadgeCount(workspace) : 0;
   useEffect(() => {
     if (userId) void syncAppBadge(userId, unreadCount).catch(() => undefined);
   }, [userId, unreadCount]);

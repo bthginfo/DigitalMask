@@ -144,7 +144,7 @@ export function ChatModule({
       visual?.removeEventListener("scroll", resize);
     };
   }, [online]);
-  const unread = chatUnreadCounts(workspace.records.notifications, workspace.user.id);
+  const unread = chatUnreadCounts(workspace.chatUnread);
   const sidebarId = useId();
   const sidebarKey = `digitalmask:chat-sidebar:${workspace.user.id}`;
   const [collapsed, setCollapsed] = useCollapsedPreference(sidebarKey);

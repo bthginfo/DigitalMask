@@ -9,6 +9,7 @@ import {
   index,
   uniqueIndex,
   foreignKey,
+  primaryKey,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import type { AccentPalette, DomainRecord, RecordData, RecordKind, Role } from "@/shared/contracts";
@@ -206,7 +207,49 @@ export const records = pgTable(
     index("private_chat_messages_idx")
       .on(t.departmentId, sql`(${t.data}->>'conversationId')`, t.updatedAt)
       .where(sql`${t.kind}='messages' and coalesce(${t.data}->>'conversationId','')<>''`),
+    // Retried chat messages return the stored message instead of a duplicate.
+    uniqueIndex("message_idempotency_idx")
+      .on(t.departmentId, t.ownerId, sql`(${t.data}->>'idempotencyKey')`)
+      .where(sql`${t.kind}='messages' and coalesce(${t.data}->>'idempotencyKey','')<>''`),
+    // Chat unread counts scan only messages newer than the oldest read cursor.
+    index("record_message_time_idx")
+      .on(t.departmentId, t.createdAt)
+      .where(sql`${t.kind}='messages'`),
+    // Same predicate as the personal unread-notification query (workspace, push badge).
+    index("record_unread_notice_idx")
+      .on(t.departmentId, t.ownerId, t.createdAt)
+      .where(sql`${t.kind}='notifications' and coalesce(${t.data}->>'read','false')<>'true'`),
+    // Shared-blob reference checks and attachment lookups of a parent record.
+    index("record_file_path_idx")
+      .on(t.departmentId, sql`(${t.data}->>'path')`)
+      .where(sql`${t.kind}='files'`),
+    index("record_file_parent_idx")
+      .on(t.departmentId, sql`(${t.data}->>'recordId')`)
+      .where(sql`${t.kind}='files'`),
+    // Conflict checks load only events near the affected dates plus repeating series.
+    index("record_event_end_idx")
+      .on(t.departmentId, t.endAt)
+      .where(sql`${t.kind}='events'`),
+    index("record_event_series_idx")
+      .on(t.departmentId, t.startAt)
+      .where(sql`${t.kind}='events' and ${t.data}->>'recurrence' in ('daily','weekly')`),
   ],
+);
+/** Per-channel chat read cursors. channel_key: conversation:<id> | production:<id> | general. */
+export const chatReads = pgTable(
+  "chat_reads",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    departmentId: text("department_id")
+      .notNull()
+      .references(() => departments.id),
+    channelKey: text("channel_key").notNull(),
+    lastReadAt: timestamp("last_read_at", { withTimezone: true }).notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.departmentId, t.userId, t.channelKey] })],
 );
 export const timers = pgTable("timers", {
   id: text("id").primaryKey(),

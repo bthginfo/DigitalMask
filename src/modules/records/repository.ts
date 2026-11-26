@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { db, type Transaction } from "@/platform/db";
 import { records } from "@/platform/db/schema";
 import type { Context } from "@/platform/context";
@@ -54,3 +54,5 @@ export async function assertProject(
     throw new HttpError(403, "Du hast keinen Zugriff auf diese Produktion.");
   return production;
 }
+/** Literal kind and read expression, so the partial `record_unread_notice_idx` applies. */
+export const unreadNoticeCondition = sql`${records.kind} = 'notifications' and coalesce(${records.data}->>'read','false') <> 'true'`;

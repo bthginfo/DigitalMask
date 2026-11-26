@@ -3,13 +3,13 @@ import { isPushEndpoint, subscriptionSchema } from "../src/modules/notifications
 import { pushPayload } from "../src/modules/notifications/payload";
 import { notificationHref, safeNotificationLink } from "../src/modules/notifications/links";
 import { chatUnreadCounts } from "../src/modules/notifications/unread";
-import type { DomainRecord } from "../src/shared/contracts";
 
 const mocks = vi.hoisted(() => ({
   select: vi.fn(),
   remove: vi.fn(),
   invalidate: vi.fn(),
   send: vi.fn(),
+  execute: vi.fn(async (): Promise<unknown[]> => []),
 }));
 vi.mock("next/cache", () => ({
   unstable_cache: (fn: () => unknown) => fn,
@@ -17,9 +17,17 @@ vi.mock("next/cache", () => ({
 }));
 vi.mock("web-push", () => ({ default: { sendNotification: mocks.send } }));
 vi.mock("../src/platform/db", () => ({
-  db: { select: mocks.select, delete: () => ({ where: mocks.remove }) },
+  db: {
+    select: mocks.select,
+    delete: () => ({ where: mocks.remove }),
+    execute: () => mocks.execute(),
+  },
 }));
-import { deliverNotifications, subscriptionId } from "../src/modules/notifications/service";
+import {
+  deliverChatPush,
+  deliverNotifications,
+  subscriptionId,
+} from "../src/modules/notifications/service";
 const endpoint = "https://fcm.googleapis.com/fcm/send/fixture";
 const notice = (id: string, userId: string, data = {}) => ({
   id,
@@ -47,26 +55,21 @@ describe("push consent, boundaries and private payloads", () => {
     mocks.send.mockResolvedValue({ statusCode: 201 });
     mocks.remove.mockResolvedValue([]);
   });
-  it("routes chat bubbles per channel and excludes read, other-user and non-chat notices", () => {
-    const row = (data: object) => ({ data }) as DomainRecord;
-    const counts = chatUnreadCounts(
-      [
-        row({ type: "ChatMessageCreatedV1", userId: "person", conversationId: "private" }),
-        row({ title: "Neue private Nachricht", userId: "person", conversationId: "private" }),
-        row({ type: "ChatMessageCreatedV1", userId: "person", productionId: "play" }),
-        row({ type: "ChatMessageCreatedV1", userId: "person" }),
-        row({ type: "ChatMessageCreatedV1", userId: "person", read: true }),
-        row({ type: "ChatMessageCreatedV1", userId: "other" }),
-        row({ type: "TaskAssignedV1", userId: "person" }),
-      ],
-      "person",
-    );
+  it("routes chat bubbles per channel from the personal unread counters", () => {
+    const counts = chatUnreadCounts({
+      "conversation:private": 2,
+      "production:play": 1,
+      general: 1,
+      "production:empty": 0,
+      unknown: 5,
+    });
     expect(counts).toEqual({
       total: 4,
       general: 1,
       conversations: { private: 2 },
       productions: { play: 1 },
     });
+    expect(chatUnreadCounts(undefined).total).toBe(0);
   });
   it("only accepts encrypted subscriptions at known HTTPS browser push services", () => {
     for (const url of [
@@ -239,5 +242,52 @@ describe("push consent, boundaries and private payloads", () => {
     await expect(deliverNotifications("maske", "TaskAssignedV1", ["new"])).rejects.toThrow(
       "retried",
     );
+  });
+  it("pushes a chat message without a notice row and counts unread chats in the badge", async () => {
+    const device = {
+      id: "device",
+      userId: "person",
+      departmentId: "maske",
+      endpoint,
+      keys: {},
+      updatedAt: new Date(),
+      createdAt: new Date(),
+    };
+    selects(
+      [device, { ...device, id: "other-device", userId: "offline-person" }],
+      [
+        {
+          notice: notice("task", "person", { type: "TaskAssignedV1" }),
+          role: "user",
+          status: "active",
+        },
+      ],
+      [{ id: "mine", kind: "conversations", data: { mode: "direct", participantIds: ["person"] } }],
+    );
+    mocks.execute.mockResolvedValueOnce([
+      { user_id: "person", channel_key: "conversation:mine", unread: 2 },
+      { user_id: "person", channel_key: "conversation:foreign", unread: 5 },
+    ]);
+    await deliverChatPush("maske", "event", ["person", "no-device"], {
+      conversationId: "mine",
+      recordId: "message",
+      body: "Private message",
+      link: "/?module=chat&conversationId=mine",
+    });
+    expect(mocks.send).toHaveBeenCalledTimes(1);
+    const payload = JSON.parse(mocks.send.mock.calls[0][1]);
+    expect(payload).toMatchObject({
+      userId: "person",
+      tag: "notice:event:person",
+      unreadCount: 3,
+      url: "/?module=chat&conversationId=mine&messageId=message",
+    });
+    expect(JSON.stringify(payload)).not.toContain("Private");
+  });
+  it("sends no chat push without registered devices", async () => {
+    selects([]);
+    await deliverChatPush("maske", "event", ["person"], {});
+    expect(mocks.execute).not.toHaveBeenCalled();
+    expect(mocks.send).not.toHaveBeenCalled();
   });
 });

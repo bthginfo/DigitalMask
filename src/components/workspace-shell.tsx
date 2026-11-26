@@ -245,7 +245,7 @@ export function WorkspaceShell() {
           a.id.localeCompare(b.id),
       )
     : [];
-  const chatUnread = chatUnreadCounts(workspace.records.notifications, workspace.user.id).total;
+  const chatUnread = chatUnreadCounts(workspace.chatUnread).total;
   const linkedRecord = recordId
     ? Object.values(workspace.records)
         .flat()

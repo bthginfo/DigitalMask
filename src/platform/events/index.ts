@@ -1,16 +1,26 @@
 import { after } from "next/server";
-import { and, eq, lte, sql, or, ne, inArray } from "drizzle-orm";
+import { and, eq, lte, sql, or } from "drizzle-orm";
 import { db, type Transaction } from "@/platform/db";
-import { outbox, records, audit, memberships } from "@/platform/db/schema";
+import { outbox, records, audit } from "@/platform/db/schema";
 import type { Context } from "@/platform/context";
-import { invalidateWorkspace, invalidateNotifications } from "@/modules/records/workspace";
+import { invalidateNotifications } from "@/modules/records/workspace";
 import type { RecordData } from "@/shared/contracts";
-import { listValue } from "@/shared/contracts";
-import { deliverNotifications } from "@/modules/notifications/service";
+import { deliverChatPush, deliverNotifications } from "@/modules/notifications/service";
+import {
+  chatEventType,
+  insertNotice,
+  noticeEventTypes,
+  noticeTargets,
+  upsertDutyNotice,
+} from "./notices";
 import { enqueueGoogleCalendarWork } from "@/modules/google-calendar/queue";
+/** Who caused an event: a signed-in context, or e.g. a new registration without one. */
+export type EventActor = Pick<Context, "departmentId" | "organizationId"> & {
+  user: Pick<Context["user"], "id">;
+};
 export async function emit(
-  tx: Transaction,
-  context: Context,
+  tx: Transaction | typeof db,
+  context: EventActor,
   type: string,
   payload: RecordData,
   options: { availableAt?: Date } = {},
@@ -69,7 +79,6 @@ export async function drainEvents(deadline = Date.now() + 220000) {
   return { processed };
 }
 export async function processEvents(deadline = Date.now() + 170000) {
-  const changedDepartments = new Set<string>();
   const noticeRecipients = new Map<string, Set<string>>();
   const calendarBatches = new Map<
     string,
@@ -131,17 +140,15 @@ export async function processEvents(deadline = Date.now() + 170000) {
         await db.update(outbox).set({ status: "done" }).where(eq(outbox.id, event.id));
         continue;
       }
-      if (event.type === "RecordDeletionFinalizedV1") {
-        const { finalizeRecordDeletion } = await import("@/modules/files/legacy-deletion-cleanup");
-        await finalizeRecordDeletion(event.departmentId, event.payload);
-      }
       if (event.type === "FileDeletionRequestedV1") {
+        // Copied productions share blob paths: delete the blob only when no file row remains.
         const [reference] = await db
           .select({ id: records.id })
           .from(records)
           .where(
             and(
-              eq(records.kind, "files"),
+              eq(records.departmentId, event.departmentId),
+              sql`${records.kind} = 'files'`,
               sql`${records.data}->>'path'=${String(event.payload.path)}`,
             ),
           )
@@ -159,136 +166,29 @@ export async function processEvents(deadline = Date.now() + 170000) {
           }
         }
       }
-      await db.transaction(async (tx) => {
-        if (
-          event.type === "TaskAssignedV1" ||
-          event.type === "LeaveRequestDecidedV1" ||
-          event.type === "ServiceChangedV1" ||
-          event.type === "ShiftSwapChangedV1" ||
-          event.type === "LookPublishedV1" ||
-          event.type === "ChatMessageCreatedV1"
-        ) {
-          let targets = Array.isArray(event.payload.userIds)
-            ? event.payload.userIds.filter((x): x is string => typeof x === "string")
-            : [];
-          let targetsChecked = false;
-          if (event.type === "ChatMessageCreatedV1") {
-            const [conversation] = event.payload.conversationId
-              ? await tx
-                  .select({ data: records.data })
-                  .from(records)
-                  .where(
-                    and(
-                      eq(records.departmentId, event.departmentId),
-                      eq(records.id, String(event.payload.conversationId)),
-                      eq(records.kind, "conversations"),
-                    ),
-                  )
-                  .limit(1)
-              : [];
-            const participants = Array.isArray(conversation?.data.participantIds)
-              ? conversation.data.participantIds
-              : [];
-            if (
-              conversation?.data.mode === "team" ||
-              (!event.payload.conversationId && event.payload.audience === "team")
-            ) {
-              const activeTeam = await tx
-                .select({ id: memberships.userId, role: memberships.role })
-                .from(memberships)
-                .where(
-                  and(
-                    eq(memberships.departmentId, event.departmentId),
-                    eq(memberships.status, "active"),
-                    ne(memberships.role, "superadmin"),
-                  ),
-                );
-              targets = activeTeam.map((member) => member.id);
-              targetsChecked = true;
-              if (event.payload.productionId) {
-                const [production] = await tx
-                  .select({ data: records.data })
-                  .from(records)
-                  .where(
-                    and(
-                      eq(records.departmentId, event.departmentId),
-                      eq(records.id, String(event.payload.productionId)),
-                      eq(records.kind, "productions"),
-                    ),
-                  )
-                  .limit(1);
-                const permitted = listValue(production?.data.memberIds);
-                targets = production
-                  ? activeTeam
-                      .filter(
-                        (member) =>
-                          member.role !== "user" ||
-                          !permitted.length ||
-                          permitted.includes(member.id),
-                      )
-                      .map((member) => member.id)
-                  : [];
-              }
-            } else {
-              targets = targets.filter((id) => participants.includes(id));
-            }
-          }
-          if (targets.length && !targetsChecked) {
-            const active = await tx
-              .select({ id: memberships.userId })
-              .from(memberships)
-              .where(
-                and(
-                  eq(memberships.departmentId, event.departmentId),
-                  eq(memberships.status, "active"),
-                  inArray(memberships.userId, targets),
-                ),
-              );
-            targets = [...new Set(active.map((member) => member.id))];
-          }
+      const chatRecipients: string[] = [];
+      if (noticeEventTypes.has(event.type) || event.type === chatEventType)
+        await db.transaction(async (tx) => {
+          const targets = (await noticeTargets(tx, event))
+            .filter((uid) => uid !== event.payload.actorId)
+            .sort();
           for (const uid of targets) {
-            if (uid === event.payload.actorId) continue;
-            const noticeId = `notice:${event.id}:${uid}`;
-            noticeIds.push(noticeId);
+            if (event.type === chatEventType) {
+              chatRecipients.push(uid);
+              continue;
+            }
             if (!noticeRecipients.has(event.departmentId))
               noticeRecipients.set(event.departmentId, new Set());
             noticeRecipients.get(event.departmentId)!.add(uid);
-            await tx
-              .insert(records)
-              .values({
-                id: noticeId,
-                kind: "notifications",
-                organizationId: String(event.payload.organizationId),
-                departmentId: event.departmentId,
-                createdBy: String(event.payload.actorId),
-                ownerId: uid,
-                productionId:
-                  typeof event.payload.productionId === "string" && event.payload.productionId
-                    ? event.payload.productionId
-                    : null,
-                data: {
-                  type: event.type,
-                  recordId: event.payload.recordId || "",
-                  ...(event.payload.conversationId
-                    ? { conversationId: event.payload.conversationId }
-                    : {}),
-                  productionId:
-                    typeof event.payload.productionId === "string"
-                      ? event.payload.productionId
-                      : "",
-                  title: String(event.payload.title || "Neue Information"),
-                  body: String(event.payload.body || ""),
-                  userId: uid,
-                  read: false,
-                  link: String(event.payload.link || ""),
-                },
-              })
-              .onConflictDoNothing();
+            if (event.type === "ServiceChangedV1") {
+              const pushed = await upsertDutyNotice(tx, event, uid);
+              if (pushed) noticeIds.push(pushed);
+            } else noticeIds.push(await insertNotice(tx, event, uid));
           }
-        }
-      });
-      if (event.type === "RecordDeletionFinalizedV1") changedDepartments.add(event.departmentId);
-      await deliverNotifications(event.departmentId, event.type, noticeIds);
+        });
+      if (event.type === chatEventType)
+        await deliverChatPush(event.departmentId, event.id, chatRecipients, event.payload);
+      else await deliverNotifications(event.departmentId, event.type, noticeIds);
       await db.update(outbox).set({ status: "done" }).where(eq(outbox.id, event.id));
     } catch (error) {
       if (event.type === "GoogleCalendarSyncRequestedV1") {
@@ -326,8 +226,6 @@ export async function processEvents(deadline = Date.now() + 170000) {
     }
   }
   // Background work: no browser tab wrote these changes, so no echo origin.
-  for (const departmentId of changedDepartments)
-    invalidateWorkspace(departmentId, true, undefined, { origin: null });
   for (const [departmentId, userIds] of noticeRecipients)
     invalidateNotifications(departmentId, [...userIds], { origin: null });
   return { processed: due.length, continuation: calendarContinuations.size > 0, nextGoogleAt };
