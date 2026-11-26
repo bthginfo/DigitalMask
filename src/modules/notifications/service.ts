@@ -110,7 +110,7 @@ export async function unsubscribeDevice(context: Context, endpoint: string) {
     );
   invalidateDevices(context.departmentId);
 }
-async function send(
+export async function send(
   device: Awaited<ReturnType<typeof departmentDevices>>[number],
   payload: ReturnType<typeof pushPayload>,
 ) {

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { drainEvents } from "@/platform/events";
 import { checkpointDirtyDocuments } from "@/modules/documents/service";
+import { remindLongRunningTimers } from "@/modules/time-tracking/timer-reminders";
 export const maxDuration = 300;
 export async function GET(request: Request) {
   if (
@@ -10,5 +11,6 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Keine Berechtigung." }, { status: 401 });
   const events = await drainEvents();
   const documents = await checkpointDirtyDocuments();
-  return NextResponse.json({ ...events, documents });
+  const timerReminders = await remindLongRunningTimers();
+  return NextResponse.json({ ...events, documents, timerReminders });
 }
