@@ -90,6 +90,7 @@ export function TaskViewSwitch({
   return (
     <div
       className={`segmented task-view-switch ${styles.switch}`}
+      data-whats-new="my-tasks"
       role="group"
       aria-label="Aufgaben anzeigen"
     >
