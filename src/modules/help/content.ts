@@ -43,7 +43,7 @@ export const helpArticles: HelpArticle[] = [
       "Auf den Produktionskarten siehst du bereits die Maskenbetreuung. Standardmäßig stehen die frühesten Premieren zuerst, auch wenn sie schon stattgefunden haben. Stücke ohne Premierendatum stehen am Ende. Über Sortieren nach wechselst du zu Namen oder zuletzt geänderten Stücken.",
     steps: [
       "In der Produktionsübersicht sehen alle Teammitglieder sämtliche Stücke, auch ohne Zuordnung zum Produktionsteam. Du kannst ihre Produktionsinfos, Premiere und Maskenbetreuung öffnen. Weitere Produktionsbereiche und die Bearbeitung stehen dem jeweiligen Produktionsteam sowie Admins zur Verfügung.",
-      "Die Übersicht startet mit der aktuellen Spielzeit von August bis Juli. Über Spielzeit kannst du ältere Stücke oder Alle Spielzeiten anzeigen. Neue Produktionen übernehmen die gewählte Spielzeit als Vorschlag; du kannst sie beim Anlegen ändern.",
+      "Die Übersicht startet mit der aktuellen Spielzeit von August bis Juli. Dazu gehören auch Stücke, die aus früheren Spielzeiten weiterlaufen. Über Spielzeit kannst du ältere Stücke oder Alle Spielzeiten anzeigen. Neue Produktionen übernehmen die gewählte Spielzeit als Vorschlag. Unter Spielt in Spielzeiten kannst du weitere Spielzeiten ergänzen oder entfernen; das Stück erscheint dann in jeder davon.",
       "Am Smartphone öffnest du Jahr und Spielzeit über Zeitraum auswählen. Die aktuelle Auswahl bleibt als kurze Zusammenfassung sichtbar. Zusätzliche Aktionen wie Import und Export findest du unter Mehr.",
       "Öffne Produktionen und wähle ein Stück. Alle freigegebenen Teammitglieder können Produktionen anlegen und zugängliche Produktionen bearbeiten, archivieren oder löschen. Wenn du ein Produktionsteam auswählst, bleibst du als Ersteller automatisch dabei.",
       "Im Stück wechselst du am Smartphone über Produktionsbereich zwischen Überblick, Besetzung, Maskenplan, Aufgaben und den übrigen Bereichen. Am Desktop bleiben die Reiter verfügbar.",
@@ -54,7 +54,8 @@ export const helpArticles: HelpArticle[] = [
       "Wenn eine bisher frei eingetragene Maskenperson einen Account erhält und ein Admin ihn freigibt, werden eindeutige Zuordnungen automatisch auf das Teamkonto umgestellt. Das klappt auch mit einem abgekürzten Nachnamen, etwa Julia G., wenn nur eine Person dazu passt.",
       "Weitere Teammitglieder lassen sich getrennt hinzufügen. Um eine Maskenbetreuung vollständig aus dem Team zu entfernen, zuerst ihre Betreuungsauswahl aufheben oder den Kontakt auf einen freien Namen umstellen, danach die Person aus dem Team nehmen.",
       "Unter Maskenplan plant ihr je Stück, wer vor der Vorstellung wann in die Maske kommt. Eine Produktion darf mehrere Pläne haben, etwa für AMA, Proben und Premiere.",
-      "Bei einer Wiederaufnahme könnt ihr die Produktion kopieren. Prüft anschließend Termine, Aufgaben und fachliche Angaben für die neue Spielzeit.",
+      "Läuft ein Stück in der neuen Spielzeit weiter, öffne Produktion verwalten und wähle Zur aktuellen Spielzeit hinzufügen. Aufschriebe, Besetzung, Aufgaben und Maskenpläne bleiben dieselben. Archiviere ein Stück erst, wenn es nicht mehr gespielt wird.",
+      "Als neue Produktion kopieren ist für eine Neuinszenierung gedacht. Die Kopie startet in der aktuellen Spielzeit. Ihre Aufschriebe und Maskenpläne werden danach getrennt vom Original gepflegt.",
     ],
   },
   {
@@ -344,7 +345,7 @@ export const helpArticles: HelpArticle[] = [
     steps: [
       "Beim ersten Öffnen starten Kalender und Zeitnachweise mit der aktuellen Spielzeit von August bis Juli. Wenn du zwischendurch in einen anderen Bereich wechselst und zurückkommst, bleibt deine Auswahl erhalten. Mit Alle Spielzeiten oder Zeitraum zurücksetzen kannst du weitere Zeiträume sehen.",
       "Wähle Jahr und Spielzeit in der jeweiligen Übersicht. Im Sammelordner kannst du zusätzlich eine Produktion oder allgemeine Aufschriebe auswählen; archivierte Produktionen bleiben auffindbar.",
-      "Bei Produktionsdokumenten zählt die Spielzeit beziehungsweise das Premierenjahr des Stücks. Bei allgemeinen Aufschrieben zählt das Erstellungsjahr. Zeitbuchungen und Anwesenheit richten sich nach dem tatsächlich gebuchten Tag.",
+      "Bei Produktionsdokumenten zählen die Spielzeiten des Stücks; ein Stück im Repertoire erscheint in jeder davon. Beim Jahr zählt das Premierenjahr. Bei allgemeinen Aufschrieben zählt das Erstellungsjahr. Zeitbuchungen und Anwesenheit richten sich nach dem tatsächlich gebuchten Tag.",
       "Öffne Exportieren aus der gefilterten Übersicht. Produktion, Jahr und Spielzeit werden übernommen. Prüfe bei Zeit- und Kalenderexporten zusätzlich den Zeitraum, damit er zur gewählten Auswahl passt.",
     ],
   },
@@ -406,7 +407,7 @@ export const helpFaq = [
   ],
   [
     "Wo kommen allgemeine Aufgaben hin?",
-    "Ins Teamboard der aktuellen Spielzeit. Frühere Aufgaben findest du über Spielzeit oder Alle Spielzeiten. Aufgaben zu einem Stück werden direkt unter dessen Aufgaben & Sprints angelegt und bleiben in seiner Spielzeit sichtbar.",
+    "Ins Teamboard der aktuellen Spielzeit. Frühere Aufgaben findest du über Spielzeit oder Alle Spielzeiten. Aufgaben zu einem Stück werden direkt unter dessen Aufgaben & Sprints angelegt und bleiben in allen Spielzeiten des Stücks sichtbar. Auf Heute siehst du deine offenen Aufgaben immer, unabhängig von der Spielzeit.",
   ],
   [
     "Wo finde ich das Ensemble und die Aufgaben aus früheren Spielzeiten?",
