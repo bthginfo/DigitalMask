@@ -1,0 +1,246 @@
+.week {
+  margin: 0 0 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--separator);
+}
+.total {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+}
+.total strong {
+  font-size: 24px;
+  letter-spacing: -0.5px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.total small {
+  font-size: 12px;
+  color: var(--muted);
+}
+.days {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.day + .day {
+  border-top: 1px solid var(--separator);
+}
+.summary {
+  display: grid;
+  grid-template-columns: minmax(96px, auto) minmax(0, 1fr) auto 18px;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 8px 16px;
+  list-style: none;
+}
+details > .summary {
+  cursor: pointer;
+}
+.summary::-webkit-details-marker {
+  display: none;
+}
+.summary:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+.date {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.date strong {
+  font-size: 15px;
+}
+.date span {
+  font-size: 13px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.day[data-today] .date strong {
+  color: var(--accent);
+}
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  min-width: 0;
+}
+.tag {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--fill);
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.count {
+  font-size: 13px;
+  color: var(--muted);
+}
+.hours {
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.empty .hours,
+.empty .date strong {
+  color: var(--muted);
+  font-weight: 500;
+}
+.chevron {
+  color: var(--muted);
+  transition: transform 0.2s var(--ease-out);
+}
+details[open] > .summary .chevron {
+  transform: rotate(180deg);
+}
+details[open] > .summary {
+  background: var(--surface-soft);
+}
+.body {
+  border-top: 1px solid var(--separator);
+}
+.markers {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  padding: 10px 16px;
+}
+.markers + ul {
+  border-top: 1px solid var(--separator);
+}
+.marker {
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.marker:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.credit {
+  margin-inline-start: auto;
+  color: var(--accent);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.secondary {
+  display: grid;
+  border-top: 1px solid var(--separator);
+}
+.secondary > :not(:first-child) {
+  border-top: 1px solid var(--separator);
+}
+/* Calendar suggestions sit in the week as a plain secondary row. */
+.secondary > details {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.secondary > details > summary,
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 10px 16px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+.secondary > details > summary > svg,
+.row > svg {
+  flex: none;
+  color: var(--accent);
+}
+.row > span {
+  display: grid;
+  gap: 2px;
+}
+.row strong {
+  font-size: 14px;
+}
+.row small {
+  font-size: 12px;
+  color: var(--muted);
+}
+.row:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+.secondary > details[open] > summary {
+  border-bottom: 1px solid var(--separator);
+}
+@media (max-width: 760px) {
+  .head {
+    padding: 12px;
+  }
+  .total {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    width: 100%;
+  }
+  .total strong {
+    font-size: 22px;
+  }
+  .summary {
+    grid-template-columns: minmax(88px, auto) minmax(0, 1fr) auto 18px;
+    gap: 8px;
+    padding: 8px 12px;
+    min-height: 52px;
+  }
+  .markers {
+    padding: 10px 12px;
+  }
+  .secondary > details > summary,
+  .row {
+    padding: 10px 12px;
+  }
+}
+.none {
+  margin: 0;
+  padding: 16px;
+  color: var(--muted);
+  font-size: 14px;
+}
+.productionTimer {
+  margin: 0 0 16px;
+}
+@media (min-width: 761px) {
+  .productionTimer {
+    max-width: 650px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chevron {
+    transition: none;
+  }
+}

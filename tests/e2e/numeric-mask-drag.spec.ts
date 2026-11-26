@@ -147,16 +147,19 @@ test("stock, optional zero, category, template, year and booked minutes retain e
   expect(fixture.writes[2].data.version).toBe(3);
   await page.goto("/?module=time");
   await page.getByRole("button", { name: "Produktionsstunden", exact: true }).click();
-  await page.getByRole("button", { name: "Zeit nachtragen", exact: true }).click();
-  await page.getByRole("dialog").getByLabel("Tätigkeit", { exact: true }).fill("Pinsel einrichten");
-  await page.getByLabel("Dauer in Minuten").fill("");
-  await page.getByLabel("Pause in Minuten").fill("");
-  await expect(page.getByLabel("Dauer in Minuten")).toHaveValue("");
-  await expect(page.getByLabel("Pause in Minuten")).toHaveValue("");
+  await page.getByRole("button", { name: "Nachtragen", exact: true }).click();
+  await page
+    .getByRole("dialog")
+    .getByLabel("Tätigkeit (optional)", { exact: true })
+    .fill("Pinsel einrichten");
+  await page.getByLabel("Dauer", { exact: true }).fill("");
+  await page.getByLabel("Pause", { exact: true }).fill("");
+  await expect(page.getByLabel("Dauer", { exact: true })).toHaveValue("");
+  await expect(page.getByLabel("Pause", { exact: true })).toHaveValue("");
   await page.getByRole("dialog").getByRole("button", { name: "Speichern", exact: true }).click();
   expect(fixture.writes).toHaveLength(3);
-  await page.getByLabel("Dauer in Minuten").fill("75");
-  await page.getByLabel("Pause in Minuten").fill("10");
+  await page.getByLabel("Dauer", { exact: true }).fill("75");
+  await page.getByLabel("Pause", { exact: true }).fill("10");
   expect(fixture.writes).toHaveLength(3);
   await capture(page, "number-form-desktop-light");
   await page.getByRole("dialog").getByRole("button", { name: "Speichern", exact: true }).click();

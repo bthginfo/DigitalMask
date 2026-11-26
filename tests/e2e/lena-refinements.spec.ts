@@ -170,7 +170,8 @@ for (const width of [1440, 768, 375]) {
       await page.screenshot({ path: testInfo.outputPath("calendar.png"), fullPage: true });
       if (mobile) await page.locator(".calendar-filter-toggle").click();
       await page.goto("/?module=time");
-      await expect(page.getByLabel("Spielzeit", { exact: true })).toHaveValue("2026/27");
+      // Week navigation replaces the season filter on the Zeit screen; exports keep the season.
+      await expect(page.getByLabel("Spielzeit", { exact: true })).toHaveCount(0);
       await expect(page.getByRole("button", { name: "Offlineentwurf", exact: true })).toHaveCount(
         0,
       );
@@ -178,7 +179,7 @@ for (const width of [1440, 768, 375]) {
         page.getByRole("button", { name: "Ohne Internet vormerken", exact: true }),
       ).toHaveCount(0);
       await page.getByRole("button", { name: "Produktionsstunden", exact: true }).click();
-      await expect(page.getByLabel("Spielzeit", { exact: true })).toHaveValue("2026/27");
+      await expect(page.getByLabel("Spielzeit", { exact: true })).toHaveCount(0);
       await page.goto("/?module=chat");
       await page.getByRole("button", { name: "Teamkanal", exact: true }).click();
       const editor = page.getByRole("dialog", { name: "Teamkanal anlegen" });

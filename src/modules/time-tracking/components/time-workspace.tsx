@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useMemo, useState } from "react";
 import { Clock3, DoorOpen } from "lucide-react";
 import type { DomainRecord } from "@/shared/contracts";
@@ -9,6 +9,7 @@ import { WorkTimeModule } from "@/components/modules/time";
 import { AttendanceModule } from "./attendance-module";
 import { TimerPanel } from "./work-timer";
 import { TimeBookingEditor } from "./time-booking-editor";
+import { LongTimerWarning } from "./timer-stop";
 import styles from "./time-workspace.module.css";
 import { useViewState } from "@/shared/view-state";
 
@@ -34,6 +35,7 @@ export function TimeWorkspace() {
   return (
     <div className={styles.workspace}>
       <PageHeader title="Zeit buchen" compact />
+      {selfBooking && <LongTimerWarning onBooked={setBooked} />}
       <div className={styles.choices} role="group" aria-label="Zeitnachweise">
         {(["attendance", "work"] as const).map((key) => {
           const attendance = key === "attendance";
@@ -64,7 +66,7 @@ export function TimeWorkspace() {
       </div>
       <div hidden={tab !== "attendance"}>
         {selfBooking && <TimerPanel kind="attendance" onBooked={setBooked} />}
-        <AttendanceModule embedded />
+        <AttendanceModule />
       </div>
       <div hidden={tab !== "work"}>
         {selfBooking && <TimerPanel onBooked={setBooked} />}

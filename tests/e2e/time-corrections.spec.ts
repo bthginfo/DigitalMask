@@ -134,9 +134,9 @@ test("all roles correct booked work and attendance directly without weekly appro
     await page.getByLabel("Ende", { exact: true }).fill("2026-09-30T17:00");
     await page.getByLabel("Beginn", { exact: true }).fill("2026-09-28T09:00");
     await expect(page.getByLabel("Ende", { exact: true })).toHaveValue("2026-09-30T17:00");
-    await page.getByLabel("Dauer", { exact: true }).check();
+    await page.getByLabel("Nur Dauer", { exact: true }).check();
     await page.getByLabel("Datum", { exact: true }).fill("2026-09-30");
-    await page.getByLabel("Dauer in Minuten").fill("75");
+    await page.getByLabel("Dauer", { exact: true }).fill("1:15");
     await page.getByRole("button", { name: "Speichern", exact: true }).click();
     await expect(page.getByRole("dialog")).toHaveCount(0);
     let current = await workspace();
@@ -150,7 +150,7 @@ test("all roles correct booked work and attendance directly without weekly appro
     await page.getByLabel("Beginn", { exact: true }).fill("2026-09-29T09:00");
     await expect(page.getByLabel("Ende", { exact: true })).toHaveValue("2026-09-29T17:00");
     await page.getByLabel("Beginn", { exact: true }).fill("2026-09-30T09:00");
-    await page.getByLabel("Pause in Minuten").fill("45");
+    await page.getByLabel("Pause", { exact: true }).fill("45");
     await page.getByRole("button", { name: "Speichern", exact: true }).click();
     await expect(page.getByRole("dialog")).toHaveCount(0);
     current = await workspace();

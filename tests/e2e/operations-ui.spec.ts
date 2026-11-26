@@ -139,7 +139,7 @@ async function noOverflow(page: Page) {
 for (const mobile of [false, true])
   test.describe(mobile ? "mobile" : "desktop", () => {
     test.use({ viewport: mobile ? { width: 390, height: 844 } : { width: 1440, height: 1000 } });
-    test("parallel timers remain independent; stop creates editable attendance", async ({
+    test("stopping attendance asks about running production; stop creates editable attendance", async ({
       page,
     }) => {
       const state = await mock(page);
@@ -153,8 +153,10 @@ for (const mobile of [false, true])
         .getByRole("button", { name: mobile ? "Starten" : "Anwesenheit starten" })
         .click();
       await workChoice.click();
-      if (mobile) await work.getByRole("button", { name: "Tätigkeit & Zuordnung" }).click();
-      await work.getByLabel("Tätigkeit", { exact: true }).fill("Perücke vorbereiten");
+      if (mobile)
+        await work.getByRole("button", { name: "Produktion & Tätigkeitsbereich" }).click();
+      await work.getByRole("button", { name: /Tätigkeit beschreiben/ }).click();
+      await work.getByLabel("Tätigkeit (optional)", { exact: true }).fill("Perücke vorbereiten");
       await work
         .getByRole("button", { name: mobile ? "Starten" : "Produktionstimer starten" })
         .click();
@@ -167,6 +169,8 @@ for (const mobile of [false, true])
       await attendance
         .getByRole("button", { name: mobile ? "Stoppen" : "Stoppen & buchen", exact: true })
         .click();
+      const prompt = page.getByRole("dialog", { name: "Produktionszeit auch beenden?" });
+      await prompt.getByRole("button", { name: "Nur Anwesenheit", exact: true }).click();
       const editor = page.getByRole("dialog", { name: "Anwesenheit bearbeiten" });
       await expect(editor).toBeVisible();
       expect(state.workspace.attendanceTimer).toBeNull();
@@ -185,11 +189,11 @@ for (const mobile of [false, true])
     }) => {
       const state = await mock(page);
       await page.goto("/?module=time");
-      await page.getByRole("button", { name: "Anwesenheit nachtragen" }).click();
+      await page.getByRole("button", { name: "Nachtragen", exact: true }).click();
       let editor = page.getByRole("dialog", { name: "Anwesenheit anlegen" });
       await editor.getByLabel("Beginn", { exact: true }).fill("2026-10-24T23:00");
       await editor.getByLabel("Ende", { exact: true }).fill("2026-10-25T04:00");
-      await editor.getByLabel("Pause in Minuten").fill("30");
+      await editor.getByLabel("Pause", { exact: true }).fill("30");
       await editor.getByRole("button", { name: "Speichern", exact: true }).click();
       await expect(editor).not.toBeVisible();
       const data = state.writes.find((write) => write.kind === "attendance")!.data;
@@ -401,7 +405,7 @@ for (const mobile of [false, true])
       await mock(page, { superadmin: true });
       await page.goto("/?module=time");
       await expect(page.getByRole("region", { name: "Anwesenheitstimer" })).toHaveCount(0);
-      await expect(page.getByRole("button", { name: "Anwesenheit nachtragen" })).toHaveCount(0);
+      await expect(page.getByRole("button", { name: "Nachtragen", exact: true })).toHaveCount(0);
       await expect(page.getByLabel("Person").locator("option")).not.toContainText([
         "Root Administration",
       ]);
