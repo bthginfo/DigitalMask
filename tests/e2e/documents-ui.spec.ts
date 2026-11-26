@@ -224,7 +224,7 @@ for (const browserName of ["chromium", "webkit"] as const)
       await expect(page.getByText("Klara Verzeichnis", { exact: false }).first()).toBeVisible();
       await page.getByRole("button", { name: "Stück verwalten" }).click();
       await page.getByRole("button", { name: "Bearbeiten", exact: true }).click();
-      const prod = page.getByRole("dialog", { name: "Produktion bearbeiten" });
+      const prod = page.getByRole("dialog", { name: "Stück bearbeiten" });
       await expect(prod.getByLabel("Verzeichnis für Kontakt 2")).toHaveValue("qa-contact");
       await prod.getByLabel(/^Titel/).fill("Entwurf bleibt erhalten");
       await prod.getByRole("button", { name: "Kontakt hinzufügen" }).click();
