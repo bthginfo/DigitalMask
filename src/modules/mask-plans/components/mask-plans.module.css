@@ -1493,3 +1493,163 @@
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
+
+/* Evening view: who works this performance, my lane and the current time (view only). */
+.savedTimetable {
+  position: relative;
+}
+.readOnlyBadge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--fill);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 650;
+}
+.eveningBanner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--separator);
+  border-radius: var(--radius);
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.eveningBanner > svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--accent);
+}
+.eveningBanner > div {
+  min-width: 0;
+}
+.eveningBanner strong {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.eveningBanner p {
+  margin: 3px 0 0;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.eveningActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin-top: 10px;
+}
+.eveningActions > :global(.button) {
+  min-height: 36px;
+  border-radius: var(--radius-control);
+}
+.eveningActions > :global(.button[aria-pressed="true"]) {
+  background: var(--fill-strong);
+}
+.eveningActions small {
+  color: var(--muted);
+  font-size: 12px;
+}
+.eveningStaff {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.eveningStaff > span {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 5px;
+}
+.eveningStaff em {
+  display: inline-block;
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 550;
+}
+.eveningStaff [data-status="absent"] > span {
+  color: var(--muted);
+  text-decoration: line-through;
+  text-decoration-color: var(--coral);
+}
+.eveningStaff [data-status="absent"] em {
+  color: var(--coral);
+}
+.eveningStaff [data-status="cover"] em {
+  color: var(--accent);
+}
+.savedSheet div.savedStaff {
+  cursor: default;
+}
+.savedSheet div.savedStaff:hover {
+  background: transparent;
+}
+.savedSheet thead th[data-absent] {
+  background: color-mix(in srgb, var(--coral) 9%, var(--surface-soft));
+}
+.savedSheet thead th[data-mine] {
+  background: color-mix(in srgb, var(--accent) 15%, var(--surface-soft));
+  box-shadow: inset 0 3px 0 var(--accent);
+}
+.savedSheet td[data-mine]:not(.savedCell) {
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+.savedSheet .savedCell[data-mine] {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 50%, transparent);
+}
+.savedStaff > .mineTag {
+  align-self: flex-start;
+  margin-top: 3px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--surface);
+  font-size: 11px;
+  font-weight: 700;
+}
+.nowLine {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 3;
+  height: 0;
+  border-top: 2px solid var(--coral);
+  pointer-events: none;
+}
+.nowLine[hidden] {
+  display: none;
+}
+.nowLine span {
+  position: sticky;
+  left: 2px;
+  display: inline-block;
+  margin-top: -9px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--coral);
+  color: var(--surface);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 15px;
+  box-shadow: 0 0 0 2px var(--surface);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .nowLine span {
+    animation: nowPulse 2.4s ease-in-out infinite;
+  }
+}
+@keyframes nowPulse {
+  50% {
+    opacity: 0.7;
+  }
+}
+@media print {
+  .eveningActions,
+  .nowLine {
+    display: none;
+  }
+}
