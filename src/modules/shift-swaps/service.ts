@@ -17,9 +17,11 @@ import {
   shiftSwapSchema,
   type ShiftSwapData,
 } from "./schema";
+import { showEventAllowsGuests } from "@/modules/productions/guest-access";
 import {
   canReadShiftSwap,
   findSwapConflict,
+  swapNeedsProductionTeam,
   replacementParticipants,
   selectedSwapOccurrence,
   shiftSwapTransition,
@@ -61,13 +63,14 @@ async function assertServiceAccess(
   // Prevent a production-team edit racing an approval after access validation.
   const project = await findRecord(context, productionId, "productions", tx, true);
   const permitted = listValue(project.data.memberIds);
-  if (
-    permitted.length &&
-    people.some((person) => person.role === "user" && !permitted.includes(person.id))
-  )
+  // The category is only looked up when someone outside the production team is involved.
+  const showEvent =
+    swapNeedsProductionTeam(permitted, people, false) &&
+    (await showEventAllowsGuests(context, service.data, tx));
+  if (swapNeedsProductionTeam(permitted, people, showEvent))
     throw new HttpError(
       403,
-      "Beide Personen müssen Zugriff auf die Produktion dieses Dienstes haben. Bitte lasse die Projektzuordnung prüfen.",
+      "Beide Personen müssen Zugriff auf die Produktion dieses Dienstes haben. Außerhalb des Produktionsteams geht ein Tausch nur bei Vorstellungen und Proben.",
     );
 }
 
