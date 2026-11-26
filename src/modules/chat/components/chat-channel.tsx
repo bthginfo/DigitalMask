@@ -45,7 +45,7 @@ import { ImageGallery } from "@/components/image-gallery";
 import { NewDocumentDialog } from "@/modules/documents/components/new-document-dialog";
 import { documentAccept } from "@/modules/documents/components/record-documents";
 import { ChatActionMenu } from "./chat-action-menu";
-import { navigateWorkspace } from "@/shared/client-navigation";
+import { isPlainClick, navigateWorkspace } from "@/shared/client-navigation";
 import { messageInChat, type ChatMediaItem } from "../media";
 import { photoReplyValue, type PhotoReply } from "../photo-reply";
 import { PhotoReplyPreview } from "./photo-reply-preview";
@@ -266,10 +266,9 @@ export function ChatChannel({
             href="/?module=help&guide=app-install"
             prefetch={false}
             onClick={(event) => {
+              if (!isPlainClick(event)) return;
               event.preventDefault();
-              history.pushState({}, "", "/?module=help&guide=app-install");
-              window.dispatchEvent(new PopStateEvent("popstate"));
-              window.scrollTo({ top: 0, behavior: "instant" });
+              navigateWorkspace("/?module=help&guide=app-install");
             }}
           >
             Hilfe & App installieren

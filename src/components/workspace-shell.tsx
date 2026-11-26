@@ -28,18 +28,23 @@ import Link from "next/link";
 import {
   captureNavigationScroll,
   closeRecordDetail,
+  isPlainClick,
+  moduleHref,
   navigateWorkspace,
   navigationReturn,
   restoreNavigationScroll,
   returnToContext,
   setNavigationUser,
+  useWorkspaceLocation,
 } from "@/shared/client-navigation";
-import { subscribeLocation, subscribeMobile } from "@/shared/client-storage";
-import { onboardingVersion, type DomainRecord } from "@/shared/contracts";
+import { subscribeMobile } from "@/shared/client-storage";
+import { onboardingVersion, textValue, type DomainRecord } from "@/shared/contracts";
 import { initials, post } from "@/shared/client-api";
 import { useWorkspaceActions, useWorkspaceData, useWorkspaceStatus } from "./workspace-context";
 import { stopPushOnLogout } from "@/modules/notifications/client";
-import { chatUnreadCounts, unreadNotifications } from "@/modules/notifications/unread";
+import { unreadNotifications } from "@/modules/notifications/unread";
+import { chatUnread as chatUnreadFor, unreadLabel } from "@/modules/chat/unread-source";
+import { recordTitle } from "./resource-fields";
 import { MarkAllReadButton } from "@/modules/notifications/components/mark-all-read";
 import { NotificationRow } from "@/modules/notifications/components/notification-row";
 import { Badge, Empty, Modal } from "./ui";
@@ -88,12 +93,7 @@ export function WorkspaceShell() {
   // Data and stable actions only: busy, notices and sync status render in small children.
   const workspace = useWorkspaceData();
   const { notify, action } = useWorkspaceActions();
-  const query = useSyncExternalStore(
-    subscribeLocation,
-    () => location.search,
-    () => "",
-  );
-  const params = new URLSearchParams(query);
+  const { search: query, params } = useWorkspaceLocation();
   const requestedModule =
     params.get("module") === "productions" && params.get("tab") === "handovers"
       ? "handovers"
@@ -251,7 +251,7 @@ export function WorkspaceShell() {
           a.id.localeCompare(b.id),
       )
     : [];
-  const chatUnread = chatUnreadCounts(workspace.records.notifications, workspace.user.id).total;
+  const chatUnread = chatUnreadFor(workspace).total;
   const linkedRecord = recordId
     ? Object.values(workspace.records)
         .flat()
@@ -267,6 +267,20 @@ export function WorkspaceShell() {
     closeRecordDetail();
   };
   const active = nav.find((x) => x.id === activeModule)!;
+  const productionId = activeModule === "productions" ? params.get("productionId") || "" : "";
+  const openRecord = detail || queryRecord;
+  const pageTitle = openRecord
+    ? recordTitle(openRecord, workspace)
+    : productionId
+      ? textValue(
+          (workspace.productionOverview ?? workspace.records.productions).find(
+            (row) => row.id === productionId,
+          )?.data.title,
+        ) || active.label
+      : active.label;
+  useEffect(() => {
+    document.title = `${pageTitle} · DigitalMask`;
+  }, [pageTitle]);
   const screen =
     activeModule === "today" ? (
       <TodayModule navigate={navigate} />
@@ -352,14 +366,7 @@ export function WorkspaceShell() {
           href="/"
           prefetch={false}
           onClick={(event) => {
-            if (
-              event.button !== 0 ||
-              event.ctrlKey ||
-              event.metaKey ||
-              event.altKey ||
-              event.shiftKey
-            )
-              return;
+            if (!isPlainClick(event)) return;
             event.preventDefault();
             navigate("today");
           }}
@@ -393,26 +400,27 @@ export function WorkspaceShell() {
               {nav
                 .filter((x) => x.group === group)
                 .map((item) => (
-                  <button
+                  <a
                     className={`nav-item ${activeModule === item.id ? "active" : ""}`}
                     key={item.id}
-                    onClick={() => navigate(item.id)}
+                    href={moduleHref(item.id)}
+                    data-module={item.id}
+                    onClick={(event) => {
+                      if (!isPlainClick(event)) return;
+                      event.preventDefault();
+                      navigate(item.id);
+                    }}
                     aria-current={activeModule === item.id ? "page" : undefined}
-                    aria-label={item.label}
-                    aria-description={
-                      item.id === "chat" && chatUnread
-                        ? `${chatUnread} ungelesene Nachrichten`
-                        : undefined
-                    }
+                    aria-label={`${item.label}${item.id === "chat" ? unreadLabel(chatUnread) : ""}`}
                   >
-                    <item.icon size={18} strokeWidth={1.7} />
+                    <item.icon size={18} strokeWidth={1.7} aria-hidden="true" />
                     <span>{item.label}</span>
                     {item.id === "chat" && chatUnread > 0 && (
                       <span className="chat-unread-count" aria-hidden="true">
                         {chatUnread > 99 ? "99+" : chatUnread}
                       </span>
                     )}
-                  </button>
+                  </a>
                 ))}
             </div>
           ))}
@@ -531,35 +539,49 @@ export function WorkspaceShell() {
           ["more", "Mehr", Menu],
         ].map(([key, label, Icon]) => {
           const Component = Icon as LucideIcon;
-          return (
-            <button
-              key={String(key)}
-              className={
-                activeModule === key ||
-                (key === "more" &&
-                  !["today", "calendar", "productions", "time", "chat"].includes(activeModule))
-                  ? "active"
-                  : ""
-              }
-              aria-current={activeModule === key ? "page" : undefined}
-              aria-haspopup={key === "more" ? "dialog" : undefined}
-              aria-expanded={key === "more" ? mobileMenu : undefined}
-              aria-label={key === "chat" ? "Kommunikation" : String(label)}
-              aria-description={
-                key === "chat" && chatUnread ? `${chatUnread} ungelesene Nachrichten` : undefined
-              }
-              onClick={(event) =>
-                key === "more" ? openMenu(event.currentTarget) : navigate(String(key))
-              }
-            >
-              <Component size={20} />
-              {key === "chat" && chatUnread > 0 && (
+          const id = String(key);
+          const active =
+            activeModule === id ||
+            (id === "more" &&
+              !["today", "calendar", "productions", "time", "chat"].includes(activeModule));
+          const content = (
+            <>
+              <Component size={20} aria-hidden="true" />
+              {id === "chat" && chatUnread > 0 && (
                 <span className="chat-unread-count" aria-hidden="true">
                   {chatUnread > 99 ? "99+" : chatUnread}
                 </span>
               )}
               <span>{String(label)}</span>
+            </>
+          );
+          return id === "more" ? (
+            <button
+              key={id}
+              className={`bottom-nav-item${active ? " active" : ""}`}
+              aria-haspopup="dialog"
+              aria-expanded={mobileMenu}
+              aria-label="Mehr"
+              onClick={(event) => openMenu(event.currentTarget)}
+            >
+              {content}
             </button>
+          ) : (
+            <a
+              key={id}
+              href={moduleHref(id)}
+              data-module={id}
+              className={`bottom-nav-item${active ? " active" : ""}`}
+              aria-current={activeModule === id ? "page" : undefined}
+              aria-label={`${String(label)}${id === "chat" ? unreadLabel(chatUnread) : ""}`}
+              onClick={(event) => {
+                if (!isPlainClick(event)) return;
+                event.preventDefault();
+                navigate(id);
+              }}
+            >
+              {content}
+            </a>
           );
         })}
       </nav>

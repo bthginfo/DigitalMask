@@ -19,6 +19,7 @@ import {
 } from "@/shared/record-relationships";
 import { seasonForDate, type PeriodFilter } from "@/shared/period-filter";
 import styles from "./record-links.module.css";
+import { replaceWorkspaceUrl } from "@/shared/client-navigation";
 
 type RelationshipProps = { record: DomainRecord; onNavigate?: () => void };
 
@@ -46,7 +47,7 @@ function useRelationshipPeriod(record: DomainRecord) {
     url.searchParams.set("relatedSeason", next.season || "all");
     if (next.year) url.searchParams.set("relatedYear", String(next.year));
     else url.searchParams.delete("relatedYear");
-    history.replaceState(history.state, "", url.pathname + url.search);
+    replaceWorkspaceUrl(url.pathname + url.search, { silent: true });
   };
   return [period, update] as const;
 }

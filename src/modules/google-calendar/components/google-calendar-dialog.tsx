@@ -11,6 +11,7 @@ import {
 } from "../contracts";
 import { GoogleCalendarAccountEditor } from "./google-calendar-account-editor";
 import styles from "./google-calendar.module.css";
+import { replaceWorkspaceUrl } from "@/shared/client-navigation";
 
 export const returnedFromGoogleCalendar = () =>
   typeof window !== "undefined" &&
@@ -58,11 +59,7 @@ export function GoogleCalendarDialog({
     if (url.searchParams.has("googleCalendar")) {
       url.searchParams.delete("googleCalendar");
       url.searchParams.delete("googleConnection");
-      window.history.replaceState(
-        window.history.state,
-        "",
-        `${url.pathname}${url.search}${url.hash}`,
-      );
+      replaceWorkspaceUrl(`${url.pathname}${url.search}${url.hash}`, { silent: true });
     }
     const controller = new AbortController();
     void api<GoogleCalendarStatus>(googleCalendarEndpoint, { signal: controller.signal })

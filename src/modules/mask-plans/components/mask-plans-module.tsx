@@ -37,7 +37,11 @@ import { SavedTimetable } from "./saved-timetable";
 import { RunOfShow } from "./run-of-show";
 import styles from "./mask-plans.module.css";
 import { useViewState } from "@/shared/view-state";
-import { navigateWorkspace } from "@/shared/client-navigation";
+import {
+  navigateWorkspace,
+  replaceWorkspaceUrl,
+  subscribeLocation,
+} from "@/shared/client-navigation";
 
 type Draft = { data: MaskPlanData; base?: DomainRecord };
 type Editor =
@@ -53,10 +57,7 @@ function updateLocation(id: string, push = false) {
   if (id) next.searchParams.set("record", id);
   else next.searchParams.delete("record");
   if (push) navigateWorkspace(next.pathname + next.search);
-  else {
-    history.replaceState(history.state, "", next.pathname + next.search);
-    window.dispatchEvent(new PopStateEvent("popstate"));
-  }
+  else replaceWorkspaceUrl(next.pathname + next.search);
 }
 
 export function MaskPlansModule({
@@ -149,8 +150,7 @@ export function MaskPlansModule({
       setError("");
       setEditor(null);
     };
-    window.addEventListener("popstate", changed);
-    return () => window.removeEventListener("popstate", changed);
+    return subscribeLocation(changed);
   }, [production.id, setSelectedId]);
   useEffect(() => {
     if (!dirty && !editor) return;

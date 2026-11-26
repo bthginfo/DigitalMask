@@ -55,6 +55,7 @@ import { bavarianHoliday } from "@/shared/bavarian-holidays";
 import { sortProductionsByPremiere } from "@/shared/production-order";
 import { useWorkspaceActions, useWorkspaceData, useWorkspaceStatus } from "../workspace-context";
 import { useStableCallback } from "@/shared/use-stable-callback";
+import { replaceWorkspaceUrl } from "@/shared/client-navigation";
 import { Badge, Button, ErrorMessage, ExportButton, Modal, PageHeader } from "../ui";
 import { ResourceEditor } from "../resource-editor";
 import { EventDetail } from "@/modules/calendar/components/event-detail";
@@ -91,6 +92,19 @@ const monthHeading = dateFormat({ timeZone: "Europe/Berlin", month: "long", year
 // Stable option identities let FullCalendar skip re-rendering its whole view.
 const calendarPlugins = [dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin, luxonPlugin];
 const MemoFullCalendar = memo(FullCalendar);
+const viewKeys = ["month", "week", "day", "agenda", "team"];
+/** View, date and team span from the URL (deep links, reloads, Back). */
+function calendarUrlState() {
+  const params = new URLSearchParams(typeof location === "undefined" ? "" : location.search);
+  const view = params.get("view") || "";
+  const date = params.get("date") || "";
+  const span = params.get("span") || "";
+  return {
+    view: viewKeys.includes(view) ? view : undefined,
+    date: /^\d{4}-\d{2}-\d{2}$/.test(date) && Number.isFinite(Date.parse(date)) ? date : undefined,
+    span: span === "week" || span === "month" ? span : undefined,
+  };
+}
 const calendarViews = {
   dayGridMonth: {
     eventOrder: "-monthPriority,start,-duration,allDay,title",
@@ -158,8 +172,16 @@ export function CalendarModule({
   const [period, setPeriod] = useViewState<PeriodFilter>(workspace.user.id, scope, "period", () =>
     initialPeriod(calendarProductions, productionId),
   );
-  const [view, setView] = useViewState(workspace.user.id, scope, "view", "month");
-  const [teamSpan, setTeamSpan] = useViewState(workspace.user.id, scope, "teamSpan", "week");
+  // The URL wins over this tab's stored view so links and reloads open the same calendar.
+  const [fromUrl] = useState(calendarUrlState);
+  const [view, setView] = useViewState(workspace.user.id, scope, "view", "month", fromUrl.view);
+  const [teamSpan, setTeamSpan] = useViewState(
+    workspace.user.id,
+    scope,
+    "teamSpan",
+    "week",
+    fromUrl.span,
+  );
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [mobileDay, setMobileDay] = useViewState(
@@ -212,13 +234,30 @@ export function CalendarModule({
   }));
   const [exportDates, setExportDates] = useState(() => ({ from: localDate(), to: localDate() }));
   const [title, setTitle] = useState("");
-  const [teamDate, setTeamDate] = useViewState(workspace.user.id, scope, "teamDate", localDate());
+  const [teamDate, setTeamDate] = useViewState(
+    workspace.user.id,
+    scope,
+    "teamDate",
+    localDate(),
+    fromUrl.view === "team" ? fromUrl.date : undefined,
+  );
   const [calendarDate, setCalendarDate] = useViewState(
     workspace.user.id,
     scope,
     "date",
     localDate(),
+    fromUrl.view !== "team" ? fromUrl.date : undefined,
   );
+  const urlDate = view === "team" ? teamDate : calendarDate;
+  useEffect(() => {
+    // Presentation only: replace the entry silently so Back still leaves the calendar.
+    const url = new URL(location.href);
+    url.searchParams.set("view", view);
+    url.searchParams.set("date", urlDate);
+    if (view === "team") url.searchParams.set("span", teamSpan);
+    else url.searchParams.delete("span");
+    replaceWorkspaceUrl(url.pathname + url.search + url.hash, { silent: true });
+  }, [view, urlDate, teamSpan]);
   const [editor, setEditor] = useState<{
     kind: "events" | "leave";
     defaults?: Record<string, unknown>;

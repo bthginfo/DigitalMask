@@ -4,8 +4,11 @@ import {
   captureNavigationScroll,
   closeRecordDetail,
   navigateRecord,
+  locationEvent,
   navigateWorkspace,
   recordHref,
+  replaceWorkspaceUrl,
+  routeSearch,
   restoreNavigationScroll,
   setNavigationUser,
 } from "../src/shared/client-navigation";
@@ -128,5 +131,31 @@ describe("navigation context", () => {
     expect(calendar.searchParams.get("module")).toBe("calendar");
     expect(calendar.searchParams.get("swapId")).toBe("swap");
     expect(calendar.searchParams.has("record")).toBe(false);
+  });
+  it("pushes only the app's own state so Next.js syncs its router URL itself", () => {
+    states[0].state = { __NA: true, __PRIVATE_NEXTJS_INTERNALS_TREE: { tree: [] } };
+    const dispatched: string[] = [];
+    vi.stubGlobal("window", {
+      scrollX: 0,
+      scrollY: 0,
+      scrollTo,
+      dispatchEvent: (event: Event) => dispatched.push(event.type),
+    });
+    navigateWorkspace("/?module=calendar", { returnLabel: "Zurück zur Produktion" });
+    expect(states[1].state.__NA).toBeUndefined();
+    expect(states[1].state.__PRIVATE_NEXTJS_INTERNALS_TREE).toBeUndefined();
+    expect(states[1].state.digitalmaskNavigation).toMatchObject({
+      returnLabel: "Zurück zur Produktion",
+    });
+    // Capturing the scroll position keeps Next's state on the entry it belongs to.
+    expect(states[0].state.__NA).toBe(true);
+    replaceWorkspaceUrl("/?module=calendar&view=week", { silent: true });
+    expect(states[1].url.searchParams.get("view")).toBe("week");
+    expect(states[1].state.__NA).toBeUndefined();
+    expect(states[1].state.digitalmaskNavigation).toMatchObject({
+      returnLabel: "Zurück zur Produktion",
+    });
+    expect(dispatched).toEqual([locationEvent]);
+    expect(routeSearch("?module=calendar&view=week&date=2026-11-30")).toBe("?module=calendar");
   });
 });

@@ -434,18 +434,15 @@ for (const width of [1440, 390]) {
       width === 1440
         ? page.getByRole("navigation", { name: "Hauptnavigation" })
         : page.locator(".bottom-nav");
-    await expect(nav.getByRole("button", { name: "Kommunikation", exact: true })).toHaveAttribute(
-      "aria-description",
-      "6 ungelesene Nachrichten",
-    );
+    // Navigation entries are links; the unread count is part of their accessible name.
+    const chatLabel = width === 1440 ? "Kommunikation" : "Chat";
+    const chatLink = nav.getByRole("link", { name: new RegExp(`^${chatLabel}`) });
+    await expect(chatLink).toHaveAccessibleName(`${chatLabel} · 6 ungelesene Nachrichten`);
     await page.goto("/?module=chat&conversationId=private");
     await expect
       .poll(() => state.actions.filter((action) => action === "chat-notifications-read").length)
       .toBe(1);
-    await expect(nav.getByRole("button", { name: "Kommunikation", exact: true })).toHaveAttribute(
-      "aria-description",
-      "4 ungelesene Nachrichten",
-    );
+    await expect(chatLink).toHaveAccessibleName(`${chatLabel} · 4 ungelesene Nachrichten`);
     const channelLists = page.locator(".chat-channel-lists");
     if (width === 1440) {
       await expect(channelLists).toBeVisible();

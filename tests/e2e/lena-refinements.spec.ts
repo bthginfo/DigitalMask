@@ -153,9 +153,7 @@ for (const width of [1440, 768, 375]) {
       await page.evaluate(() => (document.activeElement as HTMLElement)?.blur());
       await page.screenshot({ path: testInfo.outputPath("today.png"), fullPage: true });
       if (mobile) {
-        const chat = page
-          .locator(".bottom-nav")
-          .getByRole("button", { name: "Kommunikation", exact: true });
+        const chat = page.locator(".bottom-nav").getByRole("link", { name: /^Chat/ });
         await expect(chat).toBeVisible();
         const box = await chat.boundingBox();
         expect(box!.width).toBeGreaterThanOrEqual(44);
