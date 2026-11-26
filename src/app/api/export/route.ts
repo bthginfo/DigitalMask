@@ -12,6 +12,7 @@ import { workflowMatchesExportPeriod } from "@/modules/workflows/export-period";
 import { calendarProductionRecords } from "@/shared/calendar-access";
 import { productionOverviewRecords } from "@/shared/production-overview";
 import { backstageChangesSection } from "@/shared/document-sections";
+import { isGuestProduction } from "@/modules/productions/guest-rules";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 export async function GET(request: Request) {
@@ -26,12 +27,27 @@ export async function GET(request: Request) {
       throw new HttpError(400, "Wähle eine Produktion für den Umzüge-Ausdruck als PDF.");
     const context = await requireContext();
     const workspace = await getWorkspace(context);
-    if (backstageChanges && !workspace.records.productions.some((row) => row.id === productionId))
+    if (
+      backstageChanges &&
+      !workspace.records.productions.some((row) => row.id === productionId) &&
+      !isGuestProduction(workspace, productionId)
+    )
       throw new HttpError(404, "Diese Produktion ist nicht verfügbar.");
     const references =
       kind === "events"
         ? { ...workspace.records, productions: calendarProductionRecords(workspace) }
-        : workspace.records;
+        : workspace.guestProductionIds?.length
+          ? {
+              ...workspace.records,
+              // Guests print plans and Umzüge with the production's shared title only.
+              productions: [
+                ...workspace.records.productions,
+                ...productionOverviewRecords(workspace).filter((row) =>
+                  isGuestProduction(workspace, row.id),
+                ),
+              ],
+            }
+          : workspace.records;
     let selected =
       kind === "productions" ? productionOverviewRecords(workspace) : workspace.records[kind];
     const conversationId = query.get("conversationId");

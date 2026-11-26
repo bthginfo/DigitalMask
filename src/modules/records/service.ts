@@ -15,6 +15,7 @@ import { matchesPhotoReply, photoReplyValue } from "@/modules/chat/photo-reply";
 import { prepareProductionContacts } from "@/modules/people/production-contacts";
 import { maskPlanValue } from "@/modules/mask-plans/model";
 import { maskPlanMemberIdsToValidate, validateMaskPlanActors } from "@/modules/mask-plans/service";
+import { guestMayRead, showEventAllowsGuests } from "@/modules/productions/guest-access";
 import { personNameKey } from "@/shared/person-identity";
 import {
   validateDomainCategory,
@@ -50,8 +51,11 @@ export async function assertRead(
   context: Context,
   row: typeof records.$inferSelect,
   tx: Transaction | typeof db = db,
+  /** "guest" only on pure read endpoints; writes, deletes and uploads keep member access. */
+  access: "member" | "guest" = "member",
 ) {
-  if (row.kind !== "events") await assertProject(context, row.data.productionId, tx);
+  if (row.kind !== "events" && !(access === "guest" && (await guestMayRead(context, row))))
+    await assertProject(context, row.data.productionId, tx);
   if (row.kind === "conversations") await assertConversation(context, row.id, tx);
   else await assertConversation(context, row.data.conversationId, tx);
   if (
@@ -186,7 +190,9 @@ async function validateRelations(
       const permitted = listValue(project.data.memberIds);
       if (
         permitted.length &&
-        valid.some((member) => member.role === "user" && !permitted.includes(member.id))
+        valid.some((member) => member.role === "user" && !permitted.includes(member.id)) &&
+        // Performances and rehearsals may be covered from outside the team (read-only guests).
+        !(kind === "events" && (await showEventAllowsGuests(context, data, tx)))
       )
         throw new HttpError(
           400,

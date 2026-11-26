@@ -10,7 +10,7 @@ export async function GET(request: Request) {
   return route(async () => {
     const context = await requireContext();
     const record = await findRecord(context, new URL(request.url).searchParams.get("id") || "");
-    await assertRead(context, record);
+    await assertRead(context, record, undefined, "guest");
     const versions = await db
       .select()
       .from(recordHistory)

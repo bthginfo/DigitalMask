@@ -121,7 +121,7 @@ export async function getFile(context: Context, id: string) {
   const row = await findRecord(context, id, "files");
   if (row.data.pendingDeletionOperation) throw new HttpError(404, "Die Datei wurde entfernt.");
   const linked = await findRecord(context, String(row.data.recordId), undefined);
-  await assertRead(context, linked);
+  await assertRead(context, linked, undefined, "guest");
   const blob = await get(String(row.data.path), { access: "private" });
   if (!blob || blob.statusCode !== 200) throw new HttpError(404, "Die Datei wurde nicht gefunden.");
   return { row, blob };
