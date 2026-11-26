@@ -295,8 +295,6 @@ export const statusLabels: Record<string, string> = {
   approved: "Genehmigt",
   rejected: "Abgelehnt",
   withdrawn: "Zurückgezogen",
-  submitted: "Eingereicht",
-  changes_requested: "Korrektur angefragt",
   draft: "Entwurf",
   published: "Veröffentlicht",
   service: "Dienst",

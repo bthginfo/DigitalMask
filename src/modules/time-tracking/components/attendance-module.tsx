@@ -19,11 +19,13 @@ import { CalendarTimeProposals } from "./calendar-time-proposals";
 import { WeekDayOverview } from "./week-day-overview";
 import { AttendanceBalanceCard } from "./attendance-balance";
 import styles from "./time-history.module.css";
+import { useConfirm } from "@/components/confirm-dialog";
 
 type AttendanceDraft = { id: string; createdAt: string; data: RecordData };
 
 export function AttendanceModule() {
-  const { workspace, refresh, online, busy } = useWorkspace();
+  const confirm = useConfirm();
+  const { workspace, refresh, reload, online, busy } = useWorkspace();
   const selfBooking = workspace.user.role !== "superadmin";
   const admin = workspace.user.role !== "user";
   const [week, setWeek] = useViewState(workspace.user.id, "attendance", "week", weekStart());
@@ -112,7 +114,7 @@ export function AttendanceModule() {
         remaining = remaining.filter((row) => row.id !== draft.id);
         setDraftJson(JSON.stringify(remaining));
       }
-      await refresh();
+      await reload(["attendance"]);
     } catch (exception) {
       setError(exception instanceof Error ? exception.message : "Synchronisierung fehlgeschlagen");
     } finally {
@@ -146,8 +148,15 @@ export function AttendanceModule() {
           </Button>
           <Button
             variant="ghost"
-            onClick={() => {
-              if (confirm("Lokale Anwesenheitsentwürfe verwerfen?")) setDraftJson("[]");
+            onClick={async () => {
+              if (
+                await confirm({
+                  message: `${drafts.length === 1 ? "Den lokalen Anwesenheitsentwurf" : `Alle ${drafts.length} lokalen Anwesenheitsentwürfe`} verwerfen?`,
+                  confirmLabel: "Verwerfen",
+                  destructive: true,
+                })
+              )
+                setDraftJson("[]");
             }}
           >
             Verwerfen

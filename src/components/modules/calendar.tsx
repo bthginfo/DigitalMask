@@ -1,4 +1,5 @@
 "use client";
+import { berlinClock, dateFormat } from "@/shared/intl";
 import { PeriodPicker, periodExportFilters } from "@/components/period-picker";
 import {
   initialPeriod,
@@ -6,15 +7,27 @@ import {
   recordMatchesPeriod,
   type PeriodFilter,
 } from "@/shared/period-filter";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import FullCalendar from "@fullcalendar/react";
+import type {
+  DateSelectArg,
+  DatesSetArg,
+  DayCellContentArg,
+  DayHeaderContentArg,
+  EventClickArg,
+  EventContentArg,
+  EventDropArg,
+  EventMountArg,
+  MoreLinkArg,
+} from "@fullcalendar/core";
+import type { DateClickArg, EventResizeDoneArg } from "@fullcalendar/interaction";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import listPlugin from "@fullcalendar/list";
 import interactionPlugin from "@fullcalendar/interaction";
 import deLocale from "@fullcalendar/core/locales/de";
 import luxonPlugin from "@fullcalendar/luxon3";
-import { occurrences } from "@/modules/calendar/occurrences";
+import { expandEvents } from "@/modules/calendar/expand";
 import {
   AlertTriangle,
   ChevronDown,
@@ -24,8 +37,7 @@ import {
   Plus,
   SlidersHorizontal,
 } from "lucide-react";
-import type { DomainRecord, Member } from "@/shared/contracts";
-import { canManageRecord } from "@/shared/record-permissions";
+import type { DomainRecord } from "@/shared/contracts";
 import { calendarProductionRecords, canEditCalendarEvent } from "@/shared/calendar-access";
 import {
   dateLabel,
@@ -38,20 +50,17 @@ import {
 } from "@/shared/client-api";
 import { isActiveStaff } from "@/shared/client-members";
 import { calendarEventSelected } from "@/shared/calendar-selection";
-import { calendarEventPaint } from "@/shared/calendar-paint";
 import { sortCalendarStaff } from "@/shared/calendar-team";
 import { bavarianHoliday } from "@/shared/bavarian-holidays";
 import { sortProductionsByPremiere } from "@/shared/production-order";
-import { useWorkspace } from "../workspace-context";
+import { useWorkspaceActions, useWorkspaceData, useWorkspaceStatus } from "../workspace-context";
+import { useStableCallback } from "@/shared/use-stable-callback";
+import { replaceWorkspaceUrl } from "@/shared/client-navigation";
 import { Badge, Button, ErrorMessage, ExportButton, Modal, PageHeader } from "../ui";
 import { ResourceEditor } from "../resource-editor";
 import { EventDetail } from "@/modules/calendar/components/event-detail";
 import { ExportDialog } from "../export-dialog";
-import {
-  calendarPresentation,
-  calendarCategoryBlocksTime,
-  calendarMonthPriority,
-} from "@/shared/calendar-categories";
+import { calendarCategoryBlocksTime, calendarMonthPriority } from "@/shared/calendar-categories";
 import {
   calendarCategories,
   monthStart,
@@ -78,58 +87,30 @@ import {
   GoogleCalendarDialog,
   returnedFromGoogleCalendar,
 } from "@/modules/google-calendar/components/google-calendar-dialog";
-const calendarClock = (date: Date | null) =>
-  date
-    ? new Intl.DateTimeFormat("de-DE", {
-        timeZone: "Europe/Berlin",
-        hour: "2-digit",
-        minute: "2-digit",
-      }).format(date)
-    : "";
+const calendarClock = (date: Date | null) => (date ? berlinClock.format(date) : "");
+const monthHeading = dateFormat({ timeZone: "Europe/Berlin", month: "long", year: "numeric" });
+// Stable option identities let FullCalendar skip re-rendering its whole view.
+const calendarPlugins = [dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin, luxonPlugin];
+const MemoFullCalendar = memo(FullCalendar);
+const viewKeys = ["month", "week", "day", "agenda", "team"];
+/** View, date and team span from the URL (deep links, reloads, Back). */
+function calendarUrlState() {
+  const params = new URLSearchParams(typeof location === "undefined" ? "" : location.search);
+  const view = params.get("view") || "";
+  const date = params.get("date") || "";
+  const span = params.get("span") || "";
+  return {
+    view: viewKeys.includes(view) ? view : undefined,
+    date: /^\d{4}-\d{2}-\d{2}$/.test(date) && Number.isFinite(Date.parse(date)) ? date : undefined,
+    span: span === "week" || span === "month" ? span : undefined,
+  };
+}
 const calendarViews = {
   dayGridMonth: {
     eventOrder: "-monthPriority,start,-duration,allDay,title",
     eventOrderStrict: true,
   },
 };
-export function expandEvents(
-  records: DomainRecord[],
-  rangeStart: string,
-  rangeEnd: string,
-  productions: DomainRecord[] = [],
-  categories?: DomainRecord[],
-  member?: Member,
-  editableProductionIds?: ReadonlySet<string>,
-) {
-  return records.flatMap((record) => {
-    if (
-      !Number.isFinite(new Date(value(record.data, "start")).getTime()) ||
-      !Number.isFinite(new Date(value(record.data, "end")).getTime())
-    )
-      return [];
-    const presentation = calendarPresentation(record, productions, categories);
-    return occurrences(record, new Date(rangeStart), new Date(rangeEnd)).map((instance) => ({
-      id: `${record.id}:${instance.start.toISOString()}`,
-      title: presentation.title,
-      allDay: presentation.allDay,
-      categoryName: presentation.categoryName,
-      background: presentation.background,
-      blocksTime: presentation.blocksTime,
-      start: instance.start.toISOString(),
-      end: instance.end.toISOString(),
-      ...calendarEventPaint(presentation.color, presentation.allDay, !!presentation.background),
-      editable:
-        !record.data.leaveId &&
-        !presentation.background &&
-        (!record.data.recurrence || record.data.recurrence === "none") &&
-        (!member || canManageRecord(member, "events", record)) &&
-        (!editableProductionIds ||
-          !record.data.productionId ||
-          editableProductionIds.has(value(record.data, "productionId"))),
-      extendedProps: { record },
-    }));
-  });
-}
 export function CalendarModule({
   productionId = "",
   focusedLeaveId = "",
@@ -137,7 +118,9 @@ export function CalendarModule({
   productionId?: string;
   focusedLeaveId?: string;
 }) {
-  const { workspace, save, action, busy } = useWorkspace();
+  const workspace = useWorkspaceData();
+  const { save, action } = useWorkspaceActions();
+  const { busy } = useWorkspaceStatus();
   const calendarProductions = calendarProductionRecords(workspace);
   const editableProductionIds = useMemo(
     () => new Set(workspace.records.productions.map((row) => row.id)),
@@ -189,8 +172,16 @@ export function CalendarModule({
   const [period, setPeriod] = useViewState<PeriodFilter>(workspace.user.id, scope, "period", () =>
     initialPeriod(calendarProductions, productionId),
   );
-  const [view, setView] = useViewState(workspace.user.id, scope, "view", "month");
-  const [teamSpan, setTeamSpan] = useViewState(workspace.user.id, scope, "teamSpan", "week");
+  // The URL wins over this tab's stored view so links and reloads open the same calendar.
+  const [fromUrl] = useState(calendarUrlState);
+  const [view, setView] = useViewState(workspace.user.id, scope, "view", "month", fromUrl.view);
+  const [teamSpan, setTeamSpan] = useViewState(
+    workspace.user.id,
+    scope,
+    "teamSpan",
+    "week",
+    fromUrl.span,
+  );
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [mobileDay, setMobileDay] = useViewState(
@@ -243,13 +234,30 @@ export function CalendarModule({
   }));
   const [exportDates, setExportDates] = useState(() => ({ from: localDate(), to: localDate() }));
   const [title, setTitle] = useState("");
-  const [teamDate, setTeamDate] = useViewState(workspace.user.id, scope, "teamDate", localDate());
+  const [teamDate, setTeamDate] = useViewState(
+    workspace.user.id,
+    scope,
+    "teamDate",
+    localDate(),
+    fromUrl.view === "team" ? fromUrl.date : undefined,
+  );
   const [calendarDate, setCalendarDate] = useViewState(
     workspace.user.id,
     scope,
     "date",
     localDate(),
+    fromUrl.view !== "team" ? fromUrl.date : undefined,
   );
+  const urlDate = view === "team" ? teamDate : calendarDate;
+  useEffect(() => {
+    // Presentation only: replace the entry silently so Back still leaves the calendar.
+    const url = new URL(location.href);
+    url.searchParams.set("view", view);
+    url.searchParams.set("date", urlDate);
+    if (view === "team") url.searchParams.set("span", teamSpan);
+    else url.searchParams.delete("span");
+    replaceWorkspaceUrl(url.pathname + url.search + url.hash, { silent: true });
+  }, [view, urlDate, teamSpan]);
   const [editor, setEditor] = useState<{
     kind: "events" | "leave";
     defaults?: Record<string, unknown>;
@@ -368,30 +376,42 @@ export function CalendarModule({
       })),
     [expanded, view],
   );
-  const openMobileDay = (day: string) => {
+  const openMobileDay = useStableCallback((day: string) => {
     setMobileDay(day);
     setMobileDaySheetOpen(true);
-  };
-  const overlaps = expanded.filter((event, i) =>
-    expanded
-      .slice(i + 1)
-      .some(
-        (other) =>
-          calendarCategoryBlocksTime(
-            value(event.extendedProps.record.data, "category"),
-            workspace.records.calendarCategories,
-          ) &&
-          calendarCategoryBlocksTime(
-            value(other.extendedProps.record.data, "category"),
-            workspace.records.calendarCategories,
-          ) &&
+  });
+  const calendarCategoryRecords = workspace.records.calendarCategories;
+  const overlapCount = useMemo(() => {
+    // Only time-blocking entries can conflict; resolve categories and people once per event.
+    const blocking = expanded
+      .map((event, index) => ({
+        index,
+        start: event.start,
+        end: event.end,
+        people: new Set(ids(event.extendedProps.record.data, "participantIds")),
+        blocks: calendarCategoryBlocksTime(
+          value(event.extendedProps.record.data, "category"),
+          calendarCategoryRecords,
+        ),
+      }))
+      .filter((entry) => entry.blocks && entry.people.size);
+    let count = 0;
+    for (let i = 0; i < blocking.length; i++) {
+      const event = blocking[i];
+      for (let j = i + 1; j < blocking.length; j++) {
+        const other = blocking[j];
+        if (
           event.start < other.end &&
           event.end > other.start &&
-          ids(event.extendedProps.record.data, "participantIds").some((id) =>
-            ids(other.extendedProps.record.data, "participantIds").includes(id),
-          ),
-      ),
-  );
+          [...event.people].some((id) => other.people.has(id))
+        ) {
+          count++;
+          break;
+        }
+      }
+    }
+    return count;
+  }, [expanded, calendarCategoryRecords]);
   const leaves = workspace.records.leave
     .filter((x) => admin || x.data.userId === workspace.user.id)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -433,6 +453,166 @@ export function CalendarModule({
       setError(e instanceof Error ? e.message : "Aktion fehlgeschlagen");
     }
   };
+  // FullCalendar re-renders its whole view whenever an option identity changes. Content
+  // callbacks only change with the values they render; event handlers are fully stable.
+  const dayCellClassNames = useCallback(
+    (info: DayCellContentArg) =>
+      localDate(info.date) === mobileDay ? ["mobile-selected-day"] : [],
+    [mobileDay],
+  );
+  const dayHeaderContent = useCallback(
+    (info: DayHeaderContentArg) =>
+      view === "week" || view === "day" ? (
+        <span className={calendarStyles.dateHeader}>
+          <span>{info.text}</span>
+          <HolidayLabel date={localDate(info.date)} compact={mobile} />
+        </span>
+      ) : (
+        info.text
+      ),
+    [view, mobile],
+  );
+  const dayCellContent = useCallback(
+    (info: DayCellContentArg) => {
+      if (view !== "month") return info.dayNumberText;
+      const day = localDate(info.date);
+      const holiday = bavarianHoliday(day);
+      if (!mobile)
+        return (
+          <span className={calendarStyles.monthDate}>
+            <span>{info.dayNumberText}</span>
+            <HolidayLabel date={day} />
+          </span>
+        );
+      const count = dayEntries.get(day)?.length || 0;
+      return (
+        <button
+          type="button"
+          className={calendarStyles.dayButton}
+          data-calendar-day={day}
+          data-holiday={holiday ? "true" : undefined}
+          aria-haspopup="dialog"
+          aria-pressed={day === mobileDay}
+          aria-label={`${calendarDayLabel(day)}${holiday ? ` · ${holiday}` : ""}: ${count} ${count === 1 ? "Termin" : "Termine"}. Details anzeigen`}
+          onClick={(event) => {
+            event.stopPropagation();
+            openMobileDay(day);
+          }}
+        >
+          {count > 1 && (
+            <span className={calendarStyles.busyCount} aria-hidden="true">
+              {count}
+            </span>
+          )}
+          <span className={calendarStyles.monthDate}>
+            <span>{info.dayNumberText}</span>
+            <HolidayLabel date={day} compact />
+          </span>
+        </button>
+      );
+    },
+    [view, mobile, dayEntries, mobileDay, openMobileDay],
+  );
+  const moreLinkClick = useStableCallback((info: MoreLinkArg) => {
+    if (!mobile || view !== "month") return "popover";
+    openMobileDay(localDate(info.date));
+    return "dayGridMonth";
+  });
+  const eventContent = useStableCallback((info: EventContentArg) => {
+    if (info.event.display !== "background") return true;
+    const hours = `${calendarClock(info.event.start)}–${calendarClock(info.event.end)}`;
+    return (
+      <button
+        type="button"
+        className={calendarStyles.backgroundLabel}
+        aria-label={`${info.event.title} · ${hours} · Details anzeigen`}
+        onMouseDown={(event) => event.stopPropagation()}
+        onTouchStart={(event) => event.stopPropagation()}
+        onClick={(event) => {
+          event.stopPropagation();
+          openDetail(info.event.extendedProps.record, info.event.extendedProps.occurrence);
+        }}
+      >
+        <strong>{info.event.title}</strong>
+        <span>{hours}</span>
+      </button>
+    );
+  });
+  const eventDidMount = useStableCallback((info: EventMountArg) => {
+    if (info.event.display === "background")
+      info.el.style.setProperty("--calendar-background-border", info.event.borderColor);
+  });
+  const datesSet = useStableCallback((info: DatesSetArg) => {
+    setCalendarDate(localDate(info.view.currentStart));
+    setTitle(info.view.title);
+    const firstDay = localDate(info.view.currentStart);
+    const afterLastDay = localDate(info.view.currentEnd);
+    const today = localDate();
+    setMobileDay((current) =>
+      current >= firstDay && current < afterLastDay
+        ? current
+        : today >= firstDay && today < afterLastDay
+          ? today
+          : firstDay,
+    );
+    setExportDates((current) => {
+      const from = localDate(info.view.currentStart),
+        to = shiftDate(localDate(info.view.currentEnd), -1);
+      return current.from === from && current.to === to ? current : { from, to };
+    });
+    setRange((current) =>
+      current.start === info.startStr && current.end === info.endStr
+        ? current
+        : { start: info.startStr, end: info.endStr },
+    );
+  });
+  const eventClick = useStableCallback(({ event }: EventClickArg) =>
+    openDetail(event.extendedProps.record, event.extendedProps.occurrence),
+  );
+  const dateClick = useStableCallback((info: DateClickArg) => {
+    const day = localDate(info.date);
+    if (mobile && view === "month") openMobileDay(day);
+    else setMobileDay(day);
+  });
+  const select = useStableCallback((info: DateSelectArg) => {
+    if (info.view.type === "dayGridMonth" && window.matchMedia("(max-width: 760px)").matches) {
+      openMobileDay(localDate(info.start));
+      calendar.current?.getApi().unselect();
+      return;
+    }
+    const start = info.allDay ? `${localDate(info.start)}T09:00` : info.startStr;
+    const end = info.allDay ? `${localDate(info.start)}T17:00` : info.endStr;
+    setEditor({
+      kind: "events",
+      defaults: { start, end, participantIds: visiblePeople },
+    });
+  });
+  const eventDrop = useStableCallback((info: EventDropArg) => {
+    const record = info.event.extendedProps.record as DomainRecord;
+    void run(async () => {
+      try {
+        await save(
+          "events",
+          { start: info.event.start?.toISOString(), end: info.event.end?.toISOString() },
+          record,
+        );
+      } catch (e) {
+        info.revert();
+        throw e;
+      }
+    });
+  });
+  const eventResize = useStableCallback((info: EventResizeDoneArg) => {
+    const record = info.event.extendedProps.record as DomainRecord;
+    void run(async () => {
+      try {
+        await save("events", { end: info.event.end?.toISOString() }, record);
+      } catch (e) {
+        info.revert();
+        throw e;
+      }
+    });
+  });
   const teamDays = Array.from(
     {
       length: Math.round(
@@ -710,11 +890,7 @@ export function CalendarModule({
               <h2>
                 {view === "team"
                   ? teamSpan === "month"
-                    ? new Intl.DateTimeFormat("de-DE", {
-                        timeZone: "Europe/Berlin",
-                        month: "long",
-                        year: "numeric",
-                      }).format(new Date(`${teamStart}T12:00:00Z`))
+                    ? monthHeading.format(new Date(`${teamStart}T12:00:00Z`))
                     : `Woche ab ${dateLabel(teamStart)}`
                   : title}
               </h2>
@@ -757,11 +933,11 @@ export function CalendarModule({
               ))}
             </div>
           )}
-          {overlaps.length > 0 && (
+          {overlapCount > 0 && (
             <div className="conflict-note">
               <AlertTriangle size={16} />
-              {overlaps.length} Terminüberschneidung(en) im sichtbaren Zeitraum. Prüfe die
-              betroffenen Dienste.
+              {overlapCount} Terminüberschneidung(en) im sichtbaren Zeitraum. Prüfe die betroffenen
+              Dienste.
             </div>
           )}
           <ErrorMessage message={error} />
@@ -793,15 +969,9 @@ export function CalendarModule({
             />
           ) : (
             <>
-              <FullCalendar
+              <MemoFullCalendar
                 ref={calendar}
-                plugins={[
-                  dayGridPlugin,
-                  timeGridPlugin,
-                  listPlugin,
-                  interactionPlugin,
-                  luxonPlugin,
-                ]}
+                plugins={calendarPlugins}
                 initialView={
                   view === "week"
                     ? "timeGridWeek"
@@ -824,175 +994,24 @@ export function CalendarModule({
                 fixedWeekCount={!mobile}
                 nowIndicator
                 dayMaxEvents={mobile ? 1 : 3}
-                dayCellClassNames={(info) =>
-                  localDate(info.date) === mobileDay ? ["mobile-selected-day"] : []
-                }
-                dayHeaderContent={(info) =>
-                  view === "week" || view === "day" ? (
-                    <span className={calendarStyles.dateHeader}>
-                      <span>{info.text}</span>
-                      <HolidayLabel date={localDate(info.date)} compact={mobile} />
-                    </span>
-                  ) : (
-                    info.text
-                  )
-                }
-                dayCellContent={(info) => {
-                  if (view !== "month") return info.dayNumberText;
-                  const day = localDate(info.date);
-                  const holiday = bavarianHoliday(day);
-                  if (!mobile)
-                    return (
-                      <span className={calendarStyles.monthDate}>
-                        <span>{info.dayNumberText}</span>
-                        <HolidayLabel date={day} />
-                      </span>
-                    );
-                  const count = dayEntries.get(day)?.length || 0;
-                  return (
-                    <button
-                      type="button"
-                      className={calendarStyles.dayButton}
-                      data-calendar-day={day}
-                      data-holiday={holiday ? "true" : undefined}
-                      aria-haspopup="dialog"
-                      aria-pressed={day === mobileDay}
-                      aria-label={`${calendarDayLabel(day)}${holiday ? ` · ${holiday}` : ""}: ${count} ${count === 1 ? "Termin" : "Termine"}. Details anzeigen`}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        openMobileDay(day);
-                      }}
-                    >
-                      {count > 1 && (
-                        <span className={calendarStyles.busyCount} aria-hidden="true">
-                          {count}
-                        </span>
-                      )}
-                      <span className={calendarStyles.monthDate}>
-                        <span>{info.dayNumberText}</span>
-                        <HolidayLabel date={day} compact />
-                      </span>
-                    </button>
-                  );
-                }}
-                moreLinkClick={(info) => {
-                  if (!mobile || view !== "month") return "popover";
-                  openMobileDay(localDate(info.date));
-                  return "dayGridMonth";
-                }}
+                dayCellClassNames={dayCellClassNames}
+                dayHeaderContent={dayHeaderContent}
+                dayCellContent={dayCellContent}
+                moreLinkClick={moreLinkClick}
                 selectable={true}
                 editable={true}
                 eventStartEditable={true}
                 events={calendarEvents}
                 eventDisplay="block"
                 selectOverlap={true}
-                eventContent={(info) => {
-                  if (info.event.display !== "background") return true;
-                  const hours = `${calendarClock(info.event.start)}–${calendarClock(info.event.end)}`;
-                  return (
-                    <button
-                      type="button"
-                      className={calendarStyles.backgroundLabel}
-                      aria-label={`${info.event.title} · ${hours} · Details anzeigen`}
-                      onMouseDown={(event) => event.stopPropagation()}
-                      onTouchStart={(event) => event.stopPropagation()}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        openDetail(
-                          info.event.extendedProps.record,
-                          info.event.extendedProps.occurrence,
-                        );
-                      }}
-                    >
-                      <strong>{info.event.title}</strong>
-                      <span>{hours}</span>
-                    </button>
-                  );
-                }}
-                eventDidMount={(info) => {
-                  if (info.event.display === "background")
-                    info.el.style.setProperty(
-                      "--calendar-background-border",
-                      info.event.borderColor,
-                    );
-                }}
-                datesSet={(info) => {
-                  setCalendarDate(localDate(info.view.currentStart));
-                  setTitle(info.view.title);
-                  const firstDay = localDate(info.view.currentStart);
-                  const afterLastDay = localDate(info.view.currentEnd);
-                  const today = localDate();
-                  setMobileDay((current) =>
-                    current >= firstDay && current < afterLastDay
-                      ? current
-                      : today >= firstDay && today < afterLastDay
-                        ? today
-                        : firstDay,
-                  );
-                  setExportDates((current) => {
-                    const from = localDate(info.view.currentStart),
-                      to = shiftDate(localDate(info.view.currentEnd), -1);
-                    return current.from === from && current.to === to ? current : { from, to };
-                  });
-                  setRange((current) =>
-                    current.start === info.startStr && current.end === info.endStr
-                      ? current
-                      : { start: info.startStr, end: info.endStr },
-                  );
-                }}
-                eventClick={({ event }) =>
-                  openDetail(event.extendedProps.record, event.extendedProps.occurrence)
-                }
-                dateClick={(info) => {
-                  const day = localDate(info.date);
-                  if (mobile && view === "month") openMobileDay(day);
-                  else setMobileDay(day);
-                }}
-                select={(info) => {
-                  if (
-                    info.view.type === "dayGridMonth" &&
-                    window.matchMedia("(max-width: 760px)").matches
-                  ) {
-                    openMobileDay(localDate(info.start));
-                    calendar.current?.getApi().unselect();
-                    return;
-                  }
-                  const start = info.allDay ? `${localDate(info.start)}T09:00` : info.startStr;
-                  const end = info.allDay ? `${localDate(info.start)}T17:00` : info.endStr;
-                  setEditor({
-                    kind: "events",
-                    defaults: { start, end, participantIds: visiblePeople },
-                  });
-                }}
-                eventDrop={(info) => {
-                  const record = info.event.extendedProps.record as DomainRecord;
-                  void run(async () => {
-                    try {
-                      await save(
-                        "events",
-                        {
-                          start: info.event.start?.toISOString(),
-                          end: info.event.end?.toISOString(),
-                        },
-                        record,
-                      );
-                    } catch (e) {
-                      info.revert();
-                      throw e;
-                    }
-                  });
-                }}
-                eventResize={(info) => {
-                  const record = info.event.extendedProps.record as DomainRecord;
-                  void run(async () => {
-                    try {
-                      await save("events", { end: info.event.end?.toISOString() }, record);
-                    } catch (e) {
-                      info.revert();
-                      throw e;
-                    }
-                  });
-                }}
+                eventContent={eventContent}
+                eventDidMount={eventDidMount}
+                datesSet={datesSet}
+                eventClick={eventClick}
+                dateClick={dateClick}
+                select={select}
+                eventDrop={eventDrop}
+                eventResize={eventResize}
               />
               {view === "month" && (
                 <section className={`personal-mobile-day-detail ${calendarStyles.daySummary}`}>

@@ -31,20 +31,29 @@ export function writeViewState<T>(userId: string, scope: string, field: string, 
   }
 }
 
+/**
+ * `preferred` (for example a value from the URL) wins over the stored tab state on mount and
+ * is stored as the new state.
+ */
 export function useViewState<T>(
   userId: string,
   scope: string,
   field: string,
   initial: T | (() => T),
+  preferred?: T,
 ): [T, Dispatch<SetStateAction<T>>] {
-  const [state, setState] = useState<T>(() =>
-    readViewState(
+  const [state, setState] = useState<T>(() => {
+    if (preferred !== undefined) {
+      writeViewState(userId, scope, field, preferred);
+      return preferred;
+    }
+    return readViewState(
       userId,
       scope,
       field,
       typeof initial === "function" ? (initial as () => T)() : initial,
-    ),
-  );
+    );
+  });
   const update = useCallback<Dispatch<SetStateAction<T>>>(
     (next) => {
       setState((current) => {

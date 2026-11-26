@@ -1,5 +1,6 @@
 import type { RecordData } from "./contracts";
 import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
+import { clientHeaders } from "./client-id";
 
 export class ApiFailure extends Error {
   constructor(
@@ -17,6 +18,7 @@ export async function api<T>(url: string, options: RequestInit = {}): Promise<T>
       ...options,
       headers: {
         ...(options.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
+        ...clientHeaders(options.method),
         ...options.headers,
       },
     });
@@ -53,8 +55,38 @@ export const num = (data: RecordData, key: string) =>
   typeof data[key] === "number" ? (data[key] as number) : 0;
 export const ids = (data: RecordData, key: string): string[] =>
   Array.isArray(data[key]) ? (data[key] as string[]) : [];
-export const localDate = (date = new Date()) =>
-  formatInTimeZone(date, "Europe/Berlin", "yyyy-MM-dd");
+// Formatters are expensive to create; build each one once per page.
+const berlinDay = new Intl.DateTimeFormat("en-US", {
+  timeZone: "Europe/Berlin",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+const dayLabelFormat = new Intl.DateTimeFormat("de-DE", {
+  timeZone: "Europe/Berlin",
+  day: "2-digit",
+  month: "short",
+});
+const dayTimeLabelFormat = new Intl.DateTimeFormat("de-DE", {
+  timeZone: "Europe/Berlin",
+  day: "2-digit",
+  month: "short",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+const hoursFormat = new Intl.NumberFormat("de-DE", { maximumFractionDigits: 2 });
+/** Theatre calendar day (Europe/Berlin) as yyyy-MM-dd. */
+export const localDate = (date = new Date()) => {
+  let year = "",
+    month = "",
+    day = "";
+  for (const part of berlinDay.formatToParts(date)) {
+    if (part.type === "year") year = part.value;
+    else if (part.type === "month") month = part.value;
+    else if (part.type === "day") day = part.value;
+  }
+  return `${year.padStart(4, "0")}-${month}-${day}`;
+};
 export const instantDate = (date: string) =>
   /(?:Z|[+-]\d{2}:\d{2})$/i.test(date)
     ? new Date(date)
@@ -62,14 +94,7 @@ export const instantDate = (date: string) =>
 export const localDateTime = (date: string) =>
   formatInTimeZone(instantDate(date), "Europe/Berlin", "yyyy-MM-dd'T'HH:mm");
 export const dateLabel = (date: string, time = false) =>
-  date
-    ? new Intl.DateTimeFormat("de-DE", {
-        timeZone: "Europe/Berlin",
-        day: "2-digit",
-        month: "short",
-        ...(time ? { hour: "2-digit", minute: "2-digit" } : {}),
-      }).format(instantDate(date))
-    : "–";
+  date ? (time ? dayTimeLabelFormat : dayLabelFormat).format(instantDate(date)) : "–";
 export const weekStart = (date = new Date()) => {
   const day = new Date(`${localDate(date)}T12:00:00Z`);
   day.setUTCDate(day.getUTCDate() - ((day.getUTCDay() + 6) % 7));
@@ -80,8 +105,7 @@ export const shiftDate = (date: string, days: number) => {
   current.setUTCDate(current.getUTCDate() + days);
   return current.toISOString().slice(0, 10);
 };
-export const hours = (seconds: number) =>
-  new Intl.NumberFormat("de-DE", { maximumFractionDigits: 2 }).format(seconds / 3600);
+export const hours = (seconds: number) => hoursFormat.format(seconds / 3600);
 export const initials = (name: string) =>
   name
     .split(" ")

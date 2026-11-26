@@ -15,12 +15,13 @@ export function seasonBounds(season?: string) {
   return { from: `${start}-08-01`, to: `${end}-08-01` };
 }
 
+const berlinYearMonth = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Europe/Berlin",
+  year: "numeric",
+  month: "2-digit",
+});
 export function seasonForDate(productions: DomainRecord[] = [], date = new Date()) {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Europe/Berlin",
-    year: "numeric",
-    month: "2-digit",
-  }).formatToParts(date);
+  const parts = berlinYearMonth.formatToParts(date);
   const year = Number(parts.find((part) => part.type === "year")?.value);
   const month = Number(parts.find((part) => part.type === "month")?.value);
   const start = year - (month < 8 ? 1 : 0);

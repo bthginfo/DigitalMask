@@ -1,6 +1,7 @@
 import { test as base, expect, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import type { Workspace, RecordKind, RecordData } from "../../src/shared/contracts";
+import { mockSessionCookie } from "./session-cookie";
 const fixture = JSON.parse(readFileSync("tests/e2e/documents-fixture.json", "utf8"));
 const test = base.extend<{ engine: "chromium" | "webkit" }>({
   engine: ["chromium", { option: true }],
@@ -11,6 +12,7 @@ const test = base.extend<{ engine: "chromium" | "webkit" }>({
       serviceWorkers: "block",
       viewport: engine === "webkit" ? { width: 390, height: 844 } : { width: 1440, height: 1000 },
     });
+    await context.addCookies([mockSessionCookie(baseURL)]);
     await runPage(await context.newPage());
     await browser.close();
   },
@@ -300,8 +302,11 @@ for (const browserName of ["chromium", "webkit"] as const)
       await page.goto("/?module=documentation");
       if (mobile) await page.getByLabel("Weitere Aktionen").click();
       await page.getByRole("button", { name: "Abschnitte verwalten", exact: true }).click();
-      page.on("dialog", (dialog) => dialog.accept());
       await page.getByRole("button", { name: "Vorbereitung löschen", exact: true }).click();
+      await page
+        .getByRole("alertdialog")
+        .getByRole("button", { name: "Löschen", exact: true })
+        .click();
       await expect(page.getByText("Diese Kategorie wird bereits verwendet.")).toBeVisible();
       await page.getByRole("button", { name: "Kategorie anlegen", exact: true }).click();
       await page.getByLabel("Bezeichnung", { exact: true }).fill("Eigener Testabschnitt");

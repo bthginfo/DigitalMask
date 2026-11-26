@@ -32,10 +32,7 @@ export function subscribeConnectivity(callback: () => void) {
     window.removeEventListener("offline", callback);
   };
 }
-export function subscribeLocation(callback: () => void) {
-  window.addEventListener("popstate", callback);
-  return () => window.removeEventListener("popstate", callback);
-}
+export { subscribeLocation } from "./client-navigation";
 export function subscribeMobile(callback: () => void) {
   const media = window.matchMedia("(max-width: 760px)");
   media.addEventListener("change", callback);

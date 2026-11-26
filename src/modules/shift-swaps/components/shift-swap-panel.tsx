@@ -14,6 +14,10 @@ import { ExportDialog } from "@/components/export-dialog";
 import { eligibleSwapService, shiftSwapStatusLabels } from "../model";
 import type { ShiftSwapAction, ShiftSwapStatus } from "../schema";
 import styles from "@/modules/workflows/components/workflow.module.css";
+import { useConfirm } from "@/components/confirm-dialog";
+
+/** Swap decisions change the request and the exchanged services, nothing else. */
+const swapKinds = ["shiftSwaps", "events"] as const;
 
 interface ServiceOption {
   key: string;
@@ -55,6 +59,7 @@ const serviceLabel = (service: ServiceOption) =>
   `${dateLabel(service.start, true)} · ${service.title}`;
 
 export function ShiftSwapPanel() {
+  const confirm = useConfirm();
   const { workspace, runWorkflow, busy } = useWorkspace();
   const query = useSyncExternalStore(
     subscribeLocation,
@@ -82,15 +87,19 @@ export function ShiftSwapPanel() {
     setError("");
     if (
       ["decline", "reject", "withdraw"].includes(action) &&
-      !confirm(
-        action === "withdraw"
-          ? "Diese Tauschanfrage zurückziehen?"
-          : "Diese Tauschanfrage ablehnen?",
-      )
+      !(await confirm({
+        message: `Tauschanfrage für „${textValue(record.data.serviceTitle) || "diesen Dienst"}“ ${action === "withdraw" ? "zurückziehen" : "ablehnen"}?`,
+        confirmLabel: action === "withdraw" ? "Zurückziehen" : "Ablehnen",
+        destructive: true,
+      }))
     )
       return;
     try {
-      await runWorkflow(`/api/shift-swaps/${record.id}`, { action, version: record.version });
+      await runWorkflow(
+        `/api/shift-swaps/${record.id}`,
+        { action, version: record.version },
+        swapKinds,
+      );
     } catch (exception) {
       setError(
         exception instanceof Error
@@ -305,21 +314,25 @@ export function ShiftSwapEditor({ onClose }: { onClose: () => void }) {
             return;
           }
           try {
-            await runWorkflow("/api/shift-swaps", {
-              serviceId: selected.event.id,
-              serviceStart: selected.start,
-              serviceVersion: selected.event.version,
-              partnerId,
-              note,
-              confirmed,
-              ...(reciprocal && counter
-                ? {
-                    counterServiceId: counter.event.id,
-                    counterServiceStart: counter.start,
-                    counterServiceVersion: counter.event.version,
-                  }
-                : {}),
-            });
+            await runWorkflow(
+              "/api/shift-swaps",
+              {
+                serviceId: selected.event.id,
+                serviceStart: selected.start,
+                serviceVersion: selected.event.version,
+                partnerId,
+                note,
+                confirmed,
+                ...(reciprocal && counter
+                  ? {
+                      counterServiceId: counter.event.id,
+                      counterServiceStart: counter.start,
+                      counterServiceVersion: counter.event.version,
+                    }
+                  : {}),
+              },
+              swapKinds,
+            );
             onClose();
           } catch (exception) {
             setError(

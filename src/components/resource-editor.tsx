@@ -32,6 +32,7 @@ import {
 } from "@/shared/period-filter";
 import { ProductionSeasonsField } from "@/modules/productions/components/production-seasons-field";
 import { sprintsEnabled, taskStatusOptions } from "@/modules/tasks/overview";
+import { useDraftChanged } from "@/shared/use-draft-changed";
 
 function initialData(kind: RecordKind): RecordData {
   return {
@@ -153,6 +154,7 @@ function GenericResourceEditor({
       : undefined);
   const [error, setError] = useState("");
   const [numberDrafts, setNumberDrafts] = useState<Record<string, string>>({});
+  const changed = useDraftChanged({ data, numberDrafts });
   const change = (key: string, next: unknown) =>
     setData((current) => {
       const parent =
@@ -453,7 +455,12 @@ function GenericResourceEditor({
     );
   };
   return (
-    <Modal title={`${labels[kind][1]} ${record ? "bearbeiten" : "anlegen"}`} onClose={onClose} wide>
+    <Modal
+      title={`${labels[kind][1]} ${record ? "bearbeiten" : "anlegen"}`}
+      onClose={onClose}
+      dirty={changed}
+      wide
+    >
       <form onSubmit={submit}>
         <div className="form-grid">
           {configuredFields.map(render)}

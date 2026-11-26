@@ -1,4 +1,5 @@
 "use client";
+import { berlinClock, dateFormat } from "@/shared/intl";
 import { useMemo, useRef, useState } from "react";
 import { ChevronRight, Plus } from "lucide-react";
 import type { DomainRecord, Member, RecordData } from "@/shared/contracts";
@@ -28,19 +29,21 @@ export type CalendarInstance = {
   blocksTime?: boolean;
   extendedProps: { record: DomainRecord };
 };
-const clock = (date: string) =>
-  new Intl.DateTimeFormat("de-DE", {
-    timeZone: "Europe/Berlin",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(date));
-const fullDay = (date: string) =>
-  new Intl.DateTimeFormat("de-DE", {
-    timeZone: "Europe/Berlin",
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  }).format(instantDate(date));
+const clock = (date: string) => berlinClock.format(new Date(date));
+const fullDayFormat = dateFormat({
+  timeZone: "Europe/Berlin",
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+});
+const fullDay = (date: string) => fullDayFormat.format(instantDate(date));
+const weekHeader = dateFormat({
+  timeZone: "Europe/Berlin",
+  weekday: "short",
+  day: "numeric",
+  month: "numeric",
+});
+const monthHeader = dateFormat({ timeZone: "Europe/Berlin", weekday: "short", day: "numeric" });
 const shortName = (name: string, names: string[]) => {
   if (name === "Gäste/Aushilfen") return "Gäste / Aushilfen";
   const [first, ...rest] = name.trim().split(/\s+/);
@@ -128,12 +131,7 @@ export function TeamCalendar({
                         if (mobile) setDaySheetOpen(true);
                       }}
                     >
-                      {new Intl.DateTimeFormat("de-DE", {
-                        timeZone: "Europe/Berlin",
-                        weekday: "short",
-                        day: "numeric",
-                        ...(!month ? { month: "numeric" as const } : {}),
-                      }).format(new Date(`${date}T12:00:00Z`))}
+                      {(month ? monthHeader : weekHeader).format(new Date(`${date}T12:00:00Z`))}
                       <HolidayLabel date={date} compact={mobile || month} />
                     </button>
                   </th>

@@ -1,3 +1,4 @@
+import { useMemo, useSyncExternalStore, type MouseEvent } from "react";
 import type { DomainRecord } from "./contracts";
 import { value } from "./client-api";
 
@@ -7,15 +8,38 @@ interface NavigationContext {
   scroll?: { x: number; y: number };
 }
 const contextKey = "digitalmaskNavigation";
+/** Fired after in-app history changes; real Back/Forward fire popstate. */
+export const locationEvent = "digitalmask:location";
 let navigationUser = "";
 export function setNavigationUser(userId: string) {
   navigationUser = userId;
 }
 export const locationPath = () => location.pathname + location.search + location.hash;
 const scrollKey = () =>
-  `digitalmask-view:${navigationUser}:scroll:${locationPath().replace(/([?&])record=[^&]*&?/, "$1")}`;
+  `digitalmask-view:${navigationUser}:scroll:${(location.pathname + routeSearch(location.search) + location.hash).replace(/([?&])record=[^&]*&?/, "$1")}`;
 function context(): NavigationContext {
   return history.state?.[contextKey] || {};
+}
+function notifyLocation() {
+  window.dispatchEvent(new Event(locationEvent));
+}
+/** Location changes from Back/Forward and from the helpers below. */
+export function subscribeLocation(callback: () => void) {
+  window.addEventListener("popstate", callback);
+  window.addEventListener(locationEvent, callback);
+  return () => {
+    window.removeEventListener("popstate", callback);
+    window.removeEventListener(locationEvent, callback);
+  };
+}
+/**
+ * Writes only the app's own state object. Next.js copies its router internals into the entry
+ * and updates its router URL itself; copying history.state (with Next's __NA flag) would skip
+ * that and leave Next with a stale URL that it could later write back.
+ */
+function pushEntry(href: string, metadata: NavigationContext) {
+  history.pushState({ [contextKey]: metadata }, "", href);
+  notifyLocation();
 }
 export function captureNavigationScroll() {
   const scroll = { x: window.scrollX, y: window.scrollY };
@@ -41,8 +65,16 @@ export function navigateWorkspace(
   if (from === href) return;
   const metadata: NavigationContext =
     options.retainOrigin === false ? {} : { returnTo: from, returnLabel: options.returnLabel };
-  history.pushState({ ...history.state, [contextKey]: metadata }, "", href);
-  window.dispatchEvent(new PopStateEvent("popstate"));
+  pushEntry(href, metadata);
+}
+/**
+ * Change the current entry's URL (filters, selection, calendar view). `silent` skips the
+ * in-app location event for presentation-only parameters nobody else routes on.
+ */
+export function replaceWorkspaceUrl(href: string, options: { silent?: boolean } = {}) {
+  if (locationPath() === href) return;
+  history.replaceState({ [contextKey]: context() }, "", href);
+  if (!options.silent) notifyLocation();
 }
 export function returnToContext(fallback: string) {
   if (navigationReturn()) history.back();
@@ -55,8 +87,53 @@ export function closeRecordDetail() {
   }
   const next = new URL(location.href);
   ["record", "relatedSeason", "relatedYear"].forEach((key) => next.searchParams.delete(key));
-  history.replaceState(history.state, "", next.pathname + next.search);
-  window.dispatchEvent(new PopStateEvent("popstate"));
+  replaceWorkspaceUrl(next.pathname + next.search);
+}
+
+/** Plain primary clicks navigate in place; modified clicks keep the browser's link behaviour. */
+export function isPlainClick(event: MouseEvent<HTMLAnchorElement>) {
+  return !(
+    event.defaultPrevented ||
+    event.button !== 0 ||
+    event.metaKey ||
+    event.ctrlKey ||
+    event.shiftKey ||
+    event.altKey ||
+    event.currentTarget.target === "_blank" ||
+    event.currentTarget.hasAttribute("download")
+  );
+}
+
+/** Module entry URL as used by the navigation and deep links. */
+export const moduleHref = (module: string) => (module === "today" ? "/" : `/?module=${module}`);
+
+/** Parameters that only change how a screen is presented; they do not route the shell. */
+const presentationParams = ["view", "date", "span"];
+export function routeSearch(search: string) {
+  const params = new URLSearchParams(search);
+  for (const key of presentationParams) params.delete(key);
+  const query = params.toString();
+  return query ? `?${query}` : "";
+}
+
+/**
+ * The workspace route (?module=…&productionId=…&tab=…&record=…) as React state, plus the
+ * navigation helpers. Presentation parameters such as the calendar view are excluded, so
+ * changing them does not re-render the shell.
+ */
+export function useWorkspaceLocation() {
+  const search = useSyncExternalStore(
+    subscribeLocation,
+    () => routeSearch(location.search),
+    () => "",
+  );
+  const params = useMemo(() => new URLSearchParams(search), [search]);
+  return {
+    search,
+    params,
+    navigate: navigateWorkspace,
+    replace: replaceWorkspaceUrl,
+  };
 }
 
 /** Restore the actual history entry, including Back from a linked detail dialog. */
@@ -149,11 +226,7 @@ export function navigateRecord(
   ) {
     captureNavigationScroll();
     current.searchParams.set("record", options.from.id);
-    history.pushState(
-      { ...history.state, [contextKey]: { ...context(), returnTo: locationPath() } },
-      "",
-      current.pathname + current.search,
-    );
+    pushEntry(current.pathname + current.search, { ...context(), returnTo: locationPath() });
   }
   options.beforeNavigate?.();
   navigateWorkspace(recordHref(record));

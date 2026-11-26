@@ -8,6 +8,19 @@ export function occurrences(event: DomainRecord, from: Date, to: Date) {
   const period = event.data.recurrence === "daily" ? 1 : event.data.recurrence === "weekly" ? 7 : 0;
   const result: { start: Date; end: Date }[] = [];
   const exceptions = Array.isArray(event.data.exceptions) ? event.data.exceptions : [];
+  if (!period) {
+    // Single events need no zoned date arithmetic; the result matches the series loop below.
+    if (!(start < to) || !(end > from)) return result;
+    if (event.data.until && start > fromZonedTime(`${event.data.until}T23:59:59`, THEATER_ZONE))
+      return result;
+    if (
+      exceptions.length &&
+      exceptions.includes(formatInTimeZone(start, THEATER_ZONE, "yyyy-MM-dd"))
+    )
+      return result;
+    result.push({ start, end });
+    return result;
+  }
   let date = formatInTimeZone(start, THEATER_ZONE, "yyyy-MM-dd");
   const clock = formatInTimeZone(start, THEATER_ZONE, "HH:mm:ss");
   const endClock = formatInTimeZone(end, THEATER_ZONE, "HH:mm:ss");

@@ -25,6 +25,7 @@ import { WeekDayOverview } from "@/modules/time-tracking/components/week-day-ove
 import { DurationField } from "@/modules/time-tracking/components/duration-field";
 import styles from "@/modules/time-tracking/components/time-history.module.css";
 import weekStyles from "@/modules/time-tracking/components/week-view.module.css";
+import { useConfirm } from "@/components/confirm-dialog";
 type Draft = { id: string; data: RecordData; createdAt: string };
 export function TimeModule({ productionId = "" }: { productionId?: string }) {
   return productionId ? <WorkTimeModule productionId={productionId} /> : <TimeWorkspace />;
@@ -36,7 +37,8 @@ export function WorkTimeModule({
   productionId?: string;
   embedded?: boolean;
 }) {
-  const { workspace, refresh, online } = useWorkspace();
+  const confirm = useConfirm();
+  const { workspace, reload, online } = useWorkspace();
   const scope = `time:${productionId || "all"}`;
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const categoryOptions = categoriesFor("time", workspace.records.categories);
@@ -96,7 +98,7 @@ export function WorkTimeModule({
         remaining = remaining.filter((x) => x.id !== draft.id);
         persist(remaining);
       }
-      await refresh();
+      await reload(["time"]);
     });
     setSyncing(false);
   };
@@ -199,8 +201,14 @@ export function WorkTimeModule({
           </Button>
           <Button
             variant="ghost"
-            onClick={() => {
-              if (confirm("Alle unzugeordneten Geräteentwürfe auf diesem Gerät verwerfen?"))
+            onClick={async () => {
+              if (
+                await confirm({
+                  message: "Alle unzugeordneten Geräteentwürfe auf diesem Gerät verwerfen?",
+                  confirmLabel: "Verwerfen",
+                  destructive: true,
+                })
+              )
                 setInboxJson("[]");
             }}
           >
@@ -222,8 +230,15 @@ export function WorkTimeModule({
           </Button>
           <Button
             variant="ghost"
-            onClick={() => {
-              if (confirm("Alle lokalen Zeitentwürfe verwerfen?")) persist([]);
+            onClick={async () => {
+              if (
+                await confirm({
+                  message: `${drafts.length === 1 ? "Den lokalen Zeitentwurf" : `Alle ${drafts.length} lokalen Zeitentwürfe`} verwerfen?`,
+                  confirmLabel: "Verwerfen",
+                  destructive: true,
+                })
+              )
+                persist([]);
             }}
           >
             Verwerfen

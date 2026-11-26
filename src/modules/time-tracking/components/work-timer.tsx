@@ -9,6 +9,7 @@ import { Badge, Button, ErrorMessage } from "@/components/ui";
 import { timerLongRunning, timerOpenSeconds } from "../timer-reminder-rules";
 import { AttendanceStopPrompt, needsProductionPrompt } from "./timer-stop";
 import styles from "./work-timer.module.css";
+import { useConfirm } from "@/components/confirm-dialog";
 
 export function TimerPanel({
   compact = false,
@@ -21,6 +22,7 @@ export function TimerPanel({
   kind?: "time" | "attendance";
   onBooked?: (record: DomainRecord) => void;
 }) {
+  const confirm = useConfirm();
   const { workspace, action, busy, notify } = useWorkspace();
   const [now, setNow] = useState(Date.now);
   const [error, setError] = useState("");
@@ -203,11 +205,13 @@ export function TimerPanel({
             <Button
               variant="danger-ghost"
               disabled={busy}
-              onClick={() => {
+              onClick={async () => {
                 if (
-                  confirm(
-                    `${attendance ? "Anwesenheits" : "Produktions"}timer ohne Buchung verwerfen?`,
-                  )
+                  await confirm({
+                    message: `${attendance ? "Anwesenheits" : "Produktions"}timer ohne Buchung verwerfen?`,
+                    confirmLabel: "Verwerfen",
+                    destructive: true,
+                  })
                 )
                   void run("discard");
               }}

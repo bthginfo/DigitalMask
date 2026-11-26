@@ -255,10 +255,11 @@ test("dirty edits survive refresh and stale version offers a separate plan", asy
   await page.getByRole("button", { name: "Name & Vorlauf", exact: true }).click();
   await page.getByLabel("Planname", { exact: true }).fill("Mein lokaler Plan");
   await page.getByRole("button", { name: "Übernehmen", exact: true }).click();
-  const dialog = page.waitForEvent("dialog");
-  const change = page.getByLabel("Plan auswählen").selectOption("rehearsal-plan");
-  await (await dialog).dismiss();
-  await change;
+  await page.getByLabel("Plan auswählen").selectOption("rehearsal-plan");
+  await page
+    .getByRole("alertdialog")
+    .getByRole("button", { name: "Weiter bearbeiten", exact: true })
+    .click();
   await expect(page.getByRole("heading", { name: "Mein lokaler Plan", exact: true })).toBeVisible();
   fixture.workspace.records.maskPlans[0].version = 2;
   fixture.workspace.records.maskPlans[0].data.title = "Plan der Kollegin";

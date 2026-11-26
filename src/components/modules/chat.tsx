@@ -21,11 +21,19 @@ import { useWorkspace } from "../workspace-context";
 import { Badge, Button, Empty, ErrorMessage, Modal, PageHeader } from "../ui";
 import { ChatChannel } from "@/modules/chat/components/chat-channel";
 import { ConversationEditor } from "@/modules/chat/components/conversation-editor";
-import { chatUnreadCounts } from "@/modules/notifications/unread";
-import { chatChoiceKey, unreadFirstChoices, type ChatChoice } from "@/modules/chat/channel-order";
+import { chatUnread } from "@/modules/chat/unread-source";
+import {
+  chatChoiceKey,
+  defaultChatChoice,
+  readLastChat,
+  rememberLastChat,
+  unreadFirstChoices,
+  type ChatChoice,
+} from "@/modules/chat/channel-order";
 import { ChannelGroup } from "@/modules/chat/components/channel-group";
 import { useCollapsedPreference } from "@/shared/use-collapsed-preference";
 import styles from "@/modules/chat/components/chat-viewport.module.css";
+import { useConfirm } from "@/components/confirm-dialog";
 
 function ChannelChoice({
   title,
@@ -90,14 +98,22 @@ export function conversationTitle(
 export function ChatModule({
   productionId = "",
   conversationId = "",
+  generalChosen = false,
   focusedMessageId = "",
   onNavigate,
 }: {
   productionId?: string;
   conversationId?: string;
+  /** The general channel was chosen explicitly (otherwise a default channel is picked). */
+  generalChosen?: boolean;
   focusedMessageId?: string;
-  onNavigate?: (conversationId: string, productionId?: string) => void;
+  onNavigate?: (
+    conversationId: string,
+    productionId?: string,
+    options?: { replace?: boolean },
+  ) => void;
 }) {
+  const confirm = useConfirm();
   const { workspace, save, remove, busy, online } = useWorkspace();
   const viewport = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
@@ -144,7 +160,7 @@ export function ChatModule({
       visual?.removeEventListener("scroll", resize);
     };
   }, [online]);
-  const unread = chatUnreadCounts(workspace.chatUnread);
+  const unread = chatUnread(workspace);
   const sidebarId = useId();
   const sidebarKey = `digitalmask:chat-sidebar:${workspace.user.id}`;
   const [collapsed, setCollapsed] = useCollapsedPreference(sidebarKey);
@@ -264,6 +280,24 @@ export function ChatModule({
     workspace.records.notifications,
     workspace.user.id,
   );
+  // Opening Kommunikation without a channel picks one before anything is marked as read. A
+  // linked message without a channel belongs to the general channel.
+  const choosingDefault =
+    !!onNavigate && !conversationId && !productionId && !generalChosen && !focusedMessageId;
+  const defaultChoice = choosingDefault
+    ? defaultChatChoice(ordered, readLastChat(workspace.user.id))
+    : undefined;
+  const defaultConversation = defaultChoice?.conversationId || "",
+    defaultProduction = defaultChoice?.productionId || "";
+  useEffect(() => {
+    if (!choosingDefault || !onNavigate) return;
+    onNavigate(defaultConversation, defaultProduction, { replace: true });
+  }, [choosingDefault, defaultConversation, defaultProduction, onNavigate]);
+  const selectedKey = chatChoiceKey(selectedConversation, selectedProduction);
+  useEffect(() => {
+    if (onNavigate && !choosingDefault && !unavailable)
+      rememberLastChat(workspace.user.id, selectedKey);
+  }, [onNavigate, choosingDefault, unavailable, selectedKey, workspace.user.id]);
   const icons = { team: Hash, production: Theater, direct: MessageCircle, group: Users };
   const SelectedIcon = conversation
     ? conversation.data.mode === "team"
@@ -424,6 +458,11 @@ export function ChatModule({
                     count={ordered.unread.length}
                     storageKey={`digitalmask:chat-group:${workspace.user.id}:unread`}
                     query={query}
+                    revealKey={
+                      ordered.unread.some((choice) => choice.key === selectedKey)
+                        ? selectedKey
+                        : undefined
+                    }
                   >
                     {ordered.unread.map(renderChoice)}
                   </ChannelGroup>
@@ -446,6 +485,9 @@ export function ChatModule({
                       storageKey={`digitalmask:chat-group:${workspace.user.id}:${kind}`}
                       defaultCollapsed={kind === "production"}
                       query={query}
+                      revealKey={
+                        group.some((choice) => choice.key === selectedKey) ? selectedKey : undefined
+                      }
                     >
                       {group.map(renderChoice)}
                     </ChannelGroup>
@@ -484,7 +526,7 @@ export function ChatModule({
             </div>
           </aside>
         )}
-        {unavailable ? (
+        {choosingDefault ? null : unavailable ? (
           <section className="chat-unavailable">
             {sidebarToggle}
             <div className="chat-mobile-heading">
@@ -601,8 +643,14 @@ export function ChatModule({
             <Button
               variant="danger-ghost"
               disabled={busy}
-              onClick={() => {
-                if (confirm("Leeren Chat löschen? Chats mit Nachrichten können archiviert werden."))
+              onClick={async () => {
+                if (
+                  await confirm({
+                    message: `Leeren Chat „${title}“ löschen? Chats mit Nachrichten können archiviert werden.`,
+                    confirmLabel: "Löschen",
+                    destructive: true,
+                  })
+                )
                   void update(async () => {
                     await remove(conversation);
                     choose("");

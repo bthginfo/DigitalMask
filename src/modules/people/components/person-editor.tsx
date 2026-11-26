@@ -6,6 +6,7 @@ import { useWorkspace } from "@/components/workspace-context";
 import { textValue, type DomainRecord, type RecordData } from "@/shared/contracts";
 import { isDirectoryPerson } from "./person-data";
 import styles from "./people.module.css";
+import { useDraftChanged } from "@/shared/use-draft-changed";
 
 export interface PersonEditorProps {
   record?: DomainRecord;
@@ -36,6 +37,7 @@ export function PersonEditor({
   const [draft, setDraft] = useState<RecordData>(() => ({ ...defaults, ...record?.data }));
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const changed = useDraftChanged(draft);
   const pending = useRef(false),
     container = useRef<HTMLDivElement>(null),
     id = useId();
@@ -195,7 +197,7 @@ export function PersonEditor({
       {content}
     </section>
   ) : (
-    <Modal title={record ? "Kontakt bearbeiten" : "Person anlegen"} onClose={close}>
+    <Modal title={record ? "Kontakt bearbeiten" : "Person anlegen"} onClose={close} dirty={changed}>
       <form onSubmit={(event) => void submit(event)}>{content}</form>
     </Modal>
   );

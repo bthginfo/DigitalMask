@@ -20,6 +20,7 @@ import { navigateWorkspace } from "@/shared/client-navigation";
 import { backstageChangesSection } from "@/shared/document-sections";
 import { eventMaskPlan, maskPlanEventQuery } from "@/modules/mask-plans/evening";
 import { isGuestProduction } from "@/modules/productions/guest-rules";
+import { useConfirm } from "@/components/confirm-dialog";
 export function EventDetail({
   record,
   occurrence,
@@ -32,6 +33,7 @@ export function EventDetail({
   onNavigate?: () => void;
 }) {
   const { workspace, remove, busy } = useWorkspace();
+  const confirm = useConfirm();
   const [editing, setEditing] = useState(false),
     [booking, setBooking] = useState(false),
     [exporting, setExporting] = useState(false),
@@ -85,8 +87,14 @@ export function EventDetail({
               <Button
                 variant="danger-ghost"
                 disabled={busy}
-                onClick={() => {
-                  if (confirm(`Termin „${presentation.title}“ löschen?`)) {
+                onClick={async () => {
+                  if (
+                    await confirm({
+                      message: `Termin „${presentation.title}“ löschen?`,
+                      confirmLabel: "Löschen",
+                      destructive: true,
+                    })
+                  ) {
                     setError("");
                     void remove(current)
                       .then(onClose)
@@ -233,7 +241,9 @@ export function EventDetail({
           defaults={{
             title: presentation.title,
             productionId: value(current.data, "productionId"),
-            date: localDate(),
+            // Book the event's own day and times (this occurrence of a series), not today.
+            date: localDate(instantDate(start)),
+            ...(presentation.allDay ? {} : { start, end }),
             category: current.data.productionId ? "production" : "other",
           }}
           onClose={() => setBooking(false)}

@@ -1,0 +1,134 @@
+/*
+ * Rendering performance only: no colours, spacing or typography live here.
+ * Long lists let the browser skip layout and paint for rows outside the viewport;
+ * `auto` remembers each row's real size once it has been rendered.
+ */
+.chat-message,
+.list > .list-row,
+.editorial-grid > .editorial-card,
+.time-history-week,
+.time-booking-row {
+  content-visibility: auto;
+}
+.chat-message {
+  contain-intrinsic-size: auto 88px;
+}
+.list > .list-row {
+  contain-intrinsic-size: auto 68px;
+}
+.editorial-grid > .editorial-card {
+  contain-intrinsic-size: auto 360px;
+}
+.time-history-week {
+  contain-intrinsic-size: auto 64px;
+}
+.time-booking-row {
+  contain-intrinsic-size: auto 76px;
+}
+/* A focused deep-link target must be measurable immediately for scrollIntoView. */
+.notification-target {
+  content-visibility: visible;
+}
+@media print {
+  .chat-message,
+  .list > .list-row,
+  .editorial-grid > .editorial-card,
+  .time-history-week,
+  .time-booking-row {
+    content-visibility: visible;
+  }
+}
+
+/* Placeholder while a module chunk loads (see components/module-skeleton.tsx). */
+.module-skeleton {
+  display: grid;
+  gap: 24px;
+  padding-block: 8px;
+}
+.module-skeleton-heading,
+.module-skeleton-panel {
+  display: grid;
+  gap: 12px;
+}
+.module-skeleton-line,
+.module-skeleton-row {
+  display: block;
+  border-radius: 8px;
+  background: color-mix(in srgb, currentColor 8%, transparent);
+  animation: module-skeleton-pulse 1.4s ease-in-out infinite;
+}
+.module-skeleton-line.short {
+  width: 9rem;
+  height: 0.7rem;
+}
+.module-skeleton-line.title {
+  width: min(18rem, 70%);
+  height: 2rem;
+}
+.module-skeleton-row {
+  height: 3.25rem;
+}
+@keyframes module-skeleton-pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .module-skeleton-line,
+  .module-skeleton-row {
+    animation: none;
+  }
+}
+
+/*
+ * Navigation parity (temporary): sidebar and bottom-navigation entries are now real links
+ * (.nav-item / .bottom-nav-item). globals.css still styles `.bottom-nav > button`; these rules
+ * mirror it for links until the restyle targets `.bottom-nav-item` directly.
+ */
+.nav-item:hover,
+.bottom-nav > a:hover {
+  text-decoration: none;
+}
+.bottom-nav > a {
+  position: relative;
+}
+@media (max-width: 760px) {
+  .bottom-nav > a {
+    flex: 1 1 0;
+    min-width: 44px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    min-height: 49px;
+    border-radius: 15px;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.2;
+  }
+  .bottom-nav > a.active,
+  .bottom-nav > a:active {
+    color: var(--accent);
+    background: var(--accent-soft);
+  }
+  .bottom-nav > a.active {
+    font-weight: 650;
+  }
+  .bottom-nav > a:focus-visible {
+    outline-offset: -2px;
+  }
+  .bottom-nav > a > .chat-unread-count {
+    position: absolute;
+    top: 0;
+    right: calc(50% - 24px);
+    border: 2px solid var(--surface);
+  }
+}
+@supports ((backdrop-filter: blur(12px)) or (-webkit-backdrop-filter: blur(12px))) {
+  @media screen and (max-width: 760px) {
+    .bottom-nav > a {
+      border-radius: 21px;
+    }
+  }
+}

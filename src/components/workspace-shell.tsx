@@ -28,42 +28,54 @@ import Link from "next/link";
 import {
   captureNavigationScroll,
   closeRecordDetail,
+  isPlainClick,
+  moduleHref,
   navigateWorkspace,
   navigationReturn,
+  replaceWorkspaceUrl,
   restoreNavigationScroll,
   returnToContext,
   setNavigationUser,
+  useWorkspaceLocation,
 } from "@/shared/client-navigation";
-import { subscribeLocation, subscribeMobile } from "@/shared/client-storage";
-import { onboardingVersion, type DomainRecord, type RecordKind } from "@/shared/contracts";
+import { subscribeMobile } from "@/shared/client-storage";
+import { onboardingVersion, textValue, type DomainRecord } from "@/shared/contracts";
 import { initials, post } from "@/shared/client-api";
-import { useWorkspace } from "./workspace-context";
+import { useWorkspaceActions, useWorkspaceData, useWorkspaceStatus } from "./workspace-context";
 import { stopPushOnLogout } from "@/modules/notifications/client";
-import { chatUnreadCounts, unreadNotifications } from "@/modules/notifications/unread";
+import { unreadNotifications } from "@/modules/notifications/unread";
+import { chatUnread as chatUnreadFor, unreadLabel } from "@/modules/chat/unread-source";
+import { recordTitle } from "./resource-fields";
 import { MarkAllReadButton } from "@/modules/notifications/components/mark-all-read";
 import { NotificationRow } from "@/modules/notifications/components/notification-row";
 import { Badge, Empty, Modal } from "./ui";
 import { ThemeSwitch } from "./theme-switch";
 import { LiveStatus } from "./live-status";
-import { RecordDetail, ResourceView } from "./resource-view";
-import { WorkspaceSearch } from "./workspace-search";
 import { MyDay } from "@/modules/today/my-day";
-import { ProductionsModule } from "./modules/productions";
-import { TasksModule } from "./modules/tasks";
-import { CalendarModule } from "./modules/calendar";
-import { TimeModule } from "./modules/time";
-import { ChatModule } from "./modules/chat";
+import {
+  ActorsModule,
+  CalendarModule,
+  ChatModule,
+  DocumentationModule,
+  ExportsModule,
+  HelpModule,
+  OnboardingTour,
+  WhatsNew,
+  PeopleModule,
+  ProductionsModule,
+  RecordDetail,
+  ResourceView,
+  SettingsModule,
+  TasksModule,
+  TimeModule,
+  WorkspaceSearch,
+  prefetchModules,
+  whenIdle,
+} from "./lazy-modules";
 import chatStyles from "@/modules/chat/components/chat-viewport.module.css";
-import { SettingsModule } from "./modules/settings";
-import { labels } from "./resource-fields";
 import { ProfileAccent } from "@/modules/profile/components/accent-picker";
-import { OnboardingTour } from "@/modules/profile/components/onboarding-tour";
-import { HelpModule } from "@/modules/help/components/help-module";
-import { DocumentationModule } from "@/modules/documentation/components/documentation-module";
-import { PeopleModule } from "@/modules/people/components";
-import { ActorsModule } from "@/modules/ensemble/components/actors-module";
 import { AppInstall } from "@/modules/pwa/components/app-install";
-import { ExportDialog } from "./export-dialog";
+import { useConfirm } from "@/components/confirm-dialog";
 const nav: { id: string; label: string; icon: LucideIcon; group: string }[] = [
   { id: "today", label: "Heute", icon: Home, group: "ARBEITSRAUM" },
   { id: "productions", label: "Produktionen", icon: Theater, group: "ARBEITSRAUM" },
@@ -81,13 +93,11 @@ const nav: { id: string; label: string; icon: LucideIcon; group: string }[] = [
   { id: "settings", label: "Einstellungen", icon: Settings2, group: "VERWALTUNG" },
 ];
 export function WorkspaceShell() {
-  const { workspace, notice, notify, online, action } = useWorkspace();
-  const query = useSyncExternalStore(
-    subscribeLocation,
-    () => location.search,
-    () => "",
-  );
-  const params = new URLSearchParams(query);
+  // Data and stable actions only: busy, notices and sync status render in small children.
+  const workspace = useWorkspaceData();
+  const { notify, action } = useWorkspaceActions();
+  const confirm = useConfirm();
+  const { search: query, params } = useWorkspaceLocation();
   const requestedModule =
     params.get("module") === "productions" && params.get("tab") === "handovers"
       ? "handovers"
@@ -112,9 +122,12 @@ export function WorkspaceShell() {
     knownIds: Set<string>;
   } | null>(null);
   const [tourRequested, setTourRequested] = useState(false);
-  const needsTour =
-    workspace.user.preferences !== undefined &&
-    workspace.user.preferences.onboardingVersion < onboardingVersion;
+  const seenVersion = workspace.user.preferences?.onboardingVersion;
+  // New accounts get the full introduction; people who already used the app see what changed.
+  const needsTour = seenVersion === 0;
+  const needsWhatsNew =
+    seenVersion !== undefined && seenVersion > 0 && seenVersion < onboardingVersion;
+  const [whatsNewOpen, setWhatsNewOpen] = useState(true);
   const main = useRef<HTMLElement>(null);
   const sidebar = useRef<HTMLElement>(null);
   const menuOpener = useRef<HTMLElement | null>(null);
@@ -140,6 +153,40 @@ export function WorkspaceShell() {
     };
   }, [workspace.user.id]);
   useEffect(() => restoreNavigationScroll(scrollTarget), [query, scrollTarget]);
+  // After switching modules, move focus to the new page heading once it has rendered (module
+  // chunks load lazily), unless a dialog is open or focus already went into the page.
+  const focusedModule = useRef(activeModule);
+  useEffect(() => {
+    if (focusedModule.current === activeModule) return;
+    focusedModule.current = activeModule;
+    const root = main.current;
+    if (!root) return;
+    const focusHeading = () => {
+      const heading = root.querySelector<HTMLElement>("h1");
+      if (!heading) return false;
+      const current = document.activeElement;
+      if (document.querySelector("dialog[open]") || (current && root.contains(current)))
+        return true;
+      if (!heading.hasAttribute("tabindex")) heading.tabIndex = -1;
+      heading.focus({ preventScroll: true });
+      return true;
+    };
+    if (focusHeading()) return;
+    const observer = new MutationObserver(() => {
+      if (focusHeading()) observer.disconnect();
+    });
+    observer.observe(root, { childList: true, subtree: true });
+    const timeout = setTimeout(() => observer.disconnect(), 8000);
+    return () => {
+      observer.disconnect();
+      clearTimeout(timeout);
+    };
+  }, [activeModule]);
+  // Bottom-navigation screens load in the background so switching tabs stays instant.
+  useEffect(
+    () => whenIdle(() => prefetchModules(["calendar", "productions", "time", "chat", "resources"])),
+    [],
+  );
   useEffect(() => {
     const key = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key === "k") {
@@ -192,11 +239,6 @@ export function WorkspaceShell() {
         previousFocus.focus({ preventScroll: true });
     };
   }, [mobileMenu, isMobile]);
-  useEffect(() => {
-    if (!notice) return;
-    const timeout = setTimeout(() => notify(""), 7000);
-    return () => clearTimeout(timeout);
-  }, [notice, notify]);
   const navigate = useCallback((next: string) => {
     setMobileMenu(false);
     navigateWorkspace(next.startsWith("/") ? next : next === "today" ? "/" : `/?module=${next}`);
@@ -210,9 +252,13 @@ export function WorkspaceShell() {
     } catch {}
     if (
       drafts.length &&
-      !confirm(
-        "Es gibt lokale Zeitentwürfe. Beim Abmelden werden sie auf diesem Gerät gelöscht. Trotzdem abmelden?",
-      )
+      !(await confirm({
+        title: "Lokale Zeitentwürfe",
+        message:
+          "Es gibt lokale Zeitentwürfe. Beim Abmelden werden sie auf diesem Gerät gelöscht. Trotzdem abmelden?",
+        confirmLabel: "Abmelden",
+        destructive: true,
+      }))
     )
       return;
     try {
@@ -245,7 +291,7 @@ export function WorkspaceShell() {
           a.id.localeCompare(b.id),
       )
     : [];
-  const chatUnread = chatUnreadCounts(workspace.chatUnread).total;
+  const chatUnread = chatUnreadFor(workspace).total;
   const linkedRecord = recordId
     ? Object.values(workspace.records)
         .flat()
@@ -261,6 +307,20 @@ export function WorkspaceShell() {
     closeRecordDetail();
   };
   const active = nav.find((x) => x.id === activeModule)!;
+  const productionId = activeModule === "productions" ? params.get("productionId") || "" : "";
+  const openRecord = detail || queryRecord;
+  const pageTitle = openRecord
+    ? recordTitle(openRecord, workspace)
+    : productionId
+      ? textValue(
+          (workspace.productionOverview ?? workspace.records.productions).find(
+            (row) => row.id === productionId,
+          )?.data.title,
+        ) || active.label
+      : active.label;
+  useEffect(() => {
+    document.title = `${pageTitle} · DigitalMask`;
+  }, [pageTitle]);
   const screen =
     activeModule === "today" ? (
       <MyDay navigate={navigate} />
@@ -288,13 +348,20 @@ export function WorkspaceShell() {
       <ChatModule
         conversationId={params.get("conversationId") || ""}
         productionId={params.get("productionId") || ""}
+        generalChosen={params.get("channel") === "general"}
         focusedMessageId={params.get("messageId") || ""}
-        onNavigate={(conversationId, productionId) => {
+        onNavigate={(conversationId, productionId, options) => {
           const query = new URLSearchParams({
             module: "chat",
-            ...(conversationId ? { conversationId } : productionId ? { productionId } : {}),
+            ...(conversationId
+              ? { conversationId }
+              : productionId
+                ? { productionId }
+                : { channel: "general" }),
           });
-          navigateWorkspace(`/?${query}`);
+          // Opening the default channel replaces the bare ?module=chat entry.
+          if (options?.replace) replaceWorkspaceUrl(`/?${query}`);
+          else navigateWorkspace(`/?${query}`);
         }}
       />
     ) : activeModule === "people" ? (
@@ -346,14 +413,7 @@ export function WorkspaceShell() {
           href="/"
           prefetch={false}
           onClick={(event) => {
-            if (
-              event.button !== 0 ||
-              event.ctrlKey ||
-              event.metaKey ||
-              event.altKey ||
-              event.shiftKey
-            )
-              return;
+            if (!isPlainClick(event)) return;
             event.preventDefault();
             navigate("today");
           }}
@@ -387,26 +447,27 @@ export function WorkspaceShell() {
               {nav
                 .filter((x) => x.group === group)
                 .map((item) => (
-                  <button
+                  <a
                     className={`nav-item ${activeModule === item.id ? "active" : ""}`}
                     key={item.id}
-                    onClick={() => navigate(item.id)}
+                    href={moduleHref(item.id)}
+                    data-module={item.id}
+                    onClick={(event) => {
+                      if (!isPlainClick(event)) return;
+                      event.preventDefault();
+                      navigate(item.id);
+                    }}
                     aria-current={activeModule === item.id ? "page" : undefined}
-                    aria-label={item.label}
-                    aria-description={
-                      item.id === "chat" && chatUnread
-                        ? `${chatUnread} ungelesene Nachrichten`
-                        : undefined
-                    }
+                    aria-label={`${item.label}${item.id === "chat" ? unreadLabel(chatUnread) : ""}`}
                   >
-                    <item.icon size={18} strokeWidth={1.7} />
+                    <item.icon size={18} strokeWidth={1.7} aria-hidden="true" />
                     <span>{item.label}</span>
                     {item.id === "chat" && chatUnread > 0 && (
                       <span className="chat-unread-count" aria-hidden="true">
                         {chatUnread > 99 ? "99+" : chatUnread}
                       </span>
                     )}
-                  </button>
+                  </a>
                 ))}
             </div>
           ))}
@@ -485,7 +546,7 @@ export function WorkspaceShell() {
                   items: unread,
                   knownIds: new Set(workspace.records.notifications.map((item) => item.id)),
                 });
-                if (unread.length && online)
+                if (unread.length && navigator.onLine)
                   void action("notifications-read", undefined, {
                     ids: unread.map((item) => item.id),
                   }).catch((error) =>
@@ -500,12 +561,11 @@ export function WorkspaceShell() {
             <span className="avatar topbar-avatar">{initials(workspace.user.name)}</span>
           </div>
         </header>
-        {!online && (
-          <div className="connectivity-banner" role="status">
-            <WifiOff size={17} />
-            Du bist offline. Zeitentwürfe kannst du lokal speichern und später synchronisieren.
-          </div>
-        )}
+        <OfflineBanner />
+        {/* Announces module switches; present from the start so only changes are read. */}
+        <p className="visually-hidden" role="status" aria-live="polite">
+          {active.label} geöffnet
+        </p>
         <main ref={main} id="main" className="main-content" key={activeModule} tabIndex={-1}>
           {missingTarget && (
             <p className="empty-inline" role="status">
@@ -530,46 +590,53 @@ export function WorkspaceShell() {
           ["more", "Mehr", Menu],
         ].map(([key, label, Icon]) => {
           const Component = Icon as LucideIcon;
-          return (
-            <button
-              key={String(key)}
-              className={
-                activeModule === key ||
-                (key === "more" &&
-                  !["today", "calendar", "productions", "time", "chat"].includes(activeModule))
-                  ? "active"
-                  : ""
-              }
-              aria-current={activeModule === key ? "page" : undefined}
-              aria-haspopup={key === "more" ? "dialog" : undefined}
-              aria-expanded={key === "more" ? mobileMenu : undefined}
-              aria-label={key === "chat" ? "Kommunikation" : String(label)}
-              aria-description={
-                key === "chat" && chatUnread ? `${chatUnread} ungelesene Nachrichten` : undefined
-              }
-              onClick={(event) =>
-                key === "more" ? openMenu(event.currentTarget) : navigate(String(key))
-              }
-            >
-              <Component size={20} />
-              {key === "chat" && chatUnread > 0 && (
+          const id = String(key);
+          const active =
+            activeModule === id ||
+            (id === "more" &&
+              !["today", "calendar", "productions", "time", "chat"].includes(activeModule));
+          const content = (
+            <>
+              <Component size={20} aria-hidden="true" />
+              {id === "chat" && chatUnread > 0 && (
                 <span className="chat-unread-count" aria-hidden="true">
                   {chatUnread > 99 ? "99+" : chatUnread}
                 </span>
               )}
               <span>{String(label)}</span>
+            </>
+          );
+          return id === "more" ? (
+            <button
+              key={id}
+              className={`bottom-nav-item${active ? " active" : ""}`}
+              aria-haspopup="dialog"
+              aria-expanded={mobileMenu}
+              aria-label="Mehr"
+              onClick={(event) => openMenu(event.currentTarget)}
+            >
+              {content}
             </button>
+          ) : (
+            <a
+              key={id}
+              href={moduleHref(id)}
+              data-module={id}
+              className={`bottom-nav-item${active ? " active" : ""}`}
+              aria-current={activeModule === id ? "page" : undefined}
+              aria-label={`${String(label)}${id === "chat" ? unreadLabel(chatUnread) : ""}`}
+              onClick={(event) => {
+                if (!isPlainClick(event)) return;
+                event.preventDefault();
+                navigate(id);
+              }}
+            >
+              {content}
+            </a>
           );
         })}
       </nav>
-      {notice && (
-        <div className="toast" role="status">
-          {notice}
-          <button onClick={() => notify("")} aria-label="Hinweis schließen">
-            <X size={15} />
-          </button>
-        </div>
-      )}
+      <Toast />
       {searchOpen && <WorkspaceSearch onClose={() => setSearchOpen(false)} navigate={navigate} />}
       {notificationSnapshot && (
         <Modal title="Mitteilungen" onClose={() => setNotificationSnapshot(null)}>
@@ -592,6 +659,17 @@ export function WorkspaceShell() {
             />
           )}
         </Modal>
+      )}
+      {needsWhatsNew && whatsNewOpen && !tourRequested && (
+        <WhatsNew
+          navigate={navigate}
+          onDone={() => {
+            setWhatsNewOpen(false);
+            requestAnimationFrame(() =>
+              requestAnimationFrame(() => main.current?.focus({ preventScroll: true })),
+            );
+          }}
+        />
       )}
       {(tourRequested || needsTour) && (
         <OnboardingTour
@@ -616,50 +694,31 @@ export function WorkspaceShell() {
     </div>
   );
 }
-function ExportsModule() {
-  const [kind, setKind] = useState<RecordKind | null>(null);
+function OfflineBanner() {
+  const { online } = useWorkspaceStatus();
+  if (online) return null;
   return (
-    <>
-      <header className="page-heading">
-        <div>
-          <p className="eyebrow">DIE RICHTIGE ANSICHT FÜR JEDEN ZWECK</p>
-          <h1>Exporte & Ausdrucke</h1>
-          <p className="muted">
-            Kalender, Arbeitszeit und Theaterwissen als PDF, Excel oder offene Daten.
-          </p>
-        </div>
-      </header>
-      <div className="export-options">
-        {(
-          [
-            "events",
-            "time",
-            "attendance",
-            "people",
-            "productions",
-            "actors",
-            "casting",
-            "looks",
-            "tasks",
-            "materials",
-            "handovers",
-          ] as RecordKind[]
-        ).map((item) => (
-          <button key={item} onClick={() => setKind(item)}>
-            <Download size={22} />
-            <div>
-              <h3>{labels[item][0]}</h3>
-              <p className="small muted">
-                {item === "events"
-                  ? "Monat, Woche, Tag, Agenda & Team · PDF, ICS, Excel"
-                  : "PDF für Ausdrucke · Excel, CSV & JSON für Daten"}
-              </p>
-            </div>
-            <span>Exportieren →</span>
-          </button>
-        ))}
-      </div>
-      {kind && <ExportDialog kind={kind} onClose={() => setKind(null)} />}
-    </>
+    <div className="connectivity-banner" role="status">
+      <WifiOff size={17} />
+      Du bist offline. Zeitentwürfe kannst du lokal speichern und später synchronisieren.
+    </div>
+  );
+}
+function Toast() {
+  const { notice } = useWorkspaceStatus();
+  const { notify } = useWorkspaceActions();
+  useEffect(() => {
+    if (!notice) return;
+    const timeout = setTimeout(() => notify(""), 7000);
+    return () => clearTimeout(timeout);
+  }, [notice, notify]);
+  if (!notice) return null;
+  return (
+    <div className="toast" role="status">
+      {notice}
+      <button onClick={() => notify("")} aria-label="Hinweis schließen">
+        <X size={15} />
+      </button>
+    </div>
   );
 }

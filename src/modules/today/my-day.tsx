@@ -35,7 +35,7 @@ import { eventMaskPlan, maskPlanEventQuery } from "@/modules/mask-plans/evening"
 import { useWorkspace } from "@/components/workspace-context";
 import { Badge, PageHeader } from "@/components/ui";
 import { RecordDetail } from "@/components/resource-view";
-import { expandEvents } from "@/components/modules/calendar";
+import { expandEvents } from "@/modules/calendar/expand";
 import { unreadNotifications } from "@/modules/notifications/unread";
 import { MarkAllReadButton } from "@/modules/notifications/components/mark-all-read";
 import { NotificationRow } from "@/modules/notifications/components/notification-row";
@@ -53,7 +53,10 @@ const berlinTime = new Intl.DateTimeFormat("de-DE", {
   hour: "2-digit",
   minute: "2-digit",
 });
-const berlinWeekday = new Intl.DateTimeFormat("de-DE", { timeZone: "Europe/Berlin", weekday: "short" });
+const berlinWeekday = new Intl.DateTimeFormat("de-DE", {
+  timeZone: "Europe/Berlin",
+  weekday: "short",
+});
 const longDate = new Intl.DateTimeFormat("de-DE", {
   timeZone: "Europe/Berlin",
   weekday: "long",
@@ -101,9 +104,7 @@ export function MyDay({ navigate }: { navigate: (target: string) => void }) {
     [workspace, today, now],
   );
   const todays = events.filter((event) => localDate(new Date(event.start)) === today);
-  const upcoming = events
-    .filter((event) => localDate(new Date(event.start)) > today)
-    .slice(0, 4);
+  const upcoming = events.filter((event) => localDate(new Date(event.start)) > today).slice(0, 4);
 
   const myTasks = useMemo(
     () =>
@@ -153,7 +154,8 @@ export function MyDay({ navigate }: { navigate: (target: string) => void }) {
           count: (workspace.records.shiftSwaps || []).filter(
             (item) => item.data.status === "awaiting_admin",
           ).length,
-          label: (n: number) => (n === 1 ? "Diensttausch zur Freigabe" : "Diensttausche zur Freigabe"),
+          label: (n: number) =>
+            n === 1 ? "Diensttausch zur Freigabe" : "Diensttausche zur Freigabe",
           href: "/?module=calendar&section=leave",
         },
         {
@@ -167,9 +169,12 @@ export function MyDay({ navigate }: { navigate: (target: string) => void }) {
           key: "materials",
           icon: Package,
           count: workspace.records.materials.filter(
-            (item) => num(item.data, "minQuantity") > 0 && num(item.data, "quantity") < num(item.data, "minQuantity"),
+            (item) =>
+              num(item.data, "minQuantity") > 0 &&
+              num(item.data, "quantity") < num(item.data, "minQuantity"),
           ).length,
-          label: (n: number) => (n === 1 ? "Material unter Mindestbestand" : "Materialien unter Mindestbestand"),
+          label: (n: number) =>
+            n === 1 ? "Material unter Mindestbestand" : "Materialien unter Mindestbestand",
           href: "/?module=inventory",
         },
       ].filter((item) => item.count > 0)
@@ -249,7 +254,11 @@ export function MyDay({ navigate }: { navigate: (target: string) => void }) {
                   const performance = record.data.category === "performance";
                   return (
                     <li key={event.id} className={performance ? styles.performance : undefined}>
-                      <button type="button" className={styles.row} onClick={() => setDetail(record)}>
+                      <button
+                        type="button"
+                        className={styles.row}
+                        onClick={() => setDetail(record)}
+                      >
                         <span className={`${styles.rowIcon} ${performance ? styles.coral : ""}`}>
                           {performance ? <Clapperboard size={18} /> : <CalendarDays size={18} />}
                         </span>
@@ -259,29 +268,32 @@ export function MyDay({ navigate }: { navigate: (target: string) => void }) {
                             {event.allDay
                               ? "Ganztägig"
                               : `${berlinTime.format(new Date(event.start))}–${berlinTime.format(new Date(event.end))}`}
-                            {value(record.data, "location") && ` · ${value(record.data, "location")}`}
+                            {value(record.data, "location") &&
+                              ` · ${value(record.data, "location")}`}
                           </span>
                         </span>
                         <Badge tone={performance ? "coral" : "green"}>{event.categoryName}</Badge>
                       </button>
                       {productionId && !event.allDay && (
                         <nav className={styles.quickLinks} aria-label={`Zu ${event.title}`}>
-                          {productionLinks(productionId, performance ? event.start : undefined, record).map(
-                            (link) => (
-                              <a
-                                key={link.label}
-                                href={link.href}
-                                onClick={(clickEvent) => {
-                                  if (clickEvent.metaKey || clickEvent.ctrlKey || clickEvent.shiftKey)
-                                    return;
-                                  clickEvent.preventDefault();
-                                  navigate(link.href);
-                                }}
-                              >
-                                {link.label}
-                              </a>
-                            ),
-                          )}
+                          {productionLinks(
+                            productionId,
+                            performance ? event.start : undefined,
+                            record,
+                          ).map((link) => (
+                            <a
+                              key={link.label}
+                              href={link.href}
+                              onClick={(clickEvent) => {
+                                if (clickEvent.metaKey || clickEvent.ctrlKey || clickEvent.shiftKey)
+                                  return;
+                                clickEvent.preventDefault();
+                                navigate(link.href);
+                              }}
+                            >
+                              {link.label}
+                            </a>
+                          ))}
                         </nav>
                       )}
                     </li>
@@ -380,11 +392,12 @@ export function MyDay({ navigate }: { navigate: (target: string) => void }) {
                         <span
                           className={styles.dot}
                           style={{
-                            background: value(
-                              productions.find((item) => item.id === task.data.productionId)?.data ||
-                                {},
-                              "color",
-                            ) || "var(--muted)",
+                            background:
+                              value(
+                                productions.find((item) => item.id === task.data.productionId)
+                                  ?.data || {},
+                                "color",
+                              ) || "var(--muted)",
                           }}
                         />
                         <span className={styles.rowText}>
@@ -401,7 +414,9 @@ export function MyDay({ navigate }: { navigate: (target: string) => void }) {
                 })}
               </ul>
             ) : (
-              <p className={styles.empty}>Neue Aufgaben, die dir zugeteilt werden, erscheinen hier.</p>
+              <p className={styles.empty}>
+                Neue Aufgaben, die dir zugeteilt werden, erscheinen hier.
+              </p>
             )}
           </section>
           {staff && (
@@ -534,7 +549,11 @@ function AttendanceCard({ navigate }: { navigate: (target: string) => void }) {
             {value(work.data, "title") || "Produktionszeit"}
             {value(work.data, "productionId") &&
               value(work.data, "title") !==
-                value(workspace.records.productions.find((item) => item.id === work.data.productionId)?.data || {}, "title") &&
+                value(
+                  workspace.records.productions.find((item) => item.id === work.data.productionId)
+                    ?.data || {},
+                  "title",
+                ) &&
               ` · ${value(workspace.records.productions.find((item) => item.id === work.data.productionId)?.data || {}, "title")}`}
           </span>
           <strong>{clock(timerSeconds(work, now))} h</strong>

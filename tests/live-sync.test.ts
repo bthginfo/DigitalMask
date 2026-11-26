@@ -146,4 +146,87 @@ describe("live transport", () => {
     expect(renew).toHaveBeenCalledTimes(1);
     stop();
   });
+  it("skips this tab's own echoes but still advances the replay cursor", async () => {
+    const changed = vi.fn();
+    const stop = connectLiveSync({
+      access: () => ({
+        channel: "dm:changes:maske",
+        ticket: "ticket",
+        expiresAt: Date.now() + 3600000,
+        cursor: "100",
+      }),
+      renew: vi.fn(async () => {}),
+      changed,
+      status: vi.fn(),
+      origin: "tab-a",
+    });
+    const source = Source.instances[0];
+    source.send({ type: "connected" });
+    source.send({
+      event: "workspace.changed",
+      channel: "dm:changes:maske",
+      id: "101-0",
+      data: { kinds: ["messages"], origin: "tab-a" },
+    });
+    expect(changed).not.toHaveBeenCalled();
+    source.send({
+      event: "workspace.changed",
+      channel: "dm:changes:maske",
+      id: "102-0",
+      data: { kinds: ["messages"], origin: "tab-b" },
+    });
+    source.send({ event: "workspace.changed", channel: "dm:changes:maske", id: "103-0" });
+    expect(changed).toHaveBeenCalledTimes(2);
+    source.send({ type: "reconnect" });
+    await vi.advanceTimersByTimeAsync(60);
+    expect(Source.instances[1].url).toContain("103-0");
+    stop();
+  });
+  it("keeps a visible but unfocused wall display connected", () => {
+    doc.hasFocus = () => false;
+    const stop = connectLiveSync({
+      access: () => ({
+        channel: "dm:changes:maske",
+        ticket: "ticket",
+        expiresAt: Date.now() + 3600000,
+        cursor: "100",
+      }),
+      renew: vi.fn(async () => {}),
+      changed: vi.fn(),
+      status: vi.fn(),
+    });
+    expect(Source.instances).toHaveLength(1);
+    win.dispatchEvent(new Event("blur"));
+    expect(Source.instances[0].closed).toBe(false);
+    stop();
+  });
+  it("repairs a long gap once, and not at all when the renewal already reloaded data", async () => {
+    for (const reloadedOnRenew of [false, true]) {
+      Source.instances = [];
+      let access = {
+        channel: "dm:changes:maske",
+        ticket: "fresh",
+        expiresAt: Date.now() + 3600000,
+        cursor: "100",
+      };
+      const renew = vi.fn(async () => {
+        access = { ...access, ticket: "renewed", expiresAt: Date.now() + 3600000 };
+        return reloadedOnRenew;
+      });
+      const changed = vi.fn();
+      const stop = connectLiveSync({ access: () => access, renew, changed, status: vi.fn() });
+      Source.instances[0].send({ type: "connected" });
+      doc.visibilityState = "hidden";
+      doc.dispatchEvent(new Event("visibilitychange"));
+      await vi.advanceTimersByTimeAsync(61 * 60000);
+      doc.visibilityState = "visible";
+      doc.dispatchEvent(new Event("visibilitychange"));
+      await vi.advanceTimersByTimeAsync(0);
+      expect(renew).toHaveBeenCalledTimes(1);
+      Source.instances.at(-1)!.send({ type: "connected" });
+      expect(changed).toHaveBeenCalledTimes(reloadedOnRenew ? 0 : 1);
+      if (!reloadedOnRenew) expect(changed).toHaveBeenCalledWith();
+      stop();
+    }
+  });
 });

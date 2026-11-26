@@ -46,7 +46,12 @@ import {
 } from "../evening";
 import styles from "./mask-plans.module.css";
 import { useViewState } from "@/shared/view-state";
-import { navigateWorkspace } from "@/shared/client-navigation";
+import {
+  navigateWorkspace,
+  replaceWorkspaceUrl,
+  subscribeLocation,
+} from "@/shared/client-navigation";
+import { discardChanges, useConfirm } from "@/components/confirm-dialog";
 
 type Draft = { data: MaskPlanData; base?: DomainRecord };
 type Editor =
@@ -64,10 +69,7 @@ function updateLocation(id: string, push = false) {
   // A plan chosen here replaces the plan named by an event link; the evening stays.
   next.searchParams.delete("planId");
   if (push) navigateWorkspace(next.pathname + next.search);
-  else {
-    history.replaceState(history.state, "", next.pathname + next.search);
-    window.dispatchEvent(new PopStateEvent("popstate"));
-  }
+  else replaceWorkspaceUrl(next.pathname + next.search);
 }
 
 const linkParam = (name: string) =>
@@ -84,6 +86,8 @@ export function MaskPlansModule({
   readOnly?: boolean;
 }) {
   const { workspace, save, remove, refresh, busy, online, notify } = useWorkspace();
+  const confirm = useConfirm();
+  const discardConfirmed = useRef(false);
   const plans = workspace.records.maskPlans.filter(
     (record) => record.data.productionId === production.id,
   );
@@ -191,7 +195,7 @@ export function MaskPlansModule({
   });
 
   useEffect(() => {
-    const changed = () => {
+    const changed = async () => {
       const url = new URL(location.href);
       if (
         url.searchParams.get("productionId") !== production.id ||
@@ -202,24 +206,30 @@ export function MaskPlansModule({
       const current = latest.current;
       if (!id || id === current.selectedId || !current.plans.some((record) => record.id === id))
         return;
-      if (
-        current.dirty &&
-        !confirm("Den anderen Maskenplan öffnen und deine ungespeicherten Änderungen verwerfen?")
-      ) {
+      if (current.dirty) {
+        // Keep the open plan in the URL while asking; switch only after confirmation.
         updateLocation(current.selectedId);
-        return;
+        const discard = await confirm({
+          title: "Ungespeicherte Änderungen",
+          message: "Den anderen Maskenplan öffnen und deine ungespeicherten Änderungen verwerfen?",
+          confirmLabel: "Verwerfen",
+          cancelLabel: "Weiter bearbeiten",
+          destructive: true,
+        });
+        if (!discard || !latest.current.plans.some((record) => record.id === id)) return;
       }
-      latest.current = { ...current, selectedId: id, dirty: false };
+      latest.current = { ...latest.current, selectedId: id, dirty: false };
       setSelectedId(id);
       setDraft(null);
       setEditing(false);
       setConflict(false);
       setError("");
       setEditor(null);
+      // After a confirmed switch the URL still names the previous plan.
+      if (current.dirty) updateLocation(id);
     };
-    window.addEventListener("popstate", changed);
-    return () => window.removeEventListener("popstate", changed);
-  }, [production.id, setSelectedId]);
+    return subscribeLocation(() => void changed());
+  }, [production.id, setSelectedId, confirm]);
   useEffect(() => {
     if (!dirty && !editor) return;
     const beforeUnload = (event: BeforeUnloadEvent) => {
@@ -230,15 +240,15 @@ export function MaskPlansModule({
     return () => window.removeEventListener("beforeunload", beforeUnload);
   }, [dirty, editor]);
 
-  const guard = () => !dirty || confirm("Deine ungespeicherten Änderungen verwerfen?");
+  const guard = async () => !dirty || (await confirm(discardChanges));
   const reset = () => {
     setDraft(null);
     setEditing(false);
     setConflict(false);
     setError("");
   };
-  const changePlan = (id: string) => {
-    if (id === selected?.id || !guard()) return;
+  const changePlan = async (id: string) => {
+    if (id === selected?.id || !(await guard())) return;
     latest.current = { ...latest.current, selectedId: id, dirty: false };
     setSelectedId(id);
     reset();
@@ -257,8 +267,8 @@ export function MaskPlansModule({
       snapshot: origin?.data || plan || undefined,
     });
   };
-  const beginNew = () => {
-    if (!guard()) return;
+  const beginNew = async () => {
+    if (!(await guard())) return;
     openEditor({ type: "options", creating: true, plan: newMaskPlan(production.id) });
   };
   const addLane = () => {
@@ -369,7 +379,7 @@ export function MaskPlansModule({
     }
   };
   const reload = async () => {
-    if (!guard()) return;
+    if (!(await guard())) return;
     setPending(true);
     try {
       await refresh();
@@ -437,7 +447,7 @@ export function MaskPlansModule({
           <span className={styles.readOnlyBadge}>Nur lesen</span>
         ) : (
           <Button
-            onClick={beginNew}
+            onClick={() => void beginNew()}
             disabled={busy || pending}
             aria-label="Neuer Plan"
             title="Neuen Maskenplan anlegen"
@@ -454,7 +464,7 @@ export function MaskPlansModule({
               <span>Plan auswählen</span>
               <select
                 value={dirty && !draft?.base ? "new" : selected?.id || ""}
-                onChange={(event) => changePlan(event.target.value)}
+                onChange={(event) => void changePlan(event.target.value)}
                 disabled={pending}
               >
                 {dirty && !draft?.base && <option value="new">{plan.title} · neuer Entwurf</option>}
@@ -523,9 +533,11 @@ export function MaskPlansModule({
                         disabled={pending || busy}
                         onClick={async () => {
                           if (
-                            !confirm(
-                              `Maskenplan „${value(selected.data, "title")}“ mit allen Personalspalten und Zeitblöcken löschen?${dirty ? " Auch dein ungespeicherter Entwurf wird verworfen." : ""}`,
-                            )
+                            !(await confirm({
+                              message: `Maskenplan „${value(selected.data, "title")}“ mit allen Personalspalten und Zeitblöcken löschen?${dirty ? " Auch dein ungespeicherter Entwurf wird verworfen." : ""}`,
+                              confirmLabel: "Löschen",
+                              destructive: true,
+                            }))
                           )
                             return;
                           setPending(true);
@@ -684,15 +696,25 @@ export function MaskPlansModule({
             onClickCapture={(event) => {
               const link = event.target instanceof Element ? event.target.closest("a[href]") : null;
               if (
-                link &&
+                link instanceof HTMLElement &&
                 dirty &&
+                !discardConfirmed.current &&
                 event.button === 0 &&
                 !(event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) &&
-                link.getAttribute("target") !== "_blank" &&
-                !guard()
+                link.getAttribute("target") !== "_blank"
               ) {
                 event.preventDefault();
                 event.stopPropagation();
+                void guard().then((discard) => {
+                  if (!discard) return;
+                  // Repeat the original click once the draft may be discarded.
+                  discardConfirmed.current = true;
+                  try {
+                    link.click();
+                  } finally {
+                    discardConfirmed.current = false;
+                  }
+                });
               }
             }}
           >
@@ -807,8 +829,8 @@ export function MaskPlansModule({
                   </Button>
                 )}
                 <Button
-                  onClick={() => {
-                    if (guard()) {
+                  onClick={async () => {
+                    if (await guard()) {
                       reset();
                       if (!selected) setSelectedId(plans[0]?.id || "");
                     }
@@ -848,7 +870,7 @@ export function MaskPlansModule({
               title="Ein klarer Ablauf bis zum Beginn."
               description="Plant, welche Schauspieler wann in die Maske kommen, wer sie betreut und wie lange es dauert. Alle Zeiten zählen rückwärts zum Vorstellungsbeginn."
               action="Maskenplan anlegen"
-              onAction={beginNew}
+              onAction={() => void beginNew()}
             />
           )}
         </div>

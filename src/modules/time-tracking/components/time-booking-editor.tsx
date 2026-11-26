@@ -16,6 +16,7 @@ import { TimeBookingDelete } from "./time-booking-delete";
 import { DurationField } from "./duration-field";
 import { initialBookingTimes } from "../booking-defaults";
 import styles from "./time-history.module.css";
+import { useDraftChanged } from "@/shared/use-draft-changed";
 import editorStyles from "./booking-editor.module.css";
 
 const DURATION: DurationInputOptions = { label: "Dauer", required: true, min: 60, max: 7 * 86400 };
@@ -75,6 +76,20 @@ export function TimeBookingEditor({
   );
   const [taskId, setTaskId] = useState(value(initial, "taskId"));
   const [error, setError] = useState("");
+  const changed = useDraftChanged({
+    title,
+    notes,
+    mode,
+    day,
+    start,
+    end,
+    customEndDate,
+    duration,
+    pause,
+    production,
+    category,
+    taskId,
+  });
   const receipt = useRef("");
   const submitting = useRef(false);
   const queueKey = timeDraftQueueKey(kind, workspace.user.id);
@@ -111,6 +126,7 @@ export function TimeBookingEditor({
           : `${attendance ? "Anwesenheit" : "Zeitbuchung"} ${record ? "bearbeiten" : onDraft ? "offline vormerken" : "anlegen"}`
       }
       onClose={onClose}
+      dirty={changed}
       wide
     >
       <form

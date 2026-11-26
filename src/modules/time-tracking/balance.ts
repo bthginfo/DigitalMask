@@ -6,6 +6,8 @@ import { localDay } from "./rules";
 import { timeDayMarkers, type TimeDayMarker } from "./day-markers";
 import { isoWeek } from "./history";
 
+const balanceHours = new Intl.NumberFormat("de-DE", { maximumFractionDigits: 2 });
+
 export interface AttendanceBalanceAmounts {
   attendanceSeconds: number;
   creditSeconds: number;
@@ -208,5 +210,5 @@ export function calculateAttendanceBalance({
 }
 
 export function signedHours(seconds: number) {
-  return `${seconds > 0 ? "+" : seconds < 0 ? "−" : ""}${new Intl.NumberFormat("de-DE", { maximumFractionDigits: 2 }).format(Math.abs(seconds) / 3600)}`;
+  return `${seconds > 0 ? "+" : seconds < 0 ? "−" : ""}${balanceHours.format(Math.abs(seconds) / 3600)}`;
 }

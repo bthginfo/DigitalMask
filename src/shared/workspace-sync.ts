@@ -1,4 +1,4 @@
-import { recordKinds, type RecordKind, type Workspace } from "./contracts";
+import { recordKinds, type DomainRecord, type RecordKind, type Workspace } from "./contracts";
 
 /** Small independently invalidated snapshots; no notification history in a shared cache. */
 export const workspaceGroups = {
@@ -105,23 +105,115 @@ export function workspacePatch(workspace: Workspace, kinds: readonly RecordKind[
   };
 }
 
+const sameRecord = (a: DomainRecord, b: DomainRecord) =>
+  a === b ||
+  (a.id === b.id && a.kind === b.kind && a.version === b.version && a.updatedAt === b.updatedAt);
+
+/**
+ * Keep the previous array and record objects when the server sends the same versions again, so
+ * memoized views (calendar balances, event expansion, chat rows) skip unrelated updates.
+ * Relies on every data change bumping the record version (or update time).
+ */
+export function shareRecords(current: DomainRecord[] | undefined, next: DomainRecord[]) {
+  if (!current || current === next) return next;
+  const previous = new Map(current.map((record) => [record.id, record]));
+  let changed = current.length !== next.length;
+  const merged = next.map((record, index) => {
+    const known = previous.get(record.id);
+    if (known && sameRecord(known, record)) {
+      if (current[index] !== known) changed = true;
+      return known;
+    }
+    changed = true;
+    return record;
+  });
+  return changed ? merged : current;
+}
+
+/** Structural equality for small, plain JSON values such as members, the user or timers. */
+function shareValue<T>(current: T, next: T): T {
+  if (current === next) return current;
+  try {
+    return JSON.stringify(current) === JSON.stringify(next) ? current : next;
+  } catch {
+    return next;
+  }
+}
+
+function shareRecordMap(
+  current: Workspace["records"],
+  next: Partial<Workspace["records"]>,
+): Workspace["records"] {
+  let changed = false;
+  const merged = { ...current };
+  for (const kind of Object.keys(next) as RecordKind[]) {
+    const rows = next[kind];
+    if (!rows) continue;
+    // Read state is personal and may change without a record version; always take it fresh.
+    const shared = kind === "notifications" ? rows : shareRecords(current[kind], rows);
+    if (shared !== current[kind]) {
+      merged[kind] = shared;
+      changed = true;
+    }
+  }
+  return changed ? merged : current;
+}
+
 export function mergeWorkspaceUpdate(
   current: Workspace | null,
   next: Workspace | WorkspacePatch,
 ): Workspace {
-  if (!("partial" in next)) return next;
+  if (!("partial" in next)) {
+    if (!current) return next;
+    const records = shareRecordMap(current.records, next.records);
+    // Kinds missing from a full snapshot are no longer visible.
+    const visible = (Object.keys(current.records) as RecordKind[]).every(
+      (kind) => kind in next.records,
+    )
+      ? records
+      : (Object.fromEntries(
+          (Object.keys(next.records) as RecordKind[]).map((kind) => [kind, records[kind]]),
+        ) as Workspace["records"]);
+    return {
+      ...next,
+      user: shareValue(current.user, next.user),
+      members: shareValue(current.members, next.members),
+      organization: shareValue(current.organization, next.organization),
+      department: shareValue(current.department, next.department),
+      records: visible,
+      calendarProductions:
+        next.calendarProductions &&
+        shareRecords(current.calendarProductions, next.calendarProductions),
+      productionOverview:
+        next.productionOverview &&
+        shareRecords(current.productionOverview, next.productionOverview),
+      timer: shareValue(current.timer, next.timer),
+      ...("attendanceTimer" in next
+        ? { attendanceTimer: shareValue(current.attendanceTimer, next.attendanceTimer) }
+        : {}),
+      projectHours: shareValue(current.projectHours, next.projectHours),
+    };
+  }
   if (!current) throw new Error("Ein vollständiger Arbeitsbereich muss zuerst geladen werden.");
   return {
     ...current,
-    user: next.user,
-    members: next.members,
+    user: shareValue(current.user, next.user),
+    members: shareValue(current.members, next.members),
     live: next.live,
-    records: { ...current.records, ...next.records },
-    ...("timer" in next ? { timer: next.timer } : {}),
-    ...("attendanceTimer" in next ? { attendanceTimer: next.attendanceTimer } : {}),
-    ...("projectHours" in next ? { projectHours: next.projectHours } : {}),
-    ...(next.guestProductionIds ? { guestProductionIds: next.guestProductionIds } : {}),
-    ...("chatUnread" in next ? { chatUnread: next.chatUnread } : {}),
+    records: shareRecordMap(current.records, next.records),
+    ...("timer" in next ? { timer: shareValue(current.timer, next.timer) } : {}),
+    ...("attendanceTimer" in next
+      ? { attendanceTimer: shareValue(current.attendanceTimer, next.attendanceTimer) }
+      : {}),
+    ...("projectHours" in next
+      ? { projectHours: shareValue(current.projectHours, next.projectHours) }
+      : {}),
+    ...(next.guestProductionIds
+      ? { guestProductionIds: shareValue(current.guestProductionIds, next.guestProductionIds) }
+      : {}),
+    ...("chatUnread" in next
+      ? { chatUnread: shareValue(current.chatUnread, next.chatUnread) }
+      : {}),
   };
 }
 
@@ -130,4 +222,18 @@ export function guestAccessChanged(current: Workspace | null, next: Workspace | 
   if (!current || !("partial" in next) || !next.guestProductionIds) return false;
   const before = [...(current.guestProductionIds ?? [])].sort().join();
   return before !== [...next.guestProductionIds].sort().join();
+}
+
+/** Drop deleted records (and attachments the server deletes with them) without a reload. */
+export function withoutRecords(workspace: Workspace, ids: ReadonlySet<string>): Workspace {
+  if (!ids.size) return workspace;
+  let changed = false;
+  const records = { ...workspace.records };
+  for (const kind of Object.keys(records) as RecordKind[]) {
+    const rows = records[kind];
+    if (!rows.some((record) => ids.has(record.id))) continue;
+    records[kind] = rows.filter((record) => !ids.has(record.id));
+    changed = true;
+  }
+  return changed ? { ...workspace, records } : workspace;
 }

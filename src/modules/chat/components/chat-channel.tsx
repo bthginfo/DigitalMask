@@ -1,5 +1,14 @@
 ﻿"use client";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  memo,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import { LinkedText } from "@/components/linked-text";
 import {
   FilePlus2,
@@ -16,10 +25,15 @@ import {
   Users,
   X,
 } from "lucide-react";
-import type { DomainRecord } from "@/shared/contracts";
+import { textValue, type DomainRecord, type RecordKind } from "@/shared/contracts";
 import { api, dateLabel, initials, post, value } from "@/shared/client-api";
 import { prepareUpload } from "@/shared/client-files";
-import { useWorkspace } from "@/components/workspace-context";
+import {
+  useWorkspaceActions,
+  useWorkspaceData,
+  useWorkspaceStatus,
+} from "@/components/workspace-context";
+import { useStableCallback } from "@/shared/use-stable-callback";
 import { LiveStatus } from "@/components/live-status";
 import { Badge, Button, Empty, ErrorMessage, ExportButton, Modal } from "@/components/ui";
 import { ExportDialog } from "@/components/export-dialog";
@@ -31,10 +45,11 @@ import { ImageGallery } from "@/components/image-gallery";
 import { NewDocumentDialog } from "@/modules/documents/components/new-document-dialog";
 import { documentAccept } from "@/modules/documents/components/record-documents";
 import { ChatActionMenu } from "./chat-action-menu";
-import { navigateWorkspace } from "@/shared/client-navigation";
+import { isPlainClick, navigateWorkspace } from "@/shared/client-navigation";
 import { messageInChat, type ChatMediaItem } from "../media";
-import { photoReplyValue } from "../photo-reply";
+import { photoReplyValue, type PhotoReply } from "../photo-reply";
 import { PhotoReplyPreview } from "./photo-reply-preview";
+import { useConfirm } from "@/components/confirm-dialog";
 const ChatMediaDialog = dynamic(() => import("./chat-media"));
 const DocumentEditor = dynamic(() => import("@/modules/documents/components/document-editor"), {
   ssr: false,
@@ -61,12 +76,13 @@ export function ChatChannel({
   onCreatePrivate?: () => void;
   onCreateTeam?: () => void;
 }) {
-  const { workspace, refresh, save, remove, busy } = useWorkspace();
+  const workspace = useWorkspaceData();
+  const { reload, save, remove } = useWorkspaceActions();
+  const { busy } = useWorkspaceStatus();
+  const confirm = useConfirm();
   const conversationId = conversation?.id || "",
     archived = conversation?.data.archived === true;
-  const [text, setText] = useState(""),
-    [files, setFiles] = useState<File[]>([]),
-    [sending, setSending] = useState(false),
+  const [sending, setSending] = useState(false),
     [error, setError] = useState(""),
     [editing, setEditing] = useState<DomainRecord | null>(null),
     [editingText, setEditingText] = useState(""),
@@ -86,32 +102,25 @@ export function ChatChannel({
     () => new Map(workspace.records.files.map((file) => [file.id, file])),
     [workspace.records.files],
   );
+  // Built once per files/members update instead of searching both lists for every message.
+  const filesByMessage = useMemo(() => {
+    const result = new Map<string, DomainRecord[]>();
+    for (const file of workspace.records.files) {
+      if (file.data.recordKind !== "messages") continue;
+      const id = value(file.data, "recordId");
+      const list = result.get(id);
+      if (list) list.push(file);
+      else result.set(id, [file]);
+    }
+    return result;
+  }, [workspace.records.files]);
+  const membersById = useMemo(
+    () => new Map(workspace.members.map((member) => [member.id, member])),
+    [workspace.members],
+  );
   const positionedTarget = useRef("");
   const [linkedMessage, setLinkedMessage] = useState<{ id: string; record?: DomainRecord }>();
   const messageInput = useRef<HTMLTextAreaElement>(null);
-  const fileInput = useRef<HTMLInputElement>(null);
-  useLayoutEffect(() => {
-    const resize = () => {
-      const input = messageInput.current;
-      if (!input) return;
-      if (!window.matchMedia("(max-width: 1100px)").matches) {
-        input.style.removeProperty("height");
-        return;
-      }
-      const panelHeight =
-        input.closest(".chat-layout")?.getBoundingClientRect().height || window.innerHeight;
-      const cap = Math.max(44, Math.min(120, panelHeight * 0.28));
-      input.style.height = "auto";
-      input.style.height = `${Math.min(cap, input.scrollHeight)}px`;
-    };
-    resize();
-    window.addEventListener("resize", resize);
-    window.visualViewport?.addEventListener("resize", resize);
-    return () => {
-      window.removeEventListener("resize", resize);
-      window.visualViewport?.removeEventListener("resize", resize);
-    };
-  }, [text]);
   useChatRead(conversationId, productionId, bottom);
   const recentMessages = useMemo(
     () =>
@@ -189,48 +198,12 @@ export function ChatChannel({
       cancelAnimationFrame(frame);
     };
   }, []);
-  const send = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if ((!text.trim() && !files.length) || sending || archived) return;
-    setSending(true);
-    setError("");
-    try {
-      const result = await post<DomainRecord | { record: DomainRecord }>("/api/records/messages", {
-        data: {
-          text: text.trim() || "Dateianhang",
-          ...(conversationId ? { conversationId } : { productionId }),
-          attachmentIds: [],
-          ...(replyFile
-            ? { photoReply: { messageId: replyFile.data.recordId, fileId: replyFile.id } }
-            : {}),
-        },
-      });
-      const record = "record" in result ? result.record : result;
-      for (const file of files) {
-        const form = new FormData();
-        form.append("file", await prepareUpload(file, "messages"));
-        form.append("recordKind", "messages");
-        form.append("recordId", record.id);
-        await api("/api/files", { method: "POST", body: form });
-      }
-      setText("");
-      setFiles([]);
-      setReplyFile(null);
-      await refresh();
-    } catch (exception) {
-      setError(
-        exception instanceof Error ? exception.message : "Nachricht konnte nicht gesendet werden",
-      );
-    } finally {
-      setSending(false);
-    }
-  };
-  const replyToPhoto = (file: DomainRecord) => {
+  const replyToPhoto = useStableCallback((file: DomainRecord) => {
     setMediaOpen(false);
     setReplyFile(file);
     requestAnimationFrame(() => messageInput.current?.focus());
-  };
-  const openSource = (messageId: string) => {
+  });
+  const openSource = useStableCallback((messageId: string) => {
     positionedTarget.current = "";
     if (focusedMessageId === messageId && messageTarget.current) {
       messageTarget.current.focus({ preventScroll: true });
@@ -240,7 +213,7 @@ export function ChatChannel({
     const next = new URL(location.href);
     next.searchParams.set("messageId", messageId);
     navigateWorkspace(next.pathname + next.search);
-  };
+  });
   const update = async (fn: () => Promise<unknown>) => {
     setError("");
     try {
@@ -249,6 +222,21 @@ export function ChatChannel({
       setError(exception instanceof Error ? exception.message : "Aktion fehlgeschlagen");
     }
   };
+  const editMessage = useStableCallback((message: DomainRecord) => {
+    setEditing(message);
+    setEditingText(value(message.data, "text"));
+  });
+  const deleteMessage = useStableCallback(async (message: DomainRecord) => {
+    if (
+      await confirm({
+        message: `Eigene Nachricht vom ${dateLabel(message.createdAt, true)} löschen?`,
+        confirmLabel: "Löschen",
+        destructive: true,
+      })
+    )
+      void update(() => remove(message));
+  });
+  const onReply = archived || sending ? undefined : replyToPhoto;
   return (
     <section className="chat-main">
       <header className="chat-heading chat-mobile-heading">
@@ -287,10 +275,9 @@ export function ChatChannel({
             href="/?module=help&guide=app-install"
             prefetch={false}
             onClick={(event) => {
+              if (!isPlainClick(event)) return;
               event.preventDefault();
-              history.pushState({}, "", "/?module=help&guide=app-install");
-              window.dispatchEvent(new PopStateEvent("popstate"));
-              window.scrollTo({ top: 0, behavior: "instant" });
+              navigateWorkspace("/?module=help&guide=app-install");
             }}
           >
             Hilfe & App installieren
@@ -351,108 +338,38 @@ export function ChatChannel({
         <div ref={messageHistory} className="chat-message-history">
           {messages.length ? (
             messages.map((message) => {
-              const member = workspace.members.find((person) => person.id === message.data.userId),
-                own = message.data.userId === workspace.user.id;
-              const attached = workspace.records.files.filter(
-                (file) => file.data.recordKind === "messages" && file.data.recordId === message.id,
-              );
+              const own = message.data.userId === workspace.user.id;
+              let attached = filesByMessage.get(message.id) ?? noFiles;
               if (
                 fetchedTarget?.id === message.id &&
                 mediaSource?.messageId === message.id &&
                 !attached.some((file) => file.id === mediaSource.file.id)
               )
-                attached.push(mediaSource.file);
-              const attachmentIds = Array.isArray(message.data.attachmentIds)
-                ? (message.data.attachmentIds as string[])
-                : [];
+                attached = [...attached, mediaSource.file];
               const focused = message.id === focusedMessageId;
               const photoReply = photoReplyValue(message.data.photoReply);
               return (
-                <article
-                  className={`chat-message${own ? " own" : ""}${focused ? " notification-target" : ""}`}
+                <MessageRow
                   key={message.id}
-                  ref={focused ? messageTarget : undefined}
-                  tabIndex={focused ? -1 : undefined}
-                >
-                  <span className="avatar">{initials(member?.name || "Team")}</span>
-                  <div className="message-content">
-                    <header>
-                      <strong>{member?.name || "Teammitglied"}</strong>
-                      <time className="small muted" dateTime={message.createdAt}>
-                        {dateLabel(message.createdAt, true)}
-                      </time>
-                      {message.version > 1 && <span className="small muted">bearbeitet</span>}
-                    </header>
-                    {photoReply && (
-                      <PhotoReplyPreview
-                        key={photoReply.fileId}
-                        reply={photoReply}
-                        name={value(filesById.get(photoReply.fileId)?.data || {}, "name")}
-                        onSource={() => openSource(photoReply.messageId)}
-                      />
-                    )}
-                    <p>
-                      <LinkedText>{value(message.data, "text")}</LinkedText>
-                    </p>
-                    {attached.length > 0 && (
-                      <ImageGallery
-                        files={attached}
-                        onReply={archived || sending ? undefined : replyToPhoto}
-                      >
-                        {(openImage) =>
-                          attached.map((file) => (
-                            <DocumentAttachment
-                              key={file.id}
-                              file={file}
-                              compact
-                              onOpenImage={openImage}
-                            />
-                          ))
-                        }
-                      </ImageGallery>
-                    )}
-                    {attachmentIds
-                      .filter((id) => !attached.some((file) => file.id === id))
-                      .map((id, index) => (
-                        <a
-                          key={id}
-                          href={`/api/files/${id}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="message-attachment"
-                        >
-                          <Paperclip size={14} />
-                          Anhang {index + 1}
-                        </a>
-                      ))}
-                    {own && !archived && (
-                      <div className="message-actions">
-                        <button
-                          className="icon-button"
-                          aria-label={`Nachricht von ${dateLabel(message.createdAt, true)} bearbeiten`}
-                          disabled={sending || busy}
-                          onClick={() => {
-                            setEditing(message);
-                            setEditingText(value(message.data, "text"));
-                          }}
-                        >
-                          <Pencil size={14} />
-                        </button>
-                        <button
-                          className="icon-button"
-                          aria-label={`Nachricht von ${dateLabel(message.createdAt, true)} löschen`}
-                          disabled={sending || busy}
-                          onClick={() => {
-                            if (confirm("Eigene Nachricht löschen?"))
-                              void update(() => remove(message));
-                          }}
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </article>
+                  message={message}
+                  authorName={membersById.get(textValue(message.data.userId))?.name}
+                  own={own}
+                  attached={attached}
+                  focused={focused}
+                  targetRef={focused ? messageTarget : undefined}
+                  photoReply={photoReply}
+                  photoReplyName={
+                    photoReply
+                      ? value(filesById.get(photoReply.fileId)?.data || {}, "name")
+                      : undefined
+                  }
+                  editable={own && !archived}
+                  actionsDisabled={own && (sending || busy)}
+                  onReply={onReply}
+                  onSource={openSource}
+                  onEdit={editMessage}
+                  onDelete={deleteMessage}
+                />
               );
             })
           ) : (
@@ -473,113 +390,21 @@ export function ChatChannel({
           Dieser Chat ist archiviert. Der Verlauf bleibt lesbar; neue Nachrichten sind gesperrt.
         </div>
       ) : (
-        <form className="chat-composer" onSubmit={send}>
-          <div className="chat-composer-notices">
-            {replyFile && (
-              <PhotoReplyPreview
-                key={replyFile.id}
-                reply={{ messageId: value(replyFile.data, "recordId"), fileId: replyFile.id }}
-                name={value(replyFile.data, "name")}
-                onCancel={sending ? undefined : () => setReplyFile(null)}
-              />
-            )}
-            {files.length > 0 && (
-              <div className="pending-files">
-                {files.map((file, index) => (
-                  <span key={`${file.name}:${index}`}>
-                    <Paperclip size={13} />
-                    {file.name}
-                    <button
-                      type="button"
-                      aria-label={`Anhang ${file.name} entfernen`}
-                      onClick={() => setFiles(files.filter((_, i) => i !== index))}
-                    >
-                      <X size={13} />
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
-            <ErrorMessage message={error} />
-          </div>
-          <label className="visually-hidden" htmlFor="message">
-            Nachricht an {title}
-          </label>
-          <div className="chat-input-row">
-            <ChatActionMenu
-              label="Anhänge und Dokumente"
-              icon={<Plus size={21} aria-hidden="true" />}
-              className="chat-attachment-menu"
-              disabled={sending}
-            >
-              <button type="button" onClick={() => fileInput.current?.click()} disabled={sending}>
-                <Paperclip size={18} />
-                Datei anhängen
-              </button>
-              <button type="button" onClick={() => setCreatingDocument(true)} disabled={sending}>
-                <FilePlus2 size={18} />
-                Gemeinsames Dokument anlegen
-              </button>
-            </ChatActionMenu>
-            <textarea
-              id="message"
-              ref={messageInput}
-              rows={1}
-              required={!files.length}
-              value={text}
-              disabled={sending}
-              placeholder="Nachricht schreiben …"
-              onChange={(event) => setText(event.target.value)}
-            />
-            <button
-              type="submit"
-              className="chat-compact-button chat-mobile-send"
-              aria-label={sending ? "Sendet …" : "Senden"}
-              title="Nachricht senden"
-              disabled={sending || (!text.trim() && !files.length)}
-            >
-              <Send size={19} aria-hidden="true" />
-            </button>
-          </div>
-          <div className="composer-actions">
-            <label className="button ghost">
-              <Paperclip size={17} />
-              Datei
-              <input
-                ref={fileInput}
-                className="visually-hidden"
-                type="file"
-                accept={documentAccept}
-                multiple
-                disabled={sending}
-                onChange={(event) => setFiles([...files, ...Array.from(event.target.files || [])])}
-              />
-            </label>
-            <Button
-              title="Gemeinsames Dokument anlegen"
-              disabled={sending}
-              onClick={() => setCreatingDocument(true)}
-            >
-              <FilePlus2 size={16} />{" "}
-              <span>
-                <span className="chat-document-prefix">Gemeinsames </span>Dokument
-              </span>
-            </Button>
-            <span className="small muted">
-              {conversation && conversation.data.mode !== "team"
-                ? "Nur die Teilnehmenden haben Zugriff."
-                : "Nur das Team hat Zugriff."}
-            </span>
-            <Button
-              type="submit"
-              variant="primary"
-              disabled={sending || (!text.trim() && !files.length)}
-            >
-              <Send size={16} />
-              {sending ? "Sendet …" : "Senden"}
-            </Button>
-          </div>
-        </form>
+        <Composer
+          title={title}
+          conversationId={conversationId}
+          productionId={productionId}
+          privateChat={!!conversation && conversation.data.mode !== "team"}
+          replyFile={replyFile}
+          onClearReply={() => setReplyFile(null)}
+          sending={sending}
+          onSendingChange={setSending}
+          error={error}
+          onError={setError}
+          inputRef={messageInput}
+          onCreateDocument={() => setCreatingDocument(true)}
+          reload={reload}
+        />
       )}
       {editing && (
         <Modal title="Eigene Nachricht bearbeiten" onClose={() => setEditing(null)}>
@@ -638,7 +463,7 @@ export function ChatChannel({
               await remove(message).catch(() => {});
               throw exception;
             }
-            await refresh();
+            await reload(["messages", "files"]);
             setCreatingDocument(false);
             setOpenedDocument(file);
           }}
@@ -675,5 +500,330 @@ export function ChatChannel({
         />
       )}
     </section>
+  );
+}
+
+const noFiles: DomainRecord[] = [];
+
+/** One chat message; memoized so typing or new messages do not re-render the whole history. */
+const MessageRow = memo(function MessageRow({
+  message,
+  authorName,
+  own,
+  attached,
+  focused,
+  targetRef,
+  photoReply,
+  photoReplyName,
+  editable,
+  actionsDisabled,
+  onReply,
+  onSource,
+  onEdit,
+  onDelete,
+}: {
+  message: DomainRecord;
+  authorName?: string;
+  own: boolean;
+  attached: readonly DomainRecord[];
+  focused: boolean;
+  targetRef?: RefObject<HTMLElement | null>;
+  photoReply?: PhotoReply;
+  photoReplyName?: string;
+  editable: boolean;
+  actionsDisabled: boolean;
+  onReply?: (file: DomainRecord) => void;
+  onSource: (messageId: string) => void;
+  onEdit: (message: DomainRecord) => void;
+  onDelete: (message: DomainRecord) => void;
+}) {
+  const attachmentIds = Array.isArray(message.data.attachmentIds)
+    ? (message.data.attachmentIds as string[])
+    : [];
+  const sent = dateLabel(message.createdAt, true);
+  return (
+    <article
+      className={`chat-message${own ? " own" : ""}${focused ? " notification-target" : ""}`}
+      ref={targetRef}
+      tabIndex={focused ? -1 : undefined}
+    >
+      <span className="avatar">{initials(authorName || "Team")}</span>
+      <div className="message-content">
+        <header>
+          <strong>{authorName || "Teammitglied"}</strong>
+          <time className="small muted" dateTime={message.createdAt}>
+            {sent}
+          </time>
+          {message.version > 1 && <span className="small muted">bearbeitet</span>}
+        </header>
+        {photoReply && (
+          <PhotoReplyPreview
+            key={photoReply.fileId}
+            reply={photoReply}
+            name={photoReplyName}
+            onSource={() => onSource(photoReply.messageId)}
+          />
+        )}
+        <p>
+          <LinkedText>{value(message.data, "text")}</LinkedText>
+        </p>
+        {attached.length > 0 && (
+          <ImageGallery files={attached} onReply={onReply}>
+            {(openImage) =>
+              attached.map((file) => (
+                <DocumentAttachment key={file.id} file={file} compact onOpenImage={openImage} />
+              ))
+            }
+          </ImageGallery>
+        )}
+        {attachmentIds
+          .filter((id) => !attached.some((file) => file.id === id))
+          .map((id, index) => (
+            <a
+              key={id}
+              href={`/api/files/${id}`}
+              target="_blank"
+              rel="noreferrer"
+              className="message-attachment"
+            >
+              <Paperclip size={14} />
+              Anhang {index + 1}
+            </a>
+          ))}
+        {editable && (
+          <div className="message-actions">
+            <button
+              className="icon-button"
+              aria-label={`Nachricht von ${sent} bearbeiten`}
+              disabled={actionsDisabled}
+              onClick={() => onEdit(message)}
+            >
+              <Pencil size={14} />
+            </button>
+            <button
+              className="icon-button"
+              aria-label={`Nachricht von ${sent} löschen`}
+              disabled={actionsDisabled}
+              onClick={() => onDelete(message)}
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
+        )}
+      </div>
+    </article>
+  );
+});
+
+/**
+ * Message input with its own state: typing re-renders only the composer, never the history.
+ * Sending reloads only messages (and files when something was attached).
+ */
+function Composer({
+  title,
+  conversationId,
+  productionId,
+  privateChat,
+  replyFile,
+  onClearReply,
+  sending,
+  onSendingChange,
+  error,
+  onError,
+  inputRef,
+  onCreateDocument,
+  reload,
+}: {
+  title: string;
+  conversationId: string;
+  productionId: string;
+  privateChat: boolean;
+  replyFile: DomainRecord | null;
+  onClearReply: () => void;
+  sending: boolean;
+  onSendingChange: (sending: boolean) => void;
+  error: string;
+  onError: (message: string) => void;
+  inputRef: RefObject<HTMLTextAreaElement | null>;
+  onCreateDocument: () => void;
+  reload: (kinds?: readonly RecordKind[]) => Promise<void>;
+}) {
+  const [text, setText] = useState(""),
+    [files, setFiles] = useState<File[]>([]);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const heightCap = useRef(120);
+  // Measure the panel only when the viewport changes; typing just fits the textarea.
+  useLayoutEffect(() => {
+    const measure = () => {
+      const input = inputRef.current;
+      if (!input) return;
+      if (!window.matchMedia("(max-width: 1100px)").matches) {
+        heightCap.current = 0;
+        input.style.removeProperty("height");
+        return;
+      }
+      const panelHeight =
+        input.closest(".chat-layout")?.getBoundingClientRect().height || window.innerHeight;
+      heightCap.current = Math.max(44, Math.min(120, panelHeight * 0.28));
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    window.visualViewport?.addEventListener("resize", measure);
+    return () => {
+      window.removeEventListener("resize", measure);
+      window.visualViewport?.removeEventListener("resize", measure);
+    };
+  }, [inputRef]);
+  useLayoutEffect(() => {
+    const input = inputRef.current;
+    if (!input || !heightCap.current) return;
+    input.style.height = "auto";
+    input.style.height = `${Math.min(heightCap.current, input.scrollHeight)}px`;
+  }, [text, inputRef]);
+  const sendKey = useRef<{ key: string; text: string } | null>(null);
+  const send = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if ((!text.trim() && !files.length) || sending) return;
+    onSendingChange(true);
+    onError("");
+    // A retry of the same draft after a network error returns the stored message.
+    if (!sendKey.current || sendKey.current.text !== text)
+      sendKey.current = { key: crypto.randomUUID(), text };
+    try {
+      const result = await post<DomainRecord | { record: DomainRecord }>("/api/records/messages", {
+        idempotencyKey: sendKey.current.key,
+        data: {
+          text: text.trim() || "Dateianhang",
+          ...(conversationId ? { conversationId } : { productionId }),
+          attachmentIds: [],
+          ...(replyFile
+            ? { photoReply: { messageId: replyFile.data.recordId, fileId: replyFile.id } }
+            : {}),
+        },
+      });
+      const record = "record" in result ? result.record : result;
+      for (const file of files) {
+        const form = new FormData();
+        form.append("file", await prepareUpload(file, "messages"));
+        form.append("recordKind", "messages");
+        form.append("recordId", record.id);
+        await api("/api/files", { method: "POST", body: form });
+      }
+      const attached = files.length > 0;
+      sendKey.current = null;
+      setText("");
+      setFiles([]);
+      onClearReply();
+      await reload(attached ? ["messages", "files"] : ["messages"]);
+    } catch (exception) {
+      onError(
+        exception instanceof Error ? exception.message : "Nachricht konnte nicht gesendet werden",
+      );
+    } finally {
+      onSendingChange(false);
+    }
+  };
+  return (
+    <form className="chat-composer" onSubmit={send}>
+      <div className="chat-composer-notices">
+        {replyFile && (
+          <PhotoReplyPreview
+            key={replyFile.id}
+            reply={{ messageId: value(replyFile.data, "recordId"), fileId: replyFile.id }}
+            name={value(replyFile.data, "name")}
+            onCancel={sending ? undefined : onClearReply}
+          />
+        )}
+        {files.length > 0 && (
+          <div className="pending-files">
+            {files.map((file, index) => (
+              <span key={`${file.name}:${index}`}>
+                <Paperclip size={13} />
+                {file.name}
+                <button
+                  type="button"
+                  aria-label={`Anhang ${file.name} entfernen`}
+                  onClick={() => setFiles(files.filter((_, i) => i !== index))}
+                >
+                  <X size={13} />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+        <ErrorMessage message={error} />
+      </div>
+      <label className="visually-hidden" htmlFor="message">
+        Nachricht an {title}
+      </label>
+      <div className="chat-input-row">
+        <ChatActionMenu
+          label="Anhänge und Dokumente"
+          icon={<Plus size={21} aria-hidden="true" />}
+          className="chat-attachment-menu"
+          disabled={sending}
+        >
+          <button type="button" onClick={() => fileInput.current?.click()} disabled={sending}>
+            <Paperclip size={18} />
+            Datei anhängen
+          </button>
+          <button type="button" onClick={onCreateDocument} disabled={sending}>
+            <FilePlus2 size={18} />
+            Gemeinsames Dokument anlegen
+          </button>
+        </ChatActionMenu>
+        <textarea
+          id="message"
+          ref={inputRef}
+          rows={1}
+          required={!files.length}
+          value={text}
+          disabled={sending}
+          placeholder="Nachricht schreiben …"
+          onChange={(event) => setText(event.target.value)}
+        />
+        <button
+          type="submit"
+          className="chat-compact-button chat-mobile-send"
+          aria-label={sending ? "Sendet …" : "Senden"}
+          title="Nachricht senden"
+          disabled={sending || (!text.trim() && !files.length)}
+        >
+          <Send size={19} aria-hidden="true" />
+        </button>
+      </div>
+      <div className="composer-actions">
+        <label className="button ghost">
+          <Paperclip size={17} />
+          Datei
+          <input
+            ref={fileInput}
+            className="visually-hidden"
+            type="file"
+            accept={documentAccept}
+            multiple
+            disabled={sending}
+            onChange={(event) => setFiles([...files, ...Array.from(event.target.files || [])])}
+          />
+        </label>
+        <Button title="Gemeinsames Dokument anlegen" disabled={sending} onClick={onCreateDocument}>
+          <FilePlus2 size={16} />{" "}
+          <span>
+            <span className="chat-document-prefix">Gemeinsames </span>Dokument
+          </span>
+        </Button>
+        <span className="small muted">
+          {privateChat ? "Nur die Teilnehmenden haben Zugriff." : "Nur das Team hat Zugriff."}
+        </span>
+        <Button
+          type="submit"
+          variant="primary"
+          disabled={sending || (!text.trim() && !files.length)}
+        >
+          <Send size={16} />
+          {sending ? "Sendet …" : "Senden"}
+        </Button>
+      </div>
+    </form>
   );
 }

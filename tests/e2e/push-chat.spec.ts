@@ -417,11 +417,15 @@ for (const width of [1440, 390]) {
     expect(state.reads()).toBe(reads);
     await page.reload();
     if (width === 390) await page.locator(".chat-channel-toggle").click();
-    for (const label of ["Team", "Produktionen", "Direktnachrichten", "Gruppen"])
+    for (const label of ["Team", "Produktionen", "Gruppen"])
       await expect(navigation.getByRole("button", { name: label, exact: true })).toHaveAttribute(
         "aria-expanded",
         "false",
       );
+    // The group holding the open chat is always revealed.
+    await expect(
+      navigation.getByRole("button", { name: "Direktnachrichten", exact: true }),
+    ).toHaveAttribute("aria-expanded", "true");
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
     ).toBeLessThanOrEqual(1);
@@ -434,18 +438,15 @@ for (const width of [1440, 390]) {
       width === 1440
         ? page.getByRole("navigation", { name: "Hauptnavigation" })
         : page.locator(".bottom-nav");
-    await expect(nav.getByRole("button", { name: "Kommunikation", exact: true })).toHaveAttribute(
-      "aria-description",
-      "6 ungelesene Nachrichten",
-    );
+    // Navigation entries are links; the unread count is part of their accessible name.
+    const chatLabel = width === 1440 ? "Kommunikation" : "Chat";
+    const chatLink = nav.getByRole("link", { name: new RegExp(`^${chatLabel}`) });
+    await expect(chatLink).toHaveAccessibleName(`${chatLabel} · 6 ungelesene Nachrichten`);
     await page.goto("/?module=chat&conversationId=private");
     await expect
       .poll(() => state.actions.filter((action) => action === "chat-notifications-read").length)
       .toBe(1);
-    await expect(nav.getByRole("button", { name: "Kommunikation", exact: true })).toHaveAttribute(
-      "aria-description",
-      "4 ungelesene Nachrichten",
-    );
+    await expect(chatLink).toHaveAccessibleName(`${chatLabel} · 4 ungelesene Nachrichten`);
     const channelLists = page.locator(".chat-channel-lists");
     if (width === 1440) {
       await expect(channelLists).toBeVisible();

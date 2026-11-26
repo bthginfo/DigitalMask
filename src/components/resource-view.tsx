@@ -1,5 +1,5 @@
 "use client";
-import { useState, type ReactNode } from "react";
+import { useDeferredValue, useMemo, useState, type ReactNode } from "react";
 import { LinkedText } from "./linked-text";
 import Image from "next/image";
 import dynamic from "next/dynamic";
@@ -17,7 +17,7 @@ import { api, dateLabel, hours, ids, localDate, num, value } from "@/shared/clie
 import { imageAccept, prepareUpload } from "@/shared/client-files";
 import { HistoryPanel } from "./history-panel";
 import { fields, labels, recordTitle, statusLabels } from "./resource-fields";
-import { useWorkspace } from "./workspace-context";
+import { useWorkspace, useWorkspaceData } from "./workspace-context";
 import { Badge, Button, Empty, ErrorMessage, ExportButton, Modal, PageHeader } from "./ui";
 import browseStyles from "./workspace-browse.module.css";
 import { ResourceEditor } from "./resource-editor";
@@ -52,8 +52,10 @@ import {
 } from "@/shared/period-filter";
 import { ProductionSeasonAction } from "@/modules/productions/components/production-season-action";
 import { useViewState } from "@/shared/view-state";
+import { matchesSearch, searchIndex, searchTerms } from "@/shared/search-text";
 import { MaterialReservations } from "@/modules/reservations/components/material-reservations";
 import { TimeBookingDelete } from "@/modules/time-tracking/components/time-booking-delete";
+import { useConfirm } from "@/components/confirm-dialog";
 
 const LookPhotoComparison = dynamic(
   () => import("@/modules/documentation/components/look-photo-comparison"),
@@ -142,8 +144,15 @@ function GenericRecordDetail({
       setError(e instanceof Error ? e.message : "Aktion fehlgeschlagen");
     }
   };
-  const deleteRecord = () => {
-    if (window.confirm(`„${title}“ wirklich löschen? Verknüpfte Einträge können betroffen sein.`))
+  const confirm = useConfirm();
+  const deleteRecord = async () => {
+    if (
+      await confirm({
+        message: `„${title}“ wirklich löschen? Verknüpfte Einträge können betroffen sein.`,
+        confirmLabel: "Löschen",
+        destructive: true,
+      })
+    )
       void attempt(async () => {
         await remove(current);
         onClose();
@@ -478,7 +487,13 @@ function GenericRecordDetail({
                   onRemove={
                     canEdit
                       ? (file) => {
-                          if (confirm("Datei löschen?")) void attempt(() => removeFile(file));
+                          void confirm({
+                            message: `Datei „${value(file.data, "name") || "Anhang"}“ löschen?`,
+                            confirmLabel: "Löschen",
+                            destructive: true,
+                          }).then((confirmed) => {
+                            if (confirmed) void attempt(() => removeFile(file));
+                          });
                         }
                       : undefined
                   }
@@ -636,6 +651,24 @@ function GenericRecordDetail({
   );
 }
 
+/** Grammatical German per collection (der Fundus, die Besetzung, die Vorlagen …). */
+const emptyTitles: Partial<Record<RecordKind, string>> = {
+  productions: "Hier beginnen eure Produktionen.",
+  actors: "Hier beginnt euer Schauspielerkatalog.",
+  characters: "Hier beginnen eure Figuren.",
+  casting: "Hier beginnt eure Besetzung.",
+  sprints: "Hier beginnen eure Sprints.",
+  tasks: "Hier beginnen eure Aufgaben.",
+  events: "Hier beginnen eure Termine.",
+  time: "Hier beginnen eure Zeitbuchungen.",
+  looks: "Hier beginnen eure Aufschriebe.",
+  templates: "Hier beginnen eure Vorlagen.",
+  materials: "Hier beginnt euer Fundus.",
+  reservations: "Hier beginnen eure Reservierungen.",
+  handovers: "Hier beginnen eure Dienstübergaben.",
+  people: "Hier beginnen eure Ansprechpersonen.",
+};
+
 export function ResourceView({
   kind,
   title,
@@ -659,7 +692,7 @@ export function ResourceView({
   lockedProductionId?: string;
   exportFilters?: Record<string, string>;
 }) {
-  const { workspace } = useWorkspace();
+  const workspace = useWorkspaceData();
   const scope = `resource:${kind}:${lockedProductionId || "all"}`;
   const [search, setSearch] = useViewState(workspace.user.id, scope, "search", "");
   const [editor, setEditor] = useState(false);
@@ -669,10 +702,15 @@ export function ResourceView({
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const admin = workspace.user.role !== "user";
   const allowedCreate = canCreate !== false && canManageRecord(workspace.user, kind);
-  const rows = workspace.records[kind].filter(
+  const records = workspace.records[kind];
+  // Search text (with resolved names) is built once per data update, not per keystroke.
+  const index = useMemo(() => searchIndex(kind, records, workspace), [kind, records, workspace]);
+  const deferredSearch = useDeferredValue(search);
+  const terms = useMemo(() => searchTerms(deferredSearch), [deferredSearch]);
+  const rows = records.filter(
     (row) =>
       (!filter || filter(row)) &&
-      (!search || JSON.stringify(row.data).toLowerCase().includes(search.toLowerCase())) &&
+      (!terms.length || matchesSearch(index.get(row.id) ?? "", terms)) &&
       (!low || num(row.data, "quantity") <= num(row.data, "minQuantity")),
   );
   const exportable = [
@@ -946,7 +984,7 @@ export function ResourceView({
           title={
             search || (kind === "actors" && filter)
               ? "Keine passenden Einträge"
-              : `Hier beginnen eure ${labels[kind][0]}.`
+              : emptyTitles[kind] || "Noch keine Einträge."
           }
           description={
             search

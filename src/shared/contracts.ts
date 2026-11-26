@@ -36,7 +36,8 @@ export interface ProfilePreferences {
   onboardingVersion: number;
   workingTime?: WorkingTimeSettings;
 }
-export const onboardingVersion = 1;
+/** 2: interface redesign; existing users see "Neu in DigitalMask" once. */
+export const onboardingVersion = 2;
 export type RecordData = Record<string, unknown>;
 export interface ProductionContact {
   id: string;

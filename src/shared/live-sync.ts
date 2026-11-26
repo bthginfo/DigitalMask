@@ -10,12 +10,18 @@ export interface LiveAccess {
   cursor: string;
 }
 
-/** One visible-tab SSE connection. Reconnects replay cursors and never poll workspace data. */
+/**
+ * One visible-tab SSE connection. Reconnects replay cursors and never poll workspace data.
+ * `renew` refreshes an expired ticket; it resolves `true` only when it also reloaded the
+ * workspace (then a long gap needs no second repair). Signals carrying this tab's own
+ * `origin` were already applied by the write that caused them and are skipped.
+ */
 export function connectLiveSync(options: {
   access: () => LiveAccess | null | undefined;
-  renew: () => Promise<void>;
+  renew: () => Promise<boolean | void>;
   changed: (kinds?: RecordKind[]) => void;
   status: (status: SyncStatus) => void;
+  origin?: string;
 }) {
   let source: EventSource | undefined;
   let stopped = false,
@@ -25,8 +31,10 @@ export function connectLiveSync(options: {
   let watchdog: ReturnType<typeof setTimeout> | undefined;
   let cursor = options.access()?.cursor || String(Date.now());
   let disconnectedAt = 0;
-  const active = () =>
-    document.visibilityState === "visible" && document.hasFocus() && navigator.onLine;
+  // Data reloaded by a renewal after a disconnect already repairs the gap.
+  let repairedAt = 0;
+  // A visible but unfocused wall display keeps receiving live updates.
+  const active = () => document.visibilityState === "visible" && navigator.onLine;
   const close = () => {
     generation++;
     source?.close();
@@ -58,7 +66,7 @@ export function connectLiveSync(options: {
     try {
       let access = options.access();
       if (!access || access.expiresAt <= Date.now() + 5000) {
-        await options.renew();
+        if ((await options.renew()) === true) repairedAt = Date.now();
         access = options.access();
       }
       if (stopped || generation !== currentGeneration || !active()) return;
@@ -84,7 +92,12 @@ export function connectLiveSync(options: {
             attempts = 0;
             options.status("live");
             // Beyond retained history, a single authorized snapshot repairs a long gap.
-            if (disconnectedAt && Date.now() - disconnectedAt > 55 * 60000) options.changed();
+            if (
+              disconnectedAt &&
+              Date.now() - disconnectedAt > 55 * 60000 &&
+              repairedAt < disconnectedAt
+            )
+              options.changed();
             disconnectedAt = 0;
           } else if (event.type === "reconnect") retryConnection(true);
           else if (event.type === "error") retryConnection();
@@ -95,6 +108,8 @@ export function connectLiveSync(options: {
             /^\d+-\d+$/.test(event.id)
           ) {
             cursor = event.id;
+            const origin = event.data?.origin;
+            if (options.origin && typeof origin === "string" && origin === options.origin) return;
             options.changed(parseLiveKinds(event.data?.kinds));
           }
         } catch {
@@ -120,8 +135,6 @@ export function connectLiveSync(options: {
     }
   };
   document.addEventListener("visibilitychange", resume);
-  window.addEventListener("focus", resume);
-  window.addEventListener("blur", resume);
   window.addEventListener("online", resume);
   window.addEventListener("offline", resume);
   resume();
@@ -129,8 +142,6 @@ export function connectLiveSync(options: {
     stopped = true;
     close();
     document.removeEventListener("visibilitychange", resume);
-    window.removeEventListener("focus", resume);
-    window.removeEventListener("blur", resume);
     window.removeEventListener("online", resume);
     window.removeEventListener("offline", resume);
   };

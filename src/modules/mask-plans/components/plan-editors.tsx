@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Trash2 } from "lucide-react";
 import { Button, ErrorMessage, Modal } from "@/components/ui";
+import { useConfirm, type Confirm } from "@/components/confirm-dialog";
 import { useWorkspace } from "@/components/workspace-context";
 import { value } from "@/shared/client-api";
 import { isActiveStaff } from "@/shared/client-members";
@@ -12,10 +13,15 @@ import { NamePicker } from "./name-picker";
 import styles from "./mask-plans.module.css";
 import { numberDraft, parseNumberDraft, previewNumberDraft } from "@/shared/number-draft";
 
-function closeEdited(previous: unknown, next: unknown, close: () => void) {
+async function closeEdited(confirm: Confirm, previous: unknown, next: unknown, close: () => void) {
   if (
     JSON.stringify(previous) === JSON.stringify(next) ||
-    confirm("Diese Formulareingaben verwerfen?")
+    (await confirm({
+      message: "Diese Formulareingaben verwerfen?",
+      confirmLabel: "Verwerfen",
+      cancelLabel: "Weiter bearbeiten",
+      destructive: true,
+    }))
   )
     close();
 }
@@ -31,11 +37,13 @@ export function PlanOptions({
   onApply: (plan: MaskPlanData) => void;
   onClose: () => void;
 }) {
+  const confirm = useConfirm();
   const [data, setData] = useState(plan);
   const [windowMinutes, setWindowMinutes] = useState(numberDraft(plan.windowMinutes));
   const [error, setError] = useState("");
   const close = () =>
-    closeEdited(
+    void closeEdited(
+      confirm,
       { data: plan, windowMinutes: numberDraft(plan.windowMinutes) },
       { data, windowMinutes },
       onClose,
@@ -150,6 +158,7 @@ export function LaneEditor({
   onRemove: () => void;
   onClose: () => void;
 }) {
+  const confirm = useConfirm();
   const { workspace } = useWorkspace();
   const [data, setData] = useState(lane);
   const members = workspace.members.filter(
@@ -162,7 +171,7 @@ export function LaneEditor({
   return (
     <Modal
       title={creating ? "Personalspalte hinzufügen" : "Personalspalte bearbeiten"}
-      onClose={() => closeEdited(lane, data, onClose)}
+      onClose={() => void closeEdited(confirm, lane, data, onClose)}
       className={styles.modal}
     >
       <form
@@ -203,11 +212,13 @@ export function LaneEditor({
           {!creating && (
             <Button
               variant="danger-ghost"
-              onClick={() => {
+              onClick={async () => {
                 if (
-                  confirm(
-                    `Diese Personalspalte und ${blockCount ? `alle ${blockCount} zugehörigen Zeitblöcke` : "ihre Zuordnung"} aus dem Entwurf entfernen? Die Änderung gilt erst nach dem Speichern des Plans.`,
-                  )
+                  await confirm({
+                    message: `Diese Personalspalte und ${blockCount ? `alle ${blockCount} zugehörigen Zeitblöcke` : "ihre Zuordnung"} aus dem Entwurf entfernen? Die Änderung gilt erst nach dem Speichern des Plans.`,
+                    confirmLabel: "Entfernen",
+                    destructive: true,
+                  })
                 ) {
                   onRemove();
                   onClose();
@@ -218,7 +229,7 @@ export function LaneEditor({
               Spalte entfernen
             </Button>
           )}
-          <Button onClick={() => closeEdited(lane, data, onClose)}>Abbrechen</Button>
+          <Button onClick={() => void closeEdited(confirm, lane, data, onClose)}>Abbrechen</Button>
           <Button type="submit" variant="primary">
             Übernehmen
           </Button>
@@ -251,6 +262,7 @@ export function BlockEditor({
   onRemove: () => void;
   onClose: () => void;
 }) {
+  const confirm = useConfirm();
   const { workspace } = useWorkspace();
   const [data, setData] = useState(block);
   const [startMinutes, setStartMinutes] = useState(numberDraft(-block.startMinutes));
@@ -273,7 +285,8 @@ export function BlockEditor({
       : -startValue + durationValue;
   const clock = startValue === undefined ? "" : maskPlanClock(-startValue, performanceTime);
   const close = () =>
-    closeEdited(
+    void closeEdited(
+      confirm,
       {
         data: block,
         startMinutes: numberDraft(-block.startMinutes),
@@ -458,11 +471,14 @@ export function BlockEditor({
           {!creating && (
             <Button
               variant="danger-ghost"
-              onClick={() => {
+              onClick={async () => {
                 if (
-                  confirm(
-                    "Diesen Zeitblock aus dem Entwurf entfernen? Die Änderung gilt erst nach dem Speichern des Plans.",
-                  )
+                  await confirm({
+                    message:
+                      "Diesen Zeitblock aus dem Entwurf entfernen? Die Änderung gilt erst nach dem Speichern des Plans.",
+                    confirmLabel: "Entfernen",
+                    destructive: true,
+                  })
                 ) {
                   onRemove();
                   onClose();

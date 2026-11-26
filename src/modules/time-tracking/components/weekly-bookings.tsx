@@ -100,7 +100,7 @@ export function BookingList({
         const from = allocations[0]?.date || value(record.data, "date");
         const to = allocations.at(-1)?.date || from;
         return (
-          <li key={record.id} className={styles.bookingRow}>
+          <li key={record.id} className={`${styles.bookingRow} time-booking-row`}>
             <div className={styles.bookingContent}>
               {showDate && (
                 <span className={styles.bookingDate}>
