@@ -25,7 +25,7 @@ type AttendanceDraft = { id: string; createdAt: string; data: RecordData };
 
 export function AttendanceModule() {
   const confirm = useConfirm();
-  const { workspace, refresh, reload, online, busy } = useWorkspace();
+  const { workspace, reload, online, busy } = useWorkspace();
   const selfBooking = workspace.user.role !== "superadmin";
   const admin = workspace.user.role !== "user";
   const [week, setWeek] = useViewState(workspace.user.id, "attendance", "week", weekStart());
