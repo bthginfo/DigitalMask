@@ -24,7 +24,7 @@ const steps = [
     icon: Check,
     text: "Heute bündelt deine Aufgaben, die nächsten Dienste und deine gebuchte Zeit. Von hier kommst du direkt zu deinem nächsten Arbeitsschritt.",
     tips: [
-      "Deine offenen Aufgaben führen direkt zu Meine Aufgaben im Teamboard.",
+      "Deine offenen Aufgaben führen direkt zu Meine Aufgaben.",
       "Die Suche findet Einträge aus deinen freigegebenen Bereichen.",
     ],
   },
@@ -54,8 +54,8 @@ const steps = [
     icon: BookOpen,
     text: "Aufschriebe sammeln euer Wissen zu einer Schauspielperson. Vorbereitung, Makeup, Haare und Wechsel haben eigene Textfelder. Allgemeine und archivierte Aufschriebe findest du hier gemeinsam.",
     tips: [
-      "Der Schauspielerkatalog bündelt Kontakte, Perückenmaße, Hinweise und Fotos.",
-      "Ansprechpersonen verwaltest du im Verzeichnis. Dienstübergaben sind ein gemeinsamer Bereich mit Hinweisen und Checklisten.",
+      "Unter Schauspieler findest du Kontakte, Perückenmaße, Hinweise und Fotos.",
+      "Ansprechpersonen verwaltest du im Verzeichnis. Übergaben sind ein gemeinsamer Bereich mit Hinweisen und Checklisten.",
     ],
   },
   {

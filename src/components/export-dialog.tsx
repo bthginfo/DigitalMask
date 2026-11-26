@@ -39,7 +39,7 @@ export function ExportDialog({
           "Produktion",
       )
     : filters.teamOnly === "true"
-      ? "Teamboard · ohne Produktion"
+      ? "Team · ohne Stück"
       : "";
   const [format, setFormat] = useState("pdf");
   const [from, setFrom] = useState(filters.from || "");

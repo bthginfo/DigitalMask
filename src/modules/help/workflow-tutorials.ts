@@ -157,7 +157,7 @@ export const workflowTutorials: HelpTutorial[] = [
     poster: "/tutorials/v3/private-chat.webp",
     captions: "/tutorials/v3/private-chat.vtt",
     steps: [
-      "Öffne Kommunikation und Chataktionen. Wähle dann Privater Chat.",
+      "Öffne Chat und die Chataktionen. Wähle dann Privater Chat.",
       "Direktchat verbindet zwei Personen. Für mehrere wählst du Gruppe.",
       "Prüfe den Chatnamen und schreibe deine Nachricht.",
       "Tippe auf Senden. Die Nachricht erscheint im gemeinsamen Verlauf.",

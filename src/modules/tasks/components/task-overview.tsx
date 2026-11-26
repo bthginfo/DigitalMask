@@ -286,7 +286,7 @@ export function TaskOverview({
         title="Aufgaben"
         description={
           mine
-            ? "Deine offenen Aufgaben aus allen Stücken und dem Teamboard."
+            ? "Deine offenen Aufgaben aus allen Stücken und dem Team."
             : "Die Aufgaben aller Stücke auf einen Blick."
         }
       >

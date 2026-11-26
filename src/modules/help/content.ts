@@ -99,22 +99,22 @@ export const helpArticles: HelpArticle[] = [
   },
   {
     id: "tasks",
-    title: "Aufgaben & Teamboard",
+    title: "Aufgaben",
     module: "tasks",
     intro:
-      "Im Teamboard siehst du oben drei Ansichten: Meine Aufgaben, Team und Alle Stücke. Aufgaben zu einem Stück legst du im Stück unter Aufgaben an, allgemeine Aufgaben unter Team.",
+      "Unter Aufgaben siehst du oben drei Ansichten: Meine Aufgaben, Team und Alle Stücke. Aufgaben zu einem Stück legst du im Stück unter Aufgaben an, allgemeine Aufgaben unter Team.",
     steps: [
-      "Meine Aufgaben zeigt alles, was dir zugeteilt ist, aus allen Stücken und dem Teamboard, nach Stück gruppiert und nach Fälligkeit sortiert. Überfällige Aufgaben sind rot markiert.",
+      "Meine Aufgaben zeigt alles, was dir zugeteilt ist, aus allen Stücken und dem Team, nach Stück gruppiert und nach Fälligkeit sortiert. Überfällige Aufgaben sind rot markiert.",
       "Ein Tipp auf den Kreis erledigt eine Aufgabe. Erledigte findest du darunter unter Erledigt; ein weiterer Tipp öffnet sie wieder.",
       "Team zeigt die allgemeinen Aufgaben ohne Stück, Alle Stücke die Aufgaben aller Produktionen. Deine gewählte Ansicht bleibt auf diesem Gerät erhalten.",
       "Eine Aufgabe ist Offen, In Arbeit oder Erledigt. Ältere Aufgaben tragen eventuell zusätzlich Später oder Prüfen.",
       "Öffne im Stück Aufgaben. Neue Aufgaben bleiben dieser Produktion zugeordnet. Unter Team wird keine Produktion zugeteilt.",
       "Am Smartphone startet die Aufgabenansicht als Liste. Sie zeigt Aufgaben nach Status mit ihren Anzahlen. Über Liste und Kanban wechselst du zur Spaltenansicht und zurück. Suche, Nur meine und die Spielzeitauswahl gelten in beiden Ansichten.",
-      "Das Teamboard startet mit der aktuellen Spielzeit von August bis Juli. Über Spielzeit findest du frühere Aufgaben oder Alle Spielzeiten. Neue Teamaufgaben übernehmen die gewählte Spielzeit; im Aufgabenformular kannst du sie ändern. Unteraufgaben übernehmen die Spielzeit der Hauptaufgabe. In einem älteren Stück siehst du automatisch dessen eigene Spielzeit.",
+      "Die Ansicht Team startet mit der aktuellen Spielzeit von August bis Juli. Über Spielzeit findest du frühere Aufgaben oder Alle Spielzeiten. Neue Teamaufgaben übernehmen die gewählte Spielzeit; im Aufgabenformular kannst du sie ändern. Unteraufgaben übernehmen die Spielzeit der Hauptaufgabe. In einem älteren Stück siehst du automatisch dessen eigene Spielzeit.",
       "Ergänze Verantwortliche, Priorität, Fälligkeitsdatum und eine Checkliste. Unteraufgaben behalten den Arbeitsraum ihrer übergeordneten Aufgabe.",
       "Verschiebe eine Aufgabe zwischen den Spalten oder ändere ihren Status im Auswahlfeld. Das funktioniert auch am Smartphone ohne Ziehen.",
       "Sprints sind freiwillig. Schaltet im Stück unter Aufgaben Sprints verwenden ein, wenn ihr Aufgaben für einen Zeitraum bündeln wollt. Danach könnt ihr Sprints mit Start, Ende und Ziel planen; die Sprintauswahl filtert das Board.",
-      "Ihr könnt alle Aufgaben in zugänglichen Produktionen und im Teamboard bearbeiten und verschieben, auch wenn sie einer anderen Person zugeteilt sind.",
+      "Ihr könnt alle Aufgaben in zugänglichen Stücken und unter Team bearbeiten und verschieben, auch wenn sie einer anderen Person zugeteilt sind.",
     ],
   },
   {
@@ -216,7 +216,7 @@ export const helpArticles: HelpArticle[] = [
     intro:
       "Anwesenheit ist deine Zeit im Theater und zählt für dein Plus-/Minuskonto. Produktionsstunden zeigen, woran du gearbeitet hast.",
     steps: [
-      "Öffne Zeit buchen. Oben wählst du Anwesenheit oder Produktionsstunden.",
+      "Öffne Zeit. Oben wählst du Anwesenheit oder Produktionsstunden.",
       "Wenn du ins Theater kommst, tippe bei Anwesenheit auf Starten oder auf Heute auf Ankommen.",
       "Für Produktionsarbeit wählst du die Produktion und tippst auf Starten. Eine Tätigkeit musst du nicht eintragen: Die Buchung heißt dann wie die Produktion. Deine Anwesenheit startet automatisch mit, falls sie noch nicht läuft.",
       "Pause bei der Anwesenheit hält auch die Produktionszeit an. Weiter bei der Anwesenheit setzt nur die Anwesenheit fort; Weiter bei der Produktion setzt beides fort.",
@@ -258,13 +258,13 @@ export const helpArticles: HelpArticle[] = [
   },
   {
     id: "chat",
-    title: "Kommunikation & Dateien",
+    title: "Chat & Dateien",
     module: "chat",
     intro:
       "Teile Informationen mit der Maske, einem Produktionsteam oder ausgewählten Personen in einem privaten Chat.",
     steps: [
       "Admins können mit Teamkanal einen weiteren Kanal anlegen. Darin kann das ganze Maskenteam schreiben, auch neue Kolleginnen nach der Freigabe ihres Zugangs. Admins können den Kanal umbenennen oder archivieren; Nachrichten bleiben erhalten.",
-      "Nutze Maske · Allgemein für Informationen an die Abteilung oder den Projektchat für Absprachen zum Stück.",
+      "Nutze Maske · Allgemein für Informationen an die Abteilung oder den Chat des Stücks für Absprachen.",
       "Neue Nachrichten und Änderungen im Team erscheinen automatisch. Live verbunden zeigt, dass die Verbindung steht. Im Hintergrund pausiert sie; beim Zurückkehren werden verpasste Änderungen nachgeholt. Bei einer Störung kannst du die Verbindung erneut versuchen.",
       "Die roten Zähler zeigen ungelesene Nachrichten. Chats mit neuen Nachrichten stehen unter Ungelesen ganz oben, egal ob Teamkanal, Produktion, Direktnachricht oder Gruppe. Der neueste steht zuerst. Nach dem Lesen wandert der Chat zurück in seinen normalen Bereich. Suche und Archivfilter gelten auch für Ungelesen.",
       "Klicke auf eine Gruppenüberschrift, um ihre Kanäle auf- oder zuzuklappen. Produktionen sind zunächst geschlossen, die anderen Gruppen geöffnet. Die App merkt sich deine Auswahl auf diesem Gerät. Eine Suche öffnet die passenden Gruppen automatisch.",
@@ -295,7 +295,7 @@ export const helpArticles: HelpArticle[] = [
   },
   {
     id: "inventory",
-    title: "Fundus & Materialwissen",
+    title: "Fundus",
     module: "inventory",
     intro: "Lagerorte, Bestand und Hinweise halten euer Materialwissen zusammen.",
     steps: [
@@ -306,10 +306,10 @@ export const helpArticles: HelpArticle[] = [
   },
   {
     id: "handovers",
-    title: "Dienstübergaben & Checklisten",
+    title: "Übergaben & Checklisten",
     module: "handovers",
     intro:
-      "Dienstübergaben stehen gemeinsam im Bereich Dienstübergaben. Sie benötigen keine Produktionszuordnung, kein Vorstellungsdatum und keinen Status.",
+      "Übergaben stehen gemeinsam im Bereich Übergaben. Sie benötigen keine Produktionszuordnung, kein Vorstellungsdatum und keinen Status.",
     steps: [
       "Lege eine Übergabe mit einem verständlichen Titel an. Beschreibe unter Worauf muss ich achten die wichtigen Punkte und unter Allgemeine Hinweise weitere Absprachen.",
       "Mit Textfeld hinzufügen ergänzt du mehrere getrennte Hinweise. Optional kannst du kurze Labels vergeben und die Einträge umordnen.",
@@ -368,7 +368,7 @@ export const helpArticles: HelpArticle[] = [
     module: "documentation",
     intro: "Mit Jahr und Spielzeit findest du auch ältere Produktionsarbeit wieder.",
     steps: [
-      "Beim ersten Öffnen startet der Kalender mit der aktuellen Spielzeit von August bis Juli. Zeit buchen zeigt immer eine Woche; der Export übernimmt deren Spielzeit. Wenn du zwischendurch in einen anderen Bereich wechselst und zurückkommst, bleibt deine Auswahl erhalten. Mit Alle Spielzeiten oder Zeitraum zurücksetzen kannst du weitere Zeiträume sehen.",
+      "Beim ersten Öffnen startet der Kalender mit der aktuellen Spielzeit von August bis Juli. Zeit zeigt immer eine Woche; der Export übernimmt deren Spielzeit. Wenn du zwischendurch in einen anderen Bereich wechselst und zurückkommst, bleibt deine Auswahl erhalten. Mit Alle Spielzeiten oder Zeitraum zurücksetzen kannst du weitere Zeiträume sehen.",
       "Wähle Jahr und Spielzeit in der jeweiligen Übersicht. Im Sammelordner kannst du zusätzlich eine Produktion oder allgemeine Aufschriebe auswählen; archivierte Produktionen bleiben auffindbar.",
       "Bei Produktionsdokumenten zählen die Spielzeiten des Stücks; ein Stück im Repertoire erscheint in jeder davon. Beim Jahr zählt das Premierenjahr. Bei allgemeinen Aufschrieben zählt das Erstellungsjahr. Zeitbuchungen und Anwesenheit richten sich nach dem tatsächlich gebuchten Tag.",
       "Öffne Exportieren aus der gefilterten Übersicht. Produktion, Jahr und Spielzeit werden übernommen. Prüfe bei Zeit- und Kalenderexporten zusätzlich den Zeitraum, damit er zur gewählten Auswahl passt.",
@@ -432,11 +432,11 @@ export const helpFaq = [
   ],
   [
     "Wo kommen allgemeine Aufgaben hin?",
-    "Ins Teamboard unter Team, für die aktuelle Spielzeit. Frühere Aufgaben findest du über Spielzeit oder Alle Spielzeiten. Aufgaben zu einem Stück werden direkt unter dessen Aufgaben angelegt und bleiben in allen Spielzeiten des Stücks sichtbar. Unter Meine Aufgaben und auf Heute siehst du deine offenen Aufgaben immer, unabhängig von der Spielzeit.",
+    "Unter Aufgaben → Team, für die aktuelle Spielzeit. Frühere Aufgaben findest du über Spielzeit oder Alle Spielzeiten. Aufgaben zu einem Stück werden direkt unter dessen Aufgaben angelegt und bleiben in allen Spielzeiten des Stücks sichtbar. Unter Meine Aufgaben und auf Heute siehst du deine offenen Aufgaben immer, unabhängig von der Spielzeit.",
   ],
   [
     "Wo finde ich das Ensemble und die Aufgaben aus früheren Spielzeiten?",
-    "Die Übersichten starten mit der aktuellen Spielzeit von August bis Juli. Wähle im Spielzeitfilter ein früheres Jahr oder Alle Spielzeiten. Im Schauspielerkatalog kannst du beim Bearbeiten einer Person mehrere Spielzeiten hinterlegen. Die Besetzungen und Maskenangaben bleiben in einem gemeinsamen Profil erhalten.",
+    "Die Übersichten starten mit der aktuellen Spielzeit von August bis Juli. Wähle im Spielzeitfilter ein früheres Jahr oder Alle Spielzeiten. Unter Schauspieler kannst du beim Bearbeiten einer Person mehrere Spielzeiten hinterlegen. Die Besetzungen und Maskenangaben bleiben in einem gemeinsamen Profil erhalten.",
   ],
   [
     "Kann eine externe Person ohne Account eingetragen werden?",
@@ -455,8 +455,8 @@ export const helpFaq = [
     "Nein. Ein gespeicherter Aufschrieb ist für das berechtigte Team sichtbar. Sein Titel ist der Schauspielername; die Inhalte werden in einzelnen Textfeldern der Abschnitte gepflegt.",
   ],
   [
-    "Wo finde ich frühere Aufschriebe und Dienstübergaben?",
-    "Aufschriebe stehen im zentralen Sammelordner, einschließlich archivierter Produktionen. Jahr, Spielzeit und Produktion helfen beim Eingrenzen. Dienstübergaben stehen gemeinsam im eigenen Bereich ohne Produktionszuordnung.",
+    "Wo finde ich frühere Aufschriebe und Übergaben?",
+    "Aufschriebe stehen im zentralen Sammelordner, einschließlich archivierter Produktionen. Jahr, Spielzeit und Produktion helfen beim Eingrenzen. Übergaben stehen gemeinsam im eigenen Bereich ohne Produktionszuordnung.",
   ],
   [
     "Wie lade ich mehrere Bilder hoch?",
@@ -464,11 +464,11 @@ export const helpFaq = [
   ],
   [
     "Kann ich gespeicherte Zeiten nachträglich bearbeiten oder löschen?",
-    "Ja. Öffne Zeit buchen, wähle die Woche und tippe den Tag an. Bei jeder Buchung findest du Bearbeiten und Löschen. Die Summen passen sich sofort an; eine Wochenfreigabe gibt es nicht.",
+    "Ja. Öffne Zeit, wähle die Woche und tippe den Tag an. Bei jeder Buchung findest du Bearbeiten und Löschen. Die Summen passen sich sofort an; eine Wochenfreigabe gibt es nicht.",
   ],
   [
     "Wo finde ich meine Stunden aus früheren Wochen?",
-    "Öffne Zeit buchen und wähle Anwesenheit oder Produktionsstunden. Wechsle mit den Pfeilen oder über das Datum zur gewünschten Woche und tippe einen Tag an.",
+    "Öffne Zeit und wähle Anwesenheit oder Produktionsstunden. Wechsle mit den Pfeilen oder über das Datum zur gewünschten Woche und tippe einen Tag an.",
   ],
   [
     "Muss ich die Anwesenheit extra starten, wenn ich an einer Produktion arbeite?",

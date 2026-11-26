@@ -153,7 +153,7 @@ function TaskCard({
           {production ? (
             <RecordLink record={production}>{value(production.data, "title")}</RecordLink>
           ) : (
-            "Teamboard"
+            "Team"
           )}
         </span>
         <button

@@ -278,7 +278,7 @@ function GenericResourceEditor({
                     {},
                   "title",
                 )
-              : "Teamboard · ohne Produktion"}
+              : "Team · ohne Stück"}
           </strong>
         </div>
       );
@@ -504,7 +504,7 @@ function GenericResourceEditor({
         {kind === "time" && (
           <p className="small muted">
             Mit Beginn und Ende wird die Arbeitsdauer abzüglich Pause automatisch berechnet. Ohne
-            Zeitraum kannst du direkt Minuten buchen.
+            Zeitraum trägst du die Dauer direkt ein, zum Beispiel 1:30.
           </p>
         )}
         <ErrorMessage message={error} />

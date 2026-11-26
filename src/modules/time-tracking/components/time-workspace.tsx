@@ -34,7 +34,7 @@ export function TimeWorkspace() {
   }, [workspace.records.time, workspace.records.attendance, workspace.user.id, week, until]);
   return (
     <div className={styles.workspace}>
-      <PageHeader title="Zeit buchen" compact />
+      <PageHeader title="Zeit" compact />
       {selfBooking && <LongTimerWarning onBooked={setBooked} />}
       <div className={styles.choices} role="group" aria-label="Zeitnachweise">
         {(["attendance", "work"] as const).map((key) => {

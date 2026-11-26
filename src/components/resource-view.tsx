@@ -665,7 +665,7 @@ const emptyTitles: Partial<Record<RecordKind, string>> = {
   templates: "Hier beginnen eure Vorlagen.",
   materials: "Hier beginnt euer Fundus.",
   reservations: "Hier beginnen eure Reservierungen.",
-  handovers: "Hier beginnen eure Dienstübergaben.",
+  handovers: "Hier beginnen eure Übergaben.",
   people: "Hier beginnen eure Ansprechpersonen.",
 };
 
