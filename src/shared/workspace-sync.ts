@@ -8,15 +8,39 @@ export const workspaceGroups = {
   work: ["tasks", "sprints", "time", "attendance"],
   notes: ["looks", "templates", "handovers"],
   inventory: ["materials", "reservations", "categories"],
-  chat: ["messages", "conversations"],
+  // Conversations decide chat visibility for every partial request; messages are loaded separately.
+  conversations: ["conversations"],
+  messages: ["messages"],
   files: ["files"],
   feedback: ["feedback"],
 } as const satisfies Record<string, readonly RecordKind[]>;
+
+export type WorkspaceGroup = keyof typeof workspaceGroups;
+/**
+ * Groups that grow with time. Their shared snapshots are cached per calendar year of
+ * `created_at`, so no single data-cache entry approaches Next's 2 MB per-entry limit.
+ */
+export const yearBucketedGroups: readonly WorkspaceGroup[] = ["calendar", "work", "notes", "files"];
 
 export const workspaceKindTag = (departmentId: string, kind: RecordKind) =>
   `workspace-kind:${departmentId}:${kind}`;
 export const notificationUserTag = (departmentId: string, userId: string) =>
   `workspace-notices:${departmentId}:${userId}`;
+export const chatReadUserTag = (departmentId: string, userId: string) =>
+  `workspace-chat-reads:${departmentId}:${userId}`;
+
+/** Mutating requests carry the writing tab's id so its own live echo can be ignored. */
+export const clientOriginHeader = "x-dm-client";
+export function clientOriginValue(value: unknown) {
+  return typeof value === "string" && /^[A-Za-z0-9_-]{8,64}$/.test(value) ? value : undefined;
+}
+/** Document capabilities only depend on productions, chats, files and memberships. */
+export const permissionKinds: readonly RecordKind[] = ["productions", "conversations", "files"];
+/**
+ * Team data (members, roles, working time) is part of every partial patch. The caller's
+ * personal notification slice is the cheapest carrier for a team-only change.
+ */
+export const teamChangeKinds: readonly RecordKind[] = ["notifications"];
 
 /** Visibility changes and attachment changes require rechecking the complete visible set. */
 export function partialWorkspaceKinds(kinds?: readonly RecordKind[]): RecordKind[] | undefined {
@@ -34,13 +58,18 @@ export function parseLiveKinds(value: unknown): RecordKind[] | undefined {
     : undefined;
 }
 
-/** Related writes performed by production contacts, inline casting and portrait normalization. */
+/**
+ * Related writes performed by production contacts and inline casting. Saving an actor never
+ * writes files; portrait uploads and normalization invalidate "files" on their own paths.
+ */
 export function recordChangeKinds(kind: RecordKind): RecordKind[] {
   if (kind === "productions") return ["productions", "people"];
   if (kind === "casting") return ["casting", "actors", "characters"];
-  if (kind === "actors") return ["actors", "files"];
   return [kind];
 }
+
+/** Per-user chat unread counters change with new messages and with the caller's reads. */
+export const chatUnreadKinds: readonly RecordKind[] = ["messages", "notifications"];
 
 export interface WorkspacePatch {
   partial: true;
@@ -52,6 +81,7 @@ export interface WorkspacePatch {
   attendanceTimer?: Workspace["attendanceTimer"];
   projectHours?: Workspace["projectHours"];
   guestProductionIds?: Workspace["guestProductionIds"];
+  chatUnread?: Workspace["chatUnread"];
 }
 
 export function workspacePatch(workspace: Workspace, kinds: readonly RecordKind[]): WorkspacePatch {
@@ -68,6 +98,9 @@ export function workspacePatch(workspace: Workspace, kinds: readonly RecordKind[
           attendanceTimer: workspace.attendanceTimer,
           ...(kinds.includes("time") ? { projectHours: workspace.projectHours } : {}),
         }
+      : {}),
+    ...(kinds.some((kind) => chatUnreadKinds.includes(kind))
+      ? { chatUnread: workspace.chatUnread }
       : {}),
   };
 }
@@ -88,6 +121,7 @@ export function mergeWorkspaceUpdate(
     ...("attendanceTimer" in next ? { attendanceTimer: next.attendanceTimer } : {}),
     ...("projectHours" in next ? { projectHours: next.projectHours } : {}),
     ...(next.guestProductionIds ? { guestProductionIds: next.guestProductionIds } : {}),
+    ...("chatUnread" in next ? { chatUnread: next.chatUnread } : {}),
   };
 }
 

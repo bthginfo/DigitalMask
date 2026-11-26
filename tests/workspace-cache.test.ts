@@ -7,6 +7,7 @@ import { recordKinds } from "@/shared/contracts";
 
 const state = vi.hoisted(() => ({
   select: vi.fn(),
+  execute: vi.fn(async () => []),
   rows: [] as {
     id: string;
     kind: string;
@@ -19,7 +20,7 @@ const state = vi.hoisted(() => ({
   cache: new Map<string, { tags: string[]; value: Promise<unknown> }>(),
   queries: [] as { sql: string; params: unknown[] }[],
 }));
-vi.mock("@/platform/db", () => ({ db: { select: state.select } }));
+vi.mock("@/platform/db", () => ({ db: { select: state.select, execute: state.execute } }));
 vi.mock("@/platform/context", () => ({ scopeTag: (id: string) => `workspace:${id}` }));
 vi.mock("@/platform/realtime", () => ({ scheduleLiveChange: vi.fn() }));
 vi.mock("next/cache", () => ({
@@ -69,18 +70,27 @@ beforeEach(() => {
     from: (table: unknown) => {
       if (table === records)
         return {
-          where: (where: SQL) => ({
-            orderBy: async () => {
+          where: (where: SQL) => {
+            const read = () => {
               const query = new PgDialect().sqlToQuery(where);
               state.queries.push(query);
-              return state.rows.filter(
-                (row) =>
-                  query.params.includes(row.kind) &&
-                  (row.kind !== "notifications" ||
-                    (query.params.includes(row.data.userId) && !row.data.read)),
+              const notices = query.sql.includes("'notifications'");
+              return state.rows.filter((row) =>
+                row.kind === "notifications"
+                  ? notices && query.params.includes(row.data.userId) && !row.data.read
+                  : query.params.includes(row.kind),
               );
-            },
-          }),
+            };
+            return {
+              orderBy: async () => read(),
+              groupBy: () => ({
+                orderBy: async () =>
+                  [...new Set(read().map((row) => row.createdAt.getUTCFullYear()))].map((year) => ({
+                    year,
+                  })),
+              }),
+            };
+          },
         };
       if (table === memberships) {
         const team = {
@@ -102,7 +112,7 @@ describe("database transfer budget", () => {
     const reads = state.queries.length;
     await getWorkspace(context);
     expect(state.queries).toHaveLength(reads);
-    const notice = state.queries.find((query) => query.params.includes("notifications"))!;
+    const notice = state.queries.find((query) => query.sql.includes("'notifications'"))!;
     expect(notice.sql).toContain("owner_id");
     expect(notice.sql).toContain("->>'read'");
     expect(notice.params).toContain("one");

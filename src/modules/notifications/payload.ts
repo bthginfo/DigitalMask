@@ -14,6 +14,7 @@ export function pushPayload(
     ShiftSwapChangedV1: "Neue Information zum Diensttausch",
     LeaveRequestDecidedV1: "Dein Freiwunsch wurde beantwortet",
     LookPublishedV1: "Neuer Aufschrieb",
+    AdminDecisionRequestedV1: "Eine Anfrage wartet auf deine Freigabe",
   };
   return {
     title: `DigitalMask · ${labels[type] || "Neue Mitteilung"}`,

@@ -94,6 +94,11 @@ export interface Workspace {
   projectHours: Record<string, number>;
   /** Productions readable only because the user works one of their performances (read-only). */
   guestProductionIds?: string[];
+  /**
+   * The caller's unread chat messages per visible channel, keyed like `chatChoiceKey`:
+   * `conversation:<id>`, `production:<id>` or `general`. Only channels with unread messages.
+   */
+  chatUnread?: Record<string, number>;
 }
 export interface ApiError {
   error: string;

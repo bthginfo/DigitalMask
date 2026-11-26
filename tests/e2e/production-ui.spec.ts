@@ -174,7 +174,6 @@ async function mock(page: Page) {
   await page.route("**/api/files/*", (route) =>
     route.fulfill({ contentType: "image/png", body: image }),
   );
-  await page.route("**/api/messages?**", (route) => route.fulfill({ json: { messages: [] } }));
   await page.route("**/api/export?**", (route) => {
     exports.push(new URL(route.request().url()));
     return route.fulfill({ contentType: "text/csv", body: "QA fixture" });

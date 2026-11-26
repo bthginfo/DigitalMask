@@ -325,6 +325,8 @@ export const schemas: Record<RecordKind, z.ZodType> = {
     conversationId: id,
     attachmentIds: ids,
     userId: id,
+    /** Optional per-send key: a retried POST returns the stored message. */
+    idempotencyKey: z.string().trim().max(100).optional(),
   }),
   materials: z.object({
     name: title,

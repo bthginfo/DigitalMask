@@ -1,4 +1,4 @@
-import { and, eq, sql, inArray } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { addDays, parseISO, format } from "date-fns";
 import { db } from "@/platform/db";
 import { records } from "@/platform/db/schema";
@@ -9,6 +9,7 @@ import { emit, auditChange, scheduleEvents } from "@/platform/events";
 import { HttpError } from "@/platform/http";
 import { startOfLocalDay } from "@/modules/time-tracking/rules";
 import { occurrences } from "./occurrences";
+import { calendarWindow } from "./window";
 import { queueGoogleCalendarSync } from "@/modules/google-calendar/queue";
 import {
   calendarPresentation,
@@ -36,17 +37,13 @@ export async function decideLeave(
       const start = startOfLocalDay(String(row.data.start));
       const next = addDays(parseISO(String(row.data.end)), 1);
       const end = startOfLocalDay(format(next, "yyyy-MM-dd"));
-      const planning = await tx
-        .select()
-        .from(records)
-        .where(
-          and(
-            eq(records.departmentId, context.departmentId),
-            inArray(records.kind, ["events", "productions", "calendarCategories"]),
-          ),
-        );
-      const categories = planning
-        .filter((item) => item.kind === "calendarCategories" && item.data.allDay === true)
+      // Only this person's events around the requested days, not the whole calendar.
+      const window = await calendarWindow(tx, context.departmentId, start, end, {
+        participantIds: [String(row.data.userId)],
+      });
+      const planning = [...window.events, ...window.productions, ...window.categories];
+      const categories = window.categories
+        .filter((item) => item.data.allDay === true)
         .map(serialize);
       const category = categoryKey
         ? categories.find(

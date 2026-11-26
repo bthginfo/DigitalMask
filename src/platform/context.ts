@@ -1,8 +1,9 @@
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
+import { parseSetCookieHeader, toCookieOptions } from "better-auth/cookies";
 import { unstable_cache } from "next/cache";
 import { createHash } from "node:crypto";
 import { eq } from "drizzle-orm";
-import { auth } from "@/platform/auth";
+import { auth, sessionExpiresIn, sessionUpdateAge } from "@/platform/auth";
 import { db } from "@/platform/db";
 import { memberships, organizations, departments, profilePreferences } from "@/platform/db/schema";
 import { HttpError } from "@/platform/http";
@@ -37,19 +38,59 @@ async function membershipFor(userId: string, fresh = false) {
         tags: [`member:${userId}`],
       })();
 }
+/** Better Auth extends a session once `updateAge` has passed since the last extension. */
+export function sessionNeedsRefresh(session: { expiresAt: string | Date }, now = Date.now()) {
+  const expiresAt = new Date(session.expiresAt).getTime();
+  return (
+    Number.isFinite(expiresAt) &&
+    expiresAt > now &&
+    expiresAt - sessionExpiresIn * 1000 + sessionUpdateAge * 1000 <= now
+  );
+}
+/**
+ * The auth handler is not mounted, so cookies that auth.api sets would be lost. A refreshed
+ * session must reach the browser, otherwise the cookie still expires a week after login although
+ * the database session was extended.
+ */
+export async function writeRefreshedSessionCookies(responseHeaders: Headers) {
+  const setCookie = responseHeaders.get("set-cookie");
+  if (!setCookie) return false;
+  const parsed = parseSetCookieHeader(setCookie);
+  if (![...parsed.keys()].some((name) => name.endsWith("session_token"))) return false;
+  try {
+    const store = await cookies();
+    for (const [name, value] of parsed) store.set(name, value.value, toCookieOptions(value));
+    return true;
+  } catch {
+    // Read-only outside route handlers and server actions; the next write refreshes again.
+    return false;
+  }
+}
+/** Uncached read that may extend the session and then writes the renewed cookie back. */
+async function refreshingSession(requestHeaders: Headers) {
+  const { headers: responseHeaders, response } = await auth.api.getSession({
+    headers: requestHeaders,
+    query: { disableCookieCache: true },
+    returnHeaders: true,
+  });
+  await writeRefreshedSessionCookies(responseHeaders);
+  return response;
+}
 export async function requireContext(fresh = false): Promise<Context> {
   const requestHeaders = await headers();
-  const readSession = () =>
-    auth.api.getSession({ headers: requestHeaders, query: { disableCookieCache: fresh } });
   const cookie = requestHeaders.get("cookie") || "";
-  const result =
+  let result =
     fresh || !cookie
-      ? await readSession()
+      ? await refreshingSession(requestHeaders)
       : await unstable_cache(
-          readSession,
+          // Never extend a session inside the cache: its cookie could not be written back.
+          () => auth.api.getSession({ headers: requestHeaders, query: { disableRefresh: true } }),
           ["session-context", createHash("sha256").update(cookie).digest("hex")],
           { revalidate: 60 },
         )();
+  // About once a day per active session, also for read-only use of the app.
+  if (result && !fresh && cookie && sessionNeedsRefresh(result.session))
+    result = await refreshingSession(requestHeaders);
   if (!result) throw new HttpError(401, "Bitte melde dich an.");
   const [row] = await membershipFor(result.user.id, fresh);
   if (!row) throw new HttpError(403, "Dein Zugang wurde noch keiner Abteilung zugeordnet.");

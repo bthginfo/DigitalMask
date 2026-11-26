@@ -120,6 +120,27 @@
       "when": 1792085330343,
       "tag": "0016_google_calendar_accounts_and_pacing",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1795686822083,
+      "tag": "0017_chat_read_cursors_and_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1795688160390,
+      "tag": "0018_drop_unused_record_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1795688178338,
+      "tag": "0019_drop_record_operations",
+      "breakpoints": true
     }
   ]
 }

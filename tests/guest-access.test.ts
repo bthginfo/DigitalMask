@@ -14,7 +14,7 @@ import {
 import { guestAccessChanged, workspacePatch } from "@/shared/workspace-sync";
 
 const state = vi.hoisted(() => ({ select: vi.fn(), queries: [] as unknown[][] }));
-vi.mock("@/platform/db", () => ({ db: { select: state.select } }));
+vi.mock("@/platform/db", () => ({ db: { select: state.select, execute: vi.fn(async () => []) } }));
 vi.mock("next/cache", () => ({
   unstable_cache: (callback: () => unknown) => callback,
   revalidateTag: vi.fn(),
@@ -172,15 +172,23 @@ describe("guest workspace", () => {
             where: (where: SQL) => {
               const { params } = new PgDialect().sqlToQuery(where);
               state.queries.push(params);
+              const matching = () =>
+                rows
+                  .filter((record) => params.includes(record.kind))
+                  .map((record) => ({
+                    ...record,
+                    createdAt: new Date(record.createdAt),
+                    updatedAt: new Date(record.updatedAt),
+                  }));
               return {
-                orderBy: async () =>
-                  rows
-                    .filter((record) => params.includes(record.kind))
-                    .map((record) => ({
-                      ...record,
-                      createdAt: new Date(record.createdAt),
-                      updatedAt: new Date(record.updatedAt),
-                    })),
+                orderBy: async () => matching(),
+                // Year buckets of the time-based groups.
+                groupBy: () => ({
+                  orderBy: async () =>
+                    [...new Set(matching().map((record) => record.createdAt.getUTCFullYear()))]
+                      .sort()
+                      .map((year) => ({ year })),
+                }),
               };
             },
           };

@@ -10,7 +10,7 @@ export interface UnreadChannel {
 
 /** Unread chat channels for the start screen, most unread first. */
 export function chatUnreadSummary(workspace: Workspace) {
-  const counts = chatUnreadCounts(workspace.records.notifications, workspace.user.id);
+  const counts = chatUnreadCounts(workspace.chatUnread);
   const channels: UnreadChannel[] = [];
   if (counts.general)
     channels.push({ title: "Maske · Allgemein", count: counts.general, href: "/?module=chat" });

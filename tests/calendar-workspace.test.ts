@@ -11,10 +11,10 @@ import {
 } from "@/shared/calendar-access";
 import { calendarPresentation } from "@/shared/calendar-categories";
 import { buildExport } from "@/modules/exports";
-import { workspaceGroups } from "@/shared/workspace-sync";
+import { workspaceGroups, yearBucketedGroups } from "@/shared/workspace-sync";
 
-const mocks = vi.hoisted(() => ({ select: vi.fn() }));
-vi.mock("@/platform/db", () => ({ db: { select: mocks.select } }));
+const mocks = vi.hoisted(() => ({ select: vi.fn(), execute: vi.fn(async () => []) }));
+vi.mock("@/platform/db", () => ({ db: { select: mocks.select, execute: mocks.execute } }));
 vi.mock("next/cache", () => ({
   unstable_cache: (callback: () => unknown) => callback,
   revalidateTag: vi.fn(),
@@ -105,17 +105,25 @@ beforeEach(() => {
           where: (where: SQL) => {
             const query = new PgDialect().sqlToQuery(where);
             queries.push(query);
+            const matching = () =>
+              scopeRows
+                .filter((record) => query.params.includes(record.kind))
+                .map((record) => ({
+                  ...record,
+                  createdAt: new Date(record.createdAt),
+                  updatedAt: new Date(record.updatedAt),
+                }));
             return {
-              orderBy: () =>
-                Promise.resolve(
-                  scopeRows
-                    .filter((record) => query.params.includes(record.kind))
-                    .map((record) => ({
-                      ...record,
-                      createdAt: new Date(record.createdAt),
-                      updatedAt: new Date(record.updatedAt),
-                    })),
-                ),
+              orderBy: () => Promise.resolve(matching()),
+              // Year buckets of the time-based groups.
+              groupBy: () => ({
+                orderBy: () =>
+                  Promise.resolve(
+                    [...new Set(matching().map((record) => record.createdAt.getUTCFullYear()))]
+                      .sort()
+                      .map((year) => ({ year })),
+                  ),
+              }),
             };
           },
         };
@@ -240,11 +248,13 @@ describe("department calendar sharing", () => {
       season: "2026/27",
       premiere: "2026-11-01",
     });
-    // Groups, the caller's unread notices and the caller's guest productions.
-    expect(queries).toHaveLength(Object.keys(workspaceGroups).length + 2);
+    // One snapshot per group, one year index per time-based group, the personal notices and the guest productions.
+    expect(queries).toHaveLength(
+      Object.keys(workspaceGroups).length + yearBucketedGroups.length + 2,
+    );
     expect(queries.every((query) => query.params[0] === context.departmentId)).toBe(true);
     expect(queries.every((query) => !query.params.includes("timesheets"))).toBe(true);
-    expect(queries.find((query) => query.params.includes("notifications"))?.params).toContain(
+    expect(queries.find((query) => query.sql.includes("'notifications'"))?.params).toContain(
       context.user.id,
     );
   });

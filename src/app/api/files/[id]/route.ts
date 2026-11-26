@@ -5,8 +5,14 @@ import { getFile, deleteFile } from "@/modules/files/service";
 import sharp from "sharp";
 type Props = { params: Promise<{ id: string }> };
 export const runtime = "nodejs";
+/**
+ * A file id never changes its bytes (new uploads get new ids), so an authorized response may
+ * stay in the viewer's own browser cache. `private` keeps it out of every shared cache; each
+ * uncached request is authorized again. Errors are never cached.
+ */
+const immutableFileCache = "private, max-age=31536000, immutable";
 export async function GET(request: Request, { params }: Props) {
-  return route(async () => {
+  const response = await route(async () => {
     const { row, blob } = await getFile(await requireContext(), (await params).id);
     if (new URL(request.url).searchParams.get("preview") === "thumbnail") {
       if (!["image/jpeg", "image/png", "image/webp"].includes(String(row.data.mime)))
@@ -20,7 +26,7 @@ export async function GET(request: Request, { params }: Props) {
       return new Response(new Uint8Array(preview), {
         headers: {
           "Content-Type": "image/webp",
-          "Cache-Control": "private, no-store",
+          "Cache-Control": immutableFileCache,
           "X-Content-Type-Options": "nosniff",
         },
       });
@@ -30,13 +36,15 @@ export async function GET(request: Request, { params }: Props) {
       headers: {
         "Content-Type": String(row.data.mime),
         "Content-Disposition": `inline; filename*=UTF-8''${encodeURIComponent(name)}`,
-        "Cache-Control": "private, no-store",
+        "Cache-Control": immutableFileCache,
         "X-Content-Type-Options": "nosniff",
         "X-Frame-Options": "SAMEORIGIN",
         "Content-Security-Policy": "frame-ancestors 'self'",
       },
     });
   });
+  if (!response.ok) response.headers.set("Cache-Control", "private, no-store");
+  return response;
 }
 export async function DELETE(request: Request, { params }: Props) {
   return route(async () => {

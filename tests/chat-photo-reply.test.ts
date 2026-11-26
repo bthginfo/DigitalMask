@@ -28,7 +28,6 @@ describe("photo replies", () => {
       { mime: "application/pdf" },
       { recordKind: "looks" },
       { recordId: "another" },
-      { pendingDeletionOperation: "pending" },
     ])
       expect(
         matchesPhotoReply(reply, message.data, [

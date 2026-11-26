@@ -68,7 +68,7 @@ describe("guest read access enforcement", () => {
   it("falls back to production membership when the evening does not grant access", async () => {
     mocks.guest.mockResolvedValue(false);
     await expect(assertRead(context, plan, tx, "guest")).rejects.toMatchObject({ status: 403 });
-    expect(mocks.project).toHaveBeenCalledWith(context, "faust", tx);
+    expect(mocks.project).toHaveBeenCalledWith(context, "faust", tx, undefined);
   });
 
   it("keeps draft privacy for guests", async () => {

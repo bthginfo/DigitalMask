@@ -7,7 +7,7 @@ import { HttpError } from "@/platform/http";
 import { assertProject } from "@/modules/records/repository";
 import { saveRecord } from "@/modules/records/service";
 import { validateCategoryReferences } from "@/modules/categories/service";
-import { invalidateWorkspace, invalidateTimer } from "@/modules/records/workspace";
+import { invalidateTimer } from "@/modules/records/workspace";
 import { localDay, durationSeconds } from "./rules";
 import type { RecordData } from "@/shared/contracts";
 export async function timerAction(
@@ -134,15 +134,15 @@ export async function timerAction(
     throw new HttpError(400, "Unbekannte Timeraktion.");
   });
   if ("payload" in result && result.payload && result.timerId) {
+    // saveRecord already invalidates and announces the new booking once.
     const booking = await saveRecord(context, kind, result.payload);
     await db
       .delete(timerTable)
       .where(and(eq(timerTable.id, result.timerId), eq(timerTable.userId, context.user.id)));
-    invalidateWorkspace(context.departmentId, true, [kind]);
     invalidateTimer(context.user.id);
     return booking;
   }
-  invalidateWorkspace(context.departmentId, true, [kind]);
+  // Running timers live in their own per-user table and cache: no shared snapshot changed.
   invalidateTimer(context.user.id);
   return result;
 }

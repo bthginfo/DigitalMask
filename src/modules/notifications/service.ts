@@ -6,9 +6,12 @@ import { db } from "@/platform/db";
 import { memberships, pushSubscriptions, records } from "@/platform/db/schema";
 import type { Context } from "@/platform/context";
 import { HttpError } from "@/platform/http";
-import { listValue } from "@/shared/contracts";
+import { listValue, type RecordData } from "@/shared/contracts";
+import { unreadNoticeCondition } from "@/modules/records/repository";
+import { chatUnreadRows, chatUnreadTotal, visibleChatUnread } from "@/modules/chat/unread";
 import { subscriptionSchema } from "./schema";
 import { pushPayload } from "./payload";
+import { isChatNotice } from "./unread";
 
 export const pushConfigured = () =>
   Boolean(
@@ -162,9 +165,8 @@ export async function testDevice(context: Context, endpoint: string) {
     .where(
       and(
         eq(records.departmentId, context.departmentId),
-        eq(records.kind, "notifications"),
         eq(records.ownerId, context.user.id),
-        sql`coalesce(${records.data}->>'read','false') <> 'true'`,
+        unreadNoticeCondition,
       ),
     );
   const payload = {
@@ -178,43 +180,57 @@ export async function testDevice(context: Context, endpoint: string) {
     throw new HttpError(409, "Die Geräteverbindung ist abgelaufen. Aktiviere Mitteilungen erneut.");
 }
 
-/** Event-driven only. One batch of recipient permissions/notices, using a cached device registry. */
-export async function deliverNotifications(
-  departmentId: string,
-  type: string,
-  noticeIds: string[],
-) {
-  if (!pushConfigured() || !noticeIds.length) return;
-  const devices = await departmentDevices(departmentId);
-  if (!devices.length) return;
-  const recipientIds = [...new Set(devices.map((device) => device.userId))];
-  const rows = await db
-    .select({ notice: records, role: memberships.role, status: memberships.status })
-    .from(records)
-    .innerJoin(
-      memberships,
-      and(
-        eq(memberships.userId, records.ownerId),
-        eq(memberships.departmentId, records.departmentId),
+/**
+ * Current unread notices (without legacy chat rows) plus unread chat messages per recipient,
+ * restricted to chats and productions the recipient may still open. One batch of queries.
+ */
+async function unreadBadges(departmentId: string, recipientIds: string[]) {
+  const [rows, chats] = await Promise.all([
+    db
+      .select({ notice: records, role: memberships.role, status: memberships.status })
+      .from(records)
+      .innerJoin(
+        memberships,
+        and(
+          eq(memberships.userId, records.ownerId),
+          eq(memberships.departmentId, records.departmentId),
+        ),
+      )
+      .where(
+        and(
+          eq(records.departmentId, departmentId),
+          inArray(records.ownerId, recipientIds),
+          eq(memberships.status, "active"),
+          unreadNoticeCondition,
+        ),
       ),
-    )
-    .where(
-      and(
-        eq(records.departmentId, departmentId),
-        eq(records.kind, "notifications"),
-        inArray(records.ownerId, recipientIds),
-        eq(memberships.status, "active"),
-        sql`coalesce(${records.data}->>'read','false') <> 'true'`,
-      ),
-    );
+    chatUnreadRows(departmentId, recipientIds),
+  ]);
+  const roles = new Map(rows.map(({ notice, role }) => [notice.ownerId!, role]));
+  if (chats.length) {
+    const missing = recipientIds.filter((id) => !roles.has(id));
+    if (missing.length)
+      for (const member of await db
+        .select({ id: memberships.userId, role: memberships.role })
+        .from(memberships)
+        .where(
+          and(
+            eq(memberships.departmentId, departmentId),
+            eq(memberships.status, "active"),
+            inArray(memberships.userId, missing),
+          ),
+        ))
+        roles.set(member.id, member.role);
+  }
   const relationIds = [
     ...new Set(
-      rows
-        .flatMap(({ notice }) => [
+      [
+        ...rows.flatMap(({ notice }) => [
           String(notice.data.conversationId || ""),
           String(notice.data.productionId || ""),
-        ])
-        .filter(Boolean),
+        ]),
+        ...chats.map((chat) => chat.channelKey.slice(chat.channelKey.indexOf(":") + 1)),
+      ].filter(Boolean),
     ),
   ];
   const related = relationIds.length
@@ -252,7 +268,40 @@ export async function deliverNotifications(
   });
   const counts = new Map<string, number>();
   for (const { notice } of visible)
-    counts.set(notice.ownerId!, (counts.get(notice.ownerId!) || 0) + 1);
+    if (!isChatNotice(notice)) counts.set(notice.ownerId!, (counts.get(notice.ownerId!) || 0) + 1);
+  for (const userId of recipientIds) {
+    const role = roles.get(userId);
+    if (!role) continue;
+    const unread = visibleChatUnread(chats, {
+      user: { id: userId, role },
+      conversation: (id) => related.find((row) => row.id === id && row.kind === "conversations"),
+      production: (id) => {
+        const production = related.find((row) => row.id === id && row.kind === "productions");
+        return (
+          !!production &&
+          (role !== "user" ||
+            !listValue(production.data.memberIds).length ||
+            listValue(production.data.memberIds).includes(userId))
+        );
+      },
+    });
+    const total = chatUnreadTotal(unread);
+    if (total) counts.set(userId, (counts.get(userId) || 0) + total);
+  }
+  return { visible, counts };
+}
+
+/** Event-driven only. One batch of recipient permissions/notices, using a cached device registry. */
+export async function deliverNotifications(
+  departmentId: string,
+  type: string,
+  noticeIds: string[],
+) {
+  if (!pushConfigured() || !noticeIds.length) return;
+  const devices = await departmentDevices(departmentId);
+  if (!devices.length) return;
+  const recipientIds = [...new Set(devices.map((device) => device.userId))];
+  const { visible, counts } = await unreadBadges(departmentId, recipientIds);
   let failed = false;
   for (const { notice } of visible.filter(({ notice }) => noticeIds.includes(notice.id))) {
     const payload = pushPayload(
@@ -266,6 +315,47 @@ export async function deliverNotifications(
       devices
         .filter((device) => device.userId === notice.ownerId)
         .map((device) => send(device, payload)),
+    );
+    if (results.some((result) => result.status === "rejected")) failed = true;
+  }
+  if (failed) throw new Error("Push delivery will be retried by the event outbox.");
+}
+
+/**
+ * Chat messages keep no notification row: the push goes to the recipients resolved by the
+ * worker (current chat and production access), with the same lock-screen-safe payload.
+ */
+export async function deliverChatPush(
+  departmentId: string,
+  eventId: string,
+  userIds: string[],
+  data: RecordData,
+) {
+  if (!pushConfigured() || !userIds.length) return;
+  const devices = await departmentDevices(departmentId);
+  const recipients = [...new Set(userIds)].filter((id) =>
+    devices.some((device) => device.userId === id),
+  );
+  if (!recipients.length) return;
+  const { counts } = await unreadBadges(departmentId, recipients);
+  const target = {
+    type: "ChatMessageCreatedV1",
+    recordId: data.recordId || "",
+    conversationId: data.conversationId || "",
+    productionId: data.productionId || "",
+    link: data.link || "",
+  };
+  let failed = false;
+  for (const userId of recipients) {
+    const payload = pushPayload(
+      "ChatMessageCreatedV1",
+      `notice:${eventId}:${userId}`,
+      userId,
+      Math.max(1, counts.get(userId) || 0),
+      target,
+    );
+    const results = await Promise.allSettled(
+      devices.filter((device) => device.userId === userId).map((device) => send(device, payload)),
     );
     if (results.some((result) => result.status === "rejected")) failed = true;
   }

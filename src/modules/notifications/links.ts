@@ -43,6 +43,8 @@ export function notificationHref(
     } else if (productionId) query.set("productionId", productionId);
     if (recordId) query.set("messageId", recordId);
     query.delete("record");
+  } else if (type === "AdminDecisionRequestedV1") {
+    // The stored link already names the request (leaveId, swapId) or the settings page.
   } else if (type === "ShiftSwapChangedV1" || query.has("swapId")) {
     if (recordId) query.set("swapId", recordId);
   } else if (type === "LeaveRequestDecidedV1") {

@@ -2,6 +2,7 @@
 import { useEffect, useRef, type RefObject } from "react";
 import { useWorkspace } from "@/components/workspace-context";
 import { value } from "@/shared/client-api";
+import { chatChoiceKey } from "@/modules/chat/channel-order";
 import { isChatNotice } from "./unread";
 export function useChatRead(
   conversationId: string,
@@ -13,7 +14,9 @@ export function useChatRead(
   useEffect(() => {
     actionRef.current = action;
   }, [action]);
-  const unreadIds = workspace.records.notifications
+  const unread = workspace.chatUnread?.[chatChoiceKey(conversationId, productionId)] || 0;
+  // Rows from older releases are acknowledged together with the read cursor.
+  const legacyIds = workspace.records.notifications
     .filter(
       (notice) =>
         notice.data.userId === workspace.user.id &&
@@ -25,19 +28,32 @@ export function useChatRead(
     .map((notice) => notice.id)
     .sort()
     .join(",");
+  // The newest message this tab shows; later arrivals stay unread.
+  const readAt = workspace.records.messages
+    .filter(
+      (message) =>
+        value(message.data, "conversationId") === conversationId &&
+        (conversationId || value(message.data, "productionId") === productionId),
+    )
+    .reduce((latest, message) => (message.createdAt > latest ? message.createdAt : latest), "");
+  const pending = unread || legacyIds ? `${unread}:${readAt}:${legacyIds}` : "";
   const attempted = useRef("");
   useEffect(() => {
-    if (!unreadIds) return;
+    if (!pending) return;
     let endVisible = !endRef;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const read = () => {
       clearTimeout(timer);
-      if (document.hidden || !endVisible || attempted.current === unreadIds) return;
+      if (document.hidden || !endVisible || attempted.current === pending) return;
       timer = setTimeout(() => {
         if (document.hidden || !endVisible) return;
-        attempted.current = unreadIds;
+        attempted.current = pending;
         void actionRef
-          .current("chat-notifications-read", undefined, { conversationId, productionId })
+          .current("chat-notifications-read", undefined, {
+            conversationId,
+            productionId,
+            ...(readAt ? { readAt } : {}),
+          })
           .catch(() => undefined);
       }, 600);
     };
@@ -55,5 +71,5 @@ export function useChatRead(
       observer?.disconnect();
       document.removeEventListener("visibilitychange", read);
     };
-  }, [conversationId, productionId, unreadIds, endRef]);
+  }, [conversationId, productionId, pending, readAt, endRef]);
 }

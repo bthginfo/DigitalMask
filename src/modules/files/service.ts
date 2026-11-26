@@ -119,7 +119,6 @@ export async function uploadFile(
 }
 export async function getFile(context: Context, id: string) {
   const row = await findRecord(context, id, "files");
-  if (row.data.pendingDeletionOperation) throw new HttpError(404, "Die Datei wurde entfernt.");
   const linked = await findRecord(context, String(row.data.recordId), undefined);
   await assertRead(context, linked, undefined, "guest");
   const blob = await get(String(row.data.path), { access: "private" });
@@ -132,8 +131,6 @@ export async function deleteFile(context: Context, id: string) {
     await acquireWorkflowLock(context, row.data.recordKind as RecordKind, tx);
     const linked = await findRecord(context, String(row.data.recordId), undefined, tx, true);
     row = await findRecord(context, id, "files", tx, true);
-    if (row.data.pendingDeletionOperation)
-      throw new HttpError(409, "Diese Datei wurde bereits entfernt.");
     await assertRead(context, linked, tx);
     await assertWrite(context, linked.kind, linked, tx);
     const field = linked.kind === "messages" ? "attachmentIds" : "imageIds";
