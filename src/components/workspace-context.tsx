@@ -18,6 +18,7 @@ import { connectLiveSync, type SyncStatus } from "@/shared/live-sync";
 import { syncAppBadge } from "@/modules/notifications/client";
 import { safeNotificationLink } from "@/modules/notifications/links";
 import {
+  guestAccessChanged,
   mergeWorkspaceUpdate,
   partialWorkspaceKinds,
   recordChangeKinds,
@@ -81,6 +82,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
             const query = selected ? `?${new URLSearchParams({ kinds: selected.join(",") })}` : "";
             const update = await api<Workspace | WorkspacePatch>(`/api/workspace${query}`);
             const next = mergeWorkspaceUpdate(workspaceRef.current, update);
+            if (guestAccessChanged(workspaceRef.current, update)) queued.current.full = true;
             workspaceRef.current = next;
             liveAccess.current = next.live;
             setWorkspace(next);

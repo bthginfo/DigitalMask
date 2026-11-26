@@ -25,6 +25,8 @@ import { visibleWorkingTime } from "@/shared/working-time";
 import { calendarProductionReference } from "@/shared/calendar-access";
 import { productionOverviewReference } from "@/shared/production-overview";
 import { workspaceGroups, workspaceKindTag, notificationUserTag } from "@/shared/workspace-sync";
+import { readGuestProductionIds } from "@/modules/productions/guest-access";
+import { guestCanRead } from "@/modules/productions/guest-rules";
 export function invalidateWorkspace(
   departmentId: string,
   broadcast = true,
@@ -135,13 +137,20 @@ export async function getWorkspace(
   selected?: readonly RecordKind[],
   chatArchive?: ChatScope,
 ): Promise<Workspace> {
-  const [rows, members] = await Promise.all([
+  const [rows, members, guestIds] = await Promise.all([
     readWorkspaceRows(context, selected),
     readTeam(context.departmentId),
+    readGuestProductionIds(context),
   ]);
   const visibleProjects = new Set(
     rows.filter((r) => r.kind === "productions" && projectVisible(context, r)).map((r) => r.id),
   );
+  // Read-only guest access for people working a performance outside their production team.
+  const guestProjects = rows
+    .filter(
+      (r) => r.kind === "productions" && guestIds.includes(r.id) && !visibleProjects.has(r.id),
+    )
+    .map((r) => r.id);
   const visibleConversations = new Set(
     rows
       .filter(
@@ -166,7 +175,13 @@ export async function getWorkspace(
     const pid = String(row.data.productionId || "");
     if (row.kind === "productions" && !visibleProjects.has(row.id)) continue;
     // The department calendar is shared independently of production membership.
-    if (pid && row.kind !== "events" && !visibleProjects.has(pid)) continue;
+    if (
+      pid &&
+      row.kind !== "events" &&
+      !visibleProjects.has(pid) &&
+      !guestCanRead(row.kind, pid, guestProjects)
+    )
+      continue;
     if (row.kind === "time" && pid)
       projectHours[pid] = (projectHours[pid] || 0) + Number(row.data.durationSeconds || 0);
     if (
@@ -278,5 +293,6 @@ export async function getWorkspace(
     timer: personalTimers.find((timer) => timer.kind === "time") || null,
     attendanceTimer: personalTimers.find((timer) => timer.kind === "attendance") || null,
     projectHours,
+    ...(guestProjects.length ? { guestProductionIds: guestProjects } : {}),
   };
 }

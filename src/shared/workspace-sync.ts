@@ -51,6 +51,7 @@ export interface WorkspacePatch {
   timer?: Workspace["timer"];
   attendanceTimer?: Workspace["attendanceTimer"];
   projectHours?: Workspace["projectHours"];
+  guestProductionIds?: Workspace["guestProductionIds"];
 }
 
 export function workspacePatch(workspace: Workspace, kinds: readonly RecordKind[]): WorkspacePatch {
@@ -60,6 +61,7 @@ export function workspacePatch(workspace: Workspace, kinds: readonly RecordKind[
     members: workspace.members,
     live: workspace.live,
     records: Object.fromEntries(kinds.map((kind) => [kind, workspace.records[kind]])),
+    guestProductionIds: workspace.guestProductionIds ?? [],
     ...(kinds.some((kind) => kind === "time" || kind === "attendance")
       ? {
           timer: workspace.timer,
@@ -85,5 +87,13 @@ export function mergeWorkspaceUpdate(
     ...("timer" in next ? { timer: next.timer } : {}),
     ...("attendanceTimer" in next ? { attendanceTimer: next.attendanceTimer } : {}),
     ...("projectHours" in next ? { projectHours: next.projectHours } : {}),
+    ...(next.guestProductionIds ? { guestProductionIds: next.guestProductionIds } : {}),
   };
+}
+
+/** A patch cannot add records of a newly readable guest production; reload everything then. */
+export function guestAccessChanged(current: Workspace | null, next: Workspace | WorkspacePatch) {
+  if (!current || !("partial" in next) || !next.guestProductionIds) return false;
+  const before = [...(current.guestProductionIds ?? [])].sort().join();
+  return before !== [...next.guestProductionIds].sort().join();
 }

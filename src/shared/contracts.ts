@@ -92,6 +92,8 @@ export interface Workspace {
   timer: { id: string; data: RecordData } | null;
   attendanceTimer?: { id: string; data: RecordData } | null;
   projectHours: Record<string, number>;
+  /** Productions readable only because the user works one of their performances (read-only). */
+  guestProductionIds?: string[];
 }
 export interface ApiError {
   error: string;

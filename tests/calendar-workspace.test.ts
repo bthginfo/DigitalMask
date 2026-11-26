@@ -240,7 +240,8 @@ describe("department calendar sharing", () => {
       season: "2026/27",
       premiere: "2026-11-01",
     });
-    expect(queries).toHaveLength(Object.keys(workspaceGroups).length + 1);
+    // Groups, the caller's unread notices and the caller's guest productions.
+    expect(queries).toHaveLength(Object.keys(workspaceGroups).length + 2);
     expect(queries.every((query) => query.params[0] === context.departmentId)).toBe(true);
     expect(queries.every((query) => !query.params.includes("timesheets"))).toBe(true);
     expect(queries.find((query) => query.params.includes("notifications"))?.params).toContain(

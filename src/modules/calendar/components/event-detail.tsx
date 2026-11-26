@@ -18,6 +18,8 @@ import {
 import { RecordLink } from "@/components/record-link";
 import { navigateWorkspace } from "@/shared/client-navigation";
 import { backstageChangesSection } from "@/shared/document-sections";
+import { eventMaskPlan, maskPlanEventQuery } from "@/modules/mask-plans/evening";
+import { isGuestProduction } from "@/modules/productions/guest-rules";
 export function EventDetail({
   record,
   occurrence,
@@ -48,6 +50,14 @@ export function EventDetail({
   const calendarProduction = calendarProductions.find(
     (row) => row.id === current.data.productionId,
   );
+  // People working this performance outside the production team read its plan as guests.
+  const planProduction =
+    production ||
+    (isGuestProduction(workspace, current.data.productionId) ? calendarProduction : undefined);
+  const productionPlans = workspace.records.maskPlans.filter(
+    (plan) => plan.data.productionId === current.data.productionId,
+  );
+  const linkedPlan = eventMaskPlan(current, productionPlans);
   const seriesInstance =
     current.data.recurrence && current.data.recurrence !== "none" ? occurrence : undefined;
   const start = seriesInstance?.start || value(current.data, "start");
@@ -146,19 +156,30 @@ export function EventDetail({
               </dd>
             </div>
           </dl>
-          {production && (
+          {planProduction && (
             <nav className="detail-actions" aria-label="Für diesen Termin">
               {[
-                ["mask-plan", "Maskenplan"],
+                [
+                  "mask-plan",
+                  linkedPlan && productionPlans.length > 1
+                    ? `Maskenplan · ${value(linkedPlan.data, "title")}`
+                    : "Maskenplan",
+                ],
                 [backstageChangesSection.key, "Umzugsliste"],
               ].map(([tab, label]) => {
-                const query = new URLSearchParams({
-                  module: "productions",
-                  productionId: production.id,
-                  tab,
-                });
-                if (tab === "mask-plan" && !presentation.allDay)
-                  query.set("showStart", instantDate(start).toISOString());
+                const query =
+                  tab === "mask-plan"
+                    ? maskPlanEventQuery({
+                        productionId: planProduction.id,
+                        planId: linkedPlan?.id,
+                        eventId: current.id,
+                        showStart: presentation.allDay ? "" : instantDate(start).toISOString(),
+                      })
+                    : new URLSearchParams({
+                        module: "productions",
+                        productionId: planProduction.id,
+                        tab,
+                      });
                 const href = `/?${query}`;
                 return (
                   <a

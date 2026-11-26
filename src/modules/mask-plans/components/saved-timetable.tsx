@@ -1,6 +1,6 @@
 "use client";
 
-import type { CSSProperties } from "react";
+import { useEffect, useLayoutEffect, useRef, type CSSProperties } from "react";
 import { LinkedText } from "@/components/linked-text";
 import { Pencil } from "lucide-react";
 import { RecordLink } from "@/components/record-link";
@@ -16,6 +16,7 @@ import {
   type MaskPlanData,
   type MaskPlanLane,
 } from "../model";
+import type { EveningPerson, EveningView } from "../evening";
 import styles from "./mask-plans.module.css";
 
 type Props = {
@@ -26,7 +27,16 @@ type Props = {
   productionColor: string;
   onEditLane: (lane: MaskPlanLane) => void;
   onEditBlock: (block: MaskPlanBlock) => void;
+  /** Guests read the plan: no lane or block editing shortcuts. */
+  readOnly?: boolean;
+  /** Who works this evening, per lane (view only). */
+  evening?: EveningView | null;
+  /** Current time in minutes relative to the beginning, inside the plan window. */
+  nowMinutes?: number | null;
 };
+
+const reducedMotion = () =>
+  typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 function SavedAppointment({
   block,
@@ -37,7 +47,7 @@ function SavedAppointment({
   block: MaskPlanBlock;
   actors: DomainRecord[];
   performanceTime: string;
-  onEdit: () => void;
+  onEdit?: () => void;
 }) {
   const label = maskPlanBlockLabel(block, actors) || "Zeitblock";
   return (
@@ -72,15 +82,17 @@ function SavedAppointment({
           <LinkedText>{block.notes}</LinkedText>
         </p>
       )}
-      <button
-        type="button"
-        className={styles.savedAppointmentEdit}
-        onClick={onEdit}
-        aria-label={`${label}, ${block.startMinutes} Minuten vor Beginn, ${block.durationMinutes} Minuten, bearbeiten`}
-        title="Zeitblock bearbeiten"
-      >
-        <Pencil size={12} />
-      </button>
+      {onEdit && (
+        <button
+          type="button"
+          className={styles.savedAppointmentEdit}
+          onClick={onEdit}
+          aria-label={`${label}, ${block.startMinutes} Minuten vor Beginn, ${block.durationMinutes} Minuten, bearbeiten`}
+          title="Zeitblock bearbeiten"
+        >
+          <Pencil size={12} />
+        </button>
+      )}
     </div>
   );
 }
@@ -94,7 +106,14 @@ export function SavedTimetable({
   productionColor,
   onEditLane,
   onEditBlock,
+  readOnly = false,
+  evening,
+  nowMinutes = null,
 }: Props) {
+  const container = useRef<HTMLDivElement>(null);
+  const nowLine = useRef<HTMLDivElement>(null);
+  const memberName = (id: string) =>
+    members.find((member) => member.id === id)?.name || "Unbekannte Maskenperson";
   const { start } = maskPlanWindow(plan);
   const interval = Math.max(
     plan.stepMinutes,
@@ -110,6 +129,7 @@ export function SavedTimetable({
     const positions = maskPlanTracks(blocks);
     const count = Math.max(1, ...[...positions.values()].map((position) => position.count));
     const names = maskPlanStaffNames(lane, members);
+    const tonight = evening?.lanes.get(lane.id);
     return {
       lane,
       blocks,
@@ -117,8 +137,60 @@ export function SavedTimetable({
       count,
       names,
       title: names.join(" / ") || lane.label || `Spalte ${index + 1}`,
+      people: evening?.staffed ? tonight?.people : undefined,
+      mine: !!tonight?.mine,
     };
   });
+  const mineKey = lanes
+    .filter((lane) => lane.mine)
+    .map((lane) => lane.lane.id)
+    .join();
+  // Smartphone: bring my lane into view once, without motion when reduced motion is requested.
+  useEffect(() => {
+    const box = container.current;
+    const header = mineKey ? box?.querySelector<HTMLElement>("th[data-mine]") : null;
+    if (!box || !header || box.scrollWidth <= box.clientWidth) return;
+    const rail = box.querySelector<HTMLElement>("thead th")?.offsetWidth || 0;
+    box.scrollTo({
+      left: Math.max(0, header.offsetLeft - rail - 8),
+      behavior: reducedMotion() ? "auto" : "smooth",
+    });
+  }, [mineKey]);
+  const boundaryKey = boundaries.join();
+  // The rows have natural heights, so the "jetzt" line is placed from the measured rows.
+  useLayoutEffect(() => {
+    const box = container.current;
+    const line = nowLine.current;
+    if (!box || !line || nowMinutes === null) return;
+    const place = () => {
+      const table = box.querySelector("table");
+      const rows = [...box.querySelectorAll<HTMLTableRowElement>("tbody tr, tfoot tr")];
+      const marks = boundaryKey.split(",").map(Number);
+      const index = marks.findIndex(
+        (mark, position) => nowMinutes >= mark && nowMinutes < (marks[position + 1] ?? 1),
+      );
+      const row = rows[Math.max(0, index)];
+      if (!table || !row || index < 0) return;
+      const from = marks[index],
+        to = marks[index + 1] ?? from;
+      const share = to > from ? (nowMinutes - from) / (to - from) : 0;
+      const top = table.offsetTop + row.offsetTop + share * row.offsetHeight;
+      line.style.transform = `translateY(${Math.round(top)}px)`;
+      line.style.width = `${table.offsetWidth}px`;
+      line.hidden = false;
+    };
+    place();
+    const observer = typeof ResizeObserver === "function" ? new ResizeObserver(place) : null;
+    observer?.observe(box);
+    return () => observer?.disconnect();
+  }, [nowMinutes, boundaryKey]);
+  const personLabel = (person: EveningPerson) => (
+    <span key={`${person.id}:${person.replaces || ""}`} data-status={person.status}>
+      <span>{memberName(person.id)}</span>
+      {person.status === "absent" && <em>nicht eingeteilt</em>}
+      {person.status === "cover" && person.replaces && <em>für {memberName(person.replaces)}</em>}
+    </span>
+  );
   const railWidth = performanceTime ? 56 : 44;
   const minimumWidth = lanes.reduce(
     (total, lane) => total + Math.max(124, lane.count * 100),
@@ -128,6 +200,7 @@ export function SavedTimetable({
 
   return (
     <div
+      ref={container}
       className={styles.savedTimetable}
       style={
         {
@@ -160,19 +233,50 @@ export function SavedTimetable({
             <th className={styles.savedCorner} scope="col">
               MIN.
             </th>
-            {lanes.map(({ lane, count, names, title }) => (
-              <th key={lane.id} colSpan={count} scope="colgroup" data-mask-header>
-                <button
-                  type="button"
-                  className={styles.savedStaff}
-                  onClick={() => onEditLane(lane)}
-                  aria-label={`Personalspalte bearbeiten: ${title}`}
+            {lanes.map(({ lane, count, names, title, people, mine }) => {
+              const absent = people?.some((person) => person.status === "absent");
+              const content = (
+                <>
+                  {lane.label && (names.length > 0 || !!people?.length) && (
+                    <span>{lane.label}</span>
+                  )}
+                  {people?.length ? (
+                    <strong className={styles.eveningStaff}>
+                      {people.map(personLabel)}
+                      {lane.staffNames.map((name) => (
+                        <span key={`free:${name}`}>{name}</span>
+                      ))}
+                    </strong>
+                  ) : (
+                    <strong>{title}</strong>
+                  )}
+                  {mine && <span className={styles.mineTag}>Meine Spalte</span>}
+                </>
+              );
+              return (
+                <th
+                  key={lane.id}
+                  colSpan={count}
+                  scope="colgroup"
+                  data-mask-header
+                  data-mine={mine || undefined}
+                  data-absent={absent || undefined}
                 >
-                  {lane.label && names.length > 0 && <span>{lane.label}</span>}
-                  <strong>{title}</strong>
-                </button>
-              </th>
-            ))}
+                  {readOnly ? (
+                    <div className={styles.savedStaff}>{content}</div>
+                  ) : (
+                    <button
+                      type="button"
+                      className={styles.savedStaff}
+                      onClick={() => onEditLane(lane)}
+                      aria-label={`Personalspalte bearbeiten: ${title}`}
+                    >
+                      {content}
+                    </button>
+                  )}
+                </th>
+              );
+            })}
           </tr>
         </thead>
         <tbody>
@@ -182,7 +286,7 @@ export function SavedTimetable({
                 <strong>{minute}</strong>
                 {performanceTime && <span>{maskPlanClock(minute, performanceTime)}</span>}
               </th>
-              {lanes.flatMap(({ lane, count, blocks, positions }) => {
+              {lanes.flatMap(({ lane, count, blocks, positions, mine }) => {
                 const cells = [];
                 for (let track = 0; track < count; track++) {
                   const block = blocks.find((candidate) => {
@@ -204,6 +308,7 @@ export function SavedTimetable({
                         data-mask-block={block.id}
                         rowSpan={boundaries.indexOf(minute + block.durationMinutes) - rowIndex}
                         colSpan={span}
+                        data-mine={mine || undefined}
                         className={styles.savedCell}
                         style={
                           {
@@ -215,11 +320,18 @@ export function SavedTimetable({
                           block={block}
                           actors={actors}
                           performanceTime={performanceTime}
-                          onEdit={() => onEditBlock(block)}
+                          onEdit={readOnly ? undefined : () => onEditBlock(block)}
                         />
                       </td>,
                     );
-                  } else cells.push(<td key={`${lane.id}:${track}`} aria-hidden="true" />);
+                  } else
+                    cells.push(
+                      <td
+                        key={`${lane.id}:${track}`}
+                        aria-hidden="true"
+                        data-mine={mine || undefined}
+                      />,
+                    );
                   track += span - 1;
                 }
                 return cells;
@@ -241,6 +353,11 @@ export function SavedTimetable({
           </tr>
         </tfoot>
       </table>
+      {nowMinutes !== null && (
+        <div ref={nowLine} className={styles.nowLine} hidden aria-hidden="true">
+          <span>jetzt</span>
+        </div>
+      )}
     </div>
   );
 }

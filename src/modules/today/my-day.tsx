@@ -31,6 +31,7 @@ import { isStaff } from "@/shared/client-members";
 import { recordHref } from "@/shared/client-navigation";
 import { calendarProductionRecords } from "@/shared/calendar-access";
 import { backstageChangesSection } from "@/shared/document-sections";
+import { eventMaskPlan, maskPlanEventQuery } from "@/modules/mask-plans/evening";
 import { useWorkspace } from "@/components/workspace-context";
 import { Badge, PageHeader } from "@/components/ui";
 import { RecordDetail } from "@/components/resource-view";
@@ -169,9 +170,13 @@ export function MyDay({ navigate }: { navigate: (target: string) => void }) {
       ].filter((item) => item.count > 0)
     : [];
 
-  const productionLinks = (productionId: string, start?: string) => {
-    const mask = new URLSearchParams({ module: "productions", productionId, tab: "mask-plan" });
-    if (start) mask.set("showStart", new Date(start).toISOString());
+  const productionLinks = (productionId: string, start?: string, record?: DomainRecord) => {
+    const mask = maskPlanEventQuery({
+      productionId,
+      planId: eventMaskPlan(record, workspace.records.maskPlans)?.id,
+      eventId: record?.id,
+      showStart: start ? new Date(start).toISOString() : "",
+    });
     return [
       { label: "Maskenplan", href: `/?${mask}` },
       {
@@ -256,7 +261,7 @@ export function MyDay({ navigate }: { navigate: (target: string) => void }) {
                       </button>
                       {productionId && !event.allDay && (
                         <nav className={styles.quickLinks} aria-label={`Zu ${event.title}`}>
-                          {productionLinks(productionId, performance ? event.start : undefined).map(
+                          {productionLinks(productionId, performance ? event.start : undefined, record).map(
                             (link) => (
                               <a
                                 key={link.label}

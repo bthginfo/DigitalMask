@@ -13,7 +13,14 @@ import { canManageRecord } from "@/shared/record-permissions";
 import { DocumentEditor } from "./document-editor";
 import styles from "./backstage-changes.module.css";
 
-export function BackstageChanges({ production }: { production: DomainRecord }) {
+export function BackstageChanges({
+  production,
+  readOnly = false,
+}: {
+  production: DomainRecord;
+  /** Guests working a performance read the Umzüge without editing them. */
+  readOnly?: boolean;
+}) {
   const { workspace } = useWorkspace();
   const [targetId, setTargetId] = useState("");
   const [editing, setEditing] = useState<{ record?: DomainRecord } | null>(null);
@@ -26,9 +33,11 @@ export function BackstageChanges({ production }: { production: DomainRecord }) {
     characters: workspace.records.characters,
   });
   const filled = rows.filter((row) => row.entries.length);
-  const editable = rows.filter(({ record }) => canManageRecord(workspace.user, "looks", record));
+  const editable = readOnly
+    ? []
+    : rows.filter(({ record }) => canManageRecord(workspace.user, "looks", record));
   const target = editable.find(({ record }) => record.id === targetId);
-  const canCreate = canManageRecord(workspace.user, "looks");
+  const canCreate = !readOnly && canManageRecord(workspace.user, "looks");
   const create = canCreate && (targetId === "new" || !editable.length);
 
   async function exportChanges() {
@@ -106,7 +115,7 @@ export function BackstageChanges({ production }: { production: DomainRecord }) {
                   </p>
                 ))}
               </div>
-              {canManageRecord(workspace.user, "looks", record) && (
+              {!readOnly && canManageRecord(workspace.user, "looks", record) && (
                 <button
                   type="button"
                   className="icon-button"
@@ -124,9 +133,11 @@ export function BackstageChanges({ production }: { production: DomainRecord }) {
         <Empty
           title="Noch keine Umzüge eingetragen"
           description={
-            editable.length
-              ? "Wähle einen Aufschrieb für die Wechsel hinter der Bühne."
-              : "Über „Umzüge eintragen“ legst du den ersten Eintrag für diese Produktion an."
+            readOnly
+              ? "Für diese Produktion sind noch keine Umzüge eingetragen."
+              : editable.length
+                ? "Wähle einen Aufschrieb für die Wechsel hinter der Bühne."
+                : "Über „Umzüge eintragen“ legst du den ersten Eintrag für diese Produktion an."
           }
         />
       )}

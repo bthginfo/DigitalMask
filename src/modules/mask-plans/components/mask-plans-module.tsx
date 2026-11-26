@@ -1,7 +1,7 @@
 "use client";
 import { LinkedText } from "@/components/linked-text";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,
   Check,
@@ -14,10 +14,11 @@ import {
   Settings2,
   Trash2,
   Undo2,
+  Users,
 } from "lucide-react";
 import { Button, Empty, ErrorMessage, Modal } from "@/components/ui";
 import { useWorkspace } from "@/components/workspace-context";
-import { ApiFailure, dateLabel, localDateTime, value } from "@/shared/client-api";
+import { ApiFailure, dateLabel, instantDate, localDateTime, value } from "@/shared/client-api";
 import { contactsValue, type DomainRecord } from "@/shared/contracts";
 import { isActiveStaff } from "@/shared/client-members";
 import { maskPlanSchema } from "../schema";
@@ -26,6 +27,7 @@ import {
   maskPlanBlockLabel,
   maskPlanOverlaps,
   maskPlanValue,
+  maskPlanWindow,
   newMaskPlan,
   type MaskPlanBlock,
   type MaskPlanData,
@@ -35,6 +37,13 @@ import { BlockEditor, LaneEditor, PlanOptions } from "./plan-editors";
 import { Timetable } from "./timetable";
 import { SavedTimetable } from "./saved-timetable";
 import { RunOfShow } from "./run-of-show";
+import {
+  eventMaskPlan,
+  eventParticipants,
+  eveningLanes,
+  findShowEvent,
+  nowLineMinutes,
+} from "../evening";
 import styles from "./mask-plans.module.css";
 import { useViewState } from "@/shared/view-state";
 import { navigateWorkspace } from "@/shared/client-navigation";
@@ -52,6 +61,8 @@ function updateLocation(id: string, push = false) {
   const next = new URL(location.href);
   if (id) next.searchParams.set("record", id);
   else next.searchParams.delete("record");
+  // A plan chosen here replaces the plan named by an event link; the evening stays.
+  next.searchParams.delete("planId");
   if (push) navigateWorkspace(next.pathname + next.search);
   else {
     history.replaceState(history.state, "", next.pathname + next.search);
@@ -59,18 +70,35 @@ function updateLocation(id: string, push = false) {
   }
 }
 
+const linkParam = (name: string) =>
+  typeof location === "undefined" ? "" : new URLSearchParams(location.search).get(name) || "";
+
 export function MaskPlansModule({
   production,
   showStart = "",
+  readOnly = false,
 }: {
   production: DomainRecord;
   showStart?: string;
+  /** Guests working a performance read the plan without any editing controls. */
+  readOnly?: boolean;
 }) {
   const { workspace, save, remove, refresh, busy, online, notify } = useWorkspace();
   const plans = workspace.records.maskPlans.filter(
     (record) => record.data.productionId === production.id,
   );
-  const [selectedId, setSelectedId] = useViewState(
+  const [eventId] = useState(() => linkParam("eventId"));
+  const showEvent = eventId
+    ? workspace.records.events.find((record) => record.id === eventId)
+    : showStart
+      ? findShowEvent(workspace.records.events, production.id, showStart)
+      : undefined;
+  // An event link names its plan; until someone picks another plan here, that plan is shown.
+  const [linkedId] = useState(
+    () => linkParam("planId") || (showEvent ? eventMaskPlan(showEvent, plans)?.id || "" : ""),
+  );
+  const [followLink, setFollowLink] = useState(() => !!linkedId);
+  const [storedId, storeSelectedId] = useViewState(
     workspace.user.id,
     `mask-plans:${production.id}`,
     "selected",
@@ -80,6 +108,17 @@ export function MaskPlansModule({
       return plans.find((record) => record.id === queryId)?.id || plans[0]?.id || "";
     },
   );
+  const selectedId =
+    followLink && plans.some((record) => record.id === linkedId) ? linkedId : storedId;
+  const setSelectedId = useCallback(
+    (id: string) => {
+      setFollowLink(false);
+      storeSelectedId(id);
+    },
+    [storeSelectedId],
+  );
+  const [replaceAbsent, setReplaceAbsent] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
   const [draft, setDraft] = useState<Draft | null>(null);
   const [editor, setEditor] = useState<Editor>(null);
   const [editing, setEditing] = useState(false);
@@ -109,6 +148,35 @@ export function MaskPlansModule({
     (!draft.base || JSON.stringify(draft.data) !== JSON.stringify(maskPlanValue(draft.base.data)));
   const plan = dirty ? draft!.data : selected ? maskPlanValue(selected.data) : null;
   const compact = !!plan && !editing && !dirty;
+  // Evening view: who actually works this performance, my lane and the current time.
+  const participants = eventParticipants(showEvent);
+  const evening =
+    plan && eventStart
+      ? eveningLanes(plan, participants, {
+          replace: replaceAbsent && !!showEvent,
+          userId: workspace.user.id,
+        })
+      : null;
+  const beginning =
+    eventStart && /^\d\d:\d\d$/.test(performanceTime)
+      ? instantDate(`${eventStart.slice(0, 10)}T${performanceTime}`).getTime()
+      : NaN;
+  const nowMinutes =
+    plan && compact ? nowLineMinutes(beginning, now, maskPlanWindow(plan).start) : null;
+  useEffect(() => {
+    if (!eventStart) return;
+    const tick = () => {
+      if (!document.hidden) setNow(Date.now());
+    };
+    const timer = window.setInterval(tick, 30000);
+    document.addEventListener("visibilitychange", tick);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", tick);
+    };
+  }, [eventStart]);
+  const memberName = (id: string) =>
+    workspace.members.find((member) => member.id === id)?.name || "Ehemaliges Teammitglied";
   const remoteChanged =
     dirty &&
     !!draft?.base &&
@@ -365,15 +433,19 @@ export function MaskPlansModule({
             </span>
           )}
         </div>
-        <Button
-          onClick={beginNew}
-          disabled={busy || pending}
-          aria-label="Neuer Plan"
-          title="Neuen Maskenplan anlegen"
-        >
-          <Plus size={16} />
-          <span className={styles.newPlanLabel}>Neuer Plan</span>
-        </Button>
+        {readOnly ? (
+          <span className={styles.readOnlyBadge}>Nur lesen</span>
+        ) : (
+          <Button
+            onClick={beginNew}
+            disabled={busy || pending}
+            aria-label="Neuer Plan"
+            title="Neuen Maskenplan anlegen"
+          >
+            <Plus size={16} />
+            <span className={styles.newPlanLabel}>Neuer Plan</span>
+          </Button>
+        )}
       </header>
       {plan ? (
         <>
@@ -395,7 +467,7 @@ export function MaskPlansModule({
             </label>
             {compact && beginningControl}
             <div className={styles.planActions}>
-              {compact && (
+              {compact && !readOnly && (
                 <Button variant="primary" onClick={() => setEditing(true)} disabled={pending}>
                   <Pencil size={16} />
                   Plan bearbeiten
@@ -413,73 +485,76 @@ export function MaskPlansModule({
                   </Button>
                 </div>
               )}
-              <details className={styles.moreActions}>
-                <summary className="button" aria-label="Planoptionen">
-                  <MoreHorizontal size={17} />
-                  <span className={styles.moreLabel}>Planoptionen</span>
-                </summary>
-                <div className={styles.moreMenu}>
-                  <Button
-                    onClick={() => openEditor({ type: "options", creating: false, plan })}
-                    disabled={pending}
-                  >
-                    <Settings2 size={16} />
-                    Name &amp; Vorlauf
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      setDraft({
-                        data: {
-                          ...cloneMaskPlan(plan),
-                          title: `${plan.title} – Kopie`.slice(0, 200),
-                        },
-                      });
-                      setSelectedId("");
-                      setConflict(false);
-                      setError("");
-                      updateLocation("");
-                    }}
-                    disabled={pending}
-                  >
-                    <Copy size={16} />
-                    Duplizieren
-                  </Button>
-                  {selected && !(dirty && !draft?.base) && (
+              {!readOnly && (
+                <details className={styles.moreActions}>
+                  <summary className="button" aria-label="Planoptionen">
+                    <MoreHorizontal size={17} />
+                    <span className={styles.moreLabel}>Planoptionen</span>
+                  </summary>
+                  <div className={styles.moreMenu}>
                     <Button
-                      variant="danger-ghost"
-                      disabled={pending || busy}
-                      onClick={async () => {
-                        if (
-                          !confirm(
-                            `Maskenplan „${value(selected.data, "title")}“ mit allen Personalspalten und Zeitblöcken löschen?${dirty ? " Auch dein ungespeicherter Entwurf wird verworfen." : ""}`,
-                          )
-                        )
-                          return;
-                        setPending(true);
-                        setError("");
-                        try {
-                          await remove(selected);
-                          reset();
-                          const next = plans.find((record) => record.id !== selected.id)?.id || "";
-                          setSelectedId(next);
-                          updateLocation(next);
-                        } catch (exception) {
-                          setError(
-                            exception instanceof Error
-                              ? exception.message
-                              : "Löschen fehlgeschlagen.",
-                          );
-                        } finally {
-                          setPending(false);
-                        }
-                      }}
+                      onClick={() => openEditor({ type: "options", creating: false, plan })}
+                      disabled={pending}
                     >
-                      <Trash2 size={16} />
-                      Löschen
+                      <Settings2 size={16} />
+                      Name &amp; Vorlauf
                     </Button>
-                  )}
-                </div>
-              </details>
+                    <Button
+                      onClick={() => {
+                        setDraft({
+                          data: {
+                            ...cloneMaskPlan(plan),
+                            title: `${plan.title} – Kopie`.slice(0, 200),
+                          },
+                        });
+                        setSelectedId("");
+                        setConflict(false);
+                        setError("");
+                        updateLocation("");
+                      }}
+                      disabled={pending}
+                    >
+                      <Copy size={16} />
+                      Duplizieren
+                    </Button>
+                    {selected && !(dirty && !draft?.base) && (
+                      <Button
+                        variant="danger-ghost"
+                        disabled={pending || busy}
+                        onClick={async () => {
+                          if (
+                            !confirm(
+                              `Maskenplan „${value(selected.data, "title")}“ mit allen Personalspalten und Zeitblöcken löschen?${dirty ? " Auch dein ungespeicherter Entwurf wird verworfen." : ""}`,
+                            )
+                          )
+                            return;
+                          setPending(true);
+                          setError("");
+                          try {
+                            await remove(selected);
+                            reset();
+                            const next =
+                              plans.find((record) => record.id !== selected.id)?.id || "";
+                            setSelectedId(next);
+                            updateLocation(next);
+                          } catch (exception) {
+                            setError(
+                              exception instanceof Error
+                                ? exception.message
+                                : "Löschen fehlgeschlagen.",
+                            );
+                          } finally {
+                            setPending(false);
+                          }
+                        }}
+                      >
+                        <Trash2 size={16} />
+                        Löschen
+                      </Button>
+                    )}
+                  </div>
+                </details>
+              )}
               <Button
                 onClick={() => setExporting(true)}
                 disabled={dirty || !selected || pending}
@@ -497,6 +572,47 @@ export function MaskPlansModule({
           <div className={styles.planTitle}>
             <h3>{plan.title}</h3>
           </div>
+          {evening && compact && showEvent && (
+            <section className={styles.eveningBanner} aria-label="Diese Vorstellung">
+              <Users size={18} aria-hidden="true" />
+              <div>
+                <strong>
+                  Für diese Vorstellung:{" "}
+                  {participants.length
+                    ? participants.map(memberName).join(", ")
+                    : "noch niemand eingeteilt"}
+                </strong>
+                {evening.covers.length > 0 && (
+                  <p>
+                    Heute ersetzt:{" "}
+                    {evening.covers
+                      .map((cover) => `${memberName(cover.id)} für ${memberName(cover.replaces)}`)
+                      .join(", ")}
+                  </p>
+                )}
+                {evening.absentIds.length > 0 && (
+                  <p>
+                    {replaceAbsent ? "Ohne Ersatz" : "Nicht eingeteilt"}:{" "}
+                    {evening.absentIds.map(memberName).join(", ")}
+                  </p>
+                )}
+                {evening.unplaced.length > 0 && (
+                  <p>Ohne Spalte: {evening.unplaced.map(memberName).join(", ")}</p>
+                )}
+                {evening.absentCount > 0 && (replaceAbsent || evening.unplaced.length > 0) && (
+                  <div className={styles.eveningActions}>
+                    <Button
+                      aria-pressed={replaceAbsent}
+                      onClick={() => setReplaceAbsent(!replaceAbsent)}
+                    >
+                      {replaceAbsent ? "Geplante Besetzung zeigen" : "Für heute ersetzen"}
+                    </Button>
+                    <small>Nur Ansicht. Der gespeicherte Plan bleibt unverändert.</small>
+                  </div>
+                )}
+              </div>
+            </section>
+          )}
           {conflictVisible && (
             <div className={styles.conflict} role="alert">
               <AlertTriangle size={20} />
@@ -582,18 +698,30 @@ export function MaskPlansModule({
           >
             {plan.lanes.length ? (
               compact ? (
-                <SavedTimetable {...timetableProps} />
+                <SavedTimetable
+                  {...timetableProps}
+                  readOnly={readOnly}
+                  evening={evening}
+                  nowMinutes={nowMinutes}
+                />
               ) : (
                 <Timetable {...timetableProps} />
               )
             ) : (
               <div className={styles.empty}>
-                <Empty
-                  title="Wer arbeitet in der Maske?"
-                  description="Lege zuerst eine Personalspalte an. Eine oder mehrere Maskenpersonen können sich eine Spalte teilen. Danach kommen die Zeitblöcke für Schauspieler und Tätigkeiten dazu."
-                  action="Personalspalte hinzufügen"
-                  onAction={addLane}
-                />
+                {readOnly ? (
+                  <Empty
+                    title="Noch keine Personalspalten."
+                    description="Dieser Plan ist noch leer."
+                  />
+                ) : (
+                  <Empty
+                    title="Wer arbeitet in der Maske?"
+                    description="Lege zuerst eine Personalspalte an. Eine oder mehrere Maskenpersonen können sich eine Spalte teilen. Danach kommen die Zeitblöcke für Schauspieler und Tätigkeiten dazu."
+                    action="Personalspalte hinzufügen"
+                    onAction={addLane}
+                  />
+                )}
               </div>
             )}
           </div>
@@ -605,7 +733,7 @@ export function MaskPlansModule({
               </p>
             </details>
           )}
-          {overlaps.length > 0 && (
+          {overlaps.length > 0 && !readOnly && (
             <details className={styles.warnings}>
               <summary>
                 <AlertTriangle size={17} />
@@ -710,12 +838,19 @@ export function MaskPlansModule({
         </>
       ) : (
         <div className={styles.empty}>
-          <Empty
-            title="Ein klarer Ablauf bis zum Beginn."
-            description="Plant, welche Schauspieler wann in die Maske kommen, wer sie betreut und wie lange es dauert. Alle Zeiten zählen rückwärts zum Vorstellungsbeginn."
-            action="Maskenplan anlegen"
-            onAction={beginNew}
-          />
+          {readOnly ? (
+            <Empty
+              title="Noch kein Maskenplan."
+              description="Für diese Produktion ist noch kein Maskenplan gespeichert."
+            />
+          ) : (
+            <Empty
+              title="Ein klarer Ablauf bis zum Beginn."
+              description="Plant, welche Schauspieler wann in die Maske kommen, wer sie betreut und wie lange es dauert. Alle Zeiten zählen rückwärts zum Vorstellungsbeginn."
+              action="Maskenplan anlegen"
+              onAction={beginNew}
+            />
+          )}
         </div>
       )}
       {editor?.type === "options" && (

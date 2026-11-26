@@ -11,6 +11,22 @@ export function canReadShiftSwap(member: Pick<Member, "id" | "role">, data: Reco
   return member.role !== "user" || member.id === data.requesterId || member.id === data.partnerId;
 }
 
+/**
+ * Outside the production team, a swap is only possible for a performance or rehearsal: the
+ * covering colleague then reads that production's plan as a guest, without production rights.
+ */
+export function swapNeedsProductionTeam(
+  teamIds: string[],
+  people: Pick<Member, "id" | "role">[],
+  showEvent: boolean,
+) {
+  return (
+    !showEvent &&
+    teamIds.length > 0 &&
+    people.some((person) => person.role === "user" && !teamIds.includes(person.id))
+  );
+}
+
 export function shiftSwapTransition(
   member: Pick<Member, "id" | "role">,
   data: RecordData,

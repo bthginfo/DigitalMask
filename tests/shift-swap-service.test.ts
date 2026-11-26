@@ -29,6 +29,7 @@ vi.mock("@/platform/events", () => ({
 }));
 vi.mock("@/modules/records/workspace", () => ({ invalidateWorkspace: mocks.invalidate }));
 import { createShiftSwap, decideShiftSwap } from "@/modules/shift-swaps/service";
+import { swapNeedsProductionTeam } from "@/modules/shift-swaps/rules";
 
 type Row = typeof records.$inferSelect;
 const admin = {
@@ -291,5 +292,40 @@ describe("atomic shift-swap service", () => {
     await expect(createShiftSwap(user("a"), { ...request, confirmed: false })).rejects.toThrow();
     await expect(createShiftSwap(user("a"), request)).rejects.toThrow("aktiven Maskenteam");
     expect(data.stored.size).toBe(1);
+  });
+  it("lets a colleague outside the production team cover a performance, not a service", async () => {
+    for (const [category, allowed] of [
+      ["performance", true],
+      ["service", false],
+    ] as const) {
+      vi.clearAllMocks();
+      const data = fixture();
+      data.stored.set("faust", data.make("faust", "productions", { memberIds: ["a"] }));
+      const duty = data.stored.get("a-duty")!;
+      duty.data = { ...duty.data, productionId: "faust", category };
+      const approval = decideShiftSwap(admin, "request", { action: "approve", version: 1 });
+      if (allowed) {
+        await expect(approval).resolves.toMatchObject({ data: { status: "approved" } });
+        expect(data.stored.get("a-duty")!.data.participantIds).toEqual(["b"]);
+      } else {
+        await expect(approval).rejects.toMatchObject({ status: 403 });
+        expect(data.stored.get("a-duty")!.data.participantIds).toEqual(["a"]);
+      }
+    }
+  });
+});
+
+describe("production team rule for swaps", () => {
+  const people = [
+    { id: "a", role: "user" as const },
+    { id: "b", role: "user" as const },
+    { id: "admin", role: "admin" as const },
+  ];
+  it("requires the team only outside performances and rehearsals", () => {
+    expect(swapNeedsProductionTeam(["a"], people, false)).toBe(true);
+    expect(swapNeedsProductionTeam(["a"], people, true)).toBe(false);
+    expect(swapNeedsProductionTeam(["a", "b"], people, false)).toBe(false);
+    expect(swapNeedsProductionTeam([], people, false)).toBe(false);
+    expect(swapNeedsProductionTeam(["a"], [people[0], people[2]], false)).toBe(false);
   });
 });

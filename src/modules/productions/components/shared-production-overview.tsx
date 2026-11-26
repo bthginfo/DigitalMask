@@ -21,10 +21,13 @@ export function SharedProductionOverview({
   production,
   workspace,
   onBack,
+  embedded = false,
 }: {
   production: DomainRecord;
   workspace: Workspace;
   onBack: () => void;
+  /** Inside the guest view, which already shows the title and its own sections. */
+  embedded?: boolean;
 }) {
   const contacts = contactsValue(production.data.contacts);
   const name = (contact: (typeof contacts)[number]) =>
@@ -36,20 +39,24 @@ export function SharedProductionOverview({
 
   return (
     <section className={`${styles.productionDetail} ${styles.productionPreview}`}>
-      <div className="production-breadcrumb">
-        <Button variant="ghost" onClick={onBack}>
-          <ArrowLeft size={16} aria-hidden="true" /> Alle Produktionen
-        </Button>
-        <Badge tone="green">
-          {seasonListLabel(productionSeasons(production.data)) || "Spielzeit"}
-        </Badge>
-      </div>
-      <header className="production-heading">
-        <div>
-          <p className="eyebrow">{statusLabels[textValue(production.data.status)]}</p>
-          <h1>{textValue(production.data.title)}</h1>
-        </div>
-      </header>
+      {!embedded && (
+        <>
+          <div className="production-breadcrumb">
+            <Button variant="ghost" onClick={onBack}>
+              <ArrowLeft size={16} aria-hidden="true" /> Alle Produktionen
+            </Button>
+            <Badge tone="green">
+              {seasonListLabel(productionSeasons(production.data)) || "Spielzeit"}
+            </Badge>
+          </div>
+          <header className="production-heading">
+            <div>
+              <p className="eyebrow">{statusLabels[textValue(production.data.status)]}</p>
+              <h1>{textValue(production.data.title)}</h1>
+            </div>
+          </header>
+        </>
+      )}
       <section className="production-makeup-contact" aria-label="Maskenbetreuung">
         <Users size={22} aria-hidden="true" />
         <div>
@@ -95,7 +102,9 @@ export function SharedProductionOverview({
         </Section>
       )}
       <p className="small muted">
-        Weitere Produktionsbereiche siehst du, sobald du zum Produktionsteam gehörst.
+        {embedded
+          ? "Du arbeitest in einer Vorstellung oder Probe dieses Stücks. Maskenplan, Aufschriebe und Umzüge kannst du lesen. Ändern kann sie das Produktionsteam."
+          : "Weitere Produktionsbereiche siehst du, sobald du zum Produktionsteam gehörst."}
       </p>
     </section>
   );
