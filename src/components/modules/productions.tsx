@@ -4,7 +4,13 @@ import { LinkedText } from "@/components/linked-text";
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowUpRight, CalendarDays, Plus, Users } from "lucide-react";
 import { PeriodPicker, periodExportFilters } from "@/components/period-picker";
-import { recordMatchesPeriod, seasonForDate, type PeriodFilter } from "@/shared/period-filter";
+import {
+  productionSeasons,
+  recordMatchesPeriod,
+  seasonForDate,
+  seasonListLabel,
+  type PeriodFilter,
+} from "@/shared/period-filter";
 import { contactsValue } from "@/shared/contracts";
 import { productionContactName } from "@/shared/production-contacts";
 import { productionCastingCounts } from "@/modules/productions/counts";
@@ -158,7 +164,9 @@ export function ProductionsModule({
             <ArrowLeft size={16} />
             Alle Produktionen
           </Button>
-          <Badge tone="green">{value(production.data, "season") || "Spielzeit"}</Badge>
+          <Badge tone="green">
+            {seasonListLabel(productionSeasons(production.data)) || "Spielzeit"}
+          </Badge>
         </div>
         <header className="production-heading">
           <div>
@@ -446,7 +454,9 @@ export function ProductionsModule({
                 }
               >
                 <div className="production-card-top">
-                  <span className="eyebrow">{value(project.data, "season") || "SPIELZEIT"}</span>
+                  <span className="eyebrow">
+                    {seasonListLabel(productionSeasons(project.data)) || "SPIELZEIT"}
+                  </span>
                   <Badge>{statusLabels[value(project.data, "status")]}</Badge>
                 </div>
                 <h2>{value(project.data, "title")}</h2>

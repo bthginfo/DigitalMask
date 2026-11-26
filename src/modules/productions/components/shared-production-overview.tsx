@@ -13,6 +13,7 @@ import {
 } from "@/shared/contracts";
 import { dateLabel } from "@/shared/client-api";
 import { productionContactName } from "@/shared/production-contacts";
+import { productionSeasons, seasonListLabel } from "@/shared/period-filter";
 import { statusLabels } from "@/components/resource-fields";
 import styles from "@/components/workspace-browse.module.css";
 
@@ -39,7 +40,9 @@ export function SharedProductionOverview({
         <Button variant="ghost" onClick={onBack}>
           <ArrowLeft size={16} aria-hidden="true" /> Alle Produktionen
         </Button>
-        <Badge tone="green">{textValue(production.data.season) || "Spielzeit"}</Badge>
+        <Badge tone="green">
+          {seasonListLabel(productionSeasons(production.data)) || "Spielzeit"}
+        </Badge>
       </div>
       <header className="production-heading">
         <div>
