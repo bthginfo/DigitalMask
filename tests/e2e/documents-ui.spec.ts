@@ -345,9 +345,10 @@ for (const browserName of ["chromium", "webkit"] as const)
       await page.goto("/?module=time");
       await page.getByRole("button", { name: "Produktionsstunden", exact: true }).click();
       // The week is chosen directly; days open to show their bookings.
-      await page.getByLabel("Woche ab", { exact: true }).fill("2021-10-04");
-      await expect(page.getByLabel("Woche ab", { exact: true })).toHaveValue("2021-10-04");
-      await page.locator("details summary").first().click();
+      const week = page.getByLabel("Produktionsstunden: Woche");
+      await week.getByLabel("Woche ab", { exact: true }).fill("2021-10-04");
+      await expect(week.getByLabel("Woche ab", { exact: true })).toHaveValue("2021-10-04");
+      await week.locator("details summary").first().click();
       await expect(page.getByText("Historische Arbeit", { exact: true }).first()).toBeVisible();
       await page.getByRole("button", { name: "Nachtragen", exact: true }).first().click();
       await expect(
