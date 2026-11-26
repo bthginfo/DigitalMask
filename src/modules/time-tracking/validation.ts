@@ -5,6 +5,8 @@ import { records } from "@/platform/db/schema";
 import { HttpError } from "@/platform/http";
 import type { RecordData } from "@/shared/contracts";
 import { durationSeconds, localDay, splitAcrossDays } from "./rules";
+/** durationSeconds caps work at 7 days; pauseSeconds is at most 1 day. */
+export const maxBookingSpanMs = 8 * 86_400_000;
 export async function validateBooking(
   context: Context,
   kind: "time" | "attendance",
@@ -43,6 +45,8 @@ export async function validateBooking(
           eq(records.kind, kind),
           eq(records.ownerId, owner),
           recordId ? ne(records.id, recordId) : undefined,
+          // Bookings last at most 7 days plus at most 1 day of pauses: bounded index range.
+          gt(records.startAt, new Date(Date.parse(String(data.start)) - maxBookingSpanMs)),
           lt(records.startAt, new Date(String(data.end))),
           gt(records.endAt, new Date(String(data.start))),
         ),

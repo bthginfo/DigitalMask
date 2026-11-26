@@ -43,13 +43,23 @@ export const projectVisible = (
   !Array.isArray(production.data.memberIds) ||
   production.data.memberIds.length === 0 ||
   production.data.memberIds.includes(context.user.id);
+/** Productions already read in this save; a save checks the same production several times. */
+export type ProductionMemo = Map<string, Promise<typeof records.$inferSelect>>;
 export async function assertProject(
   context: Context,
   productionId: unknown,
   tx: Transaction | typeof db = db,
+  memo?: ProductionMemo,
 ) {
   if (typeof productionId !== "string" || !productionId) return;
-  const production = await findRecord(context, productionId, "productions", tx);
+  let pending = memo?.get(productionId);
+  if (!pending) {
+    pending = findRecord(context, productionId, "productions", tx);
+    memo?.set(productionId, pending);
+    // A failed read is not reused; the caller sees the original error.
+    pending.catch(() => memo?.delete(productionId));
+  }
+  const production = await pending;
   if (!projectVisible(context, production))
     throw new HttpError(403, "Du hast keinen Zugriff auf diese Produktion.");
   return production;

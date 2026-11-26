@@ -1,4 +1,9 @@
 import { and, eq, inArray, ne } from "drizzle-orm";
+import {
+  calendarCategoryRows,
+  calendarWindow,
+  productionRows,
+} from "@/modules/calendar/window";
 import { db, type Transaction } from "@/platform/db";
 import { memberships, records } from "@/platform/db/schema";
 import type { Context } from "@/platform/context";
@@ -76,17 +81,6 @@ function peopleForService(people: Staff[], service: Row, requesterId: string, pa
   return people.filter((person) => ids.has(person.id));
 }
 
-async function planning(context: Context, tx: Transaction) {
-  return tx
-    .select()
-    .from(records)
-    .where(
-      and(
-        eq(records.departmentId, context.departmentId),
-        inArray(records.kind, ["events", "calendarCategories", "productions"]),
-      ),
-    );
-}
 
 /** Lock every referenced event in stable ID order before touching its data. */
 async function lockedServices(context: Context, ids: string[], tx: Transaction) {
@@ -197,9 +191,15 @@ export async function createShiftSwap(context: Context, input: unknown) {
       peopleForService(people, service, context.user.id, data.partnerId),
       tx,
     );
-    const calendar = (await planning(context, tx)).map(serialize);
-    const categories = calendar.filter((row) => row.kind === "calendarCategories");
-    const productions = calendar.filter((row) => row.kind === "productions");
+    // Titles need only the categories and the productions of the two duties.
+    const categories = (await calendarCategoryRows(tx, context.departmentId)).map(serialize);
+    const productions = (
+      await productionRows(
+        tx,
+        context.departmentId,
+        [...services.values()].map((row) => textValue(row.data.productionId)),
+      )
+    ).map(serialize);
     const occurrence = selectedSwapOccurrence(
       serialize(service),
       data.serviceStart,
@@ -290,8 +290,6 @@ async function validateSwapServices(context: Context, swap: ShiftSwapData, tx: T
     ],
     tx,
   );
-  const calendar = (await planning(context, tx)).map(serialize);
-  const categories = calendar.filter((row) => row.kind === "calendarCategories");
   const moves: SwapTransfer[] = [];
   const refs = [
     {
@@ -315,6 +313,16 @@ async function validateSwapServices(context: Context, swap: ShiftSwapData, tx: T
         ]
       : []),
   ];
+  // Conflicts can only come from the incoming people's events around the swapped duties.
+  const window = await calendarWindow(
+    tx,
+    context.departmentId,
+    new Date(Math.min(...refs.map((ref) => Date.parse(ref.start)))),
+    new Date(Math.max(...refs.map((ref) => Date.parse(ref.end)))),
+    { participantIds: refs.map((ref) => ref.to) },
+  );
+  const categories = window.categories.map(serialize);
+  const calendar = window.events.map(serialize);
   for (const ref of refs) {
     const row = services.get(ref.id)!;
     if (row.version !== ref.version)

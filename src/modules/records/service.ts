@@ -1,4 +1,4 @@
-import { and, eq, ne, or, sql, inArray } from "drizzle-orm";
+import { and, eq, ne, or, sql, inArray, type SQL } from "drizzle-orm";
 import { db, type Transaction } from "@/platform/db";
 import { records, memberships, recordHistory } from "@/platform/db/schema";
 import { type Context } from "@/platform/context";
@@ -9,6 +9,7 @@ import { queueGoogleCalendarSync } from "@/modules/google-calendar/queue";
 import { localDay } from "@/modules/time-tracking/rules";
 import { validateBooking } from "@/modules/time-tracking/validation";
 import { occurrences } from "@/modules/calendar/occurrences";
+import { calendarWindow } from "@/modules/calendar/window";
 import { assertConversation } from "@/modules/chat/permissions";
 import { prepareConversation } from "@/modules/chat/conversations";
 import { matchesPhotoReply, photoReplyValue } from "@/modules/chat/photo-reply";
@@ -30,7 +31,7 @@ import {
 } from "@/modules/calendar/categories";
 import { validateRecord } from "./schemas";
 import { applySeasonDefaults } from "./season-defaults";
-import { findRecord, assertProject, serialize } from "./repository";
+import { findRecord, assertProject, serialize, type ProductionMemo } from "./repository";
 import { invalidateWorkspace } from "./workspace";
 import { recordChangeKinds } from "@/shared/workspace-sync";
 import { acquireWorkflowLock } from "@/modules/workflows/locks";
@@ -50,8 +51,9 @@ export async function assertRead(
   context: Context,
   row: typeof records.$inferSelect,
   tx: Transaction | typeof db = db,
+  productions?: ProductionMemo,
 ) {
-  if (row.kind !== "events") await assertProject(context, row.data.productionId, tx);
+  if (row.kind !== "events") await assertProject(context, row.data.productionId, tx, productions);
   if (row.kind === "conversations") await assertConversation(context, row.id, tx);
   else await assertConversation(context, row.data.conversationId, tx);
   if (
@@ -60,7 +62,7 @@ export async function assertRead(
     row.data.userId !== context.user.id
   )
     throw new HttpError(403, "Diese Rückmeldung ist privat.");
-  if (row.kind === "productions") await assertProject(context, row.id, tx);
+  if (row.kind === "productions") await assertProject(context, row.id, tx, productions);
   if (
     ["time", "attendance", "timesheets", "leave", "notifications"].includes(row.kind) &&
     row.data.userId !== context.user.id &&
@@ -130,7 +132,8 @@ async function validateRelations(
   recordId?: string,
   previousMaskPlan?: ReturnType<typeof maskPlanValue>,
 ) {
-  const production = await assertProject(context, data.productionId, tx);
+  const productions: ProductionMemo = new Map();
+  const production = await assertProject(context, data.productionId, tx, productions);
   const maskPlan = kind === "maskPlans" ? maskPlanValue(data) : undefined;
   let eventTitle = textValue(data.title);
   let conversation: typeof records.$inferSelect | undefined;
@@ -182,7 +185,7 @@ async function validateRelations(
     // Makeup cover can be scheduled without changing the production's permanent team.
     if (data.productionId && !maskPlan) {
       const project =
-        production || (await findRecord(context, String(data.productionId), "productions", tx));
+        production || (await assertProject(context, data.productionId, tx, productions))!;
       const permitted = listValue(project.data.memberIds);
       if (
         permitted.length &&
@@ -205,7 +208,7 @@ async function validateRelations(
     const value = textValue(data[field]);
     if (value) {
       const targetRow = await findRecord(context, value, target, tx);
-      await assertRead(context, targetRow, tx);
+      await assertRead(context, targetRow, tx, productions);
       if (["looks", "casting"].includes(kind) && field === "actorId")
         data.actorName = targetRow.data.name;
       if (["looks", "casting"].includes(kind) && field === "characterId")
@@ -238,7 +241,7 @@ async function validateRelations(
     if (linkedRecords.length !== linkedIds.length)
       throw new HttpError(404, "Ein verknüpfter Eintrag wurde nicht gefunden.");
     for (const linked of linkedRecords) {
-      await assertRead(context, linked, tx);
+      await assertRead(context, linked, tx, productions);
       if (linked.data.conversationId && linked.data.conversationId !== data.conversationId)
         throw new HttpError(400, "Private Chatdateien bleiben im zugehörigen Chat.");
     }
@@ -276,16 +279,6 @@ async function validateRelations(
       throw new HttpError(400, "Das Serienende liegt vor dem ersten Termin.");
     const selected = listValue(data.participantIds);
     if (selected.length) {
-      const candidates = await tx
-        .select()
-        .from(records)
-        .where(
-          and(
-            eq(records.departmentId, context.departmentId),
-            inArray(records.kind, ["events", "productions", "calendarCategories"]),
-            recordId ? ne(records.id, recordId) : undefined,
-          ),
-        );
       const event = serialize({
         id: recordId || "candidate",
         kind,
@@ -305,10 +298,16 @@ async function validateRelations(
       const horizon = new Date(String(data.end));
       horizon.setUTCDate(horizon.getUTCDate() + 90);
       const proposed = occurrences(event, new Date(String(data.start)), horizon);
-      const references = candidates.map(serialize);
-      const calendarCategories = references.filter((item) => item.kind === "calendarCategories");
-      for (const row of candidates) {
-        if (row.kind !== "events") continue;
+      // Only events of the selected people near the proposed dates, never the whole calendar.
+      const window = await calendarWindow(
+        tx,
+        context.departmentId,
+        new Date(String(data.start)),
+        horizon,
+        { excludeIds: recordId ? [recordId] : [], participantIds: selected },
+      );
+      const calendarCategories = window.categories.map(serialize);
+      for (const row of window.events) {
         if (
           !calendarCategoryBlocksTime(String(data.category), calendarCategories) ||
           !calendarCategoryBlocksTime(String(row.data.category), calendarCategories)
@@ -322,8 +321,8 @@ async function validateRelations(
             `Zeitkonflikt mit „${
               calendarPresentation(
                 serialize(row),
-                references.filter((item) => item.kind === "productions"),
-                references.filter((item) => item.kind === "calendarCategories"),
+                window.productions.map(serialize),
+                calendarCategories,
               ).title
             }“. Bitte passe die Planung an.`,
           );
@@ -453,10 +452,7 @@ export async function saveRecord(
       await tx.execute(
         sql`select pg_advisory_xact_lock(hashtext(${context.departmentId + ":" + kind + ":" + String(data.userId)}))`,
       );
-    if (kind === "events")
-      await tx.execute(
-        sql`select pg_advisory_xact_lock(hashtext(${context.departmentId + ":calendar"}))`,
-      );
+    // Events are already serialised by acquireWorkflowLock's "<department>:calendar" lock.
     if ((kind === "time" || kind === "attendance") && data.idempotencyKey) {
       const [duplicate] = await tx
         .select()
@@ -668,6 +664,54 @@ export async function saveRecord(
   }
   return result;
 }
+/**
+ * Records that still refer to a record of this kind and block its deletion. Only the kinds
+ * whose schemas hold such a reference are scanned, instead of a JSON search over everything.
+ */
+export function dependencyReferences(kind: RecordKind, id: string): SQL | undefined {
+  const field = (name: string, kinds: RecordKind[]) =>
+    and(inArray(records.kind, kinds), sql`${records.data}->>${name} = ${id}`);
+  switch (kind) {
+    case "productions":
+      return eq(records.productionId, id);
+    case "tasks":
+      return or(
+        and(eq(records.kind, "tasks"), eq(records.parentId, id)),
+        field("taskId", ["time"]),
+      );
+    case "actors":
+      return or(
+        field("actorId", ["casting", "looks", "reservations"]),
+        and(
+          eq(records.kind, "maskPlans"),
+          sql`${records.data}->'blocks' @> ${JSON.stringify([{ actorIds: [id] }])}::jsonb`,
+        ),
+      );
+    case "characters":
+      return field("characterId", ["casting", "looks", "materials"]);
+    case "sprints":
+      return field("sprintId", ["tasks"]);
+    case "templates":
+      return field("templateId", ["looks"]);
+    case "conversations":
+      return field("conversationId", ["messages"]);
+    case "materials":
+      return field("materialId", ["reservations"]);
+    case "events":
+      return and(
+        eq(records.kind, "shiftSwaps"),
+        sql`${records.data}->>'status' in ('awaiting_partner','awaiting_admin')`,
+        sql`(${records.data}->>'serviceId' = ${id} or ${records.data}->>'counterServiceId' = ${id})`,
+      );
+    case "people":
+      return and(
+        eq(records.kind, "productions"),
+        sql`${records.data}->'contacts' @> ${JSON.stringify([{ personId: id }])}::jsonb`,
+      );
+    default:
+      return undefined;
+  }
+}
 export async function deleteRecord(
   context: Context,
   kind: RecordKind,
@@ -695,19 +739,22 @@ export async function deleteRecord(
       if (kind === "leave" && row.data.status === "approved")
         throw new HttpError(409, "Genehmigte Abwesenheiten können nicht direkt gelöscht werden.");
     }
-    const [dependent] = await tx
-      .select({ id: records.id })
-      .from(records)
-      .where(
-        and(
-          eq(records.departmentId, context.departmentId),
-          ne(records.id, id),
-          ne(records.kind, "notifications"),
-          ne(records.kind, "files"),
-          sql`(${records.productionId}=${id} or ${records.parentId}=${id} or ${records.data}->>'actorId'=${id} or ${records.data}->>'characterId'=${id} or ${records.data}->>'sprintId'=${id} or ${records.data}->>'taskId'=${id} or ${records.data}->>'templateId'=${id} or ${records.data}->>'conversationId'=${id} or ${records.data}->>'materialId'=${id} or (${records.kind}='shiftSwaps' and ${records.data}->>'status' in ('awaiting_partner','awaiting_admin') and (${records.data}->>'serviceId'=${id} or ${records.data}->>'counterServiceId'=${id})) or ${records.data}->'contacts' @> ${JSON.stringify([{ personId: id }])}::jsonb or (${records.kind}='maskPlans' and ${records.data}->'blocks' @> ${JSON.stringify([{ actorIds: [id] }])}::jsonb))`,
-        ),
-      )
-      .limit(1);
+    const references = dependencyReferences(kind, id);
+    const [dependent] = references
+      ? await tx
+          .select({ id: records.id })
+          .from(records)
+          .where(
+            and(
+              eq(records.departmentId, context.departmentId),
+              ne(records.id, id),
+              ne(records.kind, "notifications"),
+              ne(records.kind, "files"),
+              references,
+            ),
+          )
+          .limit(1)
+      : [];
     if (dependent)
       throw new HttpError(
         409,
