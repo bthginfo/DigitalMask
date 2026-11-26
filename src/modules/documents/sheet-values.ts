@@ -9,6 +9,8 @@ import {
   type SheetInfo,
 } from "./contracts";
 
+const sheetNumber = new Intl.NumberFormat("de-DE", { maximumFractionDigits: 8 });
+
 export function columnName(column: number): string {
   let label = "";
   for (let n = column; n > 0; n = Math.floor((n - 1) / 26))
@@ -214,8 +216,7 @@ export function createSheetCalculator(sheets: Y.Map<Y.Map<string>>, info: SheetI
 }
 export function displayCell(value: unknown): string {
   if (value == null) return "";
-  if (typeof value === "number")
-    return new Intl.NumberFormat("de-DE", { maximumFractionDigits: 8 }).format(value);
+  if (typeof value === "number") return sheetNumber.format(value);
   if (typeof value === "boolean") return value ? "WAHR" : "FALSCH";
   return String(value);
 }

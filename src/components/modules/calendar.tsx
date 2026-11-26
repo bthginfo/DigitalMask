@@ -1,4 +1,5 @@
 "use client";
+import { berlinClock, dateFormat } from "@/shared/intl";
 import { PeriodPicker, periodExportFilters } from "@/components/period-picker";
 import {
   initialPeriod,
@@ -72,14 +73,8 @@ import {
   GoogleCalendarDialog,
   returnedFromGoogleCalendar,
 } from "@/modules/google-calendar/components/google-calendar-dialog";
-const calendarClock = (date: Date | null) =>
-  date
-    ? new Intl.DateTimeFormat("de-DE", {
-        timeZone: "Europe/Berlin",
-        hour: "2-digit",
-        minute: "2-digit",
-      }).format(date)
-    : "";
+const calendarClock = (date: Date | null) => (date ? berlinClock.format(date) : "");
+const monthHeading = dateFormat({ timeZone: "Europe/Berlin", month: "long", year: "numeric" });
 const calendarViews = {
   dayGridMonth: {
     eventOrder: "-monthPriority,start,-duration,allDay,title",
@@ -666,11 +661,7 @@ export function CalendarModule({
               <h2>
                 {view === "team"
                   ? teamSpan === "month"
-                    ? new Intl.DateTimeFormat("de-DE", {
-                        timeZone: "Europe/Berlin",
-                        month: "long",
-                        year: "numeric",
-                      }).format(new Date(`${teamStart}T12:00:00Z`))
+                    ? monthHeading.format(new Date(`${teamStart}T12:00:00Z`))
                     : `Woche ab ${dateLabel(teamStart)}`
                   : title}
               </h2>

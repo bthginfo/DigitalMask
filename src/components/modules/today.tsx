@@ -1,4 +1,5 @@
 "use client";
+import { berlinClock, dateFormat } from "@/shared/intl";
 import { useState } from "react";
 import {
   ArrowRight,
@@ -36,6 +37,13 @@ import {
   AttendanceBalanceCard,
   attendanceBalanceStyles,
 } from "@/modules/time-tracking/components/attendance-balance";
+const todayHeading = dateFormat({
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+});
+const weekdayShort = dateFormat({ timeZone: "Europe/Berlin", weekday: "short" });
 export function TodayModule({ navigate }: { navigate: (module: string) => void }) {
   const workspace = useWorkspaceData();
   const showTimer = isStaff(workspace.user);
@@ -83,12 +91,7 @@ export function TodayModule({ navigate }: { navigate: (module: string) => void }
   return (
     <>
       <PageHeader
-        eyebrow={new Intl.DateTimeFormat("de-DE", {
-          weekday: "long",
-          day: "numeric",
-          month: "long",
-          year: "numeric",
-        }).format(new Date())}
+        eyebrow={todayHeading.format(new Date())}
         title={`${greet}, ${workspace.user.name.split(" ")[0]}.`}
         compact
       >
@@ -175,12 +178,7 @@ export function TodayModule({ navigate }: { navigate: (module: string) => void }
                   >
                     <div className="schedule-date">
                       <strong>{Number(localDate(new Date(event.start)).slice(8))}</strong>
-                      <span>
-                        {new Intl.DateTimeFormat("de-DE", {
-                          timeZone: "Europe/Berlin",
-                          weekday: "short",
-                        }).format(new Date(event.start))}
-                      </span>
+                      <span>{weekdayShort.format(new Date(event.start))}</span>
                     </div>
                     <div className="schedule-info">
                       <Badge
@@ -196,7 +194,7 @@ export function TodayModule({ navigate }: { navigate: (module: string) => void }
                       <p className="small muted">
                         {event.allDay
                           ? "Ganztägig"
-                          : `${new Intl.DateTimeFormat("de-DE", { timeZone: "Europe/Berlin", hour: "2-digit", minute: "2-digit" }).format(new Date(event.start))}–${new Intl.DateTimeFormat("de-DE", { timeZone: "Europe/Berlin", hour: "2-digit", minute: "2-digit" }).format(new Date(event.end))}`}{" "}
+                          : `${berlinClock.format(new Date(event.start))}–${berlinClock.format(new Date(event.end))}`}{" "}
                         {value(event.extendedProps.record.data, "location") &&
                           ` · ${value(event.extendedProps.record.data, "location")}`}
                       </p>
