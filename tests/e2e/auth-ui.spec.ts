@@ -1,5 +1,6 @@
 import { test as base, expect, chromium, webkit, type Page } from "@playwright/test";
 import { recordKinds, type Workspace } from "../../src/shared/contracts";
+import { mockSessionCookie } from "./session-cookie";
 
 const dummyPassword = "Dummy-Visibility-Only-2026";
 const test = base.extend<{ engine: "chromium" | "webkit"; uiPage: Page }>({
@@ -12,6 +13,7 @@ const test = base.extend<{ engine: "chromium" | "webkit"; uiPage: Page }>({
       hasTouch,
       serviceWorkers: "block",
     });
+    await context.addCookies([mockSessionCookie(baseURL)]);
     try {
       await runWithPage(await context.newPage());
     } finally {

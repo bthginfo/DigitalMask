@@ -4,6 +4,7 @@ import type { MaskPlanData } from "../../src/modules/mask-plans/model";
 import { blockIds, laneIds } from "./mask-plans-fixture";
 import { numericMaskFixture } from "./numeric-mask-fixture";
 import { installMaskPlanBrowserSafety } from "./mask-plan-safety";
+import { mockSessionCookie } from "./session-cookie";
 
 test.use({
   serviceWorkers: "block",
@@ -293,6 +294,7 @@ test("mobile short tap edits; long hold moves, clamps at zero, and scrolling or 
     isMobile: true,
     serviceWorkers: "block",
   });
+  await context.addCookies([mockSessionCookie()]);
   const page = await context.newPage();
   const fixture = await mock(page, true, true);
   await page.goto(maskUrl);
