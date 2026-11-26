@@ -28,6 +28,7 @@ import { CategoryManager } from "@/modules/categories/components/category-manage
 import { categoryName } from "@/shared/domain-categories";
 import { EventDetail } from "@/modules/calendar/components/event-detail";
 import { canManageRecord } from "@/shared/record-permissions";
+import { isGuestProduction } from "@/modules/productions/guest-rules";
 import { ExportDialog, ImportDialog } from "./export-dialog";
 import { AttachmentGrid } from "./attachment-grid";
 import { documentAccept, RecordDocuments } from "@/modules/documents/components/record-documents";
@@ -92,7 +93,9 @@ function GenericRecordDetail({
   const [exporting, setExporting] = useState(false);
   const [comparingPhotos, setComparingPhotos] = useState(false);
   const current = workspace.records[record.kind].find((x) => x.id === record.id) || record;
-  const canEdit = canManageRecord(workspace.user, current.kind, current);
+  const canEdit =
+    canManageRecord(workspace.user, current.kind, current) &&
+    !isGuestProduction(workspace, current.data.productionId);
   const allLinkedFiles = workspace.records.files.filter(
     (x) => x.data.recordKind === current.kind && x.data.recordId === current.id,
   );

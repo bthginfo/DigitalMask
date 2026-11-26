@@ -13,6 +13,8 @@ import { BackstageChanges } from "@/modules/documentation/components/backstage-c
 import { sortProductionsByPremiere } from "@/shared/production-order";
 import { productionOverviewRecords } from "@/shared/production-overview";
 import { SharedProductionOverview } from "@/modules/productions/components/shared-production-overview";
+import { GuestProduction } from "@/modules/productions/components/guest-production";
+import { isGuestProduction } from "@/modules/productions/guest-rules";
 import type { Workspace } from "@/shared/contracts";
 import { dateLabel, hours, ids, num, value } from "@/shared/client-api";
 import { useWorkspace } from "../workspace-context";
@@ -137,7 +139,15 @@ export function ProductionsModule({
     .projectHours;
   const sharedProduction = !production && productions.find((record) => record.id === selected);
   if (sharedProduction)
-    return (
+    return isGuestProduction(workspace, sharedProduction.id) ? (
+      <GuestProduction
+        production={sharedProduction}
+        tab={tab}
+        showStart={showStart}
+        onTab={setTab}
+        onBack={() => setSelected("")}
+      />
+    ) : (
       <SharedProductionOverview
         production={sharedProduction}
         workspace={workspace}
