@@ -383,7 +383,7 @@ input[type="checkbox"] {
 @keyframes dm-sheet-in {
   from {
     opacity: 0;
-    transform: translateY(18px) scale(0.985);
+    transform: translateY(18px);
   }
   to {
     opacity: 1;
