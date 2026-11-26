@@ -379,11 +379,7 @@ export async function getWorkspace(
       .map((r) => r.id),
   );
   grouped.files = rows
-    .filter(
-      (r) =>
-        r.kind === "files" &&
-        readableIds.has(String(r.data.recordId)),
-    )
+    .filter((r) => r.kind === "files" && readableIds.has(String(r.data.recordId)))
     .map((r) => ({ ...r, data: { ...r.data, path: undefined } }));
   const personalTimers = await unstable_cache(
     () =>
