@@ -211,32 +211,49 @@ export const helpArticles: HelpArticle[] = [
   },
   {
     id: "time",
-    title: "Zeit buchen und korrigieren",
+    title: "Zeit erfassen",
     module: "time",
     intro:
-      "Anwesenheit ist deine gesamte Zeit im Theater und zählt für dein Plus-/Minusstundenkonto. Unter Produktionsstunden hältst du fest, wie lange du an einer Produktion oder Tätigkeit gearbeitet hast. Diese Buchungen ersetzen keine Anwesenheit und zählen nicht zusätzlich für dein Stundenkonto.",
+      "Anwesenheit ist deine Zeit im Theater und zählt für dein Plus-/Minuskonto. Produktionsstunden zeigen, woran du gearbeitet hast.",
     steps: [
-      "Anwesenheits- und Produktionstimer dürfen gleichzeitig laufen. Unter Anwesenheit trägst du Beginn, Ende und Pause nach. Unter Produktionsstunden buchst du eine Tätigkeit mit Dauer oder Zeitraum, mit oder ohne zugeordnete Produktion.",
-      "Nachtragen öffnet das Buchungsfenster immer mit dem heutigen Datum, auch wenn du gerade eine ältere Woche ansiehst. Du kannst das Datum ändern. Wenn du einen bestimmten Tag anklickst, wird stattdessen dessen Datum übernommen. Bei Produktionsstunden geht das auch über den Tagesbalken. Abbrechen lässt deine Wochenauswahl unverändert; nach dem Speichern siehst du die Woche der neuen Buchung. Tag kennzeichnen ist nur für ABF, Ruhetag und andere freie Tage gedacht.",
-      "Am Smartphone bleiben beide Timer kompakt sichtbar. Öffne die Angaben, wenn du die Tätigkeit, Produktion oder Kategorie ändern möchtest. Ein laufender Timer bleibt auch bei geschlossenen Angaben erkennbar.",
-      "Pausiere den Timer bei Bedarf. Stoppen & buchen legt die Zeitbuchung an. Timer verwerfen entfernt einen ungebuchten Lauf nach Bestätigung.",
-      "Bei jeder Buchung findest du Bearbeiten und Löschen, auch in aufgeklappten früheren Wochen. Mit Bearbeiten korrigierst du Datum, Dauer, Beginn, Ende oder Pause. Mit Löschen entfernst du eine falsche Buchung nach Bestätigung; die Stundensummen werden angepasst. Löschen findest du auch in den Buchungsdetails und im Bearbeitungsfenster. Alle Rollen können eigene Anwesenheiten und Produktionsstunden ändern oder löschen; Admins auch Zeiten anderer Teammitglieder.",
-      "Unter Wochenverlauf stehen frühere Wochen mit Kalenderwoche, Datum und Stundensumme. Klappe eine Woche auf, um die einzelnen Buchungen zu lesen oder zu bearbeiten. Anwesenheit und Produktionsarbeit haben jeweils ihren eigenen Verlauf.",
-      "Mit der Wochenauswahl wechselst du auch zu leeren oder älteren Wochen. Für Einträge aus früheren Spielzeiten öffnest du Zeitraum auswählen und wählst die passende oder Alle Spielzeiten. Die Filter für Person und Produktion gelten auch im Verlauf.",
-      "Als Admin kannst du unter Produktionsstunden bei Person die Auswahl Alle wählen. Du siehst die Stunden des gesamten Teams, nach Personen aufgeteilt. Das gilt auch für frühere Wochen und für den Export. Mit einer einzelnen Person grenzt du die Ansicht wieder ein.",
-      "Kalenderzeiten prüfen zeigt ungeprüfte Vorschläge aus deinen bereits beendeten Kalenderterminen. Öffne einen Vorschlag, vergleiche ihn mit deiner tatsächlichen Arbeit und korrigiere Beginn, Ende, Pause oder Tätigkeit. Erst dein ausdrückliches Speichern bucht die Zeit. Kalendertermine allein sind keine gebuchten Stunden.",
-      "Wenn ein Termin innerhalb eines Tagesdienstes liegt, wird seine Zeit bei den Arbeitsvorschlägen zuerst berücksichtigt. Der Dienst füllt nur die übrige Zeit. So wird derselbe Zeitraum nicht doppelt vorgeschlagen. Die Anwesenheit fasst zusammenhängende geplante Arbeitszeiten zusammen; auch diese musst du selbst prüfen und bestätigen.",
-      "Ganztägige freie Tage und Abwesenheiten werden nicht als Arbeitszeit vorgeschlagen. Bereits gebuchte Zeiträume werden berücksichtigt. Prüfe die Vorschläge spätestens beim Rückblick auf die vergangene Woche; Anwesenheit und Tätigkeiten bestätigst du getrennt.",
-      "In der Anwesenheitsliste stehen Wochentage und ganztägige Kalenderkennzeichen wie ABF, Ruhetag und Urlaub. Bei Urlaub, Feiertag, Feiertagsausgleich und Absent zeigt sie die Tagesgutschrift separat und zählt sie zum Wochengesamt. ABF, Ruhetag und halber freier Tag erscheinen als Kennzeichen ohne Gutschrift. Über Tag kennzeichnen wählst du eine vorhandene Kalenderart für deinen Tag.",
-      "Beim PDF-Export stehen Kalenderkennzeichen in einer zusätzlichen Wochenübersicht. Im Excel-Export findest du sie auf dem Blatt Kalenderkennzeichen. Die Stundensummen enthalten weiterhin nur tatsächlich gebuchte Zeit.",
-      "Die Tages- und Wochensummen berücksichtigen Mitternacht. Der Wochenvergleich zeigt Anwesenheit und Produktionsstunden nebeneinander. In einer Produktion stehen nur ihre Produktionsstunden.",
-      "Gespeicherte Zeiten sind sofort eingetragen. Es gibt keine Wochenfreigabe und du musst sie nicht einreichen. Anwesenheit und Produktionsarbeit bleiben getrennt und können jederzeit korrigiert werden.",
-      "Bei einer Verbindungsstörung bleiben deine Eingaben im Buchungsfenster. Neue Buchungen werden beim Speichern zusätzlich in diesem Browser gesichert, wenn der Gerätespeicher verfügbar ist. Versuche erneut zu speichern oder synchronisiere später die lokalen Entwürfe im jeweiligen Zeitbereich. Ein erneuter Versuch derselben Buchung zählt die Stunden nicht doppelt. Nach erfolgreichem Speichern wird die lokale Sicherung entfernt.",
-      "Unter Einstellungen trägst du deine Wochenstunden, den Beginn deines Zeitkontos und bei Bedarf einen vorhandenen Startsaldo ein. Deine Stunden sind frei auf die Tage einer Kalenderwoche von Montag bis Sonntag verteilbar. Es gibt kein tägliches Stundensoll. Vor dem Beginn des Zeitkontos entstehen keine fehlenden Stunden.",
-      "Das Zeitkonto auf Heute und unter Anwesenheit rechnet je Kalenderwoche: gespeicherte Anwesenheit plus Tagesgutschriften minus das gesamte Wochensoll. Produktionsbuchungen zählen nicht zusätzlich. Das Plus-/Minuskonto summiert abgeschlossene Wochen und unter Gesamt auch den Startsaldo. Die laufende Woche steht separat mit ihren bereits erfüllten Stunden und dem noch offenen Wochensoll. Am Sonntag zählt die Woche als abgeschlossen. Gespeicherte Anwesenheiten zählen für heute sofort vollständig, auch vor ihrer Endzeit. Laufende Timer zählen erst nach Stoppen & buchen. Zukünftige Tage zählen noch nicht; bei Buchungen über Mitternacht wird nur der Anteil bis einschließlich heute berücksichtigt. Woche und eigene Zeiträume umfassen ganze Kalenderwochen; Monate enthalten die Wochen, deren Montag in diesem Monat liegt, ohne Überschneidung mit Nachbarmonaten. Frühere Wochenstundenzahlen bleiben erhalten. Beginnt das Konto oder ändert sich die Wochenstundenzahl mitten in einer Woche, wird nur diese Übergangswoche nach den Kalendertagen mit der jeweils geltenden Stundenzahl anteilig berechnet.",
-      "Admins können unter Einstellungen bei Bisherige Sollzeiten einzelne Einträge löschen, auch bei anderen Teammitgliedern. Das Zeitkonto wird danach neu berechnet: Ein früherer Eintrag gilt bis zur nächsten verbliebenen Änderung. Löschst du den ersten Eintrag, beginnt das Konto beim nächsten. Nach dem letzten gelöschten Eintrag kannst du die Sollstunden neu anlegen. Gebuchte Anwesenheit bleibt erhalten.",
-      "Urlaub, Feiertag, Feiertagsausgleich und Absent geben je eingetragenem Kalendertag eine Tagesgutschrift: deine für diesen Tag geltenden Wochenstunden geteilt durch 6. Bei 15 Wochenstunden sind das 2,5 Stunden; bei 20 Stunden 3 Stunden 20 Minuten; bei 39 Stunden 6,5 Stunden. Die Gutschrift kommt zusätzlich zur Anwesenheit dazu, auch wenn du an diesem Tag arbeitest. Bei 15 Stunden Wochensoll ergeben 15 Stunden Anwesenheit plus ein Feiertag +2,5 Stunden; 10 Stunden Anwesenheit plus ein Feiertag ergeben −2,5 Stunden. Es zählen persönliche ganztägige Kalendereinträge an jedem Wochentag; mehrere passende Einträge am selben Tag geben nur eine Gutschrift. Die bayerischen Feiertagshinweise allein zählen nicht. ABF, Ruhetag und halber freier Tag geben keine Gutschrift.",
-      "Offlineentwürfe liegen auf dem Gerät. Übernehme unzugeordnete Geräteentwürfe ausdrücklich in deinen Account und synchronisiere sie anschließend. Auf gemeinsam genutzten Geräten zuerst die Tätigkeit prüfen.",
+      "Öffne Zeit buchen. Oben wählst du Anwesenheit oder Produktionsstunden.",
+      "Wenn du ins Theater kommst, tippe bei Anwesenheit auf Starten oder auf Heute auf Ankommen.",
+      "Für Produktionsarbeit wählst du die Produktion und tippst auf Starten. Eine Tätigkeit musst du nicht eintragen: Die Buchung heißt dann wie die Produktion. Deine Anwesenheit startet automatisch mit, falls sie noch nicht läuft.",
+      "Pause bei der Anwesenheit hält auch die Produktionszeit an. Weiter bei der Anwesenheit setzt nur die Anwesenheit fort; Weiter bei der Produktion setzt beides fort.",
+      "Beim Gehen stoppst du die Anwesenheit. Läuft noch Produktionszeit, wählst du Beide beenden oder Nur Anwesenheit. Wenn du nur die Produktionszeit stoppst, läuft deine Anwesenheit weiter.",
+      "Läuft ein Timer länger als 11 Stunden, erscheint ein Hinweis. Mit Jetzt stoppen oder Endzeit korrigieren buchst du die richtige Zeit. Mit eingeschalteten Mitteilungen bekommst du zusätzlich eine Erinnerung aufs Handy.",
+    ],
+    note: "Nach dem Stoppen öffnet sich die Buchung zur Kontrolle. So kannst du Beginn, Ende oder Pause sofort korrigieren.",
+  },
+  {
+    id: "time-corrections",
+    title: "Zeit nachtragen und korrigieren",
+    module: "time",
+    intro:
+      "Anwesenheit und Produktionsstunden zeigen jeweils eine Woche. Tippe einen Tag an, um seine Einträge zu sehen.",
+    steps: [
+      "Mit den Pfeilen wechselst du die Woche. Über das Datum springst du zu einer beliebigen Woche; Aktuelle Woche bringt dich zurück.",
+      "Nachtragen öffnet das Buchungsfenster mit dem heutigen Tag, in einer anderen Woche mit deren Montag. Datum, Beginn und Ende kannst du ändern.",
+      "Dauer und Pause trägst du als Stunden:Minuten ein, zum Beispiel 1:30. Auch 1,5 oder 90m funktionieren. Bei der Pause gilt eine einfache Zahl als Minuten.",
+      "Bei jeder Buchung findest du Bearbeiten und Löschen. Die Summen passen sich sofort an. Eine Buchung über Mitternacht zählt anteilig für beide Tage.",
+      "Kalenderzeiten prüfen zeigt deine beendeten Dienste als Vorschläge. Prüfe Zeiten und Pausen; erst Geprüfte Zeit buchen speichert die Stunden.",
+      "Ohne Internet findest du unter Mehr den Eintrag Ohne Internet vormerken. Synchronisiere die Entwürfe, sobald du wieder verbunden bist.",
+    ],
+    note: "Admins wählen bei Produktionsstunden eine Person oder Alle. Exportieren findest du unter Mehr; der Export übernimmt die Woche und ihre Spielzeit.",
+  },
+  {
+    id: "time-account",
+    title: "Zeitkonto: Plus und Minus",
+    module: "time",
+    intro:
+      "Das Zeitkonto vergleicht deine Anwesenheit mit deinen Wochenstunden. Produktionsstunden zählen nicht zusätzlich.",
+    steps: [
+      "Trage unter Einstellungen deine Wochenstunden, den Beginn des Zeitkontos und bei Bedarf einen Startsaldo ein.",
+      "Je Kalenderwoche zählt: Anwesenheit plus Tagesgutschriften minus Wochenstunden. Ein tägliches Soll gibt es nicht.",
+      "Abgeschlossene Wochen ergeben dein Plus oder Minus. Die laufende Woche zeigt, was schon erfüllt und was noch offen ist. Laufende Timer zählen erst nach dem Stoppen.",
+      "Urlaub, Feiertag, Feiertagsausgleich und Absent geben je Tag ein Sechstel deiner Wochenstunden gut, bei 15 Wochenstunden also 2,5 Stunden. ABF, Ruhetag und halber freier Tag geben keine Gutschrift.",
+      "Mit Tag kennzeichnen unten in der Woche trägst du ABF, Ruhetag oder Urlaub für dich ein.",
+      "Admins sehen das Plus und Minus aller im Kalender unter Stunden im Team und können bisherige Sollzeiten in den Einstellungen löschen.",
     ],
   },
   {
@@ -351,7 +368,7 @@ export const helpArticles: HelpArticle[] = [
     module: "documentation",
     intro: "Mit Jahr und Spielzeit findest du auch ältere Produktionsarbeit wieder.",
     steps: [
-      "Beim ersten Öffnen starten Kalender und Zeitnachweise mit der aktuellen Spielzeit von August bis Juli. Wenn du zwischendurch in einen anderen Bereich wechselst und zurückkommst, bleibt deine Auswahl erhalten. Mit Alle Spielzeiten oder Zeitraum zurücksetzen kannst du weitere Zeiträume sehen.",
+      "Beim ersten Öffnen startet der Kalender mit der aktuellen Spielzeit von August bis Juli. Zeit buchen zeigt immer eine Woche; der Export übernimmt deren Spielzeit. Wenn du zwischendurch in einen anderen Bereich wechselst und zurückkommst, bleibt deine Auswahl erhalten. Mit Alle Spielzeiten oder Zeitraum zurücksetzen kannst du weitere Zeiträume sehen.",
       "Wähle Jahr und Spielzeit in der jeweiligen Übersicht. Im Sammelordner kannst du zusätzlich eine Produktion oder allgemeine Aufschriebe auswählen; archivierte Produktionen bleiben auffindbar.",
       "Bei Produktionsdokumenten zählen die Spielzeiten des Stücks; ein Stück im Repertoire erscheint in jeder davon. Beim Jahr zählt das Premierenjahr. Bei allgemeinen Aufschrieben zählt das Erstellungsjahr. Zeitbuchungen und Anwesenheit richten sich nach dem tatsächlich gebuchten Tag.",
       "Öffne Exportieren aus der gefilterten Übersicht. Produktion, Jahr und Spielzeit werden übernommen. Prüfe bei Zeit- und Kalenderexporten zusätzlich den Zeitraum, damit er zur gewählten Auswahl passt.",
@@ -447,11 +464,15 @@ export const helpFaq = [
   ],
   [
     "Kann ich gespeicherte Zeiten nachträglich bearbeiten oder löschen?",
-    "Ja. Wähle Bearbeiten bei der Buchung und passe Datum, Dauer, Beginn, Ende oder Pause an. Mit Löschen entfernst du eine falsche Buchung nach Bestätigung, auch aus einer früheren Woche. Beides geht für deine Anwesenheit und Produktionsstunden. Die Stundensummen werden direkt angepasst; eine Wochenfreigabe ist nicht erforderlich.",
+    "Ja. Öffne Zeit buchen, wähle die Woche und tippe den Tag an. Bei jeder Buchung findest du Bearbeiten und Löschen. Die Summen passen sich sofort an; eine Wochenfreigabe gibt es nicht.",
   ],
   [
     "Wo finde ich meine Stunden aus früheren Wochen?",
-    "Öffne Zeit und den gewünschten Bereich: Anwesenheit oder Produktionsstunden. Im Wochenverlauf findest du Kalenderwochen mit ihren Summen. Klappe eine Woche auf, um Einträge zu lesen und zu bearbeiten. Für frühere Spielzeiten passe den Zeitraum an oder wähle Alle Spielzeiten.",
+    "Öffne Zeit buchen und wähle Anwesenheit oder Produktionsstunden. Wechsle mit den Pfeilen oder über das Datum zur gewünschten Woche und tippe einen Tag an.",
+  ],
+  [
+    "Muss ich die Anwesenheit extra starten, wenn ich an einer Produktion arbeite?",
+    "Nein. Wenn du die Produktionszeit startest, läuft deine Anwesenheit automatisch mit. Beim Gehen fragt DigitalMask, ob die Produktionszeit auch enden soll.",
   ],
   [
     "Wie berechnet sich mein Plus oder Minus?",
@@ -463,7 +484,7 @@ export const helpFaq = [
   ],
   [
     "Wie trage ich ABF oder Ruhetag auf meiner Wochenübersicht ein?",
-    "Nutze Tag kennzeichnen und wähle eine vorhandene ganztägige Kalenderart. Ein bereits im Kalender markierter Tag erscheint ebenfalls in der Wochenübersicht. ABF und Ruhetag erscheinen ohne Gutschrift. Deine Anwesenheit buchst du separat.",
+    "Nutze Tag kennzeichnen unten in der Woche und wähle eine vorhandene ganztägige Kalenderart. Ein bereits im Kalender markierter Tag erscheint ebenfalls in der Woche. ABF und Ruhetag erscheinen ohne Gutschrift. Deine Anwesenheit buchst du separat.",
   ],
   [
     "Sind Offlineentwürfe schon im Theater gespeichert?",

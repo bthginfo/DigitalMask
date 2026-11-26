@@ -369,19 +369,15 @@ test("real database workflows, permissions and booking integrity", async () => {
     expect((await (await member.get("/api/workspace")).json()).projectHours[production.id]).toBe(
       3600,
     );
-    expect(
-      (
-        await member.post("/api/actions", {
-          data: {
-            action: "timer-start",
-            data: { title: "QA Parallelproduktion", productionId: production.id },
-          },
-        })
-      ).status(),
-    ).toBe(200);
-    expect(
-      (await member.post("/api/actions", { data: { action: "attendance-timer-start" } })).status(),
-    ).toBe(200);
+    // Starting production time also starts attendance in the same transaction.
+    const startedWork = await member.post("/api/actions", {
+      data: {
+        action: "timer-start",
+        data: { title: "QA Parallelproduktion", productionId: production.id },
+      },
+    });
+    expect(startedWork.status()).toBe(200);
+    expect((await startedWork.json()).attendanceStarted).toBe(true);
     const bothTimers = await (await member.get("/api/workspace")).json();
     expect(bothTimers.timer).not.toBeNull();
     expect(bothTimers.attendanceTimer).not.toBeNull();

@@ -1,40 +1,31 @@
 ﻿"use client";
 import { useMemo, useState } from "react";
 import { useViewState } from "@/shared/view-state";
-import { DoorOpen, Plus, UploadCloud } from "lucide-react";
-import { PeriodPicker, periodExportFilters, weekForPeriod } from "@/components/period-picker";
-import { seasonForDate, type PeriodFilter } from "@/shared/period-filter";
+import { Plus, UploadCloud } from "lucide-react";
+import { seasonForDate } from "@/shared/period-filter";
 import type { DomainRecord, RecordData } from "@/shared/contracts";
-import { hours, localDate, post, shiftDate, value, weekStart } from "@/shared/client-api";
+import { instantDate, localDate, post, shiftDate, value, weekStart } from "@/shared/client-api";
 import { isStaff } from "@/shared/client-members";
 import { useStoredValue } from "@/shared/client-storage";
 import { useWorkspace } from "@/components/workspace-context";
-import { ActionMenu, Badge, Button, ErrorMessage, ExportButton, PageHeader } from "@/components/ui";
+import { ActionMenu, Button, ErrorMessage, ExportButton } from "@/components/ui";
 import { ExportDialog } from "@/components/export-dialog";
 import { RecordDetail } from "@/components/resource-view";
 import { TimeBookingEditor } from "./time-booking-editor";
-import { groupBookingWeeks, isoWeek, periodForWeek } from "../history";
+import { bookingDay, groupBookingWeeks, isoWeek } from "../history";
 import { timeDayMarkers } from "../day-markers";
 import { attendanceCreditsByDay } from "../balance";
-import { AttendanceWeekList, WeekNavigator, WeeklyHistory } from "./weekly-bookings";
 import { CalendarTimeProposals } from "./calendar-time-proposals";
 import { WeekDayOverview } from "./week-day-overview";
 import { AttendanceBalanceCard } from "./attendance-balance";
 import styles from "./time-history.module.css";
 
 type AttendanceDraft = { id: string; createdAt: string; data: RecordData };
-export function AttendanceModule({ embedded = false }: { embedded?: boolean }) {
+
+export function AttendanceModule() {
   const { workspace, refresh, online, busy } = useWorkspace();
   const selfBooking = workspace.user.role !== "superadmin";
   const admin = workspace.user.role !== "user";
-  const [period, setPeriod] = useViewState<PeriodFilter>(
-    workspace.user.id,
-    "attendance",
-    "period",
-    () => ({
-      season: seasonForDate(workspace.records.productions),
-    }),
-  );
   const [week, setWeek] = useViewState(workspace.user.id, "attendance", "week", weekStart());
   const [person, setPerson] = useViewState(
     workspace.user.id,
@@ -62,28 +53,24 @@ export function AttendanceModule({ embedded = false }: { embedded?: boolean }) {
     }
   }, [draftJson]);
   const until = shiftDate(week, 6);
-  const markers = useMemo(() => {
-    const first =
-      workspace.records.events
-        .map((event) => value(event.data, "start").slice(0, 10))
-        .filter(Boolean)
-        .sort()[0] || week;
-    return timeDayMarkers({
-      events: workspace.records.events,
-      calendarCategories: workspace.records.calendarCategories,
-      userId: person,
-      from: first,
-      to: until > shiftDate(weekStart(), 6) ? until : shiftDate(weekStart(), 6),
-      period,
-    });
-  }, [workspace.records.events, workspace.records.calendarCategories, person, week, until, period]);
+  const markers = useMemo(
+    () =>
+      timeDayMarkers({
+        events: workspace.records.events,
+        calendarCategories: workspace.records.calendarCategories,
+        userId: person,
+        from: week,
+        to: until,
+      }),
+    [workspace.records.events, workspace.records.calendarCategories, person, week, until],
+  );
   const member =
     person === workspace.user.id
       ? workspace.user
       : workspace.members.find((row) => row.id === person);
   const settings = member?.preferences?.workingTime;
   const today = localDate();
-  const weeks = useMemo(() => {
+  const selected = useMemo(() => {
     const creditsByDay = attendanceCreditsByDay({
       userId: person,
       markers,
@@ -93,31 +80,18 @@ export function AttendanceModule({ embedded = false }: { embedded?: boolean }) {
     });
     return groupBookingWeeks(workspace.records.attendance || [], {
       userId: person,
-      period,
       markers,
       creditsByDay,
-    });
+    }).find((row) => row.start === week);
   }, [
     workspace.records.attendance,
     workspace.records.leave,
     person,
-    period,
     markers,
     settings,
     today,
+    week,
   ]);
-  const selected = weeks.find((row) => row.start === week);
-  const entries = selected?.entries || [];
-  const credit = selected?.creditSeconds || 0;
-  const total = (selected?.seconds || 0) + credit;
-  const selectWeek = (next: string) => {
-    setWeek(next);
-    setPeriod(periodForWeek(period, next, workspace.records.productions));
-  };
-  const canBookDay = selfBooking && person === workspace.user.id;
-  const openBooking = (date = localDate()) => {
-    setCreating(date);
-  };
   const secondaryActions = (
     <>
       <ExportButton onClick={() => setExporting(true)} />
@@ -147,66 +121,17 @@ export function AttendanceModule({ embedded = false }: { embedded?: boolean }) {
   };
   return (
     <>
-      {embedded ? (
-        <header className={styles.moduleHeading}>
-          <h2>Anwesenheit im Theater</h2>
-          <div className={styles.moduleActions}>
-            <ActionMenu>{secondaryActions}</ActionMenu>
-            {selfBooking && (
-              <Button variant="primary" onClick={() => openBooking()}>
-                <Plus size={16} /> Nachtragen
-              </Button>
-            )}
-          </div>
-        </header>
-      ) : (
-        <PageHeader
-          eyebrow="DEIN NACHWEIS IM THEATER"
-          title="Anwesenheit im Theater"
-          description="Beginn, Ende und Pausen. Dieser Nachweis bleibt getrennt von deinen Produktionsstunden."
-          compact
-          secondaryActions={secondaryActions}
-        >
+      <header className={styles.moduleHeading}>
+        <h2>Anwesenheit im Theater</h2>
+        <div className={styles.moduleActions}>
+          <ActionMenu>{secondaryActions}</ActionMenu>
           {selfBooking && (
-            <>
-              <Button variant="primary" onClick={() => openBooking()}>
-                <Plus size={16} />
-                Anwesenheit nachtragen
-              </Button>
-            </>
+            <Button variant="primary" onClick={() => setCreating(bookingDay(week))}>
+              <Plus size={16} /> Nachtragen
+            </Button>
           )}
-        </PageHeader>
-      )}
-      <PeriodPicker
-        compact
-        records={workspace.records.attendance || []}
-        productions={workspace.records.productions}
-        value={period}
-        onChange={(next) => {
-          setPeriod(next);
-          setWeek(weekForPeriod(workspace.records.attendance || [], person, next, week));
-        }}
-      />
-      <div className={styles.weekToolbar}>
-        <WeekNavigator week={week} onChange={selectWeek} />
-        {admin && (
-          <label className="inline-label">
-            Person
-            <select value={person} onChange={(event) => setPerson(event.target.value)}>
-              {workspace.members.filter(isStaff).map((member) => (
-                <option key={member.id} value={member.id}>
-                  {member.name}
-                  {member.status !== "active" ? " · ehemaliges Teammitglied" : ""}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
-        <Badge>
-          <DoorOpen size={13} />
-          {hours(total)} h Wochengesamt
-        </Badge>
-      </div>
+        </div>
+      </header>
       {selfBooking && drafts.length > 0 && (
         <div className="offline-banner">
           <div>
@@ -234,63 +159,44 @@ export function AttendanceModule({ embedded = false }: { embedded?: boolean }) {
         key={person}
         person={person}
         selectedWeek={week}
-        onWeekChange={selectWeek}
+        onWeekChange={setWeek}
       />
-      {selected ? (
-        <section className={styles.currentWeek} aria-label="Anwesenheit der ausgewählten Woche">
-          <header className={styles.currentHeading}>
-            <div>
-              <h3>
-                KW {selected.number} · {selected.year}
-              </h3>
-              {credit > 0 && (
-                <p className="small muted">
-                  {hours(selected.seconds)} h Anwesenheit + {hours(credit)} h Tagesgutschriften
-                </p>
-              )}
-            </div>
-            <strong>{hours(total)} h</strong>
-          </header>
-          <AttendanceWeekList week={selected} onEdit={setEditing} onDetail={setDetail} />
-        </section>
-      ) : (
-        <section className={styles.emptyWeek}>
-          <h3>Noch keine Anwesenheit in dieser Woche.</h3>
-          <p>Frühere Buchungen und Tagesgutschriften findest du im Wochenverlauf.</p>
-          {selfBooking && <Button onClick={() => openBooking()}>Anwesenheit nachtragen</Button>}
-        </section>
+      {admin && (
+        <div className={styles.weekToolbar}>
+          <label className="inline-label">
+            Person
+            <select value={person} onChange={(event) => setPerson(event.target.value)}>
+              {workspace.members.filter(isStaff).map((member) => (
+                <option key={member.id} value={member.id}>
+                  {member.name}
+                  {member.status !== "active" ? " · ehemaliges Teammitglied" : ""}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
       )}
       <WeekDayOverview
+        key={`${person}:${week}`}
+        kind="attendance"
         week={week}
         person={person}
-        entries={entries}
+        entries={selected?.entries || []}
         markers={selected?.markers || []}
         creditsByDay={selected?.creditsByDay}
-        onDetail={setDetail}
-        bookingLabel="Anwesenheit"
-        onBookDay={canBookDay ? openBooking : undefined}
-      />
-      <WeeklyHistory
-        key={`${person}:${period.year || ""}:${period.season || ""}`}
-        weeks={weeks}
-        selectedWeek={week}
-        person={person}
-        kind="attendance"
-        filtered={!!period.year || !!period.season}
-        onAllSeasons={() => setPeriod({})}
-        onSelectWeek={selectWeek}
+        onWeekChange={setWeek}
         onEdit={setEditing}
         onDetail={setDetail}
-        onBookDay={canBookDay ? openBooking : undefined}
-      />
-      <CalendarTimeProposals kind="attendance" person={person} week={week} period={period} />
+      >
+        <CalendarTimeProposals kind="attendance" person={person} week={week} period={{}} />
+      </WeekDayOverview>
       {creating && (
         <TimeBookingEditor
           kind="attendance"
           defaults={{ date: creating }}
           onSaved={(record) => {
             setPerson(workspace.user.id);
-            selectWeek(isoWeek(value(record.data, "date")).start);
+            setWeek(isoWeek(value(record.data, "date")).start);
           }}
           onClose={() => setCreating("")}
         />
@@ -320,7 +226,13 @@ export function AttendanceModule({ embedded = false }: { embedded?: boolean }) {
       {exporting && (
         <ExportDialog
           kind="attendance"
-          filters={{ ...periodExportFilters(period), userId: person, from: week, to: until }}
+          filters={{
+            // Week navigation replaces the season filter on screen; exports keep the season.
+            season: seasonForDate(workspace.records.productions, instantDate(week)),
+            userId: person,
+            from: week,
+            to: until,
+          }}
           onClose={() => setExporting(false)}
         />
       )}

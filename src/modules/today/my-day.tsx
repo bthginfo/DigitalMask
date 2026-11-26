@@ -40,6 +40,11 @@ import { unreadNotifications } from "@/modules/notifications/unread";
 import { MarkAllReadButton } from "@/modules/notifications/components/mark-all-read";
 import { NotificationRow } from "@/modules/notifications/components/notification-row";
 import { AttendanceBalanceCard } from "@/modules/time-tracking/components/attendance-balance";
+import {
+  AttendanceStopPrompt,
+  LongTimerWarning,
+  needsProductionPrompt,
+} from "@/modules/time-tracking/components/timer-stop";
 import { chatUnreadSummary } from "./chat-unread";
 import styles from "./my-day.module.css";
 
@@ -452,6 +457,7 @@ function AttendanceCard({ navigate }: { navigate: (target: string) => void }) {
   const { workspace, action, busy, notify } = useWorkspace();
   const [now, setNow] = useState(Date.now);
   const [error, setError] = useState("");
+  const [stopPrompt, setStopPrompt] = useState(false);
   const attendance = workspace.attendanceTimer;
   const work = workspace.timer;
   useEffect(() => {
@@ -461,14 +467,17 @@ function AttendanceCard({ navigate }: { navigate: (target: string) => void }) {
   }, [attendance, work]);
   const run = async (operation: "start" | "pause" | "resume" | "stop") => {
     setError("");
+    if (operation === "stop" && needsProductionPrompt(work)) return setStopPrompt(true);
     try {
-      await action(
+      const result = await action(
         `attendance-timer-${operation}`,
         undefined,
         operation === "start" ? { title: "Anwesenheit" } : {},
       );
       setNow(Date.now());
       if (operation === "stop") notify?.("Anwesenheit gespeichert.");
+      if ((result as { productionPaused?: boolean })?.productionPaused)
+        notify?.("Produktionszeit ist auch pausiert.");
     } catch (exception) {
       setError(exception instanceof Error ? exception.message : "Das hat nicht geklappt.");
     }
@@ -524,6 +533,8 @@ function AttendanceCard({ navigate }: { navigate: (target: string) => void }) {
           <span>
             {value(work.data, "title") || "Produktionszeit"}
             {value(work.data, "productionId") &&
+              value(work.data, "title") !==
+                value(workspace.records.productions.find((item) => item.id === work.data.productionId)?.data || {}, "title") &&
               ` · ${value(workspace.records.productions.find((item) => item.id === work.data.productionId)?.data || {}, "title")}`}
           </span>
           <strong>{clock(timerSeconds(work, now))} h</strong>
@@ -533,6 +544,13 @@ function AttendanceCard({ navigate }: { navigate: (target: string) => void }) {
         <p className={styles.error} role="alert">
           <AlertTriangle size={15} /> {error}
         </p>
+      )}
+      <LongTimerWarning compact />
+      {stopPrompt && (
+        <AttendanceStopPrompt
+          onClose={() => setStopPrompt(false)}
+          onStopped={() => setStopPrompt(false)}
+        />
       )}
     </section>
   );

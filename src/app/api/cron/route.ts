@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { drainEvents } from "@/platform/events";
 import { runRetention } from "@/platform/retention";
 import { checkpointDirtyDocuments } from "@/modules/documents/service";
+import { remindLongRunningTimers } from "@/modules/time-tracking/timer-reminders";
 export const maxDuration = 300;
 function authorized(request: Request) {
   const expected = `Bearer ${process.env.CRON_SECRET || ""}`;
@@ -19,10 +20,11 @@ export async function GET(request: Request) {
   const started = Date.now();
   const events = await drainEvents(started + 180_000);
   const documents = await checkpointDirtyDocuments();
+  const timerReminders = await remindLongRunningTimers();
   // Bounded batches; anything left over is removed by the next daily run.
   const retention = await runRetention(
     new Date(),
     Math.max(Date.now() + 10_000, started + 270_000),
   );
-  return NextResponse.json({ ...events, documents, retention });
+  return NextResponse.json({ ...events, documents, timerReminders, retention });
 }

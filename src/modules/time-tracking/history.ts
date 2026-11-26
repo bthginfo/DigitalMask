@@ -1,5 +1,5 @@
 import type { DomainRecord, Member } from "@/shared/contracts";
-import { instantDate, shiftDate, timeAllocations, weekStart } from "@/shared/client-api";
+import { instantDate, localDate, shiftDate, timeAllocations, weekStart } from "@/shared/client-api";
 import { dateMatchesPeriod, seasonForDate, type PeriodFilter } from "@/shared/period-filter";
 import type { TimeDayMarker } from "./day-markers";
 
@@ -19,6 +19,10 @@ export interface BookingWeek {
   markers: TimeDayMarker[];
   creditsByDay: Map<string, number>;
 }
+
+/** Default day for the single "Nachtragen" button: today in the current week, else its Monday. */
+export const bookingDay = (week: string, today = localDate()) =>
+  today >= week && today <= shiftDate(week, 6) ? today : week;
 
 /** ISO week-year follows the Thursday, including weeks that cross New Year's Day. */
 export function isoWeek(day: string) {

@@ -1,0 +1,23 @@
+.field {
+  display: grid;
+  min-width: 0;
+}
+.field > label {
+  display: block;
+}
+.field > input {
+  font-variant-numeric: tabular-nums;
+}
+.hint,
+.error {
+  margin-top: 5px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.hint {
+  color: var(--muted);
+}
+.error {
+  color: var(--coral);
+  font-weight: 600;
+}

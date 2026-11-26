@@ -87,11 +87,14 @@ for (const kind of ["attendance", "time"] as const) {
     await page.goto("/?module=time");
     if (kind === "time")
       await page.getByRole("button", { name: "Produktionsstunden", exact: true }).click();
-    const history = page.getByRole("region", {
-      name: `${kind === "attendance" ? "Anwesenheit" : "Arbeitszeit"}: Wochenverlauf`,
+    // One week view: navigate to the booking's week and open its day.
+    const week = page.getByRole("region", {
+      name: `${kind === "attendance" ? "Anwesenheit" : "Produktionsstunden"}: Woche`,
     });
-    await history.locator("summary").filter({ hasText: "KW 40 · 2026" }).click();
-    const row = history.locator("li:not(:has(ul))").filter({
+    await week.getByLabel("Woche ab", { exact: true }).fill("2026-09-28");
+    await expect(week).toContainText("KW 40 · 2026");
+    await week.locator("summary").filter({ hasText: "Mo" }).click();
+    const row = week.locator("li:not(:has(ul))").filter({
       has: page.getByRole("button", { name: String(booking.data.title), exact: true }),
     });
     await expect(row.getByRole("button", { name: "Bearbeiten", exact: true })).toBeVisible();
@@ -105,7 +108,7 @@ for (const kind of ["attendance", "time"] as const) {
       name: kind === "attendance" ? "Anwesenheit bearbeiten" : "Zeitbuchung bearbeiten",
       exact: true,
     });
-    await editor.getByLabel("Pause in Minuten", { exact: true }).fill("15");
+    await editor.getByLabel("Pause", { exact: true }).fill("15");
     await editor.getByRole("button", { name: "Speichern", exact: true }).click();
     await expect(editor).toHaveCount(0);
     expect(updates).toBe(1);

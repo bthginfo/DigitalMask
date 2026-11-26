@@ -51,15 +51,18 @@ for (const kind of ["attendance", "time"] as const) {
     await page.goto("/?module=time");
     if (kind === "time")
       await page.getByRole("button", { name: "Produktionsstunden", exact: true }).click();
-    await page.getByRole("button", { name: "Nachtragen", exact: true }).click();
+    await page
+      .getByRole("button", { name: "Nachtragen", exact: true })
+      .filter({ visible: true })
+      .click();
     const dialog = page.getByRole("dialog");
     if (kind === "time") {
-      await dialog.getByLabel("Tätigkeit", { exact: true }).fill("Tagesdienst");
+      await dialog.getByLabel("Tätigkeit (optional)", { exact: true }).fill("Tagesdienst");
       await dialog.getByLabel("Beginn & Ende", { exact: true }).check();
     }
     await dialog.getByLabel("Beginn", { exact: true }).fill("2026-09-14T09:30");
     await dialog.getByLabel("Ende", { exact: true }).fill("2026-09-14T17:00");
-    await dialog.getByLabel("Pause in Minuten", { exact: true }).fill("30");
+    await dialog.getByLabel("Pause", { exact: true }).fill("30");
     await dialog.getByRole("button", { name: "Speichern", exact: true }).click();
     await expect(dialog.getByRole("alert")).toContainText("Keine Antwort vom Server erhalten");
     await expect(dialog.getByRole("alert")).toContainText("in diesem Browser gesichert");

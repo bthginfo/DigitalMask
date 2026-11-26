@@ -2,21 +2,24 @@
 import { useRef, useState } from "react";
 import { categoriesFor } from "@/shared/domain-categories";
 import type { DomainRecord, RecordData } from "@/shared/contracts";
-import {
-  ApiFailure,
-  hours,
-  instantDate,
-  localDate,
-  localDateTime,
-  num,
-  value,
-} from "@/shared/client-api";
+import { ApiFailure, instantDate, localDate, localDateTime, num, value } from "@/shared/client-api";
 import { useWorkspace } from "@/components/workspace-context";
 import { Button, ErrorMessage, Modal } from "@/components/ui";
-import { numberDraft, parseNumberDraft, previewNumberDraft } from "@/shared/number-draft";
+import {
+  formatDuration,
+  parseDurationInput,
+  previewDurationInput,
+  type DurationInputOptions,
+} from "@/shared/duration-input";
 import { clearTimeDraft, retainTimeDraft, timeDraftQueueKey } from "../client-drafts";
 import { TimeBookingDelete } from "./time-booking-delete";
+import { DurationField } from "./duration-field";
+import { initialBookingTimes } from "../booking-defaults";
 import styles from "./time-history.module.css";
+import editorStyles from "./booking-editor.module.css";
+
+const DURATION: DurationInputOptions = { label: "Dauer", required: true, min: 60, max: 7 * 86400 };
+const PAUSE: DurationInputOptions = { label: "Pause", bareUnit: "minutes", min: 0, max: 86400 };
 
 export function TimeBookingEditor({
   kind = "time",
@@ -40,19 +43,16 @@ export function TimeBookingEditor({
   const { workspace, save, busy, notify } = useWorkspace();
   const attendance = kind === "attendance";
   const initial = { ...defaults, ...record?.data };
-  const date = value(initial, "date") || localDate();
+  const times = initialBookingTimes(initial);
+  const date = times.date;
   const [title, setTitle] = useState(value(initial, "title") || (attendance ? "Anwesenheit" : ""));
   const [notes, setNotes] = useState(value(initial, "notes"));
   const [mode, setMode] = useState(
     attendance || (initial.start && initial.end) ? "interval" : "duration",
   );
   const [day, setDay] = useState(date);
-  const [start, setStart] = useState(
-    initial.start ? localDateTime(String(initial.start)) : `${date}T09:00`,
-  );
-  const [end, setEnd] = useState(
-    initial.end ? localDateTime(String(initial.end)) : `${date}T17:00`,
-  );
+  const [start, setStart] = useState(times.start);
+  const [end, setEnd] = useState(times.end);
   const [customEndDate, setCustomEndDate] = useState(
     Boolean(
       initial.start &&
@@ -61,10 +61,11 @@ export function TimeBookingEditor({
         localDateTime(String(initial.end)).slice(0, 10),
     ),
   );
-  const [minutes, setMinutes] = useState(
-    numberDraft(Math.round((num(initial, "durationSeconds") || 1800) / 60)),
+  const initialDuration = num(initial, "durationSeconds");
+  const [duration, setDuration] = useState(initialDuration ? formatDuration(initialDuration) : "");
+  const [pause, setPause] = useState(
+    num(initial, "pauseSeconds") ? formatDuration(num(initial, "pauseSeconds")) : "",
   );
-  const [pause, setPause] = useState(numberDraft(Math.round(num(initial, "pauseSeconds") / 60)));
   const [production, setProduction] = useState(
     lockedProductionId ?? value(initial, "productionId"),
   );
@@ -77,17 +78,28 @@ export function TimeBookingEditor({
   const receipt = useRef("");
   const submitting = useRef(false);
   const queueKey = timeDraftQueueKey(kind, workspace.user.id);
-  const pauseValue = previewNumberDraft(pause, { fallback: 0, min: 0, max: 1440, integer: true });
-  const minutesValue = previewNumberDraft(minutes, { min: 1, max: 10080, integer: true });
+  // An unchanged duration keeps its exact seconds, e.g. from a stopped timer.
+  const durationSeconds = (text: string, parse: typeof parseDurationInput) =>
+    initialDuration && text === formatDuration(initialDuration)
+      ? initialDuration
+      : parse(text, DURATION);
+  const pauseValue = previewDurationInput(pause, PAUSE);
+  const durationValue = previewDurationInput(duration, DURATION);
   const elapsed =
     pauseValue === undefined
       ? undefined
       : mode === "interval" && start && end
         ? Math.floor((instantDate(end).getTime() - instantDate(start).getTime()) / 1000) -
-          pauseValue * 60
-        : minutesValue === undefined
+          pauseValue
+        : durationValue === undefined
           ? undefined
-          : minutesValue * 60;
+          : durationSeconds(duration, () => durationValue);
+  const selectedProduction = workspace.records.productions.find((row) => row.id === production);
+  const defaultTitle = attendance
+    ? "Anwesenheit"
+    : selectedProduction
+      ? value(selectedProduction.data, "title")
+      : categoryOptions.find((option) => option.key === category)?.name || "Arbeitszeit";
   const tasks = workspace.records.tasks.filter(
     (task) => value(task.data, "productionId") === production,
   );
@@ -102,7 +114,7 @@ export function TimeBookingEditor({
       wide
     >
       <form
-        className="booking-form"
+        className={`booking-form ${editorStyles.form}`}
         onSubmit={async (event) => {
           event.preventDefault();
           if (submitting.current || busy) return;
@@ -111,43 +123,23 @@ export function TimeBookingEditor({
           let retained = false;
           let saved = false;
           try {
-            const parsedPause = parseNumberDraft(pause, {
-              label: "Pause in Minuten",
-              fallback: 0,
-              min: 0,
-              max: 1440,
-              integer: true,
-            })!;
-            const parsedMinutes =
-              mode === "duration"
-                ? parseNumberDraft(minutes, {
-                    label: "Dauer in Minuten",
-                    required: true,
-                    min: 1,
-                    max: 10080,
-                    integer: true,
-                  })!
-                : undefined;
-            const durationSeconds =
+            const parsedPause = parseDurationInput(pause, PAUSE);
+            const bookedSeconds =
               mode === "interval"
                 ? Math.floor((instantDate(end).getTime() - instantDate(start).getTime()) / 1000) -
-                  parsedPause * 60
-                : parsedMinutes! * 60;
-            if (
-              !Number.isFinite(durationSeconds) ||
-              durationSeconds <= 0 ||
-              durationSeconds > 7 * 86400
-            )
+                  parsedPause
+                : durationSeconds(duration, parseDurationInput);
+            if (!Number.isFinite(bookedSeconds) || bookedSeconds <= 0 || bookedSeconds > 7 * 86400)
               throw new Error(
                 "Prüfe Beginn, Ende und Pause. Eine Buchung muss zwischen einer Sekunde und sieben Tagen liegen.",
               );
             if (!attendance && !categoryOptions.some((option) => option.key === category))
               throw new Error("Bitte einen vorhandenen Tätigkeitsbereich auswählen.");
             const data: RecordData = {
-              title: title.trim() || "Anwesenheit",
+              title: title.trim() || defaultTitle,
               date: mode === "interval" ? localDate(instantDate(start)) : day,
-              durationSeconds,
-              pauseSeconds: parsedPause * 60,
+              durationSeconds: bookedSeconds,
+              pauseSeconds: parsedPause,
               start: mode === "interval" ? instantDate(start).toISOString() : "",
               end: mode === "interval" ? instantDate(end).toISOString() : "",
               ...(attendance
@@ -206,8 +198,7 @@ export function TimeBookingEditor({
         <p className="muted booking-intro">
           {attendance
             ? "Wann warst du im Theater? Die Anwesenheit bleibt getrennt von der Arbeit an einzelnen Produktionen."
-            : "Buche deine Tätigkeit mit Dauer oder einem genauen Zeitraum. Dein Anwesenheitstimer läuft unabhängig davon."}{" "}
-          Zeiten werden in Europe/Berlin erfasst.
+            : "Buche deine Tätigkeit mit Dauer oder Beginn und Ende. Deine Anwesenheit trägst du separat ein."}
         </p>
         {record && (
           <p className="small muted">
@@ -218,10 +209,10 @@ export function TimeBookingEditor({
           </p>
         )}
         <label>
-          {attendance ? "Bezeichnung (optional)" : "Tätigkeit"}
+          {attendance ? "Bezeichnung (optional)" : "Tätigkeit (optional)"}
           <input
-            required={!attendance}
             maxLength={200}
+            placeholder={defaultTitle}
             value={title}
             onChange={(event) => setTitle(event.target.value)}
           />
@@ -274,9 +265,9 @@ export function TimeBookingEditor({
           </div>
         )}
         {!attendance && (
-          <fieldset className="booking-mode">
+          <fieldset className={`booking-mode ${editorStyles.mode}`}>
             <legend>Wie möchtest du buchen?</legend>
-            <div className="feedback-type-options">
+            <div className={editorStyles.segments}>
               <label>
                 <input
                   type="radio"
@@ -284,7 +275,7 @@ export function TimeBookingEditor({
                   checked={mode === "duration"}
                   onChange={() => setMode("duration")}
                 />
-                Dauer
+                Nur Dauer
               </label>
               <label>
                 <input
@@ -347,29 +338,22 @@ export function TimeBookingEditor({
                   }}
                 />
               </label>
-              <label>
-                Dauer in Minuten
-                <input
-                  type="number"
-                  required
-                  min={1}
-                  max={10080}
-                  value={minutes}
-                  onChange={(event) => setMinutes(event.target.value)}
-                />
-              </label>
+              <DurationField
+                label="Dauer"
+                value={duration}
+                onChange={setDuration}
+                options={DURATION}
+              />
             </>
           )}
-          <label>
-            Pause in Minuten
-            <input
-              type="number"
-              min={0}
-              max={1440}
-              value={pause}
-              onChange={(event) => setPause(event.target.value)}
-            />
-          </label>
+          <DurationField
+            label="Pause"
+            value={pause}
+            onChange={setPause}
+            placeholder="0:00"
+            hint="z. B. 0:30 oder 30 (Minuten)"
+            options={PAUSE}
+          />
         </div>
         {attendance && (
           <label>
@@ -382,14 +366,14 @@ export function TimeBookingEditor({
             />
           </label>
         )}
-        <div className="booking-calculation">
+        <div className={`booking-calculation ${editorStyles.calculation}`}>
           <span>
             {mode === "interval" ? "Berechnete Zeit ohne Pause" : "Gebuchte Tätigkeitsdauer"}
           </span>
           <strong>
             {elapsed === undefined || !Number.isFinite(elapsed)
               ? "–"
-              : `${hours(Math.max(0, elapsed))} h`}
+              : `${formatDuration(Math.max(0, elapsed))} h`}
           </strong>
         </div>
         <ErrorMessage message={error} />

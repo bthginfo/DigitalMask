@@ -72,7 +72,7 @@ const steps = [
     module: "time",
     title: "Arbeitszeit ohne Papierstapel.",
     icon: Clock3,
-    text: "Zwei Timer erfassen getrennt, wie lange du im Theater bist und woran du arbeitest. Beide dürfen gleichzeitig laufen. Du kannst Zeiten auch später eintragen und korrigieren.",
+    text: "Anwesenheit zeigt, wie lange du im Theater bist, Produktionszeit, woran du arbeitest. Startest du die Produktionszeit, läuft die Anwesenheit automatisch mit. Vergessene Zeiten trägst du mit Nachtragen ein, zum Beispiel 1:30.",
     tips: [
       "Ohne Internet kannst du Zeiten auf dem Gerät vormerken. Sobald du wieder verbunden bist, kannst du sie speichern.",
       "Deine Zeiten werden direkt gespeichert und bleiben bearbeitbar. Unter Einstellungen hinterlegst du deine Wochenstunden für das persönliche Zeitkonto. Anwesenheit bleibt getrennt von Produktionsarbeit.",

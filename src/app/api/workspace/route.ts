@@ -6,9 +6,11 @@ import { createLiveTicket } from "@/platform/realtime/ticket";
 import { liveConfigured } from "@/platform/realtime";
 import { parseLiveKinds, partialWorkspaceKinds, workspacePatch } from "@/shared/workspace-sync";
 import { HttpError } from "@/platform/http";
+import { scheduleTimerReminders } from "@/modules/time-tracking/timer-reminders";
 export async function GET(request: Request) {
   return route(async () => {
     const context = await requireContext();
+    scheduleTimerReminders(context.departmentId, context.user.id);
     const filter = new URL(request.url).searchParams.get("kinds");
     const parsed = filter === null ? undefined : parseLiveKinds(filter.split(","));
     if (filter !== null && !parsed) throw new HttpError(400, "Ungültige Bereiche.");
