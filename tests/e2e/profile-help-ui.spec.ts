@@ -132,7 +132,7 @@ test.describe("Profil und Hilfe", () => {
         await page.getByRole("radio", { name: "Rosé", exact: true }).check();
         await page.goto("/?module=help");
         await expect(page.locator("html")).toHaveAttribute("data-accent", "sky");
-        if (mobile) await page.getByRole("button", { name: "Menü öffnen" }).click();
+        if (mobile) await page.locator(".bottom-nav").getByRole("button", { name: "Mehr" }).click();
         await page.getByRole("button", { name: "Abmelden", exact: true }).click();
         await expect(page).toHaveURL(/\/login/);
         await expect(page.locator("html")).not.toHaveAttribute("data-accent");
@@ -194,7 +194,7 @@ test.describe("Profil und Hilfe", () => {
       test("help, own feedback history and text editing", async ({ page }) => {
         const state = await mock(page, { missingPreferences: true });
         await page.goto("/?module=help");
-        await expect(page.getByRole("heading", { name: "Hilfe & Orientierung" })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Hilfe", exact: true })).toBeVisible();
         await expect(page.getByRole("dialog")).not.toBeVisible();
         await page.getByRole("textbox", { name: "Hilfe durchsuchen" }).fill("Bilder");
         await expect(page.locator(".help-article")).toContainText(/Bilder|Fotos/);

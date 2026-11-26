@@ -371,7 +371,7 @@ for (const device of [
         );
         await page
           .locator(".production-tabs")
-          .getByRole("button", { name: "Produktionsstunden", exact: true })
+          .getByRole("button", { name: "Stunden", exact: true })
           .click();
         await expect(
           page.getByRole("combobox", { name: "Produktion", exact: true }),

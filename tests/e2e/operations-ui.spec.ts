@@ -242,7 +242,7 @@ for (const mobile of [false, true])
       await page.getByRole("button", { name: "Vorheriger Zeitraum" }).click();
       expect(state.reads()).toBe(1);
       await noOverflow(page);
-      if (mobile) await page.locator(".calendar-mobile-actions > summary").click();
+      await page.locator(".calendar-mobile-actions > summary").click();
       await page.getByRole("button", { name: "Exportieren", exact: true }).click();
       const exportDialog = page.getByRole("dialog", { name: "Kalender exportieren" });
       await exportDialog.getByLabel("Format").selectOption("csv");
@@ -285,7 +285,7 @@ for (const mobile of [false, true])
     }) => {
       const state = await mock(page);
       await page.goto("/?module=calendar");
-      if (mobile) await page.locator(".calendar-mobile-actions > summary").click();
+      await page.locator(".calendar-mobile-actions > summary").click();
       await page.getByRole("button", { name: "Kalenderarten", exact: true }).click();
       await page.getByRole("button", { name: "Kalenderart anlegen" }).click();
       const editor = page.getByRole("dialog", { name: "Kalenderart anlegen" });
@@ -379,12 +379,11 @@ for (const mobile of [false, true])
       expect(state.reads()).toBe(1);
       await cards.filter({ hasText: "Klara Extern" }).click();
       await expect(page.locator(".production-makeup-contact")).toContainText("Klara Extern");
-      if (mobile)
-        await page
-          .getByRole("combobox")
-          .filter({ has: page.locator('option[value="time"]') })
-          .selectOption("time");
-      else await page.getByRole("button", { name: "Produktionsstunden", exact: true }).click();
+      // The sections are a scrollable chip row on every width.
+      await page
+        .getByRole("navigation", { name: "Bereiche des Stücks" })
+        .getByRole("button", { name: "Stunden", exact: true })
+        .click();
       await expect(page.getByRole("region", { name: "Anwesenheitstimer" })).toHaveCount(0);
       await noOverflow(page);
     });

@@ -468,7 +468,7 @@ for (const width of [320, 375, 390, 768, 1440]) {
     await page.getByRole("button", { name: "Vorheriger Zeitraum", exact: true }).click();
     await expect(page.locator(".calendar-navigation h2")).toHaveText("Oktober 2026");
     expect(state.reads()).toBe(1);
-    if (mobile) await page.locator(".calendar-mobile-actions > summary").click();
+    await page.locator(".calendar-mobile-actions > summary").click();
     await page.getByRole("button", { name: "Exportieren", exact: true }).click();
     const exportDialog = page.getByRole("dialog", { name: "Kalender exportieren" });
     await exportDialog.getByLabel("Format").selectOption("csv");
