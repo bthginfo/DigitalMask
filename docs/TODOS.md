@@ -341,3 +341,19 @@ Nach den abschließenden Liveprüfungen werden die angelegten QA-Konten, Testein
 - [x] Spielzeitfilter für Schauspielerexporte übernehmen und Hilfe sowie technische Dokumentation ergänzen.
 - [x] Produktionen im Repertoire mehreren Spielzeiten zuordnen, samt Aufschrieben, Aufgaben, Kalender und Exporten je Spielzeit; Wiederaufnahme ohne Kopie über „Zur aktuellen Spielzeit hinzufügen“.
 - [x] Offene eigene Aufgaben auf Heute unabhängig von der Spielzeit anzeigen.
+
+## Überarbeitung Oberfläche, Abläufe und Effizienz (November 2026)
+
+- [x] Liquid-Glass-/iOS-Gestaltung: transluzente Leisten, schwebende Tab-Leiste, Bottom-Sheets, Segmente, Chat-Sprechblasen, Mindestschriftgröße 11 px; Tailwind durch eigenen Reset ersetzt.
+- [x] Heute als „Mein Tag“: Anwesenheit mit einem Tipp, heutige Dienste mit Maskenplan/Umzüge/Chat, „Zu erledigen“ für Admins, ungelesene Chats, eigene Aufgaben.
+- [x] Navigation mit einheitlichen Namen (Stücke, Aufgaben, Zeit, Chat) und Gruppen Arbeitsraum, Nachschlagen, Team, Konto; „Mehr“ als Sheet auf dem Smartphone.
+- [x] Stück: nächste Vorstellung im Überblick, Bereiche nach Abend, Wissen und Organisation gruppiert, auf dem Smartphone als wischbare Leiste.
+- [x] Meine Aufgaben über alle Stücke, drei Status, Sprints optional je Stück.
+- [x] Maskenplan je Vorstellung, Abendansicht mit „Meine Spalte“ und Jetzt-Linie, Lesezugriff für eingeteilte Personen außerhalb des Produktionsteams.
+- [x] Zeit: Produktionszeit startet Anwesenheit mit, Dauer als h:mm, eine Wochenansicht, Hinweis und Push bei lange laufendem Timer.
+- [x] Chat-Lesezeiger statt einer Mitteilung je Nachricht; Admin-Mitteilungen für Freiwünsche, Registrierungen und Diensttausch; gebündelte Dienst-Mitteilungen.
+- [x] Tägliche Bereinigung: gelesene Mitteilungen nach 30 Tagen, ungelesene nach 180 Tagen, erledigte Hintergrundaufträge nach 14 Tagen, Audit nach 365 Tagen.
+- [x] Kleinere Ladepakete, gezieltere Live-Aktualisierung, Zwischenspeicher je Jahr unter der 2-MB-Grenze, Sitzungserneuerung ohne Ablauf nach 7 Tagen.
+- [x] Einmaliger Rundgang „Neu in DigitalMask“ für bestehende Konten (Version 2 der Einführung).
+- [ ] Teamreihenfolge im Kalender durch Admins sortierbar machen (derzeit fest hinterlegt).
+- [ ] Look-Fotos an einem Ort bündeln (heute an Schauspieler, Figur, Besetzung und Aufschrieb).
