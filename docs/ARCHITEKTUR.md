@@ -16,7 +16,7 @@ Empfehlung: eine modulare Next.js-Anwendung mit PostgreSQL, privatem Dateispeich
 
 ## Kontext und gemeinsame Teamabläufe (7. Oktober 2026)
 
-`shared/client-navigation.ts` und `shared/view-state.ts` bewahren Herkunft, Produktionsreiter, Filter und Scrollposition je Person im Browser. Ansichten werden ohne zusätzliche Datenbankabfragen wiederhergestellt. Der frühere Änderungsverlauf mit Rückgängig-Belegen (`modules/changes`, Tabelle `record_operations`) ist entfernt; Migration 0019 löscht die Tabelle. Es gibt keine Papierkorbansicht.
+`shared/client-navigation.ts` und `shared/view-state.ts` bewahren Herkunft, Produktionsreiter, Filter und Scrollposition je Person im Browser. Ansichten werden ohne zusätzliche Datenbankabfragen wiederhergestellt. Der frühere Änderungsverlauf mit Rückgängig-Belegen (`modules/changes`, Tabelle `record_operations`) ist entfernt. Die Tabelle bleibt mit ihren historischen Einträgen erhalten, wird aber nicht mehr gelesen oder beschrieben. Es gibt keine Papierkorbansicht.
 
 Dateien und CRDT-Dokumentstände bleiben im kurzen Rückgängig-Zeitraum bestehen und sind nach der Löschung nicht abrufbar. Verzögerte Outboxereignisse entfernen anschließend verwaiste Dateimetadaten und nutzen den bestehenden, referenzgeprüften Blob-Löschprozess. Der tägliche Wartungslauf entfernt abgelaufene Rückgängig-Nutzdaten und alte Verlaufseinträge; Belege mit noch ausstehender Dateibereinigung bleiben für diese Verarbeitung erhalten.
 
