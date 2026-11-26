@@ -10,6 +10,7 @@ import { auditChange } from "@/platform/events";
 import { localDay } from "@/modules/time-tracking/rules";
 import type { WorkingTimeSettings } from "@/shared/working-time";
 import { onboardingVersion, type RecordData } from "@/shared/contracts";
+import { teamChangeKinds } from "@/shared/workspace-sync";
 import { profileUpdateSchema } from "./schema";
 
 export async function updateProfile(context: Context, input: RecordData) {
@@ -109,7 +110,8 @@ export async function updateProfile(context: Context, input: RecordData) {
     });
     revalidateTag(`member:${targetId}`, { expire: 0 });
     invalidateTeam(context.departmentId);
-    scheduleLiveChange(context.departmentId);
+    // Working time is team data, which every partial patch carries; no shared slice changed.
+    scheduleLiveChange(context.departmentId, teamChangeKinds);
     return profile;
   }
   const changes = {

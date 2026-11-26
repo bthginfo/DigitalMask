@@ -191,7 +191,8 @@ describe("manual attendance receipts in the actual save service", () => {
         `${kind}.deleted`,
         first.id,
       );
-      expect(mock.invalidate).toHaveBeenLastCalledWith("makeup", true, [kind, "files"]);
+      // A booking without attachments does not touch the file slice (no full client reload).
+      expect(mock.invalidate).toHaveBeenLastCalledWith("makeup", true, [kind]);
     },
   );
 });

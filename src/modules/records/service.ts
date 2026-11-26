@@ -350,6 +350,8 @@ export async function saveRecord(
   } = {},
 ) {
   let eventQueued = false;
+  // A record moving to another production or chat changes document access for its files.
+  let accessMoved = false;
   await assertWrite(context, kind);
   const write = async (tx: Transaction) => {
     await acquireWorkflowLock(context, kind, tx);
@@ -524,6 +526,9 @@ export async function saveRecord(
     };
     let row: typeof records.$inferSelect;
     if (existing) {
+      accessMoved =
+        textValue(existing.data.productionId) !== textValue(data.productionId) ||
+        textValue(existing.data.conversationId) !== textValue(data.conversationId);
       if (version !== existing.version)
         throw new HttpError(409, "Der Eintrag wurde inzwischen geändert. Bitte lade ihn neu.");
       const [updated] = await tx
@@ -646,7 +651,9 @@ export async function saveRecord(
     ? await write(options.transaction)
     : await db.transaction(write);
   if (!options.deferEffects && !options.transaction) {
-    invalidateWorkspace(context.departmentId, true, recordChangeKinds(kind));
+    invalidateWorkspace(context.departmentId, true, recordChangeKinds(kind), {
+      permissions: accessMoved,
+    });
     if (eventQueued) scheduleEvents();
   }
   return result;
@@ -658,6 +665,7 @@ export async function deleteRecord(
   options: { transaction?: Transaction; version?: number } = {},
 ) {
   let eventQueued = false;
+  let hadAttachments = false;
   const write = async (tx: Transaction) => {
     await acquireWorkflowLock(context, kind, tx);
     const row = await findRecord(context, id, kind, tx, true);
@@ -710,7 +718,8 @@ export async function deleteRecord(
         path: file.data.path,
         fileId: file.id,
       });
-    eventQueued = attachments.length > 0;
+    hadAttachments = attachments.length > 0;
+    eventQueued = hadAttachments;
     if (kind === "productions")
       await tx
         .delete(records)
@@ -731,9 +740,10 @@ export async function deleteRecord(
   if (options.transaction) await write(options.transaction);
   else await db.transaction(write);
   if (!options.transaction) {
+    // Only a deletion that removed attachments changes the file slice (a full client reload).
     invalidateWorkspace(context.departmentId, true, [
       kind,
-      "files",
+      ...(hadAttachments ? ["files" as const] : []),
       ...(kind === "productions" ? ["notifications" as const] : []),
     ]);
     if (eventQueued) scheduleEvents();

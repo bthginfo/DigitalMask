@@ -18,28 +18,42 @@ import {
   listValue,
 } from "@/shared/contracts";
 import { serialize, projectVisible } from "./repository";
-import { scheduleLiveChange } from "@/platform/realtime";
+import { scheduleLiveChange, type LiveChangeOptions } from "@/platform/realtime";
 import { canReadShiftSwap } from "@/modules/shift-swaps/rules";
 import { messageInChat, workspaceMessageLimit, type ChatScope } from "@/modules/chat/media";
 import { visibleWorkingTime } from "@/shared/working-time";
 import { calendarProductionReference } from "@/shared/calendar-access";
 import { productionOverviewReference } from "@/shared/production-overview";
-import { workspaceGroups, workspaceKindTag, notificationUserTag } from "@/shared/workspace-sync";
+import {
+  chatReadUserTag,
+  workspaceGroups,
+  workspaceKindTag,
+  notificationUserTag,
+} from "@/shared/workspace-sync";
 export function invalidateWorkspace(
   departmentId: string,
   broadcast = true,
   kinds?: readonly RecordKind[],
+  options?: LiveChangeOptions,
 ) {
   const tags = kinds?.map((kind) => workspaceKindTag(departmentId, kind)) ?? [
     scopeTag(departmentId),
   ];
   for (const tag of new Set(tags)) revalidateTag(tag, { expire: 0 });
-  if (broadcast) scheduleLiveChange(departmentId, kinds);
+  if (broadcast) scheduleLiveChange(departmentId, kinds, options);
 }
-export function invalidateNotifications(departmentId: string, userIds: readonly string[]) {
+export function invalidateNotifications(
+  departmentId: string,
+  userIds: readonly string[],
+  options?: LiveChangeOptions,
+) {
   for (const userId of new Set(userIds))
     revalidateTag(notificationUserTag(departmentId, userId), { expire: 0 });
-  if (userIds.length) scheduleLiveChange(departmentId, ["notifications"]);
+  if (userIds.length) scheduleLiveChange(departmentId, ["notifications"], options);
+}
+/** A personal read cursor only affects the reader: no department-wide signal. */
+export function invalidateChatReads(departmentId: string, userId: string) {
+  revalidateTag(chatReadUserTag(departmentId, userId), { expire: 0 });
 }
 export function invalidateTeam(departmentId: string) {
   revalidateTag(`team:${departmentId}`, { expire: 0 });

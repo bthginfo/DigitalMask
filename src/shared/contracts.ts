@@ -92,6 +92,11 @@ export interface Workspace {
   timer: { id: string; data: RecordData } | null;
   attendanceTimer?: { id: string; data: RecordData } | null;
   projectHours: Record<string, number>;
+  /**
+   * The caller's unread chat messages per visible channel, keyed like `chatChoiceKey`:
+   * `conversation:<id>`, `production:<id>` or `general`. Only channels with unread messages.
+   */
+  chatUnread?: Record<string, number>;
 }
 export interface ApiError {
   error: string;

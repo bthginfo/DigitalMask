@@ -7,7 +7,9 @@ import { db } from "@/platform/db";
 import { departments, memberships } from "@/platform/db/schema";
 import { readJson, route, HttpError } from "@/platform/http";
 import { throttle } from "@/platform/auth/throttle";
-import { invalidateWorkspace, invalidateTeam } from "@/modules/records/workspace";
+import { invalidateTeam } from "@/modules/records/workspace";
+import { scheduleLiveChange } from "@/platform/realtime";
+import { teamChangeKinds } from "@/shared/workspace-sync";
 export async function POST(request: Request) {
   return route(async () => {
     const input = registrationInput.safeParse(await readJson(request));
@@ -45,8 +47,9 @@ export async function POST(request: Request) {
       role: "user",
       status: "pending",
     });
+    // A pending account changes only the team list: no shared record slice, no full reload.
     invalidateTeam(department.id);
-    invalidateWorkspace(department.id);
+    scheduleLiveChange(department.id, teamChangeKinds, { origin: null });
     return NextResponse.json({ pending: true }, { status: 201 });
   });
 }

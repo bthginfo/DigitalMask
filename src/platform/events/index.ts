@@ -325,8 +325,10 @@ export async function processEvents(deadline = Date.now() + 170000) {
       });
     }
   }
-  for (const departmentId of changedDepartments) invalidateWorkspace(departmentId);
+  // Background work: no browser tab wrote these changes, so no echo origin.
+  for (const departmentId of changedDepartments)
+    invalidateWorkspace(departmentId, true, undefined, { origin: null });
   for (const [departmentId, userIds] of noticeRecipients)
-    invalidateNotifications(departmentId, [...userIds]);
+    invalidateNotifications(departmentId, [...userIds], { origin: null });
   return { processed: due.length, continuation: calendarContinuations.size > 0, nextGoogleAt };
 }
