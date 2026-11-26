@@ -138,14 +138,16 @@ for (const width of [1440, 768, 375]) {
       await expect(page.locator('[data-stat="attendance"] strong')).toHaveText("8,5 h");
       await expect(page.locator('[data-stat="attendance"]')).toContainText("Anwesenheit");
       await expect(page.getByRole("button", { name: "Gesamt", exact: true })).toHaveCount(0);
+      // Mein Tag starts with attendance, followed by today's plan.
       expect(
         await page
-          .locator(".today-notifications")
+          .locator('[data-whats-new="attendance"]')
           .evaluate(
             (element) =>
               !!(
-                element.compareDocumentPosition(document.querySelector(".today-main > .panel")!) &
-                Node.DOCUMENT_POSITION_FOLLOWING
+                element.compareDocumentPosition(
+                  document.querySelector('[data-whats-new="today-plan"]')!,
+                ) & Node.DOCUMENT_POSITION_FOLLOWING
               ),
           ),
       ).toBe(true);
