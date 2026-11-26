@@ -28,7 +28,6 @@ import { TimerPanel } from "./time";
 import { expandEvents } from "./calendar";
 import { calendarProductionRecords } from "@/shared/calendar-access";
 import { statusLabels } from "../resource-fields";
-import { initialPeriod, recordMatchesPeriod } from "@/shared/period-filter";
 import { unreadNotifications } from "@/modules/notifications/unread";
 import { MarkAllReadButton } from "@/modules/notifications/components/mark-all-read";
 import { NotificationRow } from "@/modules/notifications/components/notification-row";
@@ -45,15 +44,9 @@ export function TodayModule({ navigate }: { navigate: (module: string) => void }
   const today = localDate(new Date(now));
   const week = weekStart();
   const weekEnd = shiftDate(week, 6);
+  // Open work stays visible across season changes, including running repertoire.
   const myTasks = workspace.records.tasks.filter(
-    (x) =>
-      ids(x.data, "assigneeIds").includes(workspace.user.id) &&
-      x.data.status !== "done" &&
-      recordMatchesPeriod(
-        x,
-        initialPeriod(workspace.records.productions),
-        workspace.records.productions,
-      ),
+    (x) => ids(x.data, "assigneeIds").includes(workspace.user.id) && x.data.status !== "done",
   );
   const upcomingEvents = expandEvents(
     workspace.records.events.filter((x) =>

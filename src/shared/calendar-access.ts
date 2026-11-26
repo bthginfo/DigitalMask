@@ -1,4 +1,4 @@
-import { textValue, type DomainRecord, type Workspace } from "./contracts";
+import { listValue, textValue, type DomainRecord, type Workspace } from "./contracts";
 import { canManageRecord } from "./record-permissions";
 
 /** Calendar labels are shared with the team without exposing internal production data. */
@@ -16,6 +16,7 @@ export function calendarProductionReference(record: DomainRecord): DomainRecord 
       title: textValue(record.data.title),
       color: textValue(record.data.color),
       season: textValue(record.data.season),
+      ...(Array.isArray(record.data.seasons) ? { seasons: listValue(record.data.seasons) } : {}),
       premiere: textValue(record.data.premiere),
     },
   };

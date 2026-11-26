@@ -2,6 +2,7 @@ import React from "react";
 import { Image as PdfImage, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 import { listValue, textValue, type DomainRecord } from "../../shared/contracts";
 import { productionLookDuration } from "../../shared/document-sections";
+import { productionPlaysIn, productionSeasons } from "../../shared/period-filter";
 import { personNameKey } from "../../shared/person-identity";
 import { documentPresentation } from "./document-presentation";
 import type { ExportInput } from "./types";
@@ -226,7 +227,10 @@ export function LookPages({
       {groups.flatMap((actors) => {
         const productionId = actors[0][0].data.productionId;
         const production = input.references?.productions?.find((row) => row.id === productionId);
-        const season = textValue(production?.data.season) || input.season;
+        // A repertoire piece names the exported season, or all of its seasons without a filter.
+        const seasons = production ? productionSeasons(production.data) : [];
+        const filtered = !!production && productionPlaysIn(production.data, input.season);
+        const season = seasons.length && !filtered ? seasons.join(", ") : input.season;
         const duration = production
           ? productionLookDuration(production, input.references?.looks ?? input.records)
           : 0;

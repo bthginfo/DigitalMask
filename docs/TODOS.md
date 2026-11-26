@@ -339,3 +339,5 @@ Nach den abschließenden Liveprüfungen werden die angelegten QA-Konten, Testein
 - [x] Bestehende Schauspieler der aktuellen Spielzeit und belegten historischen Besetzungen zuordnen, nach Sicherung und Abgleich der Daten und Verknüpfungen.
 - [x] Theaterimport mit eigener validierter Ziel-Spielzeit durchführen und frühere Zuordnungen sowie zusätzliche Schauspieler behalten.
 - [x] Spielzeitfilter für Schauspielerexporte übernehmen und Hilfe sowie technische Dokumentation ergänzen.
+- [x] Produktionen im Repertoire mehreren Spielzeiten zuordnen, samt Aufschrieben, Aufgaben, Kalender und Exporten je Spielzeit; Wiederaufnahme ohne Kopie über „Zur aktuellen Spielzeit hinzufügen“.
+- [x] Offene eigene Aufgaben auf Heute unabhängig von der Spielzeit anzeigen.

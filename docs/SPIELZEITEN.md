@@ -2,11 +2,19 @@
 
 Die aktuelle Spielzeit läuft vom 1. August bis zum 31. Juli. Die Berechnung verwendet Europe/Berlin und berücksichtigt damit auch den Wechsel um Mitternacht. Gleichwertige Angaben wie `2026/27`, `2026 / 2027` und `2026–2027` werden als dieselbe Spielzeit behandelt.
 
-Globale Übersichten für Produktionen, Kalender, Zeitnachweise, Teamboard, Aufschriebe und Schauspieler beginnen mit der aktuellen Spielzeit. Frühere und alle Spielzeiten bleiben ausdrücklich auswählbar. Ein direkt geöffnetes historisches Stück verwendet für seine Aufgaben, seinen Kalender und seine Produktionszeiten die eigene Spielzeit. Allgemeine Aufschriebe, Kontakte, Bestände und Vorlagen bleiben als gemeinsame Referenzen verfügbar.
+Globale Übersichten für Produktionen, Kalender, Zeitnachweise, Teamboard, Aufschriebe und Schauspieler beginnen mit der aktuellen Spielzeit. Frühere und alle Spielzeiten bleiben ausdrücklich auswählbar. Ein direkt geöffnetes Stück zeigt seine Aufgaben, seinen Kalender und seine Produktionszeiten in der aktuellen Spielzeit, wenn es darin gespielt wird, sonst in seiner letzten eigenen Spielzeit. Allgemeine Aufschriebe, Kontakte, Bestände und Vorlagen bleiben als gemeinsame Referenzen verfügbar.
+
+## Produktionen im Repertoire
+
+Eine Produktion kann in mehreren Spielzeiten gespielt werden. Unter „Spielt in Spielzeiten“ wählt ihr jede Spielzeit einzeln aus, zum Beispiel 2025/26 und 2026/27. Die früheste gilt als Premierenspielzeit. Das Stück erscheint mit seinen Aufschrieben, Aufgaben, Besetzungen und Maskenplänen in jeder gewählten Spielzeit; Karten und Kopfzeile zeigen die Liste kurz an, etwa „2025/26 · 2026/27“.
+
+Für eine Wiederaufnahme öffnet ihr Produktion verwalten und wählt „Zur aktuellen Spielzeit hinzufügen“. Es bleibt dieselbe Produktion: Aufschriebe und Maskenpläne werden nicht verdoppelt und laufen nicht auseinander. „Als neue Produktion kopieren“ ist nur für eine Neuinszenierung gedacht; die Kopie startet in der aktuellen Spielzeit und wird danach getrennt gepflegt. Ein Stück, das nicht mehr gespielt wird, archiviert ihr wie bisher.
+
+Ältere Produktionen mit nur einer eingetragenen Spielzeit erscheinen weiterhin genau in dieser. Beim nächsten Bearbeiten wird daraus die Liste. Zeitbuchungen, Termine und Anwesenheit richten sich weiterhin nach ihrem Datum; allgemeine Teamaufgaben behalten ihre eigene Spielzeit.
 
 ## Aufgaben
 
-Allgemeine Teamaufgaben speichern ihre Zuordnung in `data.season`. Neue Aufgaben übernehmen die gewählte Spielzeit; bei Alle Spielzeiten ist die aktuelle Spielzeit vorbelegt. Unteraufgaben übernehmen die Zuordnung der Hauptaufgabe. Produktionsaufgaben werden weiterhin über die Spielzeit ihres Stücks gefiltert.
+Allgemeine Teamaufgaben speichern ihre Zuordnung in `data.season`. Neue Aufgaben übernehmen die gewählte Spielzeit; bei Alle Spielzeiten ist die aktuelle Spielzeit vorbelegt. Unteraufgaben übernehmen die Zuordnung der Hauptaufgabe. Produktionsaufgaben werden über die Spielzeiten ihres Stücks gefiltert. Heute zeigt deine offenen Aufgaben immer, unabhängig von der Spielzeit.
 
 Ältere allgemeine Aufgaben ohne gespeicherte Zuordnung verwenden zunächst die Spielzeit ihres gültigen Fälligkeitsdatums, sonst ihres Anlagedatums. Beim nächsten Speichern wird diese Zuordnung festgehalten. Eine bestehende Aufgabe wandert dadurch beim Jahreswechsel nicht automatisch in eine andere Spielzeit.
 

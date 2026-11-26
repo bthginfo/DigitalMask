@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { RecordKind } from "@/shared/contracts";
 import { categoryScopes } from "@/shared/domain-categories";
 import { maskPlanSchema } from "@/modules/mask-plans/schema";
-import { seasonKey } from "@/shared/period-filter";
+import { normalizeSeasonList, seasonKey } from "@/shared/period-filter";
 import { reservationSchema } from "@/modules/reservations/schema";
 import { shiftSwapSchema } from "@/modules/shift-swaps/schema";
 const short = z.string().trim().max(200);
@@ -173,23 +173,31 @@ export const schemas: Record<RecordKind, z.ZodType> = {
     status: z.enum(["new", "review", "planned", "doing", "done", "closed"]).default("new"),
     userId: id,
   }),
-  productions: z.object({
-    title,
-    description: note,
-    season: short.default(""),
-    status: z.enum(["preparation", "active", "archived"]).default("preparation"),
-    premiere: z.string().max(40).default(""),
-    color: z
-      .string()
-      .regex(/^#[0-9a-fA-F]{6}$/)
-      .default("#357b68"),
-    memberIds: ids,
-    contacts: productionContacts,
-    sourceId: id,
-    durationMinutes: z.number().min(0).max(10000).default(0),
-    // Unset means off, unless the production already has sprints (see sprintsEnabled()).
-    sprintsEnabled: z.boolean().optional(),
-  }),
+  productions: z
+    .object({
+      title,
+      description: note,
+      season: short.default(""),
+      seasons: z.array(seasonSchema).max(40).optional(),
+      status: z.enum(["preparation", "active", "archived"]).default("preparation"),
+      premiere: z.string().max(40).default(""),
+      color: z
+        .string()
+        .regex(/^#[0-9a-fA-F]{6}$/)
+        .default("#357b68"),
+      memberIds: ids,
+      contacts: productionContacts,
+      sourceId: id,
+      durationMinutes: z.number().min(0).max(10000).default(0),
+      // Unset means off, unless the production already has sprints (see sprintsEnabled()).
+      sprintsEnabled: z.boolean().optional(),
+    })
+    // Older clients and exports read `season`; it keeps the premiere season of the list.
+    .transform((data) => {
+      if (!data.seasons?.length) return data;
+      const seasons = normalizeSeasonList(data.seasons);
+      return { ...data, seasons, season: seasons[0] };
+    }),
   actors: z.object({
     name: title,
     contact: z.string().max(1000).default(""),

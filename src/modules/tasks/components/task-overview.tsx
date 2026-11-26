@@ -53,13 +53,8 @@ export function useTaskView() {
   );
   const [stored, setStored] = useState(() => readStoredView(userId));
   const [fallback] = useState<TaskView>(() => {
-    const period = initialPeriod(workspace.records.productions);
-    return workspace.records.tasks.some(
-      (task) =>
-        isAssignedTo(task, userId) &&
-        isOpenTask(task) &&
-        recordMatchesPeriod(task, period, workspace.records.productions),
-    )
+    // Open tasks assigned to me count regardless of the season.
+    return workspace.records.tasks.some((task) => isAssignedTo(task, userId) && isOpenTask(task))
       ? "mine"
       : "team";
   });
@@ -238,12 +233,13 @@ export function TaskOverview({
     mine ? isAssignedTo(task, userId) : !!value(task.data, "productionId"),
   );
   const query = search.trim().toLowerCase();
+  const matchesQuery = (task: DomainRecord) =>
+    !query || value(task.data, "title").toLowerCase().includes(query);
   const visible = source.filter(
-    (task) =>
-      recordMatchesPeriod(task, period, productions) &&
-      (!query || value(task.data, "title").toLowerCase().includes(query)),
+    (task) => recordMatchesPeriod(task, period, productions) && matchesQuery(task),
   );
-  const open = visible.filter(isOpenTask);
+  // My open tasks stay visible in every season; the season filter applies to finished ones.
+  const open = (mine ? source.filter(matchesQuery) : visible).filter(isOpenTask);
   const done = sortDoneTasks(visible.filter((task) => !isOpenTask(task)));
   const groups = groupTasksByProduction(
     mine ? open : visible,

@@ -21,7 +21,16 @@ import { RepeatableList } from "./repeatable-list";
 import { categoriesFor } from "@/shared/domain-categories";
 import { CastingImpact } from "./casting-impact";
 import { numberDraft, parseNumberDraft } from "@/shared/number-draft";
-import { actorSeasons, initialPeriod, seasonKey, teamTaskSeason } from "@/shared/period-filter";
+import {
+  actorSeasons,
+  initialPeriod,
+  normalizeSeasonList,
+  productionSeasons,
+  seasonForDate,
+  seasonKey,
+  teamTaskSeason,
+} from "@/shared/period-filter";
+import { ProductionSeasonsField } from "@/modules/productions/components/production-seasons-field";
 import { sprintsEnabled, taskStatusOptions } from "@/modules/tasks/overview";
 
 function initialData(kind: RecordKind): RecordData {
@@ -122,8 +131,21 @@ function GenericResourceEditor({
         ? { category: categoriesFor("materials", workspace.records.categories)[0]?.key || "" }
         : {}),
       ...merged,
+      ...(kind === "productions"
+        ? {
+            seasons: normalizeSeasonList(
+              productionSeasons(merged).length || record
+                ? productionSeasons(merged)
+                : [seasonForDate(workspace.records.productions)],
+            ),
+          }
+        : {}),
     };
   });
+  const legacySeason =
+    kind === "productions" && !seasonKey(record?.data.season)
+      ? value(record?.data || {}, "season")
+      : "";
   const productionContext =
     lockedProductionId ??
     (record && ["tasks", "sprints", "characters", "casting", "looks", "handovers"].includes(kind)
@@ -191,6 +213,11 @@ function GenericResourceEditor({
         if (!normalized)
           throw new Error("Bitte gib die Spielzeit als Jahr/Jahr ein, z. B. 2026/2027.");
         result.season = normalized;
+      }
+      if (kind === "productions") {
+        const seasons = normalizeSeasonList(ids(result, "seasons"));
+        result.seasons = seasons;
+        result.season = seasons[0] || legacySeason;
       }
       if (kind === "actors") {
         const seasons = ids(result, "ensembleSeasons")
@@ -327,6 +354,16 @@ function GenericResourceEditor({
         list
       );
     }
+    if (field.type === "seasons")
+      return (
+        <ProductionSeasonsField
+          key={field.key}
+          seasons={ids(data, "seasons")}
+          current={seasonKey(seasonForDate(workspace.records.productions)) || ""}
+          legacy={legacySeason}
+          onChange={(seasons) => change("seasons", seasons)}
+        />
+      );
     if (field.type === "multi")
       return (
         <fieldset className="form-multi" key={field.key}>

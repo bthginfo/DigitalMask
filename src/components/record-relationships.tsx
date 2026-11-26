@@ -17,7 +17,12 @@ import {
   personProductions,
   relatedProduction,
 } from "@/shared/record-relationships";
-import { seasonForDate, type PeriodFilter } from "@/shared/period-filter";
+import {
+  productionSeasons,
+  seasonForDate,
+  seasonListLabel,
+  type PeriodFilter,
+} from "@/shared/period-filter";
 import styles from "./record-links.module.css";
 
 type RelationshipProps = { record: DomainRecord; onNavigate?: () => void };
@@ -85,7 +90,10 @@ export function ActorRelationships({ record, onNavigate }: RelationshipProps) {
                 <RecordLink record={production} {...link}>
                   {textValue(production.data.title)}
                 </RecordLink>
-                <span>{textValue(production.data.season) || "Spielzeit nicht hinterlegt"}</span>
+                <span>
+                  {seasonListLabel(productionSeasons(production.data)) ||
+                    "Spielzeit nicht hinterlegt"}
+                </span>
               </div>
               {castings.map((casting) => {
                 const character = castingCharacter(casting, workspace);
@@ -205,7 +213,7 @@ export function PersonRelationships({ record, onNavigate }: RelationshipProps) {
                 <RecordLink record={production} from={record} onNavigate={onNavigate}>
                   {textValue(production.data.title)}
                 </RecordLink>
-                <span>{textValue(production.data.season)}</span>
+                <span>{seasonListLabel(productionSeasons(production.data))}</span>
               </div>
               <p className={styles.caption}>{roles.join(" · ") || "Kontakt"}</p>
             </li>

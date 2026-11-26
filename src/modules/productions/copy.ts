@@ -7,6 +7,7 @@ import { invalidateWorkspace } from "@/modules/records/workspace";
 import { auditChange } from "@/platform/events";
 import { assertRead } from "@/modules/records/service";
 import { cloneMaskPlan, maskPlanValue } from "@/modules/mask-plans/model";
+import { seasonForDate } from "@/shared/period-filter";
 export async function copyProduction(context: Context, id: string, title: string) {
   const result = await db.transaction(async (tx) => {
     const source = await findRecord(context, id, "productions", tx);
@@ -55,7 +56,10 @@ export async function copyProduction(context: Context, id: string, title: string
         createdBy: context.user.id,
         data: {
           ...source.data,
-          title: title || `${source.data.title} · Wiederaufnahme`,
+          title: title || `${source.data.title} · Neuinszenierung`,
+          // A new staging starts in the current season; repertoire keeps the original record.
+          season: seasonForDate(),
+          seasons: [seasonForDate()],
           status: "preparation",
           premiere: "",
           sourceId: id,

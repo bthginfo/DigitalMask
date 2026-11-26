@@ -16,6 +16,7 @@ export type Field = {
     | "checkbox"
     | "checklist"
     | "lines"
+    | "seasons"
     | "color";
   required?: boolean;
   options?: [string, string][];
@@ -80,7 +81,7 @@ export const fields: Partial<Record<RecordKind, Field[]>> = {
   productions: [
     title,
     description,
-    { key: "season", label: "Spielzeit", placeholder: "2026 / 2027" },
+    { key: "season", label: "Spielt in Spielzeiten", type: "seasons" },
     {
       key: "status",
       label: "Status",
