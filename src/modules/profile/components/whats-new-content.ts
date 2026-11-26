@@ -7,6 +7,7 @@ import {
   Palette,
   Repeat2,
   ShieldCheck,
+  Theater,
   type LucideIcon,
 } from "lucide-react";
 
@@ -23,43 +24,48 @@ export const whatsNewHighlights: readonly {
   {
     icon: Palette,
     title: "Frischer Look",
-    text: "Klarere Schrift, ruhigere Flächen und eine schwebende Leiste unten. Funktioniert hell und dunkel.",
+    text: "Klarere Schrift, ruhigere Flächen und eine schwebende Leiste unten. Hell und dunkel.",
   },
   {
     icon: CalendarClock,
     title: "Heute ist dein Tag",
-    text: "Anwesenheit mit einem Tipp starten, deine Dienste von heute, die Vorstellung am Abend und ungelesene Chats auf einen Blick.",
+    text: "Anwesenheit mit einem Tipp starten, deine Dienste von heute mit Maskenplan, Umzügen und Chat, ungelesene Chats und deine Aufgaben.",
   },
   {
     icon: ShieldCheck,
     title: "Zu erledigen für Admins",
-    text: "Freiwünsche, Diensttausch, neue Registrierungen und knappes Material stehen jetzt gesammelt auf Heute.",
+    text: "Freiwünsche, Diensttausch, neue Registrierungen und knappes Material stehen gesammelt auf Heute. Dazu kommt jeweils eine Mitteilung.",
     adminOnly: true,
+  },
+  {
+    icon: LayoutGrid,
+    title: "Gleiche Namen überall",
+    text: "Stücke, Aufgaben, Zeit und Chat heißen jetzt überall gleich. Unter „Mehr“ findest du Nachschlagen, Team und dein Konto.",
   },
   {
     icon: ClipboardList,
     title: "Meine Aufgaben aus allen Stücken",
-    text: "Im Bereich Aufgaben siehst du alles, was dir zugeteilt ist, nach Stück sortiert. Erledigen geht mit einem Tipp.",
+    text: "Unter Aufgaben siehst du alles, was dir zugeteilt ist, nach Stück sortiert. Abhaken geht mit einem Tipp. Sprints sind nur noch dabei, wenn ihr sie nutzt.",
   },
   {
     icon: Repeat2,
     title: "Stücke über mehrere Spielzeiten",
-    text: "Ein Stück im Repertoire kann jetzt in mehreren Spielzeiten laufen. Kopieren für die Wiederaufnahme ist nicht mehr nötig.",
+    text: "Läuft ein Stück weiter, fügst du es zur aktuellen Spielzeit hinzu. Aufschriebe und Maskenpläne bleiben beim selben Stück.",
   },
   {
-    icon: MessageCircle,
-    title: "Chat wie gewohnt vom Handy",
-    text: "Sprechblasen, und der Chat öffnet direkt dort, wo neue Nachrichten auf dich warten.",
+    icon: Theater,
+    title: "Maskenplan zur Vorstellung",
+    text: "Jedes Stück zeigt oben die nächste Vorstellung. Vom Termin öffnet sich der passende Maskenplan mit deiner Spalte und einer Linie für die aktuelle Uhrzeit.",
   },
   {
     icon: Clock3,
     title: "Zeit einfacher erfassen",
-    text: "Wenn du an einem Stück arbeitest, läuft die Anwesenheit automatisch mit. Dauern trägst du als Stunden und Minuten ein.",
+    text: "Startest du Produktionszeit, läuft die Anwesenheit mit. Dauern trägst du als 1:30 ein. Läuft ein Timer sehr lange, erinnert dich die App.",
   },
   {
-    icon: LayoutGrid,
-    title: "Aufgeräumtes Menü",
-    text: "Jeder Bereich hat überall denselben Namen. Unter „Mehr“ findest du Nachschlagen, Team und Konto getrennt.",
+    icon: MessageCircle,
+    title: "Chat mit Sprechblasen",
+    text: "Der Chat öffnet dort, wo neue Nachrichten warten. Neue Nachrichten zählt das Chat-Symbol; die Glocke bleibt für wichtige Mitteilungen.",
   },
 ];
 
@@ -103,7 +109,7 @@ export const whatsNewTour: readonly WhatsNewStep[] = [
     module: "productions",
     target: "[data-whats-new='seasons']",
     title: "Repertoire über Spielzeiten",
-    text: "Läuft ein Stück weiter, füge es im Menü der Produktion zur aktuellen Spielzeit hinzu. Aufschriebe und Maskenpläne bleiben dabei erhalten.",
+    text: "Läuft ein Stück weiter, füge es unter „Stück verwalten“ zur aktuellen Spielzeit hinzu. Aufschriebe und Maskenpläne bleiben dabei erhalten.",
   },
   {
     module: "today",

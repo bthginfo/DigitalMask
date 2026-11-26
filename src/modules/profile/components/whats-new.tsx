@@ -122,7 +122,10 @@ function CoachMarks({
       if (cancelled) return;
       target.current = element;
       if (element) {
-        element.scrollIntoView({ block: "center", behavior: "instant" });
+        // Tall areas start just below the bar so the explanation still fits underneath.
+        const tall = element.getBoundingClientRect().height > window.innerHeight * 0.4;
+        element.scrollIntoView({ block: tall ? "start" : "center", behavior: "instant" });
+        if (tall) window.scrollBy({ top: -76, behavior: "instant" });
         setRect(element.getBoundingClientRect());
       }
       setReady(true);
@@ -155,20 +158,24 @@ function CoachMarks({
   };
   const next = () => (last ? onFinish() : goTo(index + 1));
   const padding = 8;
+  const viewport = typeof window === "undefined" ? 800 : window.innerHeight;
+  // Only the visible part is highlighted; very tall areas are capped so the card fits.
   const spot = rect
-    ? {
-        top: rect.top - padding,
-        left: rect.left - padding,
-        width: rect.width + padding * 2,
-        height: rect.height + padding * 2,
-      }
+    ? (() => {
+        const top = Math.max(rect.top - padding, 8);
+        const bottom = Math.min(rect.bottom + padding, viewport - 8);
+        const height = Math.min(Math.max(bottom - top, 40), viewport * 0.42);
+        return { top, left: rect.left - padding, width: rect.width + padding * 2, height };
+      })()
     : null;
-  const below = !spot || spot.top + spot.height + 220 < window.innerHeight;
-  const cardStyle: React.CSSProperties = spot
-    ? below
-      ? { top: Math.min(spot.top + spot.height + 14, window.innerHeight - 240) }
-      : { bottom: Math.max(window.innerHeight - spot.top + 14, 90) }
-    : { top: "50%", translate: "-50% -50%" };
+  const cardHeight = 240;
+  const cardStyle: React.CSSProperties = !spot
+    ? { top: "50%", translate: "-50% -50%" }
+    : spot.top + spot.height + 14 + cardHeight < viewport
+      ? { top: spot.top + spot.height + 14 }
+      : spot.top - 14 - cardHeight > 0
+        ? { bottom: viewport - spot.top + 14 }
+        : { bottom: 96 };
 
   return (
     <div
