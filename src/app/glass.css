@@ -701,3 +701,62 @@ input[type="checkbox"] {
     transition: none;
   }
 }
+
+/* Tables read better as rows of an inset list. */
+td {
+  font-size: 14px;
+  border-bottom: 0.5px solid var(--separator);
+}
+th {
+  font-size: 12px;
+  letter-spacing: 0.03em;
+}
+@media (max-width: 760px) {
+  .resource-table {
+    overflow: hidden;
+  }
+  .resource-table table,
+  .resource-table tbody {
+    display: block;
+    min-width: 0;
+  }
+  .resource-table thead {
+    display: none;
+  }
+  .resource-table tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 2px 12px;
+    align-items: center;
+    padding: 12px 16px;
+  }
+  .resource-table tr + tr {
+    border-top: 0.5px solid var(--separator);
+  }
+  .resource-table td {
+    display: block;
+    padding: 0;
+    border: 0;
+    min-width: 0;
+  }
+  .resource-table td:nth-child(1) {
+    font-size: 16px;
+  }
+  .resource-table td:nth-child(2) {
+    grid-column: 1;
+    color: var(--muted);
+    font-size: 14px;
+  }
+  .resource-table td:nth-child(3) {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+  .resource-table td:nth-child(4) {
+    display: none;
+  }
+}
+@media (max-width: 760px) {
+  .toolbar input:not([type="checkbox"]):not([type="radio"]) {
+    flex: 1 1 100%;
+  }
+}

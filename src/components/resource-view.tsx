@@ -867,7 +867,7 @@ export function ResourceView({
             })}
           </div>
         ) : (
-          <div className="table-scroll panel">
+          <div className="table-scroll panel resource-table">
             <table>
               <thead>
                 <tr>
