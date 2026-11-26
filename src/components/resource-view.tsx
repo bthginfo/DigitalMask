@@ -258,7 +258,9 @@ function GenericRecordDetail({
                   );
                 } else if (field.options)
                   display =
-                    field.options.find((x) => x[0] === current.data[field.key])?.[1] || display;
+                    field.options.find((x) => x[0] === current.data[field.key])?.[1] ||
+                    (field.key === "status" && statusLabels[value(current.data, "status")]) ||
+                    display;
                 else if (field.key === "durationSeconds")
                   display = `${hours(num(current.data, field.key))} h`;
                 else if (field.key === "pauseSeconds")

@@ -157,6 +157,48 @@
   font-size: 13px;
 }
 
+.statusTag {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--fill);
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 550;
+}
+
+/* Small iOS-style switch that turns the sprint tools of a production on or off. */
+.sprintSwitch {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.sprintSwitch::after {
+  content: "";
+  flex-shrink: 0;
+  width: 40px;
+  height: 24px;
+  border-radius: 999px;
+  background: radial-gradient(circle at 12px 12px, #fff 9px, transparent 9.5px), var(--fill-strong);
+  transition: background 0.25s var(--ease-out);
+}
+
+.sprintSwitch[aria-checked="true"]::after {
+  background: radial-gradient(circle at 28px 12px, #fff 9px, transparent 9.5px), var(--accent);
+}
+
+.sprintSwitch:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
 .noTasks {
   display: grid;
   justify-items: start;
@@ -189,6 +231,12 @@
     margin: 0;
     min-height: 44px;
     font-size: 16px;
+  }
+
+  .taskWorkspace .filters .sprintSwitch {
+    justify-content: space-between;
+    width: 100%;
+    font-size: 15px;
   }
 
   .taskWorkspace .filters :global(.check-label) {
