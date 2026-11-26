@@ -459,7 +459,7 @@ svg {
   color: var(--accent);
 }
 .eyebrow {
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 1.55px;
   font-weight: 650;
   color: var(--muted);
@@ -574,7 +574,7 @@ svg {
   border-radius: 5px;
   background: var(--surface-soft);
   color: var(--muted);
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 600;
   line-height: 1.45;
   white-space: nowrap;
@@ -637,7 +637,7 @@ svg {
 .brand-sub {
   display: block;
   letter-spacing: 0.9px;
-  font-size: 7.5px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--muted);
   margin-top: 1px;
@@ -658,13 +658,13 @@ svg {
 }
 .department-switch .small {
   display: block;
-  font-size: 8px;
+  font-size: 11px;
   max-width: 115px;
   line-height: 1.6;
 }
 .department-switch .badge {
   margin-left: auto;
-  font-size: 9px;
+  font-size: 11px;
 }
 .department-icon {
   color: var(--accent);
@@ -679,7 +679,7 @@ svg {
   margin-top: 14px;
 }
 .nav-group .eyebrow {
-  font-size: 8px;
+  font-size: 11px;
   padding: 0 12px 6px;
   letter-spacing: 1.35px;
 }
@@ -738,7 +738,7 @@ svg {
   max-width: 130px;
 }
 .user-summary .small {
-  font-size: 9px;
+  font-size: 11px;
 }
 .avatar {
   display: inline-flex;
@@ -798,7 +798,7 @@ svg {
   color: var(--muted);
   min-height: 38px;
   padding: 7px 12px;
-  font-size: 10px;
+  font-size: 11px;
   margin-right: 12px;
 }
 kbd {
@@ -819,7 +819,7 @@ kbd {
   color: white;
   background: var(--coral);
   border-radius: 50%;
-  font-size: 8px;
+  font-size: 11px;
   min-width: 15px;
   height: 15px;
 }
@@ -827,7 +827,7 @@ kbd {
   margin-left: 10px;
   width: 29px;
   height: 29px;
-  font-size: 9px;
+  font-size: 11px;
 }
 .main-content {
   padding: 36px 36px 25px;
@@ -870,14 +870,14 @@ kbd {
   gap: 20px;
   border-top: 1px solid var(--border);
   padding-top: 10px;
-  font-size: 9px;
+  font-size: 11px;
   color: var(--muted);
 }
 .workspace-footer span {
   margin-right: auto;
 }
 .workspace-footer .text-button {
-  font-size: 9px;
+  font-size: 11px;
 }
 .workspace-footer .text-button.app-install-button {
   display: inline-flex;
@@ -929,7 +929,7 @@ kbd {
 .panel-heading .muted {
   margin-top: 4px;
   display: block;
-  font-size: 10px;
+  font-size: 11px;
 }
 .panel-content {
   padding: 22px;
@@ -1045,7 +1045,7 @@ kbd {
   font-weight: 500;
 }
 .today-summary span:not(.summary-icon) {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--muted);
 }
 .today-summary > button > svg {
@@ -1127,7 +1127,7 @@ kbd {
   font-weight: 650;
 }
 .schedule-date span {
-  font-size: 9px;
+  font-size: 11px;
   color: var(--muted);
 }
 .schedule-info {
@@ -1138,7 +1138,7 @@ kbd {
   margin: 6px 0 3px;
 }
 .schedule-info .badge {
-  font-size: 8px;
+  font-size: 11px;
 }
 .schedule-row > svg {
   color: var(--muted);
@@ -1181,7 +1181,7 @@ kbd {
   font-size: 12px;
 }
 .task-list-row .small {
-  font-size: 10px;
+  font-size: 11px;
   margin-top: 4px;
 }
 .status-dot {
@@ -1234,7 +1234,7 @@ kbd {
   font-weight: 600;
 }
 .notification-row p {
-  font-size: 10px;
+  font-size: 11px;
   margin-top: 4px;
   line-height: 1.6;
 }
@@ -1264,7 +1264,7 @@ kbd {
   padding: 23px;
 }
 .backstage-note .eyebrow {
-  font-size: 8px;
+  font-size: 11px;
 }
 .backstage-note h2 {
   font-size: 25px;
@@ -1453,7 +1453,7 @@ input[type="color"] {
   margin: 0;
 }
 dt {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.7px;
@@ -1509,7 +1509,7 @@ dd {
   padding-left: 9px;
 }
 .gallery-caption span {
-  font-size: 9px;
+  font-size: 11px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1615,7 +1615,7 @@ table {
 th {
   background: var(--surface-soft);
   color: var(--muted);
-  font-size: 9px;
+  font-size: 11px;
   letter-spacing: 0.6px;
   text-transform: uppercase;
   font-weight: 650;
@@ -1634,7 +1634,7 @@ td .text-button {
 }
 td > .small {
   display: block;
-  font-size: 9px;
+  font-size: 11px;
   margin-top: 4px;
 }
 tr:last-child td {
@@ -1715,7 +1715,7 @@ tfoot td {
   color: var(--accent);
 }
 .editorial-placeholder > .small {
-  font-size: 8px;
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 2px;
 }
@@ -1729,7 +1729,7 @@ tfoot td {
   padding: 18px;
 }
 .editorial-body .eyebrow {
-  font-size: 8px;
+  font-size: 11px;
 }
 .editorial-body h3 {
   font-size: 18px;
@@ -1791,7 +1791,7 @@ tfoot td {
   margin-bottom: 42px;
 }
 .production-card-top .eyebrow {
-  font-size: 8px;
+  font-size: 11px;
 }
 .production-number {
   position: absolute;
@@ -1824,7 +1824,7 @@ tfoot td {
   display: flex;
   flex-direction: column;
   gap: 9px;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--muted);
   margin: 22px 0;
 }
@@ -1839,7 +1839,7 @@ tfoot td {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--accent);
   font-weight: 600;
 }
@@ -2029,7 +2029,7 @@ tfoot td {
     display: none;
   }
   .ensemble-preview-row .badge {
-    font-size: 10px;
+    font-size: 11px;
     padding: 5px 7px;
   }
   .ensemble-import-footer {
@@ -2104,7 +2104,7 @@ tfoot td {
 .count {
   background: var(--border);
   border-radius: 4px;
-  font-size: 9px;
+  font-size: 11px;
   padding: 1px 5px;
   color: var(--muted);
 }
@@ -2125,7 +2125,7 @@ tfoot td {
   text-align: center;
   padding: 30px 12px;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 11px;
   border: 1px dashed var(--border);
   border-radius: 7px;
 }
@@ -2148,7 +2148,7 @@ tfoot td {
   gap: 5px;
 }
 .task-top .small {
-  font-size: 8px;
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -2172,7 +2172,7 @@ tfoot td {
   line-height: 1.4;
 }
 .task-description {
-  font-size: 9px;
+  font-size: 11px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -2187,13 +2187,13 @@ tfoot td {
   margin: 7px 0 14px;
 }
 .task-meta .small {
-  font-size: 8px;
+  font-size: 11px;
   display: flex;
   align-items: center;
   gap: 4px;
 }
 .task-meta .badge {
-  font-size: 8px;
+  font-size: 11px;
 }
 .task-footer {
   display: flex;
@@ -2209,7 +2209,7 @@ tfoot td {
   width: 23px;
   height: 23px;
   border: 2px solid var(--surface);
-  font-size: 7px;
+  font-size: 11px;
   margin-left: -4px;
 }
 .small-avatar:first-child {
@@ -2227,7 +2227,7 @@ tfoot td {
   padding: 3px;
   border: 0;
   background: transparent;
-  font-size: 9px;
+  font-size: 11px;
   appearance: none;
 }
 .sprint-banner {
@@ -2244,7 +2244,7 @@ tfoot td {
   flex: 1;
 }
 .sprint-banner .eyebrow {
-  font-size: 8px;
+  font-size: 11px;
   margin-bottom: 5px;
 }
 .sprint-banner h3 {
@@ -2270,14 +2270,14 @@ tfoot td {
   gap: 6px;
 }
 .timer-panel .eyebrow {
-  font-size: 8px;
+  font-size: 11px;
   display: flex;
   align-items: center;
   gap: 6px;
   color: var(--accent);
 }
 .timer-panel .badge {
-  font-size: 8px;
+  font-size: 11px;
 }
 .timer-value {
   font-size: 42px;
@@ -2307,7 +2307,7 @@ tfoot td {
 .timer-selects select {
   margin: 0;
   min-width: 0;
-  font-size: 10px;
+  font-size: 11px;
   padding: 10px 7px;
 }
 .timer-selects select:first-child {
@@ -2326,7 +2326,7 @@ tfoot td {
 }
 .timer-controls .button {
   flex: 1;
-  font-size: 10px;
+  font-size: 11px;
   padding: 10px;
 }
 .time-layout {
@@ -2368,7 +2368,7 @@ tfoot td {
   gap: 5px;
 }
 .week-bars .small {
-  font-size: 9px;
+  font-size: 11px;
 }
 .bar-track {
   width: 70%;
@@ -2420,29 +2420,29 @@ tfoot td {
   font-size: 12px;
 }
 .calendar-filters .text-button {
-  font-size: 10px;
+  font-size: 11px;
 }
 .calendar-filters > .check-label {
   min-height: 36px;
-  font-size: 10px;
+  font-size: 11px;
 }
 .calendar-filters > p.small {
   margin: 12px 0 22px;
-  font-size: 9px;
+  font-size: 11px;
 }
 .calendar-filters > label:not(.check-label) {
   margin-top: 16px;
-  font-size: 10px;
+  font-size: 11px;
 }
 .calendar-filters select {
-  font-size: 10px;
+  font-size: 11px;
 }
 .calendar-legend {
   display: flex;
   flex-direction: column;
   gap: 10px;
   padding-top: 24px;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--muted);
 }
 .calendar-legend span {
@@ -2488,7 +2488,7 @@ tfoot td {
 }
 .calendar-navigation .button {
   min-height: 35px;
-  font-size: 10px;
+  font-size: 11px;
   padding: 7px 10px;
 }
 .calendar-navigation .icon-button {
@@ -2497,11 +2497,11 @@ tfoot td {
 }
 .calendar-toolbar .segmented button {
   padding: 7px 9px;
-  font-size: 10px;
+  font-size: 11px;
   min-height: 31px;
 }
 .fc {
-  font-size: 10px;
+  font-size: 11px;
 }
 .fc .fc-col-header-cell-cushion {
   color: var(--muted);
@@ -2510,7 +2510,7 @@ tfoot td {
 }
 .fc .fc-daygrid-day-number {
   color: var(--muted);
-  font-size: 10px;
+  font-size: 11px;
   padding: 8px;
 }
 .fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
@@ -2520,11 +2520,11 @@ tfoot td {
 .fc .fc-daygrid-event {
   border-radius: 4px;
   padding: 2px 4px;
-  font-size: 9px;
+  font-size: 11px;
 }
 .fc .fc-timegrid-event .fc-event-main {
   padding: 4px;
-  font-size: 9px;
+  font-size: 11px;
 }
 .fc .fc-list-day-cushion {
   background: var(--surface-soft);
@@ -2548,7 +2548,7 @@ tfoot td {
   padding: 10px 12px;
   background: var(--coral-soft);
   color: var(--coral);
-  font-size: 10px;
+  font-size: 11px;
   border-radius: 6px;
   margin-bottom: 15px;
 }
@@ -2557,7 +2557,7 @@ tfoot td {
   padding: 10px;
   text-transform: none;
   letter-spacing: 0;
-  font-size: 10px;
+  font-size: 11px;
 }
 .team-calendar td {
   border: 1px solid var(--border);
@@ -2584,10 +2584,10 @@ tfoot td {
 }
 .team-event strong {
   display: block;
-  font-size: 8px;
+  font-size: 11px;
 }
 .team-event span {
-  font-size: 8px;
+  font-size: 11px;
   color: var(--muted);
 }
 .calendar-module .calendar-colored-event :is(span, strong),
@@ -2621,7 +2621,7 @@ tfoot td {
   background: var(--sidebar);
 }
 .chat-channels .eyebrow {
-  font-size: 8px;
+  font-size: 11px;
   padding: 0 12px;
   margin: 0 0 10px;
 }
@@ -2649,7 +2649,7 @@ tfoot td {
 }
 .chat-channels > p.small {
   padding: 0 12px;
-  font-size: 10px;
+  font-size: 11px;
 }
 .chat-main {
   display: flex;
@@ -2702,7 +2702,7 @@ tfoot td {
   font-size: 11px;
 }
 .message-content time {
-  font-size: 9px;
+  font-size: 11px;
 }
 .message-content p {
   margin-top: 7px;
@@ -2717,7 +2717,7 @@ tfoot td {
   border: 1px solid var(--border);
   padding: 8px 10px;
   border-radius: 6px;
-  font-size: 10px;
+  font-size: 11px;
   margin: 10px 7px 0 0;
 }
 .chat-composer {
@@ -2740,7 +2740,7 @@ tfoot td {
 .composer-actions > .small {
   flex: 1 1 160px;
   margin-right: auto;
-  font-size: 9px;
+  font-size: 11px;
 }
 .composer-actions > .button {
   flex-shrink: 0;
@@ -2758,7 +2758,7 @@ tfoot td {
   border-radius: 4px;
   background: var(--surface-soft);
   padding: 5px 8px;
-  font-size: 9px;
+  font-size: 11px;
 }
 .pending-files button {
   background: transparent;
@@ -2805,7 +2805,7 @@ tfoot td {
   flex: 1;
   min-width: 180px;
   margin: 0;
-  font-size: 10px;
+  font-size: 11px;
 }
 .inline-actions {
   display: flex;
@@ -2813,7 +2813,7 @@ tfoot td {
   flex-wrap: wrap;
 }
 .inline-actions .button {
-  font-size: 10px;
+  font-size: 11px;
 }
 .export-options {
   display: flex;
@@ -2986,7 +2986,7 @@ tfoot td {
   padding: 75px 0;
 }
 .auth-story .eyebrow {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--accent);
 }
 .auth-story h1 {
@@ -3030,7 +3030,7 @@ tfoot td {
 }
 .auth-form > .eyebrow {
   color: var(--accent);
-  font-size: 9px;
+  font-size: 11px;
   margin-bottom: 15px;
 }
 .auth-form h2 {
@@ -3206,7 +3206,7 @@ tfoot td {
 }
 .auth-form > .small {
   text-align: center;
-  font-size: 10px;
+  font-size: 11px;
 }
 @keyframes appear {
   from {
@@ -3249,7 +3249,7 @@ tfoot td {
     font-size: 19px;
   }
   .brand-sub {
-    font-size: 6.8px;
+    font-size: 11px;
   }
   .main-content {
     padding: 30px 25px;
@@ -3304,7 +3304,7 @@ tfoot td {
     font-size: 20px;
   }
   .brand-sub {
-    font-size: 6px;
+    font-size: 11px;
   }
   .department-switch {
     margin: 0 10px 12px;
@@ -3313,7 +3313,7 @@ tfoot td {
     display: none;
   }
   .nav-item {
-    font-size: 10.5px;
+    font-size: 11px;
     padding: 10px 8px;
     gap: 9px;
   }
@@ -3439,7 +3439,7 @@ tfoot td {
     font-size: 22px;
   }
   .sidebar .brand-sub {
-    font-size: 7px;
+    font-size: 11px;
   }
   .sidebar .department-switch {
     margin: 0 15px 15px;
@@ -3465,7 +3465,7 @@ tfoot td {
   }
   .breadcrumbs {
     gap: 8px;
-    font-size: 10px;
+    font-size: 11px;
     min-width: 0;
   }
   .breadcrumbs strong {
@@ -3502,7 +3502,7 @@ tfoot td {
     gap: 17px;
   }
   .page-heading .eyebrow {
-    font-size: 8px;
+    font-size: 11px;
     margin-bottom: 9px;
   }
   .page-heading .muted {
@@ -3515,7 +3515,7 @@ tfoot td {
     width: 100%;
   }
   .heading-actions .button {
-    font-size: 10px;
+    font-size: 11px;
     min-height: 42px;
     padding: 10px 12px;
   }
@@ -3648,12 +3648,12 @@ tfoot td {
   }
   .workspace-footer {
     margin: 12px 18px;
-    font-size: 8px;
+    font-size: 11px;
     gap: 8px;
     flex-wrap: wrap;
   }
   .workspace-footer .text-button {
-    font-size: 8px;
+    font-size: 11px;
   }
   .toast {
     bottom: calc(76px + env(safe-area-inset-bottom));
@@ -3685,10 +3685,10 @@ tfoot td {
   }
   .toolbar .small {
     margin-left: auto;
-    font-size: 10px;
+    font-size: 11px;
   }
   .segmented button {
-    font-size: 10px;
+    font-size: 11px;
     min-height: 38px;
     padding: 7px 12px;
   }
@@ -3730,11 +3730,11 @@ tfoot td {
     font-size: 15px;
   }
   .editorial-body p.small {
-    font-size: 9px;
+    font-size: 11px;
     margin-bottom: 10px;
   }
   .editorial-body .eyebrow {
-    font-size: 7px;
+    font-size: 11px;
   }
   .project-overview {
     grid-template-columns: 1fr;
@@ -3748,7 +3748,7 @@ tfoot td {
     gap: 13px;
   }
   .overview-links span {
-    font-size: 9px;
+    font-size: 11px;
   }
   .overview-links strong {
     font-size: 25px;
@@ -3761,7 +3761,7 @@ tfoot td {
   }
   .production-heading .button {
     min-height: 40px;
-    font-size: 10px;
+    font-size: 11px;
   }
   .tabs {
     gap: 22px;
@@ -3785,14 +3785,14 @@ tfoot td {
     font-size: 13px;
   }
   .task-top .small {
-    font-size: 9px;
+    font-size: 11px;
   }
   .task-description {
-    font-size: 10px;
+    font-size: 11px;
   }
   .task-status-label select {
     min-height: 40px;
-    font-size: 10px;
+    font-size: 11px;
   }
   .sprint-banner {
     flex-wrap: wrap;
@@ -3831,19 +3831,19 @@ tfoot td {
   }
   .list-row > .button {
     min-height: 40px;
-    font-size: 10px;
+    font-size: 11px;
   }
   .inline-label {
-    font-size: 10px;
+    font-size: 11px;
     flex: 1;
   }
   th {
-    font-size: 8px;
+    font-size: 11px;
     padding: 12px;
   }
   td {
     padding: 14px 12px;
-    font-size: 10px;
+    font-size: 11px;
   }
   .calendar-filters {
     gap: 7px 13px;
@@ -3851,14 +3851,14 @@ tfoot td {
   }
   .calendar-filters > .text-button {
     margin-left: auto;
-    font-size: 9px;
+    font-size: 11px;
   }
   .calendar-filters > h3 {
     width: auto;
     margin-right: auto;
   }
   .calendar-filters > .check-label {
-    font-size: 10px;
+    font-size: 11px;
   }
   .calendar-board {
     padding: 13px 8px;
@@ -3879,22 +3879,22 @@ tfoot td {
   .calendar-toolbar .segmented button {
     flex: 1;
     min-height: 37px;
-    font-size: 10px;
+    font-size: 11px;
   }
   .fc .fc-col-header-cell-cushion {
-    font-size: 9px;
+    font-size: 11px;
     padding: 8px 1px;
   }
   .fc .fc-daygrid-day-number {
-    font-size: 9px;
+    font-size: 11px;
     padding: 6px;
   }
   .fc .fc-daygrid-event {
     padding: 1px;
-    font-size: 7px;
+    font-size: 11px;
   }
   .fc .fc-daygrid-dot-event .fc-event-title {
-    font-size: 7px;
+    font-size: 11px;
   }
   .fc .fc-daygrid-event-dot {
     margin: 0 2px;
@@ -3910,7 +3910,7 @@ tfoot td {
     padding: 10px 5px;
   }
   .conflict-note {
-    font-size: 9px;
+    font-size: 11px;
     align-items: flex-start;
     line-height: 1.5;
   }
@@ -3934,7 +3934,7 @@ tfoot td {
   .chat-channels > button {
     min-width: max-content;
     width: auto;
-    font-size: 10px;
+    font-size: 11px;
     padding: 10px;
   }
   .chat-heading {
@@ -3954,15 +3954,15 @@ tfoot td {
     margin-left: auto;
   }
   .message-content strong {
-    font-size: 10px;
+    font-size: 11px;
   }
   .message-content time {
-    font-size: 8px;
+    font-size: 11px;
   }
   .chat-message .avatar {
     width: 28px;
     height: 28px;
-    font-size: 9px;
+    font-size: 11px;
   }
   .settings-grid {
     grid-template-columns: 1fr;
@@ -3983,7 +3983,7 @@ tfoot td {
     font-size: 18px;
   }
   .export-options .small {
-    font-size: 9px;
+    font-size: 11px;
   }
   .dialog {
     max-height: calc(100dvh - 28px);
@@ -4030,7 +4030,7 @@ tfoot td {
   .detail-actions .button {
     min-height: 39px;
     padding: 9px 11px;
-    font-size: 10px;
+    font-size: 11px;
   }
   .detail-actions .badge {
     width: auto;
@@ -4072,7 +4072,7 @@ tfoot td {
     padding: 35px 0 15px;
   }
   .auth-story .eyebrow {
-    font-size: 7px;
+    font-size: 11px;
   }
   .auth-story h1 {
     font-size: 36px;
@@ -4162,10 +4162,10 @@ tfoot td {
   text-align: center;
 }
 .auth-reset p {
-  font-size: 10px;
+  font-size: 11px;
 }
 .auth-reset .text-button {
-  font-size: 10px;
+  font-size: 11px;
   justify-content: center;
 }
 .history-version {
@@ -4287,7 +4287,7 @@ td .text-button,
     margin: 0 0 15px;
   }
   .mobile-board-nav .small {
-    font-size: 9px;
+    font-size: 11px;
     max-width: 170px;
   }
   .mobile-board-nav select {
@@ -4331,7 +4331,7 @@ td .text-button,
   .team-admin-table td[data-label]:before {
     content: attr(data-label);
     display: block;
-    font-size: 9px;
+    font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 0.7px;
     color: var(--muted);
@@ -4551,7 +4551,7 @@ td .text-button,
   gap: 1px;
 }
 .accent-option .small {
-  font-size: 9px;
+  font-size: 11px;
 }
 .accent-option.selected .small {
   color: var(--accent);
@@ -5293,7 +5293,7 @@ td .text-button,
 }
 .team-event span {
   display: block;
-  font-size: 10px;
+  font-size: 11px;
   margin-top: 4px;
 }
 .team-add {
@@ -5391,7 +5391,7 @@ td .text-button,
     list-style: none;
     min-height: 44px;
     padding: 9px;
-    font-size: 10px;
+    font-size: 11px;
     gap: 4px;
     cursor: pointer;
   }
@@ -5600,7 +5600,7 @@ td .text-button,
     border-radius: 50%;
   }
   .team-mobile-date-count {
-    font-size: 10px;
+    font-size: 11px;
     line-height: 1.2;
     color: var(--muted);
   }
@@ -5685,11 +5685,11 @@ td .text-button,
   }
   .calendar-module .fc .fc-daygrid-event,
   .calendar-module .fc .fc-daygrid-dot-event .fc-event-title {
-    font-size: 10px;
+    font-size: 11px;
     line-height: 1.4;
   }
   .calendar-module .fc .fc-daygrid-more-link {
-    font-size: 10px;
+    font-size: 11px;
     padding: 5px 0;
     display: block;
   }
@@ -5991,7 +5991,7 @@ td .text-button,
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 1px;
   text-transform: uppercase;
   color: var(--muted);
@@ -6029,7 +6029,7 @@ td .text-button,
   margin-left: auto;
   letter-spacing: 0;
   font-variant-numeric: tabular-nums;
-  font-size: 10px;
+  font-size: 11px;
 }
 .chat-channel-group-items {
   display: grid;
@@ -6106,7 +6106,7 @@ td .text-button,
 }
 .channel-choice-copy small {
   color: var(--muted);
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.5;
 }
 .channel-choice-current {
@@ -6147,7 +6147,7 @@ td .text-button,
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--muted);
 }
 .live-status > span {
@@ -6176,7 +6176,7 @@ td .text-button,
   background: var(--coral);
 }
 .live-status .text-button {
-  font-size: 10px;
+  font-size: 11px;
   min-height: 36px;
 }
 .workspace-footer > .live-status {
@@ -6327,7 +6327,7 @@ td .text-button,
   gap: 3px;
 }
 .onboarding-dialog .onboarding-secondary .button {
-  font-size: 10px;
+  font-size: 11px;
   padding: 8px;
 }
 .onboarding-dialog .onboarding-footer > .button {
@@ -6397,7 +6397,7 @@ td .text-button,
   }
   .chat-channel-toggle small {
     color: var(--muted);
-    font-size: 10px;
+    font-size: 11px;
   }
   .chat-channel-toggle strong {
     font-size: 13px;
@@ -6481,7 +6481,7 @@ td .text-button,
     padding: 10px;
   }
   .onboarding-dialog .onboarding-tips li {
-    font-size: 10px;
+    font-size: 11px;
   }
   .onboarding-dialog .onboarding-footer {
     flex-direction: row;

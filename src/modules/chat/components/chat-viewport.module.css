@@ -284,7 +284,7 @@
   .viewport :global(.chat-message .avatar) {
     width: 27px;
     height: 27px;
-    font-size: 10px;
+    font-size: 11px;
     flex: none;
   }
   .viewport :global(.message-content strong) {
@@ -295,7 +295,7 @@
     line-height: 1.55;
   }
   .viewport :global(.message-content time) {
-    font-size: 10px;
+    font-size: 11px;
   }
   .viewport :global(.chat-composer) {
     padding: 8px;

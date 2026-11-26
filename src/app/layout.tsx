@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./reset.css";
 import "./globals.css";
+import "./glass.css";
 export const metadata: Metadata = {
   title: "DigitalMask · Stadttheater Ingolstadt",
   description:
