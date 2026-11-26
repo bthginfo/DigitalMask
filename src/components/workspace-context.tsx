@@ -11,7 +11,13 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from "react";
-import type { DomainRecord, RecordData, RecordKind, Workspace } from "@/shared/contracts";
+import {
+  recordKinds,
+  type DomainRecord,
+  type RecordData,
+  type RecordKind,
+  type Workspace,
+} from "@/shared/contracts";
 import { api, ApiFailure, post } from "@/shared/client-api";
 import { subscribeConnectivity } from "@/shared/client-storage";
 import { useRouter } from "next/navigation";
@@ -22,8 +28,10 @@ import {
   mergeWorkspaceUpdate,
   partialWorkspaceKinds,
   recordChangeKinds,
+  withoutRecords,
   type WorkspacePatch,
 } from "@/shared/workspace-sync";
+import { clientId } from "@/shared/client-id";
 
 export interface WorkspaceStatus {
   busy: boolean;
@@ -157,6 +165,20 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       active = false;
     };
   }, [refresh]);
+  /** Fresh live ticket without reloading workspace data; `true` when data was reloaded. */
+  const renewLive = useCallback(async () => {
+    try {
+      liveAccess.current = await api<Workspace["live"]>("/api/realtime/ticket");
+      return false;
+    } catch (e) {
+      // Signed out, pending access or an older server: the full snapshot handles all three.
+      if (e instanceof ApiFailure && [401, 403, 404].includes(e.status)) {
+        await reload();
+        return true;
+      }
+      throw e;
+    }
+  }, [reload]);
   const liveEnabled = Boolean(workspace?.live);
   const departmentId = workspace?.department.id;
   const userId = workspace?.user.id;
@@ -185,33 +207,42 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       if (!kinds) full = true;
       else for (const kind of kinds) pendingKinds.add(kind);
       clearTimeout(timer);
-      timer = setTimeout(() => {
-        if (disposed) return;
-        if (mutationPending.current) {
-          changed(full ? undefined : [...pendingKinds]);
-          return;
-        }
-        const selected = full ? undefined : [...pendingKinds];
-        full = false;
-        pendingKinds.clear();
-        void reload(selected);
-      }, 450);
+      timer = setTimeout(
+        () => {
+          if (disposed) return;
+          if (mutationPending.current) {
+            changed(full ? undefined : [...pendingKinds]);
+            return;
+          }
+          const selected = full ? undefined : [...pendingKinds];
+          full = false;
+          pendingKinds.clear();
+          void reload(selected);
+          // Jitter spreads the refetch of many open devices after one shared change.
+        },
+        450 + Math.random() * 1500,
+      );
     };
     const disconnect = connectLiveSync({
       access: () => liveAccess.current,
-      renew: refresh,
+      renew: renewLive,
       changed,
       status: report,
+      origin: clientId(),
     });
     return () => {
       disposed = true;
       clearTimeout(timer);
       disconnect();
     };
-  }, [liveEnabled, departmentId, userId, liveAttempt, refresh, reload]);
+  }, [liveEnabled, departmentId, userId, liveAttempt, renewLive, reload]);
   const mutations = useRef(0);
   const mutate = useCallback(
-    async <T,>(run: () => Promise<T>, kinds?: readonly RecordKind[]): Promise<T> => {
+    async <T,>(
+      run: () => Promise<T>,
+      kinds?: readonly RecordKind[],
+      local?: (workspace: Workspace) => Workspace,
+    ): Promise<T> => {
       mutations.current++;
       mutationPending.current = true;
       setBusy(true);
@@ -226,6 +257,12 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       };
       try {
         const result = await run();
+        const current = workspaceRef.current;
+        const next = current && local ? local(current) : current;
+        if (next && next !== current) {
+          workspaceRef.current = next;
+          setWorkspace(next);
+        }
         await reload(kinds, end);
         return result;
       } finally {
@@ -250,11 +287,25 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   );
   const remove = useCallback(
     async (record: DomainRecord) => {
-      await mutate(() =>
-        api(
-          `/api/records/${record.kind}/${record.id}?${new URLSearchParams({ version: String(record.version) })}`,
-          { method: "DELETE" },
-        ),
+      // The server deletes a record together with the files attached to it; drop both locally
+      // and reload only the affected kinds instead of the whole workspace.
+      await mutate(
+        () =>
+          api(
+            `/api/records/${record.kind}/${record.id}?${new URLSearchParams({ version: String(record.version) })}`,
+            { method: "DELETE" },
+          ),
+        recordChangeKinds(record.kind),
+        (current) =>
+          withoutRecords(
+            current,
+            new Set([
+              record.id,
+              ...current.records.files
+                .filter((file) => file.data.recordId === record.id)
+                .map((file) => file.id),
+            ]),
+          ),
       );
     },
     [mutate],
@@ -282,7 +333,13 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   );
   const removeFile = useCallback(
     async (file: DomainRecord) => {
-      await mutate(() => api(`/api/files/${file.id}`, { method: "DELETE" }));
+      const owner = recordKinds.find((kind) => kind === file.data.recordKind);
+      await mutate(
+        () => api(`/api/files/${file.id}`, { method: "DELETE" }),
+        // The owning record's attachment list changes with the file; nothing else does.
+        owner ? recordChangeKinds(owner) : undefined,
+        (current) => withoutRecords(current, new Set([file.id])),
+      );
     },
     [mutate],
   );

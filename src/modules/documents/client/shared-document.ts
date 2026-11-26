@@ -1,6 +1,7 @@
 import * as Y from "yjs";
 import { IndexeddbPersistence } from "y-indexeddb";
 import type { DocumentSession, DocumentState } from "../contracts";
+import { clientHeaders } from "@/shared/client-id";
 
 const REMOTE = Symbol("document-remote");
 const MAX_UPDATE = 256_000;
@@ -86,7 +87,7 @@ export class SharedDocument {
     const response = await fetch(`/api/documents/${this.fileId}/${action}`, {
       method: "POST",
       credentials: "same-origin",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...clientHeaders("POST") },
       body: JSON.stringify(data),
       signal:
         typeof AbortSignal.timeout === "function"
@@ -435,7 +436,7 @@ export class SharedDocument {
       method: "POST",
       credentials: "same-origin",
       keepalive: true,
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...clientHeaders("POST") },
       body,
     }).catch(() => {});
   }

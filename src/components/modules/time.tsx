@@ -47,7 +47,7 @@ export function WorkTimeModule({
   productionId?: string;
   embedded?: boolean;
 }) {
-  const { workspace, refresh, online } = useWorkspace();
+  const { workspace, reload, online } = useWorkspace();
   const scope = `time:${productionId || "all"}`;
   const [period, setPeriod] = useViewState<PeriodFilter>(workspace.user.id, scope, "period", () =>
     initialPeriod(workspace.records.productions, productionId),
@@ -109,7 +109,7 @@ export function WorkTimeModule({
         remaining = remaining.filter((x) => x.id !== draft.id);
         persist(remaining);
       }
-      await refresh();
+      await reload(["time"]);
     });
     setSyncing(false);
   };

@@ -24,7 +24,7 @@ import styles from "./time-history.module.css";
 
 type AttendanceDraft = { id: string; createdAt: string; data: RecordData };
 export function AttendanceModule({ embedded = false }: { embedded?: boolean }) {
-  const { workspace, refresh, online, busy } = useWorkspace();
+  const { workspace, reload, online, busy } = useWorkspace();
   const selfBooking = workspace.user.role !== "superadmin";
   const admin = workspace.user.role !== "user";
   const [period, setPeriod] = useViewState<PeriodFilter>(
@@ -138,7 +138,7 @@ export function AttendanceModule({ embedded = false }: { embedded?: boolean }) {
         remaining = remaining.filter((row) => row.id !== draft.id);
         setDraftJson(JSON.stringify(remaining));
       }
-      await refresh();
+      await reload(["attendance"]);
     } catch (exception) {
       setError(exception instanceof Error ? exception.message : "Synchronisierung fehlgeschlagen");
     } finally {

@@ -1,5 +1,6 @@
 import type { RecordData } from "./contracts";
 import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
+import { clientHeaders } from "./client-id";
 
 export class ApiFailure extends Error {
   constructor(
@@ -17,6 +18,7 @@ export async function api<T>(url: string, options: RequestInit = {}): Promise<T>
       ...options,
       headers: {
         ...(options.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
+        ...clientHeaders(options.method),
         ...options.headers,
       },
     });

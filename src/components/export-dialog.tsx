@@ -7,6 +7,7 @@ import { Button, ErrorMessage, Modal } from "./ui";
 import { isActiveStaff } from "@/shared/client-members";
 import { useWorkspace } from "./workspace-context";
 import { fields, labels } from "./resource-fields";
+import { recordChangeKinds } from "@/shared/workspace-sync";
 
 export async function downloadExport(query: URLSearchParams, filename: string) {
   const response = await fetch(`/api/export?${query}`, { credentials: "same-origin" });
@@ -153,7 +154,7 @@ export function ExportDialog({
   );
 }
 export function ImportDialog({ kind, onClose }: { kind: RecordKind; onClose: () => void }) {
-  const { refresh, workspace } = useWorkspace();
+  const { reload, workspace } = useWorkspace();
   const [rows, setRows] = useState<RecordData[]>([]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -234,7 +235,7 @@ export function ImportDialog({ kind, onClose }: { kind: RecordKind; onClose: () 
       );
       setResult(next);
       setRows(next.errors.map((item) => rows[item.row - 1]).filter(Boolean));
-      if (next.imported) await refresh();
+      if (next.imported) await reload(recordChangeKinds(kind));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Import fehlgeschlagen");
     } finally {

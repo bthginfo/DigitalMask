@@ -15,6 +15,9 @@ import { eligibleSwapService, shiftSwapStatusLabels } from "../model";
 import type { ShiftSwapAction, ShiftSwapStatus } from "../schema";
 import styles from "@/modules/workflows/components/workflow.module.css";
 
+/** Swap decisions change the request and the exchanged services, nothing else. */
+const swapKinds = ["shiftSwaps", "events"] as const;
+
 interface ServiceOption {
   key: string;
   event: DomainRecord;
@@ -90,7 +93,11 @@ export function ShiftSwapPanel() {
     )
       return;
     try {
-      await runWorkflow(`/api/shift-swaps/${record.id}`, { action, version: record.version });
+      await runWorkflow(
+        `/api/shift-swaps/${record.id}`,
+        { action, version: record.version },
+        swapKinds,
+      );
     } catch (exception) {
       setError(
         exception instanceof Error
@@ -305,21 +312,25 @@ export function ShiftSwapEditor({ onClose }: { onClose: () => void }) {
             return;
           }
           try {
-            await runWorkflow("/api/shift-swaps", {
-              serviceId: selected.event.id,
-              serviceStart: selected.start,
-              serviceVersion: selected.event.version,
-              partnerId,
-              note,
-              confirmed,
-              ...(reciprocal && counter
-                ? {
-                    counterServiceId: counter.event.id,
-                    counterServiceStart: counter.start,
-                    counterServiceVersion: counter.event.version,
-                  }
-                : {}),
-            });
+            await runWorkflow(
+              "/api/shift-swaps",
+              {
+                serviceId: selected.event.id,
+                serviceStart: selected.start,
+                serviceVersion: selected.event.version,
+                partnerId,
+                note,
+                confirmed,
+                ...(reciprocal && counter
+                  ? {
+                      counterServiceId: counter.event.id,
+                      counterServiceStart: counter.start,
+                      counterServiceVersion: counter.event.version,
+                    }
+                  : {}),
+              },
+              swapKinds,
+            );
             onClose();
           } catch (exception) {
             setError(
