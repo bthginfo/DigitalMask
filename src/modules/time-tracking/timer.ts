@@ -9,6 +9,14 @@ import { saveRecord } from "@/modules/records/service";
 import { validateCategoryReferences } from "@/modules/categories/service";
 import { invalidateWorkspace, invalidateTimer } from "@/modules/records/workspace";
 import { localDay, durationSeconds } from "./rules";
+import {
+  applyTimerCoupling,
+  defaultTimerTitle,
+  timeCategoryLabel,
+  timerLockKey,
+  timerLockOrder,
+  timerStopEnd,
+} from "./timer-coupling";
 import type { RecordData } from "@/shared/contracts";
 export async function timerAction(
   context: Context,
@@ -18,9 +26,10 @@ export async function timerAction(
 ) {
   const timerTable = kind === "attendance" ? attendanceTimers : timers;
   const result = await db.transaction(async (tx) => {
-    await tx.execute(
-      sql`select pg_advisory_xact_lock(hashtext(${kind + ":timer:" + context.user.id}))`,
-    );
+    for (const lock of timerLockOrder(kind, action))
+      await tx.execute(
+        sql`select pg_advisory_xact_lock(hashtext(${timerLockKey(lock, context.user.id)}))`,
+      );
     const [timer] = await tx
       .select()
       .from(timerTable)
@@ -31,21 +40,24 @@ export async function timerAction(
       if (timer) throw new HttpError(409, "Es läuft bereits ein Timer.");
       data = z
         .object({
-          title: z
-            .string()
-            .trim()
-            .min(1)
-            .max(200)
-            .default(kind === "attendance" ? "Anwesenheit" : "Arbeitszeit"),
+          title: z.string().trim().max(200).default(""),
           productionId: z.string().max(100).default(""),
           taskId: z.string().max(100).default(""),
           category: z.string().trim().min(1).max(80).default("production"),
         })
         .parse(data);
-      if (kind === "attendance") data = { title: data.title };
+      if (kind === "attendance") data = { title: defaultTimerTitle(kind, String(data.title)) };
       else {
-        await assertProject(context, data.productionId, tx);
+        const production = await assertProject(context, data.productionId, tx);
         await validateCategoryReferences(context, "time", data, tx);
+        data.title = defaultTimerTitle(
+          kind,
+          String(data.title),
+          production ? String(production.data.title || "") : "",
+          data.title || production
+            ? ""
+            : await timeCategoryLabel(context, String(data.category), tx),
+        );
       }
       const [created] = await tx
         .insert(timerTable)
@@ -64,7 +76,7 @@ export async function timerAction(
           },
         })
         .returning();
-      return created;
+      return { ...created, ...(await applyTimerCoupling(tx, context, kind, action, now)) };
     }
     if (!timer || timer.departmentId !== context.departmentId)
       throw new HttpError(404, "Es läuft kein Timer.");
@@ -96,10 +108,10 @@ export async function timerAction(
         .set({ data: updated })
         .where(eq(timerTable.id, timer.id))
         .returning();
-      return row;
+      return { ...row, ...(await applyTimerCoupling(tx, context, kind, action, now)) };
     }
     if (action === "timer-stop") {
-      const end = String(timer.data.stoppedAt || timer.data.pausedAt || now);
+      const end = timerStopEnd(timer.data, data.end, now);
       let duration: number;
       try {
         duration = durationSeconds(

@@ -186,3 +186,28 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+.addTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  justify-self: start;
+  min-height: 44px;
+  padding: 0 2px;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.addTitle small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+.addTitle:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-control);
+}

@@ -1,11 +1,13 @@
 "use client";
 import { useEffect, useId, useRef, useState } from "react";
-import { ChevronDown, Clock3, DoorOpen, Pause, Play, Square } from "lucide-react";
+import { ChevronDown, Clock3, DoorOpen, Pause, Play, Plus, Square } from "lucide-react";
 import { categoriesFor } from "@/shared/domain-categories";
 import type { DomainRecord } from "@/shared/contracts";
 import { dateLabel, num, value } from "@/shared/client-api";
 import { useWorkspace } from "@/components/workspace-context";
 import { Badge, Button, ErrorMessage } from "@/components/ui";
+import { timerLongRunning, timerOpenSeconds } from "../timer-reminder-rules";
+import { AttendanceStopPrompt, needsProductionPrompt } from "./timer-stop";
 import styles from "./work-timer.module.css";
 
 export function TimerPanel({
@@ -19,12 +21,14 @@ export function TimerPanel({
   kind?: "time" | "attendance";
   onBooked?: (record: DomainRecord) => void;
 }) {
-  const { workspace, action, busy } = useWorkspace();
+  const { workspace, action, busy, notify } = useWorkspace();
   const [now, setNow] = useState(Date.now);
   const [error, setError] = useState("");
   const [title, setTitle] = useState("");
   const [project, setProject] = useState(productionId);
   const [fieldsOpen, setFieldsOpen] = useState(false);
+  const [titleOpen, setTitleOpen] = useState(false);
+  const [stopPrompt, setStopPrompt] = useState(false);
   const fieldsId = useId();
   const titleInput = useRef<HTMLInputElement>(null);
   const categoryOptions = categoriesFor("time", workspace.records.categories);
@@ -51,11 +55,16 @@ export function TimerPanel({
       )
     : 0;
   const display = `${String(Math.floor(seconds / 3600)).padStart(2, "0")}:${String(Math.floor(seconds / 60) % 60).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+  const selectedProduction = workspace.records.productions.find((row) => row.id === project);
+  // Without a typed activity the production (or the work area) names the booking.
+  const defaultTitle = selectedProduction
+    ? value(selectedProduction.data, "title")
+    : categoryOptions.find((option) => option.key === selectedCategory)?.name || "Arbeitszeit";
+  const longRunning = Boolean(timer && timerLongRunning(timer.data, now));
   const run = async (operation: string) => {
     setError("");
-    if (operation === "start" && !attendance && !title.trim()) {
-      setFieldsOpen(true);
-      requestAnimationFrame(() => titleInput.current?.focus());
+    if (operation === "stop" && attendance && needsProductionPrompt(workspace.timer)) {
+      setStopPrompt(true);
       return;
     }
     try {
@@ -69,7 +78,16 @@ export function TimerPanel({
           : {},
       );
       setNow(Date.now());
-      if (operation === "start") setFieldsOpen(false);
+      if (operation === "start") {
+        setFieldsOpen(false);
+        setTitleOpen(false);
+        setTitle("");
+      }
+      const coupled =
+        result && typeof result === "object" ? (result as Record<string, unknown>) : {};
+      if (coupled.attendanceStarted) notify("Anwesenheit läuft jetzt auch.");
+      else if (coupled.attendanceResumed) notify("Anwesenheit läuft wieder.");
+      else if (coupled.productionPaused) notify("Produktionszeit ist auch pausiert.");
       if (operation === "stop" && result && typeof result === "object" && "kind" in result)
         onBooked?.(result as DomainRecord);
     } catch (exception) {
@@ -94,7 +112,7 @@ export function TimerPanel({
               ? `${attendance ? "Anwesenheit" : "Produktion"}: Details und weitere Aktionen`
               : attendance
                 ? "Bezeichnung ändern"
-                : "Tätigkeit & Zuordnung"
+                : "Produktion & Tätigkeitsbereich"
           }
           aria-expanded={fieldsOpen}
           aria-controls={fieldsId}
@@ -104,7 +122,13 @@ export function TimerPanel({
           <span>
             {attendance ? "Anwesenheit" : "Produktion"}
             <small>
-              {timer ? "Details" : attendance ? "Bezeichnung" : "Tätigkeit & Zuordnung"}
+              {timer
+                ? "Details"
+                : attendance
+                  ? "Bezeichnung"
+                  : selectedProduction
+                    ? value(selectedProduction.data, "title")
+                    : "Allgemeine Arbeit"}
             </small>
           </span>
           <ChevronDown size={15} />
@@ -113,8 +137,14 @@ export function TimerPanel({
           <Icon size={16} />
           {attendance ? "Anwesenheit" : "Produktion"}
         </span>
-        <Badge tone={timer && !timer.data.pausedAt ? "green" : "neutral"}>
-          {timer ? (timer.data.pausedAt ? "Pausiert" : "Timer läuft") : "Bereit"}
+        <Badge tone={longRunning ? "coral" : timer && !timer.data.pausedAt ? "green" : "neutral"}>
+          {timer
+            ? longRunning
+              ? `Seit ${Math.floor(timerOpenSeconds(timer.data, now) / 3600)} h`
+              : timer.data.pausedAt
+                ? "Pausiert"
+                : "Timer läuft"
+            : "Bereit"}
         </Badge>
       </header>
       {timer && <p className={styles.runningTitle}>{value(timer.data, "title")}</p>}
@@ -147,6 +177,7 @@ export function TimerPanel({
             <Button
               variant="primary"
               disabled={busy || (!attendance && !selectedCategory)}
+              title={attendance ? undefined : `Starten als „${title.trim() || defaultTitle}“`}
               onClick={() => void run("start")}
             >
               <Play size={15} />
@@ -163,7 +194,7 @@ export function TimerPanel({
           <>
             <p className="small muted">
               {attendance
-                ? "Deine Anwesenheit läuft unabhängig von einzelnen Tätigkeiten."
+                ? "Pause hält auch eine laufende Produktionszeit an."
                 : timerProject
                   ? value(timerProject.data, "title")
                   : "Allgemeine Arbeit"}
@@ -186,16 +217,6 @@ export function TimerPanel({
           </>
         ) : (
           <>
-            <label>
-              {attendance ? "Bezeichnung (optional)" : "Tätigkeit"}
-              <input
-                ref={titleInput}
-                maxLength={200}
-                placeholder={attendance ? "Anwesenheit" : "Woran arbeitest du?"}
-                value={title}
-                onChange={(event) => setTitle(event.target.value)}
-              />
-            </label>
             {!attendance && (
               <div className={styles.selects}>
                 <label>
@@ -233,15 +254,50 @@ export function TimerPanel({
                 </label>
               </div>
             )}
+            {titleOpen || title ? (
+              <label>
+                {attendance ? "Bezeichnung (optional)" : "Tätigkeit (optional)"}
+                <input
+                  ref={titleInput}
+                  maxLength={200}
+                  placeholder={attendance ? "Anwesenheit" : defaultTitle}
+                  value={title}
+                  onChange={(event) => setTitle(event.target.value)}
+                />
+              </label>
+            ) : (
+              <button
+                type="button"
+                className={styles.addTitle}
+                onClick={() => {
+                  setTitleOpen(true);
+                  requestAnimationFrame(() => titleInput.current?.focus());
+                }}
+              >
+                <Plus size={14} aria-hidden="true" />
+                {attendance ? "Bezeichnung ändern" : "Tätigkeit beschreiben"}
+                <small>optional</small>
+              </button>
+            )}
             <p className="small muted">
               {attendance
-                ? "Im Theater beginnen. Der Produktionstimer kann gleichzeitig laufen."
-                : "Allgemeine Tätigkeiten kannst du auch ohne Produktion buchen."}
+                ? "Startet deine Zeit im Theater. Produktionszeit startet die Anwesenheit mit."
+                : "Startet auch deine Anwesenheit, falls sie noch nicht läuft."}
             </p>
           </>
         )}
       </div>
       <ErrorMessage message={error} />
+      {stopPrompt && (
+        <AttendanceStopPrompt
+          onClose={() => setStopPrompt(false)}
+          onStopped={(booked) => {
+            setStopPrompt(false);
+            setNow(Date.now());
+            if (booked) onBooked?.(booked);
+          }}
+        />
+      )}
     </section>
   );
 }

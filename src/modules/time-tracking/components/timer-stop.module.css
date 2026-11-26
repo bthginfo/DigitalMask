@@ -1,0 +1,105 @@
+.warning {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 10px 12px;
+  margin: 0 0 16px;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--coral) 12%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--coral) 35%, transparent);
+}
+.icon {
+  color: var(--coral);
+  margin-top: 2px;
+}
+.text {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.text strong {
+  font-size: 15px;
+  line-height: 1.35;
+}
+.text span {
+  font-size: 13px;
+  color: var(--muted);
+}
+.actions {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.actions > :global(.button) {
+  min-height: 44px;
+}
+.dismiss {
+  min-height: 44px;
+  padding: 0 10px;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.dismiss:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-control);
+}
+.warning > :global(.error-message) {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+.compact {
+  margin: 12px 0 0;
+  padding: 12px;
+  border-radius: var(--radius-control);
+}
+.compact .text strong {
+  font-size: 14px;
+}
+.promptText {
+  margin: 0 0 16px;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--text);
+}
+.promptActions {
+  flex-wrap: wrap;
+}
+.endForm {
+  display: grid;
+  gap: 14px;
+}
+.endForm .promptText {
+  margin: 0;
+}
+.endForm input[type="datetime-local"] {
+  font-size: 16px;
+}
+@media (min-width: 761px) {
+  .warning:not(.compact) {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+  }
+  .warning:not(.compact) .actions {
+    grid-column: auto;
+  }
+}
+@media (max-width: 760px) {
+  .actions > :global(.button) {
+    flex: 1 1 auto;
+  }
+  .promptActions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+  .promptActions > :global(.button) {
+    width: 100%;
+  }
+}
