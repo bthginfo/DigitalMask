@@ -117,8 +117,6 @@ function CoachMarks({
 
   useEffect(() => {
     let cancelled = false;
-    setReady(false);
-    setRect(null);
     navigate(step.module);
     void waitForElement(selector).then((element) => {
       if (cancelled) return;
@@ -150,7 +148,12 @@ function CoachMarks({
     if (ready) card.current?.focus({ preventScroll: true });
   }, [ready, index]);
 
-  const next = () => (last ? onFinish() : setIndex((value) => value + 1));
+  const goTo = (target: number) => {
+    setReady(false);
+    setRect(null);
+    setIndex(target);
+  };
+  const next = () => (last ? onFinish() : goTo(index + 1));
   const padding = 8;
   const spot = rect
     ? {
@@ -176,7 +179,7 @@ function CoachMarks({
       onKeyDown={(event) => {
         if (event.key === "Escape") onFinish();
         if (event.key === "ArrowRight") next();
-        if (event.key === "ArrowLeft" && index > 0) setIndex((value) => value - 1);
+        if (event.key === "ArrowLeft" && index > 0) goTo(index - 1);
       }}
     >
       {spot ? (
@@ -208,7 +211,7 @@ function CoachMarks({
         {error && <ErrorMessage message={error} />}
         <div className={styles.cardActions}>
           {index > 0 && (
-            <Button variant="ghost" onClick={() => setIndex((value) => value - 1)}>
+            <Button variant="ghost" onClick={() => goTo(index - 1)}>
               Zurück
             </Button>
           )}
